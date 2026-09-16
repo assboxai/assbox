@@ -57,10 +57,12 @@ and consumes evaluation-derived facts before managed activation. Compatibility
 errors, including ChatGPT on Wayland, must be rejected rather than silently choosing
 a different application or session.
 
-The existing set is intentionally small. Adding an application currently means
-updating the typed application enum, Nix module, compatibility checks, onboarding
-and tests. There is no dynamic executable plugin loader or external application
-manifest language.
+A reviewed JSON catalog generates typed Rust component identifiers and release-family
+metadata. Nix reads the same catalog; services remain ordinary handwritten modules.
+The drift check rejects missing/unknown dependencies, cycles and duplicate curated
+command exports. There is no runtime plugin loader or command interpreter in metadata.
+The component model replaces the prerelease application enum directly; no installed
+clients require compatibility machinery or a release-protocol bridge.
 
 ## Configuration authority
 

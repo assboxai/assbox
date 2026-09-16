@@ -1,118 +1,150 @@
-# Application profiles
+# Components, applications and remote access
 
-Exactly zero or one managed Assbox application is selected through
-`assbox.application`. OpenClaw's extra Codex and OpenCode executables are tools in
-that one profile, not additional managed profiles. Application state is retained
-when selecting another profile; switching is not credential revocation or secure
-erasure.
+Assbox installs any explicit selection from [the reviewed catalog](../catalog/components.json).
+Every optional component defaults off. Nano and tmux remain in the base. A package,
+a remote service and graphical autostart are separate choices. Nothing selects an
+extra agent implicitly, including OpenClaw and ChatGPT Desktop.
 
-## None
+Run `assbox component list` to see IDs, dependencies, proprietary-package consent,
+known mutable helpers and unavailable capabilities. `assbox component set
+codex,gemini-cli headless` stages that complete selection for reboot. It rejects
+missing dependencies; the installer previews dependency expansion and asks before
+adding them. Use `--accept-unfree` for proprietary packages. Additional settings,
+including mutable-helper consent and graphical launchers, use ordinary `local.nix`.
+Existing launcher overrides must be removed when removing their owning component.
+When selecting Happy Remote during installation, explicitly choose its Codex/Claude
+backends; the installer includes those selected packages. Selecting an SSH editor
+host asks for its separate agent public key and enables tailnet-only access.
 
-`none` installs the substrate and toolbox only. Headless provides local console and
-optional key-based SSH administration. Console-only does not run sshd. X11 and Wayland provide a minimal graphical session
-and terminal as the unprivileged agent. Neither mode requires an AI application.
+## Selection examples
 
-## ChatGPT Remote
-
-ChatGPT Remote works on Linux; this is the main use case for the ChatGPT profile.
-The current profile requires X11 and launches the Linux application through
-LightDM/Xorg/Openbox. It includes Codex and a browser (Chrome on x86-64, Chromium
-on AArch64). A future supported headless mode can be added without changing the substrate/application separation. No claim is
-made that an untested Wayland path has been accepted.
-
-Sign in to the application in the local graphical agent session. Authentication is
-not embedded in the flake. The profile uses Electron's basic password storage to
-avoid an unattended keyring prompt; this is not encrypted protection against theft
-of the agent home. Independent disk encryption is not configured by this installer.
-Treat access to the appliance and its state accordingly.
-
-## OpenCode
-
-The selected package supplies a terminal client and the headless `opencode serve`
-service. Assbox binds its service to `127.0.0.1:4096`, never directly to the LAN.
-Before the service starts, onboard as the agent:
-
-```sh
-sudo -iu agent assbox application setup
+```nix
+assbox.components = {
+  claude-code.enable = true;
+  claude-code-remote = {
+    enable = true;
+    workingDirectory = "/home/agent/projects/my-project";
+  };
+  gemini-cli.enable = true;
+};
+assbox.acceptUnfree = true;
+assbox.presentation = "headless";
 ```
 
-The helper runs OpenCode authentication interactively, creates a private service
-password file at `~/.config/assbox/opencode.env` if needed, and restarts the NixOS
-user service. Existing private password files are not overwritten. Credentials are
-not printed by the helper. Use the upstream OpenCode CLI or a deliberate local/
-SSH-tunneled client configuration to connect. The headed profile opens an attached
-terminal client; it does not install Chromium or disable server authentication.
-A separately requested browser can be added through ordinary local packages.
+After boot, run `sudo -iu agent assbox component setup claude-code-remote`.
+Complete provider login, workspace trust, Remote confirmation and pairing in the
+interactive terminal. Exit the foreground setup session with Ctrl-C, then explicitly
+confirm service start. This records permission to start that configured service;
+it is **not** proof of successful authentication or a remote task. Changing its
+settings requires onboarding again; ordinary package updates retain identity.
 
-## OpenClaw
-
-The profile installs OpenClaw, Codex and OpenCode. It runs a loopback gateway at
-`127.0.0.1:18789` after configuration exists:
-
-```sh
-sudo -iu agent assbox application setup
+```nix
+assbox.components.chatgpt-desktop = {
+  enable = true;
+  allowMutableCode = true;
+};
+assbox.acceptUnfree = true;
+assbox.presentation = "x11";
+assbox.session.autostart = [ "chatgpt-desktop" ];
 ```
 
-The helper runs `openclaw onboard --skip-daemon` because NixOS, not an application
-self-installer, owns the service. Complete provider and gateway authentication in
-upstream onboarding. Keep gateway token authentication enabled; Assbox does not
-silently generate an unauthenticated network endpoint. NixOS starts
-`assbox-openclaw.service` as a user service. OpenCode and Codex are available tools;
-the OpenCode server is not additionally started under this profile.
+ChatGPT Desktop uses the existing X11 session wrapper. ChatGPT and Claude Desktop
+include Chromium for browser-based login. They may provision additional executable
+code in the agent home. Their package installation does not establish remote pairing.
 
-Onboarding and external providers change independently of the substrate. Test
-actual authentication, browser workflows, job shutdown and restart with the locked
-application versions before promoting a release. A package building successfully
-does not establish that a remote provider still accepts its protocol.
+## Available integrations and boundaries
 
-## Service and access model
+| Selection | Behavior |
+| --- | --- |
+| `codex`, `claude-code`, `gemini-cli`, `grok`, `opencode`, `cursor-agent`, `antigravity-cli`, `openclaw`, `happy` | Independent CLI packages; no Assbox daemon starts just from installing them |
+| `claude-code-remote` | Foreground Claude server in an explicitly trusted project; account/workspace eligibility is upstream |
+| `cursor-worker` | Personal worker using outbound connectivity; optional `computerUse.enable` requires X11 and an explicit display, with no virtual-desktop fallback or desktop-sharing mode |
+| `openclaw-gateway` | Loopback gateway on port 18789, configured using `assbox component setup openclaw-gateway` |
+| `openclaw-node` | Foreground node connected to `gatewayHost`/`gatewayPort`; TLS is required off loopback; node pairing must be approved on the trusted Gateway |
+| `opencode-server` | Loopback service on port 4096; setup creates a private server-password file and performs provider login |
+| `happy-remote` | Foreground Happy supervisor; explicit nonempty `backends = [ "codex" "claude-code" ]` names installed runtimes, not a security allowlist |
+| `vscode`, `zed`, `vim`, `emacs` | Optional editors; Emacs defaults to terminal, with `variant = "gui"` available in headed configurations |
+| `vscode-remote-host`, `zed-remote-host` | Agent SSH development hosts without installing the desktop editor; require agent SSH and mutable-helper consent |
+| `vscode-cli`, `vscode-tunnel` | Fixed-hash standalone `assbox-vscode` CLI and separately enabled tunnel; login and server-license acceptance are interactive |
+| `claude-desktop` | Linux graphical app, optionally started by the owned graphical session |
 
-Agent services use a private home, restrictive umask, no privilege escalation,
-restart-on-failure and a bounded stop timeout. Headless services are enabled in the
-agent's lingering user manager; a local GUI is not required for startup. Graphical
-ChatGPT follows the graphical session target. Graphical profiles autologin the
-agent, not the administrator.
+Grok's ambiguous `agent` alias is not exported. Use `grok`, `cursor-agent` and
+`assbox-vscode`; the desktop VS Code retains `code`. Additional executables inside
+an upstream package are not a promise of separate curated integrations.
 
-The X11 session wrapper owns `assbox-graphical-session.target`, which pulls in the
-passive `graphical-session.target` as a dependency. It imports the current display
-and authorization environment before starting application units. Normal Openbox
-exit, a failed launch, and catchable termination signals stop the graphical targets
-and clear that environment. A later login first clears stale state left by an
-uncatchable termination. The NixOS fake-session helper is not a second owner.
-Wayland starts the same Assbox target from labwc autostart once the display exists.
-This lifecycle does not stop the independent headless OpenCode/OpenClaw services.
+The following catalog entries deliberately reject enablement:
 
-Use a local console or SSH as `admin`, then explicitly become `agent` to onboard.
-The locked agent password does not prevent root from using `sudo -iu agent`.
-Never paste admin credentials into an agent session. APIs bound to loopback may be
-reached through SSH tunnels; do not open firewall ports merely to work around
-upstream authentication. These services can execute code with the agent's access;
-they are not independent hostile-workload sandboxes.
+- `chatgpt-remote`: current upstream Remote instructions establish Mac/Windows,
+  but do not establish Linux pairing support.
+- `cowork-dispatch`: the packaged Linux VM execution and required device permissions
+  have not been established within Assbox's unprivileged account boundary.
+- `antigravity-remote`: the pinned CLI documents installation of its own OS service;
+  a reviewed foreground daemon contract is still needed.
 
-## Upstream interfaces
+These are unavailable capabilities, not passing or partially working adapters.
+See [research and qualification](component-acceptance.md) for evidence and remaining work.
 
-The package input is [llm-agents.nix](https://github.com/numtide/llm-agents.nix).
-Runtime interface references are [OpenCode server](https://opencode.ai/docs/server/)
-and [OpenClaw documentation](https://docs.openclaw.ai/). These links describe upstream
-interfaces, not completed Assbox acceptance tests.
+## Mutable code and shared state
 
-## Headed clients and architecture acceptance
+`allowMutableCode` acknowledges a component's known downloaded helpers. It is not a
+sandbox or a machine-wide download prohibition. VS Code clients manage their server,
+extensions and language tools; Zed provisions a matching server. The selected VS Code
+host/tunnel enables NixOS's `nix-ld` loader for compatibility on that machine; it does
+not provide isolation. No pinned Zed server mode is maintained.
 
-The package set is selected natively for x86-64 or AArch64. Both are declared
-configuration targets; build and authenticated application acceptance are still
-required for each promoted version. Do not assume a successful Nix evaluation
-proves an ARM Electron/browser session works in a particular VM.
+Happy bundles the Claude Agent SDK even when using another backend. Its pinned daemon
+also starts a Happy Terminal companion that can provision code. OpenClaw node session
+hosting requires separate `sessionHosting.enable = true` and `allowMutableCode = true`:
+the trusted Gateway supplies worker artifacts with its own update authority. Configure
+pairing in the private agent home before node onboarding. Assbox does not bypass
+OpenClaw's artifact, device-authority or revocation checks, and does not enable Docker.
 
-After onboarding, headed OpenCode opens a terminal running `opencode attach` against
-the loopback service. Its server password is supplied through a private environment
-file, not an argv string. Headless users can attach from the agent's terminal too.
-Headed OpenClaw opens Chromium at the fixed loopback Control UI URL. Authentication
-is completed in the browser with upstream onboarding credentials; no token is
-embedded in its command line or URL. A browser starting before a gateway is ready
-may need a reload. Assbox does not bypass Control UI authentication for convenience.
+All applications share the `agent` account and can access that account's projects and
+credentials. Separate unit names and state directories are not isolation. Do not place
+secrets in Nix, Git, command-line arguments or global environment configuration.
+Provider-owned state stays in its supported home location; Assbox does not invent
+credential formats or isolate HOME in ways that break provider integration.
 
-Application service files and these clients are integration definitions, not claims
-that provider authentication, remote tasks or graphical startup have passed tests.
-Upstream interfaces are documented by [OpenCode](https://opencode.ai/docs/cli/) and
-[OpenClaw](https://docs.openclaw.ai/web/control-ui); review changes against the locked
-package versions rather than following a moving installer script.
+Remote onboarding scripts run interactively as `agent`, outside build/activation.
+New remote units have bounded restart attempts and suppress provider output in the
+ordinary system journal because it may contain pairing material. Inspect the unit's
+exit status with `systemctl --user status assbox-COMPONENT`; reproduce the documented
+foreground command interactively when needed. Expired credentials require provider
+login; reset the unit's failed state after correcting the problem. No background
+probe continuously calls provider APIs or declares account eligibility.
+
+Disabling a component stops its managed unit after activation/reboot, without deleting
+credentials, projects, cached helpers or old generations. Maintenance retains its
+existing reboot policy and may interrupt active jobs. No exactly-once execution,
+conflict-free shared checkout, or automatic restoration of mutable tasks is promised.
+
+## Graphical session ownership
+
+Use `assbox.session.autostart` with `chatgpt-desktop`, `claude-desktop`, `vscode`,
+`zed`, graphical `emacs`, `opencode-attach` or `openclaw-dashboard`. Each launcher
+requires its owning component. Both X11/Openbox and Wayland/labwc include a terminal.
+Session wrappers own `graphical-session.target` and clear stale display variables;
+GUI units stop with that target. Headless services remain independent. Cursor's
+explicit X11 computer-use worker follows the graphical target as well.
+
+## SSH and Tailscale
+
+```nix
+assbox.network = {
+  tailscale.enable = true;
+  ssh.agent = { enable = true; keys = [ "ssh-ed25519 REPLACE_WITH_PUBLIC_KEY" ]; };
+};
+assbox.components.zed-remote-host = { enable = true; allowMutableCode = true; };
+```
+
+Log in to Tailscale from the local admin console with `sudo tailscale up`; Assbox sets
+ordinary overlay networking, Tailscale SSH off, route acceptance off and its own
+firewall policy. Connect the editor as `agent`, never as administrator. Admin SSH
+uses separately enabled `ssh.admin` and its own keys. The installer explains that
+supplying an admin key enables tailnet-only access and requires console onboarding.
+
+For LAN access, set `ssh.exposure = "lan"` and explicit `ssh.lanInterfaces`; optional
+`lanSourceCidrs` restrict sources further. An empty CIDR list admits any source on
+those selected interfaces. Password/root login, agent forwarding and gateway ports
+are disabled. Local forwarding is restricted to loopback destinations. No Funnel,
+exit-node/subnet routing, trusted whole interface or agent Tailscale operator is added.

@@ -93,16 +93,16 @@ canonical grammar. Move advanced expressions to `local.nix`, then restore the
 managed file to its generated representation. This is not a restriction on the NixOS
 module system itself.
 
-## Applications and devices
+## Components and devices
 
 ```sh
-sudo assbox application set opencode wayland
-sudo assbox application set none headless
-sudo assbox application set chatgpt x11 --accept-unfree
+sudo assbox component set opencode,opencode-server wayland
+sudo assbox component set none headless
+sudo assbox component set claude-code headless --accept-unfree
 sudo assbox rebuild --boot
 ```
 
-Application selection stages a new generation and retains old application data.
+Component selection stages a new generation and retains old application data.
 It does not silently change a locally overridden presentation. ChatGPT requires
 X11 and explicit machine-wide unfree-package permission. This is permission for
 all unfree nixpkgs packages, not just the selected application, and survives
@@ -137,10 +137,12 @@ NixOS option; discovery is not a universal driver compatibility guarantee.
 
 ## Console, SSH and local discovery
 
-The installer enables `assbox.network.ssh.enable` only when an admin SSH key is
-provided. Without one, console-only means sshd and its firewall opening are off.
-An administrator can later enable key-only SSH in `local.nix` and add normal
-`users.users.admin.openssh.authorizedKeys.keys`. Password SSH and root SSH remain
+The installer enables `assbox.network.ssh.admin.enable` and Tailscale only when an
+admin public key is explicitly supplied after the tailnet-only access explanation.
+Selecting an SSH editor host also asks for its own agent public key and enables
+Tailscale. Complete Tailscale login from console before using SSH. Without either
+key, sshd remains off. Configure separate `ssh.agent.keys` and `ssh.admin.keys` in `local.nix`;
+[explicit LAN access](applications.md#ssh-and-tailscale) is also available. Password SSH and root SSH remain
 disallowed by the appliance defaults. `assbox.network.discoverable = true` enables
 Avahi/mDNS hostname advertisement; it defaults false. Do not assume an `.local`
 address exists when discovery is disabled. These choices do not disable ordinary

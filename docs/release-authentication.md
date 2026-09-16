@@ -26,9 +26,12 @@ A root-owned local Nix customization is a separate administrator trust decision.
 
 A release binds the core Git commit to an exact generated dependency lock. The
 committed `master` lock is a reviewed bootstrap/development toolchain, not a file a
-bot must update daily. Read-only CI builders update four root inputs: `nixpkgs`,
-`chatgpt-packages`, `opencode-packages` and `openclaw-packages`. The application
-inputs can pin different revisions of the same upstream package repository.
+bot must update daily. Read-only CI builders update `nixpkgs` and the independently pinned package families
+listed in the reviewed component catalog. Generated release-family metadata keeps
+strict root-input and held-input validation synchronized. Shared-runtime capabilities
+advance together; standalone Codex remains separate from ChatGPT. Editors and the
+standalone fixed-hash VS Code CLI recipe follow the OS/core release. The catalog is
+authenticated as part of the exact source archive and core identity.
 
 Each advancing application is probed with the advancing OS on both native
 architectures. A failed application probe retains that application's previous
@@ -75,7 +78,7 @@ no push to `master` or `stable`, no PAT and no daily manual environment approval
 
 ## Manifest encoding, genesis and authenticated history
 
-The current manifest has schema **2** and protocol **2**. Its fields are exactly:
+The current manifest has schema **3** and protocol **3**. Its fields are exactly:
 
 ```text
 schema, protocol, channel, tag, coreCommit, coreVersion, issuedAt, expiresAt,
@@ -132,9 +135,9 @@ the trusted bootstrap procedure; an explicit tag establishes identity, not proof
 that no newer release exists. Whole-history censorship by the trusted authority is
 outside this trust model, and missing history can block availability.
 
-Manifest schemas before 2 are not accepted or automatically migrated. A deployment
-using an older protocol requires explicit reviewed migration, not a fabricated
-parent or automatic new genesis.
+Manifest schemas before 3 are not accepted. This schema is finalized before initial
+production commissioning; there are no deployed clients to bridge. Future deployed
+protocol changes require an explicit reviewed migration, never a fabricated parent.
 
 ## Installed verification order
 

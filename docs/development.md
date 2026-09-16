@@ -132,3 +132,16 @@ These tests mock GitHub observations; they do not establish deployed availabilit
 public attestation validity or provider resource consumption. Deployment and alert
 routing are separate administrator operations. Do not commit Wrangler credentials,
 `.dev.vars`, generated infrastructure state or account tokens.
+
+## Component metadata
+
+Edit `catalog/components.json`, then run `python3 scripts/component_catalog.py`
+to regenerate typed Rust identifiers and release-family metadata. The static gate
+checks drift. Integration behavior belongs in ordinary typed Nix/Rust adapters,
+not executable catalog strings. New release families also require native VM exports
+and both architecture entries in the release workflow; add coverage in the same change.
+No prerelease application-schema compatibility layer is retained.
+
+The Nix verification stage enumerates every native check and builds each in a
+separate process, preserving failures and releasing evaluator memory between checks.
+It does not set Nix job/core limits; each build retains normal parallelism.

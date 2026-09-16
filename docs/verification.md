@@ -41,6 +41,13 @@ identities are also required. Default zero IDs intentionally refuse release acce
 checksum, test fixture or local report substitutes for successful native gates and
 verified external provisioning.
 
+## Expanded component gates
+
+See [component qualification](component-acceptance.md) for the expanded matrix,
+per-family native checks, access/firewall VMs, closure absence checks and owner-run
+provider procedures. All new native/provider checks remain unexecuted until the
+deferred tranche. Blocked capabilities reject configuration and carry no support claim.
+
 ## Existing gates
 
 `scripts/verify` with no arguments remains the full gate. For targeted local work,

@@ -42,25 +42,19 @@ board-specific boot-image support. See the [Parallels test guide](docs/parallels
 for an ARM VM on an Apple Silicon host. Validate the guest devices and presentation
 mode before relying on that installation. No cross-architecture override is provided.
 
-## Applications and presentation
+## Components and presentation
 
-| Managed application | Headless | X11 | Wayland |
-| --- | --- | --- | --- |
-| None: terminal and managed NixOS only | Yes | Yes | Yes |
-| OpenCode | Yes | Yes | Yes |
-| OpenClaw, including Codex and OpenCode tools | Yes | Yes | Yes |
-| ChatGPT Remote | No | Yes | Not currently supported |
+Agents, remote services, editors and access transports are independently selectable;
+all optional components default off. The base includes nano and tmux. See the
+[component guide](docs/applications.md) for the catalog, configuration and onboarding.
 
-These are configuration targets on both architectures, not certification of every
-hardware/application combination. Exactly zero or one Assbox application profile is
-selected. Extra tools do not create another managed application profile.
-
-**ChatGPT Remote works on Linux and is the primary purpose of the ChatGPT profile.**
-Assbox requires X11 for this application; a headless profile can be added when an
-implementation can be supported and tested. Linux support is not a future feature.
-The generic graphical alternatives are LightDM/Xorg/Openbox and
-greetd/labwc/Wayland. Both include a terminal. Headed OpenCode opens its attached
-terminal UI; headed OpenClaw opens its loopback Control UI after onboarding.
+Presentation remains headless, X11/Openbox or Wayland/labwc. Graphical autostart is
+explicit. ChatGPT Desktop currently requires X11; Linux Remote pairing is not yet
+established. Antigravity Remote and Cowork Dispatch also have explicit unresolved
+integration blockers and reject enablement. Package availability is not provider
+acceptance. Other integrations have implementations and verification procedures,
+with native and authenticated execution still required as documented in
+[component qualification](docs/component-acceptance.md).
 
 ## Installation and maintenance
 

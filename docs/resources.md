@@ -15,8 +15,10 @@ capacity is half of RAM; it does not reserve half of RAM at boot, and it does no
 alter disk partitions. Compression helps with cold, compressible pages but cannot
 make an arbitrarily large workload fit in memory.
 
-Application services restart after failure, with delays increasing from five to
-sixty seconds. A normal exit stays stopped. Shutdown kills the whole service group
+Existing local application services restart after failure, with delays increasing
+from five to sixty seconds. New remote integrations retry after twenty seconds,
+with at most three starts in ten minutes; correct onboarding or the outage and
+reset the failed unit to retry after that budget is exhausted. A normal exit stays stopped. Shutdown kills the whole service group
 after the existing sixty-second grace period. CPU, I/O and memory accounting make
 resource pressure visible without adding a separate Assbox tuning interface.
 

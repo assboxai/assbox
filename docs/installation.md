@@ -91,7 +91,7 @@ An unversioned development binary, unprovisioned trust IDs, unsynchronized clock
 expired release cannot apply.
 
 The wizard is plan-only without `--apply`. It requests prepared partitions,
-hostname/timezone, profile, application, presentation, device policy and an optional
+hostname/timezone, profile, components, presentation, explicit autostart, device policy and an optional
 admin SSH public key. Supplying a key enables key-only SSH; choosing console-only
 disables sshd and its firewall port by default. Multicast discovery is separately
 configurable and defaults off. An exact whole-disk confirmation is required before
