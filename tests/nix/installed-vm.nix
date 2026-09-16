@@ -31,7 +31,8 @@ let
   local = pkgs.writeText "assbox-acceptance-local.nix" ''
     { lib, pkgs, modulesPath, ... }: {
       imports = [ (modulesPath + "/testing/test-instrumentation.nix") ];
-      boot.kernelParams = [ "console=ttyS0" "net.ifnames=0" ];
+      # Test instrumentation normally unlocks root; preserve Assbox's locked root.
+      users.users.root.hashedPasswordFile = lib.mkForce null;
       networking.useDHCP = lib.mkForce false;
       networking.interfaces.eth1.ipv4.addresses = lib.mkForce [{ address = "192.168.1.3"; prefixLength = 24; }];
       networking.hosts."192.168.1.1" = [ "github.com" "api.github.com" ];
@@ -201,7 +202,7 @@ pkgs.testers.runNixOSTest {
       boot.loader.systemd-boot.enable = lib.mkForce efi;
       boot.loader.grub.enable = lib.mkForce false;
       virtualisation.qemu.options = [
-        "-drive file=./assbox-target.qcow2,if=none,id=assbox-target,format=qcow2"
+        "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
         "-device virtio-blk-pci,drive=assbox-target,serial=assbox-target,logical_block_size=${toString sectorSize},physical_block_size=${toString sectorSize}"
         "-device virtio-scsi-pci,id=assbox-scsi"
         "-drive if=none,id=assbox-iso,media=cdrom,readonly=on,format=raw,file=${iso}"
@@ -219,7 +220,7 @@ pkgs.testers.runNixOSTest {
     target = { lib, ... }: {
       imports = [ common ];
       # QEMU boots the produced disk; this node's skeleton is never installed.
-      virtualisation.diskImage = "./assbox-target.qcow2";
+      virtualisation.diskImage = "$SHARED_DIR/assbox-target.qcow2";
       virtualisation.useBootLoader = true;
       virtualisation.useEFIBoot = efi;
       virtualisation.useDefaultFilesystems = false;
@@ -259,7 +260,9 @@ pkgs.testers.runNixOSTest {
     terminal_script = "${../fixtures/installer_terminal.py}"
     test_ca = "${ca}"
     refind = "${if apple then "${pkgs.refind}/share/refind/refind_x64.efi" else ""}"
-    subprocess.run(["${pkgs.qemu}/bin/qemu-img", "create", "-f", "qcow2", "assbox-target.qcow2", "64G"], check=True)
+    qemu_img = "${pkgs.qemu}/bin/qemu-img"
+    target_image = str(installer.shared_dir / "assbox-target.qcow2")
+    subprocess.run([qemu_img, "create", "-f", "qcow2", target_image, "64G"], check=True)
     exec(Path("${../fixtures/installed_cases.py}").read_text())
   '';
 }

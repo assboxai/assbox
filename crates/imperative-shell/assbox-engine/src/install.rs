@@ -153,7 +153,7 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     let result = apply_inner(plan, release_tag);
     if result.is_err() {
         eprintln!(
-            "Installation did not complete. Inspect /run/assbox-install and the target's .assbox-install.json. Do not reboot into an incomplete target or delete its files blindly; see docs/installation.md#interrupted-installation."
+            "Installation did not complete. Inspect /run/assbox-install and the target's .assbox-install.json. Do not reboot into an incomplete target or delete its files blindly; see docs/install-recovery.md."
         );
     }
     result
@@ -452,6 +452,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         .map(|(name, h)| format!("{h}  {name}\n"))
         .collect::<String>();
     write_backup_file(&archive.join("SHA256SUMS"), manifest.as_bytes())?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-backup-written")?;
     c.run("sync", &[])?;
     backup.unmount(&c)?;
     backup = Mount::new(
@@ -658,10 +660,10 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     crate::acceptance::checkpoint("install-built")?;
     crate::boot_guard::verify_install_target_in_store(&c, &root.point, &system, &plan)?;
     crate::source::verify_local_lock(&c, &installed_config, &fetched.release.manifest)?;
-    if let Some(e) = &esp {
-        if esp_manifest(&c, &e.point, apple)? != before_esp {
-            return Err(Error::new("ESP changed during build"));
-        }
+    if let Some(e) = &esp
+        && esp_manifest(&c, &e.point, apple)? != before_esp
+    {
+        return Err(Error::new("ESP changed during build"));
     }
     if c.capture("sfdisk", &["--json", &plan.root().parent])? != before_table
         || (apple && c.capture("efibootmgr", &["-v"])? != firmware)

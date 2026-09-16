@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import tomllib
 
 
 def canonical(value):
@@ -26,8 +27,9 @@ def prepare(source, destination):
     # The full source is identical for both releases; only authenticated sequence
     # and lineage change. Application/OS changes are exercised through real builds.
     lock = (tree / 'flake.lock').read_bytes()
+    version = tomllib.loads((tree / 'Cargo.toml').read_text())['workspace']['package']['version']
     (tree / 'release-context.json').write_bytes(canonical({
-        'coreCommit': 'a' * 40, 'coreVersion': '0.1.0', 'lockSha256': digest(lock)}))
+        'coreCommit': 'a' * 40, 'coreVersion': version, 'lockSha256': digest(lock)}))
     nar = subprocess.check_output(['nix', 'hash', 'path', str(tree)], text=True).strip()
     archive = root / 'payload.tar.gz'
     with tarfile.open(archive, 'w:gz') as output:
@@ -38,7 +40,7 @@ def prepare(source, destination):
     for number in [1, 2]:
         tag = f'r-{number}'
         manifest = dict(schema=2, protocol=2, channel='stable', tag=tag,
-                        coreCommit='a' * 40, coreVersion='0.1.0', issuedAt=issued + number,
+                        coreCommit='a' * 40, coreVersion=version, issuedAt=issued + number,
                         expiresAt=issued + number + 604800, sourceSha256=digest(raw),
                         sourceNarHash=nar, lockSha256=digest(lock),
                         systems=['aarch64-linux', 'x86_64-linux'], heldInputs=[],

@@ -62,6 +62,23 @@ def before_boot_bytes():
     return installer.succeed(command)
 
 
+def snapshot_target():
+    # The target is unmounted at both comparison boundaries. QEMU's shared-read
+    # flag permits observing its still-attached device. Sparse comparison checks
+    # all logical bytes without reading tens of GiB of identical zero clusters.
+    installer.succeed('sync')
+    snapshot = str(installer.shared_dir / 'before-target.qcow2')
+    Path(snapshot).unlink(missing_ok=True)
+    subprocess.run([qemu_img, 'convert', '-U', '-f', 'qcow2', '-O', 'qcow2', target_image, snapshot], check=True)
+    return snapshot
+
+
+def assert_target_unchanged(snapshot):
+    installer.succeed('sync')
+    subprocess.run([qemu_img, 'compare', '-U', '-f', 'qcow2', '-F', 'qcow2', snapshot, target_image], check=True)
+    Path(snapshot).unlink()
+
+
 def start_install(cut=None):
     if cut:
         write(installer, CASE + '/cut', 'pause:' + cut)
@@ -119,44 +136,56 @@ refind_digest = installer.succeed('sha256sum ' + refind).split()[0] if refind el
 local_base = installer.succeed('cat /etc/assbox-acceptance-local.nix')
 retained_digest = installer.succeed('sha256sum ' + disk + '2').split()[0] if mode == 'apple-refind' else None
 
-# Existing/recovered data is never removed or repaired. Hash all target bytes,
+# Existing/recovered data is never removed or repaired. Compare all target bytes,
 # not only a marker file, around these production-path refusal cases.
 if scenario == 'install':
     for setup in ['touch /mnt/edit/existing', 'touch /mnt/edit/lost+found/recovered',
                   'rmdir /mnt/edit/lost+found; ln -s /tmp /mnt/edit/lost+found',
                   'chmod 777 /mnt/edit/lost+found']:
         installer.succeed('mkdir -p /mnt/edit; mount ' + root + ' /mnt/edit; ' + setup + '; sync; umount /mnt/edit')
-        before = installer.succeed('sha256sum ' + disk)
+        before = snapshot_target()
         installer.fail(INSTALL, timeout=900)
-        assert installer.succeed('sha256sum ' + disk) == before
+        assert_target_unchanged(before)
         format_target()
     # Pre-write injected failure occurs after real configuration evaluation and
     # backup read-back. Both external archive and target preservation are checked.
     write(installer, CASE + '/cut', 'fail:install-pre-write')
-    before = installer.succeed('sha256sum ' + disk)
+    before = snapshot_target()
     assert 'install-pre-write' in installer.fail(INSTALL + ' 2>&1', timeout=1800)
-    assert installer.succeed('sha256sum ' + disk) == before
+    assert_target_unchanged(before)
+    format_target()
+    # Corrupt a newly written backup artifact before the real read-back, without
+    # altering the target. The VM removes only this deliberately damaged fixture.
+    before = snapshot_target()
+    start_install('install-backup-written')
+    damaged = installer.succeed('ls -td /run/assbox-install/backup/assbox-*/ | head -1').strip().rstrip('/')
+    installer.succeed('echo corrupted >> ' + shlex.quote(damaged + '/partition-table.json'))
+    installer.succeed('rm ' + CASE + '/cut')
+    wait_install_exit()
+    installer.succeed('grep "external backup read-back failed" /tmp/install.log')
+    assert_target_unchanged(before)
+    installer.succeed('mkdir -p /mnt/damaged-backup; mount /dev/vdb1 /mnt/damaged-backup; rm -rf ' + shlex.quote('/mnt/damaged-backup/' + damaged.rsplit('/', 1)[1]) + '; umount /mnt/damaged-backup')
     format_target()
     # A real exhausted backup filesystem must refuse before any target write.
     installer.succeed('mkdir -p /mnt/full-backup; mount /dev/vdb1 /mnt/full-backup')
     installer.succeed('fallocate -l "$(df -B1 --output=avail /mnt/full-backup | tail -1)" /mnt/full-backup/filler; umount /mnt/full-backup')
-    before = installer.succeed('sha256sum ' + disk)
+    before = snapshot_target()
     assert 'backup lacks room' in installer.fail(INSTALL + ' 2>&1', timeout=1800)
-    assert installer.succeed('sha256sum ' + disk) == before
+    assert_target_unchanged(before)
     installer.succeed('mount /dev/vdb1 /mnt/full-backup; rm /mnt/full-backup/filler; umount /mnt/full-backup')
     format_target()
     # Cancellation also interrupts the password client and reaps it without ever
     # putting its output in logs or waiting for user input to release the mounts.
     evidence = json.loads(installer.succeed('cat ' + CASE + '/case.json'))
     write(installer, CASE + '/case.json', json.dumps(dict(evidence, pause_password=True)))
-    before = installer.succeed('sha256sum ' + disk)
+    before = snapshot_target()
     start_install()
     installer.wait_until_succeeds('test -f ' + CASE + '/password-pid', timeout=1800)
     password_pid = installer.succeed('cat ' + CASE + '/password-pid').strip()
     installer.succeed('kill -TERM $(cat /tmp/install.pid)')
     wait_install_exit()
     installer.fail('kill -0 ' + password_pid)
-    assert installer.succeed('sha256sum ' + disk) == before
+    assert_target_unchanged(before)
     write(installer, CASE + '/case.json', json.dumps(evidence))
     format_target()
     # A cancellation after target writes is not a boot activation and does not
@@ -279,6 +308,7 @@ target.succeed('test -f /etc/NIXOS; test ! -e /iso; test $(jq -r .phase /.assbox
 target.succeed('test $(stat -c %a /var/lib/assbox-secrets/admin-password.hash) = 600')
 target.succeed('test $(stat -c %a /var/lib/assbox) = 700; test -s /var/lib/assbox/release-state')
 target.succeed('assbox status; systemctl is-active sshd')
+target.succeed("getent shadow root | cut -d: -f2 | grep '^!$'")
 target.wait_for_open_port(22)
 server.succeed('cp ' + private_key + ' /tmp/admin-key; chmod 600 /tmp/admin-key')
 ssh = 'ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /tmp/admin-key '
