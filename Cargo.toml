@@ -1,0 +1,31 @@
+[workspace]
+members = [
+  "crates/functional-core/assbox-domain",
+  "crates/functional-core/assbox-policy",
+  "crates/functional-core/assbox-config",
+  "crates/imperative-shell/assbox-system",
+  "crates/imperative-shell/assbox-engine",
+  "crates/imperative-shell/assbox-cli",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/assboxai/assbox"
+homepage = "https://assbox.com"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

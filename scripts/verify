@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -euo pipefail
+cd "$(dirname "$0")/.."
+for tool in cargo rustc rustfmt nix nixfmt python3 shellcheck actionlint jq systemd-analyze node; do
+  command -v "$tool" >/dev/null || { echo "Required tool unavailable: $tool" >&2; exit 1; }
+done
+[[ -f flake.lock ]] || { echo "Missing genuine flake.lock. Complete the bootstrap workflow first." >&2; exit 1; }
+python3 scripts/architecture.py
+python3 scripts/workflow_policy.py
+python3 -m unittest discover -s tests/tooling -v
+python3 scripts/model_check.py
+node --test infra/release-scheduler/tests/*.test.mjs infra/release-monitor/tests/*.test.mjs
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo build --workspace --locked
+cargo test --workspace --all-targets --locked
+python3 scripts/mutations.py
+mapfile -d '' nix_sources < <(find . -type d \( -name .git -o -name target -o -name reports \) -prune -o -type f -name '*.nix' -print0)
+((${#nix_sources[@]} > 0))
+nixfmt --check "${nix_sources[@]}"
+shellcheck scripts/format scripts/verify scripts/release-check modules/sessions/x11.sh modules/sessions/wayland.sh modules/sessions/wayland-ready.sh
+for script in modules/sessions/*.sh; do bash -n "$script"; done
+while IFS= read -r -d '' script; do bash -n "$script"; done < <(find scripts -maxdepth 1 -type f ! -name '*.py' -print0)
+actionlint
+systemd-analyze calendar '*-*-* 18:00:00' hourly >/dev/null
+nix flake check --no-update-lock-file --no-write-lock-file --keep-going

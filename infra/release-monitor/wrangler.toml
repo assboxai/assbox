@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name = "assbox-release-health"
+main = "worker.mjs"
+compatibility_date = "2026-09-11"
+workers_dev = true
+preview_urls = false
+# No cron, secret bindings, App keys, or GitHub write permissions.
+[vars]
+GITHUB_REPOSITORY_ID = "0"
+GITHUB_OWNER_ID = "0"

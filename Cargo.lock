@@ -1,0 +1,50 @@
+# Workspace-only dependency lock. No registry dependencies.
+# Native cargo --locked validation is required by the release gate.
+version = 4
+
+[[package]]
+name = "assbox-cli"
+version = "0.1.0"
+dependencies = [
+ "assbox-config",
+ "assbox-domain",
+ "assbox-engine",
+ "assbox-policy",
+ "assbox-system",
+]
+
+[[package]]
+name = "assbox-config"
+version = "0.1.0"
+dependencies = [
+ "assbox-domain",
+ "assbox-policy",
+]
+
+[[package]]
+name = "assbox-domain"
+version = "0.1.0"
+
+[[package]]
+name = "assbox-engine"
+version = "0.1.0"
+dependencies = [
+ "assbox-config",
+ "assbox-domain",
+ "assbox-policy",
+ "assbox-system",
+]
+
+[[package]]
+name = "assbox-policy"
+version = "0.1.0"
+dependencies = [
+ "assbox-domain",
+]
+
+[[package]]
+name = "assbox-system"
+version = "0.1.0"
+dependencies = [
+ "assbox-domain",
+]

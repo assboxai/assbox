@@ -1,0 +1,14 @@
+/target/
+/result
+/result-*
+/reports/
+/.direnv/
+__pycache__/
+*.pyc
+
+# External scheduler local state/secrets are never source.
+**/.wrangler/
+**/.dev.vars
+**/.dev.vars.*
+**/node_modules/
+*.pem

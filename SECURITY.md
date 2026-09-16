@@ -1,0 +1,73 @@
+# Security model
+
+Assbox separates a passworded administrator from a locked, unprivileged agent.
+Agent workloads can access their own files and execute ordinary user commands.
+They are not trusted with sudo, raw disks, the NetworkManager administration group,
+privileged container groups or Nix trusted-user access. Nix sandboxing, signed
+substitutes and an explicit cache configuration remain enabled. APIs supplied by
+headless application profiles bind to loopback, with authentication configured
+through upstream onboarding.
+
+This is not a sandbox against all malicious code. The agent's credentials and
+workspace are in scope for its processes. X11 clients share a display security
+boundary. USB identity is not authenticated. Physical access, stolen unencrypted
+storage, malicious firmware/kernel/drivers, compromised root and upstream supply
+chain compromise are not solved by the CLI. Redistributable firmware and selected
+proprietary applications have their own trust and licensing considerations.
+
+The prepared installer never repairs or repartitions disks. It checks filesystem
+integrity, isolated backup media, identities and mount ownership near writes. These
+checks reduce risk but do not make installation transactional across a power loss.
+The full system is built before target writes, but live-store capacity may limit
+that approach on small machines. Virtual backup disks separate guest devices, not
+physical failure domains. Independent data backups and hardware acceptance remain
+necessary.
+
+Initial installer core identity and authenticated release source/lock identities are
+checked before target writes. Installed update authentication uses GitHub immutable
+release verification and Sigstore build provenance, restricted to the configured
+numeric repository/owner and exact master workflow identity. Privileged command
+resolution uses the compiled Nix tool closure without an ambient PATH fallback.
+The functional core performs no effects. No GitHub token or release private key is
+installed. Key-only SSH is off for console-only installations; Avahi discovery is
+optional and defaults off.
+
+Managed updates validate the destination generation's immutable boot receipt,
+build before source publication and distinguish partial activation
+from a successful rollback. User data and external agent actions are never rolled
+back by selecting an earlier NixOS generation. Notifications are advisory; scheduled
+security maintenance can terminate work after a bounded grace period.
+
+The evaluated audit checks selected configuration facts, not every possible NixOS
+privilege grant. Arbitrary root-owned Nix code can change the entire operating
+system. Direct manual administration remains supported, but must be reviewed on
+its own terms. Do not represent an audit result as proof of full system isolation.
+
+GitHub, its OIDC/Sigstore trust services, the protected repository/workflow and the
+initial trusted verifier are trust roots, not adversaries
+this scheme can independently defeat. The sole production scheduler is an external
+Cloudflare Worker; observe workflow freshness and release expiry outside the
+publisher. Its App has repository-wide Actions write, not dispatch-only authority.
+The program refuses disabled workflows, but a stolen App key can re-enable them;
+suspend the App as part of an emergency stop. Time synchronization is required, but this
+is not a trusted-clock design against hostile root or time infrastructure.
+
+The updater advances its anti-replay high-water mark before evaluating authorized
+candidate Nix. Candidate lineage must reach the exact local floor; a higher number
+on a different hash-chain is not sufficient. Initial applying installation requires
+an explicit release tag. Source or boot rollback does not lower that mark. An
+installer/core identity mismatch, old or expired metadata, unavailable trust roots
+or network, and unprovisioned IDs fail closed without a mutable-branch fallback.
+Installed updates may accept a newer authorized core under the existing trust policy.
+The [verification contract](docs/verification.md) is required for production use;
+missing full acceptance gates block promotion. See
+[release authentication](docs/release-authentication.md) and
+[governance](docs/governance.md) for boundaries and provisioning tasks.
+
+## Reporting
+
+Use GitHub's private vulnerability reporting for `assboxai/assbox` when the project
+has enabled it. Do not put credentials, disk serials, private hardware profiles or
+exploitable vulnerability details in a public issue. If private reporting is not
+enabled, request a private contact path without publishing the sensitive details.
+Do not assume a guaranteed response time or send private material to an unverified contact.

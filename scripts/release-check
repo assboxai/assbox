@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+if [[ $# == 2 && "$1" == --candidate ]]; then
+  # release.py has compared every candidate byte/mode with frozen master, allowing
+  # only the lock and generated release context to differ. No Git commit is made.
+  [[ "$2" == /* && -d "$2" && -f "$2/release-context.json" ]] || exit 1
+  cd "$2"
+elif [[ $# == 0 ]]; then
+  cd "$root"
+  [[ -z $(git status --porcelain) ]] || { echo "Release checks require clean committed core." >&2; exit 1; }
+else
+  echo "Usage: scripts/release-check [--candidate /absolute/source]" >&2; exit 1
+fi
+architecture=$(nix eval --impure --raw --expr builtins.currentSystem)
+check_names=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#checks.$architecture" --apply builtins.attrNames)
+for required in install-boot-vm activation-recovery-vm authenticated-release-vm application-chatgpt-vm application-opencode-vm application-openclaw-vm; do
+  if ! jq -e --arg required "$required" 'index($required) != null' <<< "$check_names" >/dev/null; then
+    echo "Release promotion blocked: checks.$architecture.$required must be implemented and pass." >&2
+    echo "Plan-only storage and fixture tests do not replace full installation, activation, application or authenticated-release acceptance." >&2
+    exit 1
+  fi
+done
+scripts/verify
+mkdir -p reports
+cargo llvm-cov --package assbox-domain --package assbox-policy --package assbox-config \
+  --all-targets --locked --fail-under-lines 90 --json --output-path reports/core-coverage.json
+cargo audit --file Cargo.lock
+mapfile -t systems < <(nix eval --json --no-update-lock-file --no-write-lock-file .#nixosConfigurations --apply builtins.attrNames | jq -r --arg prefix "$architecture-" '.[] | select(startswith($prefix))')
+((${#systems[@]} > 0))
+for system in "${systems[@]}"; do
+  path=$(nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file ".#nixosConfigurations.$system.config.system.build.toplevel")
+  # Held application pins must pass the same scan. No fallback skips a finding.
+  vulnix "$path" --json > "reports/vulnix-$system.json"
+done
+if [[ $# == 0 ]]; then
+  [[ -z $(git status --porcelain) ]] || { echo "Verification changed tracked source; do not publish." >&2; exit 1; }
+fi
