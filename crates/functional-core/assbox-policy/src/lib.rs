@@ -487,6 +487,28 @@ pub fn recovery_after_interruption(phase: Phase) -> Recovery {
     }
 }
 
+/// Recovery may undo only this transaction's profile and pending-boot changes.
+/// Return the marker needed after selecting the old generation for boot.
+pub fn recovery_pending<'a>(
+    old: &'a str,
+    new: &str,
+    profile: &str,
+    running: &str,
+    pending: Option<&str>,
+) -> Result<Option<&'a str>> {
+    if ![old, new, profile, running]
+        .into_iter()
+        .all(assbox_domain::source::valid_store_system)
+        || (profile != old && profile != new)
+        || pending.is_some_and(|value| value != old && value != new)
+    {
+        return Err(Error::new(
+            "generation state changed outside this operation or is invalid; refusing recovery",
+        ));
+    }
+    Ok((old != running).then_some(old))
+}
+
 /// A suggestion, never a persisted automatic setting. None means ask the operator.
 pub fn suggested_wifi(default_interfaces: &[bool]) -> Option<bool> {
     let first = *default_interfaces.first()?;

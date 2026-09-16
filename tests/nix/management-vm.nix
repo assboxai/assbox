@@ -168,6 +168,38 @@ pkgs.testers.runNixOSTest {
         machine.succeed("rm -rf " + txn + "; rm -f " + pending + " " + budget)
     machine.succeed("ln -sfn " + shlex.quote(saved_runtime) + " " + runtime_path)
 
+    # Every uncertain durable-state observation refuses before changing source,
+    # profile or replay state. A dangling link is present, never missing state.
+    profile_before = machine.succeed("readlink -f /nix/var/nix/profiles/system")
+    source_before = machine.succeed("sha256sum " + config + "/*")
+    for marker in ["transaction", "pending-reboot"]:
+        path = state + "/" + marker
+        machine.succeed("ln -s /missing-assbox-state " + path)
+        for command in ["assbox recover", "assbox internal boot-check"]:
+            machine.fail(command)
+        machine.succeed("test -L " + path + "; rm " + path)
+        assert machine.succeed("readlink -f /nix/var/nix/profiles/system") == profile_before
+        assert machine.succeed("sha256sum " + config + "/*") == source_before
+        assert machine.succeed("cat " + floor_file) == floor_bytes
+
+    # A malformed new generation or an unrelated pending reboot cannot authorize
+    # even the first rollback effect, despite a valid old generation and profile.
+    current = profile_before.strip()
+    unrelated = "/nix/store/22222222222222222222222222222222-nixos-system-unrelated"
+    for new_value, pending_value in [("not-a-generation", current), (current, unrelated)]:
+        machine.succeed("mkdir -m700 " + txn + "; mkdir -m700 " + txn + "/original " + txn + "/candidate")
+        machine.succeed("printf activating > " + txn + "/phase; touch " + txn + "/changed-files")
+        for name, value in [("old-system", current), ("new-system", new_value)]:
+            machine.succeed("printf %s " + shlex.quote(value) + " > " + txn + "/" + name)
+        machine.succeed("printf %s " + shlex.quote(pending_value) + " > " + pending)
+        failure = machine.fail("assbox recover --rollback 2>&1")
+        assert "generation state changed outside this operation or is invalid" in failure
+        assert machine.succeed("cat " + pending) == pending_value
+        assert machine.succeed("readlink -f /nix/var/nix/profiles/system") == profile_before
+        assert machine.succeed("sha256sum " + config + "/*") == source_before
+        assert machine.succeed("cat " + floor_file) == floor_bytes
+        machine.succeed("rm -rf " + txn + "; rm " + pending)
+
     # Rollback must inspect the old generation's immutable receipt before setting
     # the system profile or executing its activation program.
     machine.succeed("mkdir -p /nix/var/nix/profiles")

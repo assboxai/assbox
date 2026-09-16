@@ -201,19 +201,4 @@ impl Commands {
             .collect()
     }
 }
-pub fn valid_store_system(s: &str) -> bool {
-    let Some(name) = s.strip_prefix("/nix/store/") else {
-        return false;
-    };
-    let Some((hash, rest)) = name.split_once('-') else {
-        return false;
-    };
-    hash.len() == 32
-        && hash
-            .bytes()
-            .all(|b| b"0123456789abcdfghijklmnpqrsvwxyz".contains(&b))
-        && rest.starts_with("nixos-system-")
-        && rest
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"-._+".contains(&b))
-}
+pub use assbox_domain::source::valid_store_system;

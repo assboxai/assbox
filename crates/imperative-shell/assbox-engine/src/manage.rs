@@ -507,6 +507,7 @@ fn reboot_pending_locked() -> Result<()> {
 
 pub fn recover(rollback_activation: bool) -> Result<()> {
     let _lock = lock()?;
+    let pending = pending_state()?;
     if !state_entry_exists(TXN)? {
         clear_orphans()?;
         println!("No interrupted operation.");
@@ -520,7 +521,6 @@ pub fn recover(rollback_activation: bool) -> Result<()> {
     ) {
         source_intent(phase)?;
     }
-    pending_state()?;
     match recovery_after_interruption(phase) {
         Recovery::DiscardCandidate | Recovery::Nothing => remove_txn(),
         Recovery::RestoreSources => {
@@ -536,11 +536,14 @@ pub fn recover(rollback_activation: bool) -> Result<()> {
             let old = files::text(&marker("old-system"))?;
             let new = files::text(&marker("new-system"))?;
             let profile = probe::profile_system()?;
-            if !valid_store_system(&old) || profile != old && profile != new {
-                return Err(Error::new(
-                    "profile changed outside this operation; refusing automatic recovery",
-                ));
-            }
+            let running = probe::current_system()?;
+            let restored_pending = assbox_policy::recovery_pending(
+                &old,
+                &new,
+                &profile,
+                &running,
+                pending.as_deref(),
+            )?;
             let guard = crate::boot_guard::BootGuard::capture(
                 &Commands,
                 &marker("recovery-boot-before"),
@@ -551,7 +554,9 @@ pub fn recover(rollback_activation: bool) -> Result<()> {
             guard.verify(&Commands)?;
             Commands.activate(&old, "boot")?;
             guard.verify(&Commands)?;
-            if state_entry_exists(PENDING)? {
+            if let Some(system) = restored_pending {
+                files::atomic_write(Path::new(PENDING), system.as_bytes(), 0o600)?;
+            } else if pending.is_some() {
                 files::remove_regular(Path::new(PENDING))?;
             }
             println!(
