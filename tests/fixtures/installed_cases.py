@@ -128,7 +128,7 @@ root = disk + str(root_number)
 # The first extra disk is backup; the target has an explicit serial.
 installer.succeed("printf 'label: gpt\ntype=L\n' | sfdisk /dev/vdb; udevadm settle; mkfs.ext4 -F /dev/vdb1")
 request = {'root': root, 'esp': esp or '', 'backup': '/dev/vdb1',
-           'platform': 'apple-intel' if mode == 'apple-refind' else 'generic',
+           'platform': 'macbookpro12-1' if mode == 'apple-refind' else 'generic',
            'key': installer.succeed('cat ' + key).strip()}
 write(installer, CASE + '/install.json', json.dumps(request))
 format_target()
@@ -139,6 +139,16 @@ retained_digest = installer.succeed('sha256sum ' + disk + '2').split()[0] if mod
 # Existing/recovered data is never removed or repaired. Compare all target bytes,
 # not only a marker file, around these production-path refusal cases.
 if scenario == 'install':
+    if mode == 'apple-refind':
+        # Real sysfs DMI must prevent choosing a generic/foreign Mac profile,
+        # before release transport, mounts, backup or target writes.
+        request = json.loads(installer.succeed('cat ' + CASE + '/install.json'))
+        for platform in ('generic', 'apple-intel', 'macbookpro11-1'):
+            write(installer, CASE + '/install.json', json.dumps(dict(request, platform=platform)))
+            before = snapshot_target()
+            assert 'detected Mac model requires' in installer.fail(INSTALL + ' 2>&1', timeout=60)
+            assert_target_unchanged(before)
+        write(installer, CASE + '/install.json', json.dumps(request))
     for setup in ['touch /mnt/edit/existing', 'touch /mnt/edit/lost+found/recovered',
                   'rmdir /mnt/edit/lost+found; ln -s /tmp /mnt/edit/lost+found',
                   'chmod 777 /mnt/edit/lost+found']:

@@ -263,6 +263,7 @@ fn confirmation_names_the_whole_disk_and_repeats_root_esp_and_backup() {
     };
     let inventory = Inventory {
         architecture: Architecture::Aarch64,
+        hardware: Hardware::default(),
         firmware: Firmware::Uefi,
         disks: vec![disk("sda", "8:0"), disk("sdb", "8:16")],
         partitions: vec![

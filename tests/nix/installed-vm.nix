@@ -59,7 +59,7 @@ let
           application = "none";
           presentation = "headless";
           boot.mode = mode;
-          platform = if apple then "apple-intel" else "generic";
+          platform = if apple then "macbookpro12-1" else "generic";
         };
         environment.systemPackages = [ pkgs.hello ];
       }
@@ -201,13 +201,19 @@ pkgs.testers.runNixOSTest {
       virtualisation.useBootLoader = efi;
       boot.loader.systemd-boot.enable = lib.mkForce efi;
       boot.loader.grub.enable = lib.mkForce false;
-      virtualisation.qemu.options = [
-        "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
-        "-device virtio-blk-pci,drive=assbox-target,serial=assbox-target,logical_block_size=${toString sectorSize},physical_block_size=${toString sectorSize}"
-        "-device virtio-scsi-pci,id=assbox-scsi"
-        "-drive if=none,id=assbox-iso,media=cdrom,readonly=on,format=raw,file=${iso}"
-        "-device scsi-cd,bus=assbox-scsi.0,drive=assbox-iso"
-      ];
+      virtualisation.qemu.options =
+        lib.optionals apple [
+          # Exercise the production DMI observation, not a test-only bypass. QEMU
+          # escapes a comma within a key=value argument by doubling it.
+          "-smbios type=1,manufacturer=Apple,product=MacBookPro12,,1"
+        ]
+        ++ [
+          "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
+          "-device virtio-blk-pci,drive=assbox-target,serial=assbox-target,logical_block_size=${toString sectorSize},physical_block_size=${toString sectorSize}"
+          "-device virtio-scsi-pci,id=assbox-scsi"
+          "-drive if=none,id=assbox-iso,media=cdrom,readonly=on,format=raw,file=${iso}"
+          "-device scsi-cd,bus=assbox-scsi.0,drive=assbox-iso"
+        ];
       virtualisation.additionalPaths = [
         harness
         keys

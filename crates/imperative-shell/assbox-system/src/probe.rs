@@ -217,6 +217,7 @@ pub fn inventory(c: &Commands) -> Result<Inventory> {
     };
     Ok(Inventory {
         architecture: architecture(c)?,
+        hardware: crate::hardware::observe()?,
         firmware: if Path::new("/sys/firmware/efi").is_dir() {
             Firmware::Uefi
         } else {

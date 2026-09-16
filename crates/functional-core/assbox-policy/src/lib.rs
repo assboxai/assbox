@@ -3,6 +3,7 @@
 //! Deterministic decisions. Effects, including effectful callback interfaces, live elsewhere.
 
 pub mod efi;
+pub mod hardware;
 pub mod release;
 use assbox_domain::*;
 
@@ -49,6 +50,17 @@ impl InstallPlan {
     /// Re-observe before each consequential phase. Mounts are allowed only where
     /// this operation explicitly mounted the corresponding selected partition.
     pub fn revalidate(&self, now: &Inventory, allowed: &[(&str, &str)]) -> Result<()> {
+        hardware::validate_install_hardware(
+            now.architecture,
+            &now.hardware,
+            self.request.choices.platform,
+            self.request.choices.devices.wifi,
+        )?;
+        if now.hardware != self.inventory.hardware {
+            return Err(Error::new(
+                "hardware identity or network drivers changed; refusing a stale plan",
+            ));
+        }
         if now.architecture != self.inventory.architecture
             || now.firmware != self.inventory.firmware
             || now.live_media != self.inventory.live_media
@@ -226,6 +238,12 @@ fn writable_unmounted(p: &Partition) -> Result<()> {
 pub fn plan_install(inv: Inventory, req: InstallRequest) -> Result<InstallPlan> {
     req.choices.validate()?;
     validate_machine(inv.architecture, inv.firmware, req.choices.platform)?;
+    hardware::validate_install_hardware(
+        inv.architecture,
+        &inv.hardware,
+        req.choices.platform,
+        req.choices.devices.wifi,
+    )?;
     if !application_supported(
         inv.architecture,
         req.choices.application,

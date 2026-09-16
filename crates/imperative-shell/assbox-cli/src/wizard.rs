@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use assbox_domain::*;
 use assbox_system::{commands::Commands, files, probe};
-use std::{
-    fs,
-    io::{self, IsTerminal, Write},
-};
+use std::io::{self, IsTerminal, Write};
 
 fn ask(label: &str, default: Option<&str>) -> Result<String> {
     if !io::stdin().is_terminal() {
@@ -84,6 +81,40 @@ pub fn install(args: &[&str]) -> Result<()> {
         inv.firmware,
         inv.live_media.source()
     );
+    println!(
+        "Hardware: vendor={:?}, model={:?}",
+        inv.hardware.vendor, inv.hardware.model
+    );
+    for device in &inv.hardware.pci_network {
+        println!(
+            "PCI network controller {}: {:04x}:{:04x}",
+            device.slot, device.vendor, device.device
+        );
+    }
+    for interface in &inv.hardware.wireless {
+        println!(
+            "Wireless interface {:?}: driver={:?}, in-tree prerequisite={}",
+            interface.name,
+            interface.driver,
+            assbox_policy::hardware::usable_wifi(interface)
+        );
+    }
+    if assbox_policy::hardware::has_bcm4360(&inv.hardware) {
+        println!(
+            "BCM4360 built-in Wi-Fi is unsupported. Use Ethernet or a supported external Wi-Fi adapter; Assbox does not install the insecure wl driver."
+        );
+    }
+    let recommended = if inv.architecture == Architecture::X86_64 {
+        assbox_policy::recommended_platform(&inv.hardware.model)
+    } else {
+        Platform::Generic
+    };
+    assbox_policy::hardware::validate_install_hardware(
+        inv.architecture,
+        &inv.hardware,
+        recommended,
+        false,
+    )?;
     for disk in &inv.disks {
         println!(
             "{}",
@@ -123,14 +154,8 @@ pub fn install(args: &[&str]) -> Result<()> {
             "timezone is not in the installed timezone database",
         ));
     }
-    let model = fs::read_to_string("/sys/class/dmi/id/product_name").unwrap_or_default();
-    let recommended = if inv.architecture == Architecture::X86_64 {
-        assbox_policy::recommended_platform(&model)
-    } else {
-        Platform::Generic
-    };
     let platform: Platform = ask(
-        "Platform: generic / apple-intel / macbookpro11-1 / macbookpro12-1",
+        "Platform: generic / macbookpro11-1 / macbookpro12-1",
         Some(recommended.as_str()),
     )?
     .parse()?;

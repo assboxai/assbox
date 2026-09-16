@@ -4,6 +4,7 @@
 pub mod cancellation;
 pub mod commands;
 pub mod files;
+pub mod hardware;
 pub mod probe;
 
 mod mounts;

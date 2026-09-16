@@ -58,6 +58,7 @@ fn base(firmware: Firmware, table: Table) -> (Inventory, InstallRequest) {
     (
         Inventory {
             architecture: Architecture::X86_64,
+            hardware: Hardware::default(),
             firmware,
             disks: vec![
                 disk("/dev/sda", table),
@@ -118,7 +119,8 @@ fn only_apple_path_preserves_additional_partitions() {
         "7c3457ef-0000-11aa-aa11-00306543ecac",
     ));
     assert!(plan_install(inv.clone(), req.clone()).is_err());
-    req.choices.platform = Platform::AppleIntel;
+    inv.hardware.model = "MacBookPro12,1".into();
+    req.choices.platform = Platform::Macbookpro12_1;
     let plan = plan_install(inv, req).unwrap();
     assert_eq!(plan.boot(), BootKind::AppleRefind);
     assert_eq!(
@@ -129,6 +131,35 @@ fn only_apple_path_preserves_additional_partitions() {
             .count(),
         3
     );
+}
+
+#[test]
+fn hardware_refusals_apply_to_planning_and_revalidation() {
+    let (mut inv, mut req) = base(Firmware::Uefi, Table::Gpt);
+    inv.hardware.model = "MacBookPro11,1".into();
+    req.choices.platform = Platform::Macbookpro11_1;
+    req.choices.devices.wifi = true;
+    req.choices.allow_unfree = true; // Application consent is not a driver exception.
+    assert!(plan_install(inv.clone(), req.clone()).is_err());
+    inv.hardware.wireless.push(WirelessInterface {
+        name: "wlan0".into(),
+        device_path: "devices/usb1/1-1".into(),
+        driver: Some("ath9k_htc".into()),
+        out_of_tree: false,
+    });
+    let plan = plan_install(inv.clone(), req).unwrap();
+    assert!(plan.revalidate(&inv, &[]).is_ok());
+    let mut disappeared = inv.clone();
+    disappeared.hardware.wireless.clear();
+    assert!(plan.revalidate(&disappeared, &[]).is_err());
+    let mut replaced = inv.clone();
+    replaced.hardware.wireless[0].device_path = "devices/usb1/1-2".into();
+    assert!(plan.revalidate(&replaced, &[]).is_err());
+    let mut driver_changed = inv.clone();
+    driver_changed.hardware.wireless[0].out_of_tree = true;
+    assert!(plan.revalidate(&driver_changed, &[]).is_err());
+    inv.hardware.model = "MacBookPro15,1".into();
+    assert!(plan.revalidate(&inv, &[]).is_err());
 }
 #[test]
 fn backup_may_never_be_a_live_media_sibling() {
@@ -246,7 +277,8 @@ fn bios_has_a_deliberately_narrow_preservation_contract() {
     assert!(plan_install(inv, req).is_err());
     for fw in [Firmware::Bios, Firmware::Uefi] {
         let (mut inv, mut req) = base(fw, Table::Gpt);
-        req.choices.platform = Platform::AppleIntel;
+        inv.hardware.model = "MacBookPro12,1".into();
+        req.choices.platform = Platform::Macbookpro12_1;
         inv.disks[0].persistent_path.clear();
         assert!(plan_install(inv, req).is_err());
     }
@@ -350,10 +382,17 @@ fn arm_is_generic_uefi_not_an_intel_mac_or_legacy_bios_machine() {
                 let (mut inv, mut req) = base(firmware, Table::Gpt);
                 inv.architecture = architecture;
                 req.choices.platform = platform;
+                inv.hardware.model = match platform {
+                    Platform::Macbookpro11_1 => "MacBookPro11,1",
+                    Platform::Macbookpro12_1 => "MacBookPro12,1",
+                    _ => "",
+                }
+                .into();
                 let expected = if architecture == Architecture::Aarch64 {
                     firmware == Firmware::Uefi && platform == Platform::Generic
                 } else {
-                    firmware == Firmware::Uefi || platform == Platform::Generic
+                    (firmware == Firmware::Uefi || platform == Platform::Generic)
+                        && platform != Platform::AppleIntel
                 };
                 assert_eq!(
                     plan_install(inv, req).is_ok(),

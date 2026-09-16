@@ -2,7 +2,9 @@
 #![forbid(unsafe_code)]
 //! Values, validated names, and explicit observations. No environment access.
 
+pub mod hardware;
 pub mod release;
+pub use hardware::{Hardware, PciNetworkDevice, WirelessInterface};
 use std::{error::Error as StdError, fmt, str::FromStr};
 
 pub mod source;
@@ -288,6 +290,7 @@ impl LiveMedia {
 pub struct Inventory {
     pub architecture: Architecture,
     pub firmware: Firmware,
+    pub hardware: Hardware,
     pub disks: Vec<Disk>,
     pub partitions: Vec<Partition>,
     pub live_media: LiveMedia,
