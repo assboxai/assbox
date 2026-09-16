@@ -192,6 +192,12 @@ Exercise scheduled updates while the GUI and agents are active, low/unknown powe
 retries and disk-space pressure. On Intel Macs verify both rEFInd and macOS boot.
 On Parallels record guest architecture, firmware, virtual devices and GUI behavior
 separately from host architecture. Follow [the acceptance guide](parallels.md).
+For Intel Macs use the [model and networking acceptance procedure](intel-mac-acceptance.md).
+Rust gates cover model/profile refusal, unbound/insecure wireless drivers, supported
+external adapters and hardware drift. Sysfs adapter tests use local fixture trees.
+The Apple install VM supplies a synthetic MacBookPro12,1 DMI identity through QEMU
+and exercises profile refusal before target writes; this remains no evidence about
+physical Mac firmware or wireless hardware.
 
 For each application version/architecture, test actual onboarding/provider login,
 authenticated tasks, headed/headless client behavior, loopback binding, shutdown

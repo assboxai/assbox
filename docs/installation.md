@@ -159,6 +159,25 @@ workload will fit in RAM or preventing all OOM failures.
 
 ## Intel Apple preservation
 
+The guided installer accepts the observed models `MacBookPro11,1` and
+`MacBookPro12,1`, using their matching profiles. It refuses other Apple models,
+including T2 Macs, and refuses selecting a generic or different Mac profile to
+bypass that decision. The `apple-intel` NixOS module option remains available for
+separately reviewed expert configurations; it is not a guided-install support claim.
+See the [Intel Mac acceptance guide](intel-mac-acceptance.md).
+
+Before planning, the wizard displays the observed model, PCI network IDs and live
+wireless drivers. Requested Wi-Fi requires a wireless interface bound to an in-tree
+driver; `wl` and out-of-tree modules do not qualify. A BCM4360 adapter is reported
+even when no driver is bound. Use Ethernet with Wi-Fi disabled, or establish a
+supported external Wi-Fi adapter on the live medium and restart planning. The
+installer does not add an insecure-driver exception. Having a live interface is a
+prerequisite, not proof of target-kernel, access-point or provider compatibility.
+Model, network-device and driver observations are rechecked alongside storage before
+writes; unplugging or changing adapters invalidates the plan. After target writes,
+follow the recovery procedure before attempting another installation. No SSID, password or
+MAC address is part of this hardware observation.
+
 Create actual physical free partitions using macOS tools beforehand. Adding an APFS
 volume is not the same operation. Linux partition tools must not resize or repair
 APFS/HFS+/CoreStorage/Recovery/Boot Camp or replace the shared ESP. Retained partitions
@@ -173,8 +192,8 @@ firmware/unrelated ESP state is checked around boot operations.
 
 Boot the live medium from rEFInd, complete the same wizard, then use rEFInd to
 select the Assbox loader. Confirm both Assbox and the existing macOS installation
-boot before retiring rescue media. Firmware discovery and device drivers vary by
-Intel Mac model; T2 hardware is not implied to work without model-specific support.
+boot before retiring rescue media. Firmware discovery and device drivers still
+require acceptance on the specific supported machine.
 The shared-ESP checks detect unexpected changes; they cannot make loader writes
 atomic or restore an interrupted boot operation automatically. Installation from
 live media does not change the installed runtime privilege or update policy.

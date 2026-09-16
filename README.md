@@ -15,8 +15,10 @@ Project: [assbox.com](https://assbox.com) · [assboxai/assbox](https://github.co
 The public flake exports `nixosModules.default` and native `assbox` executables for
 `x86_64-linux` and `aarch64-linux`. The installer creates an ordinary `/etc/nixos`
 flake, hardware discovery, storage binding, settings and a user-owned `local.nix`.
-Machine identifiers and hardware profiles are not uploaded. Neither a fork nor
-committing a machine profile upstream is required. The default hostname is
+Machine identifiers and hardware profiles are not uploaded. Guided Apple installation
+is limited to MacBookPro11,1 and MacBookPro12,1; see the
+[hardware prerequisites and acceptance guide](docs/intel-mac-acceptance.md).
+Neither a fork nor committing a machine profile upstream is required. The default hostname is
 `assbox-` plus a random six-character suffix.
 
 `assbox` provides convenient package management, validation, updates and recovery.
@@ -31,7 +33,7 @@ administrative recipes.
 | --- | --- | --- |
 | x86-64 | UEFI/GPT | Generic dedicated disk |
 | x86-64 | BIOS/GPT or BIOS/MBR | Generic dedicated disk |
-| x86-64 | UEFI/GPT with existing rEFInd | Intel Apple preservation |
+| x86-64 | UEFI/GPT with existing rEFInd | MacBookPro11,1 / MacBookPro12,1 preservation |
 | AArch64 | UEFI/GPT | Generic dedicated disk, including an ARM VM |
 
 A generic ARM target must boot ordinary AArch64 NixOS installation media and expose
