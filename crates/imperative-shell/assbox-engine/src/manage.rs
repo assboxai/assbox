@@ -44,7 +44,10 @@ fn journal(phase: Phase) -> Result<()> {
 fn remove_txn() -> Result<()> {
     #[cfg(test)]
     crate::acceptance::checkpoint("manage-pre-retire")?;
-    files::retire_directory(Path::new(TXN))
+    let retired = files::retire_directory(Path::new(TXN))?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("manage-retired")?;
+    files::remove_retired_directory(&retired)
 }
 fn snapshot_files(path: &Path) -> Result<BTreeSet<PathBuf>> {
     let mut fileset = BTreeSet::new();

@@ -4,7 +4,7 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{Read, Write},
     os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 pub fn io<T>(result: std::io::Result<T>) -> Result<T> {
@@ -240,7 +240,7 @@ pub fn publish_directory(prepared: &Path, destination: &Path) -> Result<()> {
 
 /// Retire atomically before deletion: a crash during cleanup cannot leave a broken
 /// active journal. Orphaned preparation/retirement trees contain no live operation.
-pub fn retire_directory(path: &Path) -> Result<()> {
+pub fn retire_directory(path: &Path) -> Result<PathBuf> {
     let parent = path
         .parent()
         .ok_or_else(|| Error::new("directory has no parent"))?;
@@ -254,6 +254,16 @@ pub fn retire_directory(path: &Path) -> Result<()> {
     io(File::open(parent))?
         .sync_all()
         .map_err(|e| Error::new(e.to_string()))?;
+    Ok(retired)
+}
+
+/// Complete cleanup only after the active journal name has been durably retired.
+pub fn remove_retired_directory(retired: &Path) -> Result<()> {
+    let parent = retired
+        .parent()
+        .ok_or_else(|| Error::new("directory has no parent"))?;
+    trusted_dir(parent)?;
+    trusted_dir(retired)?;
     io(fs::remove_dir_all(retired))?;
     io(File::open(parent))?
         .sync_all()

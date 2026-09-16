@@ -62,7 +62,7 @@ cuts = [
     ('manage-built', False), ('manage-published', False),
     ('manage-source-assbox-packages.nix', False), ('manage-activating', True),
     ('manage-profile', True), ('manage-activated', True),
-    ('manage-committed', False), ('manage-pre-retire', False),
+    ('manage-committed', False), ('manage-pre-retire', False), ('manage-retired', False),
 ]
 for cut, inspect_activation in cuts:
     operation('remove')
@@ -83,7 +83,7 @@ for cut, inspect_activation in cuts:
     assert target.succeed('cat ' + STATE + '/release-state') == floor
     target.fail('test -e ' + TXN)
     boot_again()
-    if cut not in ('manage-committed', 'manage-pre-retire'):
+    if cut not in ('manage-committed', 'manage-pre-retire', 'manage-retired'):
         target.fail('test -e /run/current-system/sw/bin/hello')
     else:
         target.succeed('hello')
