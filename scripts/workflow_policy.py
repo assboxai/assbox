@@ -4,7 +4,7 @@
 
 Actions-write credentials can also rerun workflows, regardless of original trigger.
 Keep every workflow explicitly read-only and secret-free, except the designated
-release publisher/advertiser jobs. Extending an allowlist requires source review.
+release publisher/advertiser and bounded bootstrap writer. Extending an allowlist requires source review.
 """
 from __future__ import annotations
 import re
@@ -47,16 +47,56 @@ RUNNERS = {"ubuntu-24.04", "ubuntu-24.04-arm"}
 READ_COMMANDS = {
     'test -f flake.lock && git ls-files --error-unmatch flake.lock',
     'nix develop --command scripts/verify',
-    '''set -euo pipefail
-nix flake lock
-git add flake.lock
-nix develop --command scripts/format
-mkdir -p "$RUNNER_TEMP/assbox-bootstrap"
-git diff HEAD --binary > "$RUNNER_TEMP/assbox-bootstrap/bootstrap.patch"
-cp flake.lock "$RUNNER_TEMP/assbox-bootstrap/flake.lock"
-nix develop --command rustc --version > "$RUNNER_TEMP/assbox-bootstrap/rustc-version.txt"
-nix --version > "$RUNNER_TEMP/assbox-bootstrap/nix-version.txt"''',
 }
+RELEASE_CRON = "23 4 * * *"
+BOOTSTRAP_CRON = "41 3 * * 0"
+MAINTENANCE_GUARD = "github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')"
+BOOTSTRAP_DISCOVER = 'python3 scripts/bootstrap.py discover "$RUNNER_TEMP/assbox-bootstrap-discovery.json"'
+BOOTSTRAP_PREPARE = 'python3 scripts/bootstrap.py prepare "$RUNNER_TEMP/assbox-bootstrap-discovery.json" "$RUNNER_TEMP/assbox-bootstrap/assets"'
+BOOTSTRAP_NATIVE = 'python3 scripts/bootstrap.py native "$RUNNER_TEMP/assbox-bootstrap/assets" "$VARIANT" "$SYSTEM" "$RUNNER_TEMP/assbox-bootstrap-report/report-$VARIANT-$SYSTEM.json"'
+BOOTSTRAP_WRITE = 'python3 scripts/bootstrap.py write "$RUNNER_TEMP/assbox-bootstrap/assets" "$RUNNER_TEMP/assbox-bootstrap/reports"'
+BOOTSTRAP_TOKEN_ENVS = {
+    ("prepare", BOOTSTRAP_DISCOVER): {"GH_TOKEN": "${{ github.token }}"},
+    ("write", BOOTSTRAP_WRITE): {"GH_TOKEN": "${{ github.token }}"},
+}
+
+
+def bootstrap_document():
+    """Exact authority stencil. Changing execution, artifacts or grants is reviewable.
+
+    Keeping the whole tiny writer definition here closes ambient authority through
+    action options, shell defaults, step conditions, dependencies and environments.
+    """
+    checkout = {"uses": CHECKOUT, "with": {"ref": "${{ github.sha }}", "persist-credentials": False}}
+    def nix(matrix=False):
+        return {"uses": NIX, "with": {"install_url": "https://releases.nixos.org/nix/nix-2.35.2/install",
+            "enable_kvm": "${{ matrix.system == 'x86_64-linux' }}" if matrix else True,
+            "extra_nix_config": "experimental-features = nix-command flakes\naccept-flake-config = false\nmax-jobs = 2\ncores = 2\n"}}
+    def upload(name, path):
+        return {"uses": UPLOAD, "with": {"name": name, "path": path, "if-no-files-found": "error", "retention-days": 14}}
+    def download(name=None, pattern=None, path="${{ runner.temp }}/assbox-bootstrap/assets"):
+        return {"uses": DOWNLOAD, "with": {("name" if name else "pattern"): name or pattern, "path": path}}
+    matrix = [{"variant": v, "system": system, "runner": runner}
+        for v in ("candidate", "current") for system, runner in
+        (("x86_64-linux", "ubuntu-24.04"), ("aarch64-linux", "ubuntu-24.04-arm"))]
+    return {"name": "Verified bootstrap maintenance", "on": {"schedule": [{"cron": BOOTSTRAP_CRON}], "workflow_dispatch": None},
+        "permissions": READ, "concurrency": {"group": "assbox-bootstrap-maintenance", "cancel-in-progress": False},
+        "jobs": {
+            "prepare": {"if": MAINTENANCE_GUARD, "runs-on": "ubuntu-24.04", "timeout-minutes": 90, "steps": [
+                checkout, nix(), {"run": BOOTSTRAP_DISCOVER, "env": {"GH_TOKEN": "${{ github.token }}"}},
+                {"run": BOOTSTRAP_PREPARE}, upload("bootstrap-locks", "${{ runner.temp }}/assbox-bootstrap/assets")]},
+            "native": {"needs": "prepare", "strategy": {"fail-fast": False, "matrix": {"include": matrix}},
+                "runs-on": "${{ matrix.runner }}", "timeout-minutes": 360, "steps": [
+                    checkout, nix(True), download(name="bootstrap-locks"),
+                    {"run": BOOTSTRAP_NATIVE, "env": {"SYSTEM": "${{ matrix.system }}", "VARIANT": "${{ matrix.variant }}"}},
+                    upload("bootstrap-native-${{ matrix.variant }}-${{ matrix.system }}", "${{ runner.temp }}/assbox-bootstrap-report/")]},
+            "write": {"needs": "native", "runs-on": "ubuntu-24.04", "timeout-minutes": 15,
+                "environment": "bootstrap-maintenance", "permissions": {"contents": "write"}, "steps": [
+                    checkout, download(name="bootstrap-locks"),
+                    download(pattern="bootstrap-native-*", path="${{ runner.temp }}/assbox-bootstrap/reports"),
+                    {"run": BOOTSTRAP_WRITE, "env": {"GH_TOKEN": "${{ github.token }}"}}]},
+        }}
+
 ATTEST_READY = 'python3 scripts/release.py attest-ready "$RUNNER_TEMP/assbox-release/assets" "$RUNNER_TEMP/assbox-release/reports"'
 PUBLISH = 'python3 scripts/release.py publish "$RUNNER_TEMP/assbox-release/assets" "$RUNNER_TEMP/assbox-release/reports"'
 PROMOTE = 'python3 scripts/release.py promote "$RELEASE_TAG" "$RELEASE_ID"'
@@ -125,7 +165,7 @@ def credential_context(path, text):
 
 def approved_token_binding(name, document, path, text):
     """Only one exact scalar env value in each reviewed command is an exception."""
-    if (name != "release.yml" or len(path) != 6 or path[0] != "jobs"
+    if (name not in {"release.yml", "bootstrap.yml"} or len(path) != 6 or path[0] != "jobs"
             or path[2] != "steps" or path[4:] != ("env", "GH_TOKEN")
             or type(path[3]) is not int or text != "${{ github.token }}"):
         return False
@@ -138,7 +178,8 @@ def approved_token_binding(name, document, path, text):
     if not isinstance(step, dict) or set(step) - {"name", "id", "run", "env"}:
         return False
     command = step.get("run")
-    expected = TOKEN_COMMAND_ENVS.get((path[1], command.strip())) if isinstance(command, str) else None
+    table = BOOTSTRAP_TOKEN_ENVS if name == "bootstrap.yml" else TOKEN_COMMAND_ENVS
+    expected = table.get((path[1], command.strip())) if isinstance(command, str) else None
     return expected is not None and step.get("env") == expected
 
 
@@ -167,7 +208,7 @@ def check_document(name, document):
     if not isinstance(document, dict) or not isinstance(document.get("on"), dict) or not document["on"]:
         return [f"{name}: workflow must have an explicit nonempty event mapping"]
     # Authority does not depend on the event: even a push-only workflow may be
-    # rerun through the scheduler credential's repository-wide Actions permission.
+    # rerun through repository Actions administration; no event expands authority.
     release = name == "release.yml"
     if "workflow_dispatch" in document["on"] and document["on"]["workflow_dispatch"] not in (None, {}):
         refuse("dispatch control inputs are not supported")
@@ -186,8 +227,14 @@ def check_document(name, document):
     jobs = document.get("jobs")
     if not isinstance(jobs, dict) or not jobs:
         return errors + [f"{name}: jobs required"]
-    if release and document["on"] != {"workflow_dispatch": None}:
-        refuse("release trigger must remain inputless workflow_dispatch only")
+    if name == "bootstrap.yml":
+        if document != bootstrap_document():
+            refuse("bootstrap workflow differs from its reviewed lock-only authority stencil")
+        return errors
+    if release and document["on"] != {"schedule": [{"cron": RELEASE_CRON}], "workflow_dispatch": None}:
+        refuse("release triggers must be the fixed schedule and inputless manual dispatch")
+    if release and jobs.get("prepare", {}).get("if") != MAINTENANCE_GUARD:
+        refuse("release source/event guard differs from reviewed master policy")
     for job_name, job in jobs.items():
         if not isinstance(job, dict):
             refuse(f"invalid job {job_name}"); continue

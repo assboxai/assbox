@@ -7,11 +7,15 @@ if [[ $# == 2 && "$1" == --candidate ]]; then
   # only the lock and generated release context to differ. No Git commit is made.
   [[ "$2" == /* && -d "$2" && -f "$2/release-context.json" ]] || exit 1
   cd "$2"
+elif [[ $# == 2 && "$1" == --bootstrap ]]; then
+  # bootstrap.py has validated the exact frozen master source and candidate lock.
+  [[ "$2" == /* && -d "$2" && -f "$2/flake.lock" && ! -e "$2/release-context.json" ]] || exit 1
+  cd "$2"
 elif [[ $# == 0 ]]; then
   cd "$root"
   [[ -z $(git status --porcelain) ]] || { echo "Release checks require clean committed core." >&2; exit 1; }
 else
-  echo "Usage: scripts/release-check [--candidate /absolute/source]" >&2; exit 1
+  echo "Usage: scripts/release-check [--candidate|--bootstrap /absolute/source]" >&2; exit 1
 fi
 architecture=$(nix eval --impure --raw --expr builtins.currentSystem)
 check_names=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#checks.$architecture" --apply builtins.attrNames)

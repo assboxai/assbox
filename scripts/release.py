@@ -68,13 +68,13 @@ def write(path: Path, value: object) -> None:
     path.write_bytes(data.json_bytes(value))
 
 
-def core_tree() -> tuple[str, dict]:
+def core_tree(*, require_lock: bool = True) -> tuple[str, dict]:
     sha = run("git", "rev-parse", "HEAD", cwd=ROOT).decode().strip()
     if not re.fullmatch(r"[0-9a-f]{40}", sha) or sha != os.environ.get("GITHUB_SHA"):
         raise ValueError("workflow source identity mismatch")
     if os.environ.get("GITHUB_REPOSITORY") != REPO or os.environ.get("GITHUB_REF") != "refs/heads/master":
         raise ValueError("release operations require the official master workflow")
-    if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
+    if os.environ.get("GITHUB_EVENT_NAME") not in {"schedule", "workflow_dispatch"}:
         raise ValueError("release operations cannot run in a pull request, push or workflow_run context")
     files = {}
     for entry in run("git", "ls-tree", "-rz", "HEAD", cwd=ROOT).split(b"\0"):
@@ -88,7 +88,7 @@ def core_tree() -> tuple[str, dict]:
         if any(ord(char) < 32 for char in name):
             raise ValueError("control character in tracked source path")
         files[name] = (int(mode, 8) & 0o777, run("git", "cat-file", "blob", blob, cwd=ROOT))
-    if "flake.lock" not in files or "release-context.json" in files:
+    if (require_lock and "flake.lock" not in files) or "release-context.json" in files:
         raise ValueError("commit a genuine bootstrap lock; keep release context out of master")
     return sha, files
 
@@ -100,6 +100,8 @@ def policy() -> dict:
             raise ValueError("cold-administrator bootstrap must provision actual repository and owner IDs")
     if p["repository"] != REPO or p["sourceRef"] != "refs/heads/master" or p["workflow"] != ".github/workflows/release.yml":
         raise ValueError("unsupported release identity policy")
+    if p.get("channel") != "stable":
+        raise ValueError("only the authenticated stable channel is supported")
     if p["maximumLifetimeSeconds"] != 604800 or p["refreshAfterSeconds"] != 259200:
         raise ValueError("lifetime policy requires coordinated Rust/CI review")
     return p

@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Production scheduling is external: infra/release-scheduler/.
-# No GitHub cron, repository_dispatch, or release-control inputs. Manual dispatch
-# has exactly the same gates as Cloudflare. Restrict release-automation to master.
+# Fixed native schedule and inputless manual recovery share the full release gates.
+# Restrict release-automation to master; independent telemetry observes liveness.
 name: Authenticated dependency releases
 'on':
+  schedule:
+    - cron: '23 4 * * *'
   workflow_dispatch: null
 permissions:
   contents: read
@@ -12,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
-    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && github.event_name == 'workflow_dispatch'
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:

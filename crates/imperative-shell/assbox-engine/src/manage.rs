@@ -58,7 +58,7 @@ fn clear_orphans() -> Result<()> {
     Ok(())
 }
 fn begin() -> Result<()> {
-    if Path::new(TXN).try_exists().map_err(|e|Error::new(e.to_string()))? {
+    if state_entry_exists(TXN)? {
         return Err(Error::new("an interrupted operation exists; run assbox recover before changing anything"));
     }
     clear_orphans()?;
@@ -72,12 +72,12 @@ fn begin() -> Result<()> {
         files::publish_directory(&prepared,Path::new(TXN))
     })();
     // If rename succeeded but parent fsync failed, retain the active transaction.
-    if result.is_err() && prepared.exists() { let _ = fs::remove_dir_all(&prepared); }
+    if result.is_err() && files::entry_exists(&prepared)? { let _ = fs::remove_dir_all(&prepared); }
     result
 }
 fn build(c: &Commands) -> Result<String> {
     let candidate=reference(&marker("candidate"))?;
-    if !marker("candidate/flake.lock").is_file() { return Err(Error::new("local flake.lock is required; do not use an unlocked installation")); }
+    files::regular(&marker("candidate/flake.lock"))?;
     crate::check_evaluation(c,&candidate)?;
     let target=format!("{candidate}#nixosConfigurations.assbox.config.system.build.toplevel");
     let output=c.text("nix", &["build","--no-link","--print-out-paths","--no-update-lock-file","--no-write-lock-file",&target])?;
@@ -91,15 +91,15 @@ fn build(c: &Commands) -> Result<String> {
 }
 fn commit(c: &Commands, new_system: &str, changed_files: &[&str], mode: &str) -> Result<()> {
     let old=files::text(&marker("old-system"))?;
+    pending_state()?;
     unchanged(&marker("original"),Path::new(CONFIG))?;
     if probe::profile_system()?!=old { return Err(Error::new("system profile changed concurrently")); }
     // Validate the actual target generation, including retained/foreign rollbacks.
     let guard=crate::boot_guard::BootGuard::capture(c,&marker("boot-before"),new_system)?;
+    let names = if changed_files.is_empty() { String::new() }
+        else { assbox_policy::release::managed_changes(changed_files)? };
+    files::atomic_write(&marker("changed-files"), names.as_bytes(), 0o600)?;
     if !changed_files.is_empty() {
-        let names = assbox_policy::release::managed_changes(changed_files)?;
-        // Publish complete intent before any rename. Recovery accepts old or new
-        // bytes per file and checks every path before restoring any of them.
-        files::atomic_write(&marker("changed-files"), names.as_bytes(), 0o600)?;
         journal(Phase::Published)?;
         for name in changed_files {
             files::atomic_write(&Path::new(CONFIG).join(name), &files::read(&marker("candidate").join(name))?, 0o644)?;
@@ -112,8 +112,8 @@ fn commit(c: &Commands, new_system: &str, changed_files: &[&str], mode: &str) ->
     guard.verify(c)?;
     if mode=="boot" && probe::current_system()?!=new_system {
         files::atomic_write(Path::new(PENDING),new_system.as_bytes(),0o600)?;
-    } else if probe::current_system()?==new_system && Path::new(PENDING).exists() {
-        io(fs::remove_file(PENDING))?;
+    } else if probe::current_system()?==new_system && state_entry_exists(PENDING)? {
+        files::remove_regular(Path::new(PENDING))?;
     }
     journal(Phase::Committed)?;
     remove_txn()
@@ -211,12 +211,12 @@ fn maintenance_numbers() -> Result<(u32, usize)> {
         fields[1].parse().map_err(|_| Error::new("invalid generation retention"))?))
 }
 // Do not treat a dangling symlink or an unreadable marker as absent state.
-fn state_entry_exists(path: &str) -> Result<bool> {
-    match fs::symlink_metadata(path) {
-        Ok(_) => Ok(true),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
-        Err(error) => Err(Error::new(format!("cannot inspect maintenance state {path}: {error}"))),
-    }
+fn state_entry_exists(path: &str) -> Result<bool> { files::entry_exists(Path::new(path)) }
+fn pending_state() -> Result<Option<String>> {
+    if !state_entry_exists(PENDING)? { return Ok(None); }
+    let system = files::text(Path::new(PENDING))?;
+    if !valid_store_system(&system) { return Err(Error::new("invalid pending reboot generation")); }
+    Ok(Some(system))
 }
 pub fn maintenance(retry_only: bool) -> Result<()> {
     let _lock=lock()?;
@@ -234,8 +234,11 @@ pub fn maintenance(retry_only: bool) -> Result<()> {
         MaintenanceAction::ConsiderStage => {},
     }
     let (limit, _) = maintenance_numbers()?;
-    let attempts = if Path::new(STAGE_RETRY).exists() {
-        Some(files::text(Path::new(STAGE_RETRY))?.parse::<u32>().map_err(|_| Error::new("invalid persisted retry budget"))?)
+    let attempts = if state_entry_exists(STAGE_RETRY)? {
+        let text = files::text(Path::new(STAGE_RETRY))?;
+        let used = text.parse::<u32>().map_err(|_| Error::new("invalid persisted retry budget"))?;
+        if text != used.to_string() { return Err(Error::new("noncanonical persisted retry budget")); }
+        Some(used)
     } else { None };
     match assbox_policy::stage_attempt(retry_only, attempts, limit) {
         assbox_policy::StageAttempt::Skip => {},
@@ -246,7 +249,7 @@ pub fn maintenance(retry_only: bool) -> Result<()> {
             // stage failure gets a bounded hourly retry, independently of reboot.
             cleanup_locked()?;
             stage_locked()?;
-            io(fs::remove_file(STAGE_RETRY))?;
+            files::remove_regular(Path::new(STAGE_RETRY))?;
         }
     }
     reboot_pending_locked()
@@ -256,12 +259,12 @@ fn reboot_pending_locked() -> Result<()> {
         return Err(Error::new("an interrupted operation blocks reboot; inspect it with assbox recover"));
     }
     if !state_entry_exists(PENDING)? { return Ok(()); }
-    let pending=files::text(Path::new(PENDING))?;
+    let pending=pending_state()?.ok_or_else(|| Error::new("pending state disappeared"))?;
     if !valid_store_system(&pending) || probe::profile_system()?!=pending {
         return Err(Error::new("pending reboot generation no longer matches the system profile"));
     }
     let current=probe::current_system()?;
-    if current==pending { io(fs::remove_file(PENDING))?; return Ok(()); }
+    if current==pending { files::remove_regular(Path::new(PENDING))?; return Ok(()); }
     let runtime=probe::runtime(&Commands)?;
     if runtime.len()!=6 { return Err(Error::new("runtime policy is incomplete")); }
     let grace=runtime[3].parse::<u64>().map_err(|_|Error::new("invalid reboot grace"))?;
@@ -286,12 +289,14 @@ fn reboot_pending_locked() -> Result<()> {
 
 pub fn recover(rollback_activation: bool) -> Result<()> {
     let _lock=lock()?;
-    clear_orphans()?;
-    if !Path::new(TXN).exists() { println!("No interrupted operation."); return Ok(()); }
+    if !state_entry_exists(TXN)? { clear_orphans()?; println!("No interrupted operation."); return Ok(()); }
+    files::trusted_dir(Path::new(TXN))?;
     let phase=files::text(&marker("phase"))?.parse::<Phase>()?;
+    if matches!(phase, Phase::Published | Phase::Activating | Phase::Committed) { source_intent(phase)?; }
+    pending_state()?;
     match recovery_after_interruption(phase) {
         Recovery::DiscardCandidate | Recovery::Nothing => remove_txn(),
-        Recovery::RestoreSources => { restore_source()?; remove_txn() },
+        Recovery::RestoreSources => { restore_source(phase)?; remove_txn() },
         Recovery::InspectActivation => {
             if !rollback_activation {
                 return Err(Error::new("activation may have partially changed services/boot files. Review the journal; use assbox recover --rollback only after inspection. User data is not rolled back."));
@@ -303,31 +308,25 @@ pub fn recover(rollback_activation: bool) -> Result<()> {
                 return Err(Error::new("profile changed outside this operation; refusing automatic recovery"));
             }
             let guard=crate::boot_guard::BootGuard::capture(&Commands,&marker("recovery-boot-before"),&old)?;
-            restore_source()?;
+            restore_source(phase)?;
             Commands.run("nix-env", &["--profile",PROFILE,"--set",&old])?;
             guard.verify(&Commands)?;
             Commands.activate(&old,"boot")?;
             guard.verify(&Commands)?;
-            if Path::new(PENDING).exists() { io(fs::remove_file(PENDING))?; }
+            if state_entry_exists(PENDING)? { files::remove_regular(Path::new(PENDING))?; }
             println!("Previous generation is selected for the next boot. Reboot to finish recovery; mutable application data was not restored.");
             remove_txn()
         }
     }
 }
-fn restore_source() -> Result<()> {
-    let names = if marker("changed-files").exists() {
-        let text = files::text(&marker("changed-files"))?;
-        let names: Vec<&str> = text.lines().collect();
-        if assbox_policy::release::managed_changes(&names)? != text {
-            return Err(Error::new("noncanonical recovery change list"));
-        }
-        names.into_iter().map(str::to_owned).collect::<Vec<_>>()
-    } else if marker("changed-file").exists() {
-        // Read prior single-file journals conservatively; do not synthesize state.
-        let name = files::text(&marker("changed-file"))?;
-        assbox_policy::release::managed_changes(&[&name])?;
-        vec![name]
-    } else { return Ok(()); };
+fn source_intent(phase: Phase) -> Result<Vec<String>> {
+    let current = if files::entry_exists(&marker("changed-files"))? { Some(files::text(&marker("changed-files"))?) } else { None };
+    let legacy = if files::entry_exists(&marker("changed-file"))? { Some(files::text(&marker("changed-file"))?) } else { None };
+    assbox_policy::release::recovery_source_intent(phase, current.as_deref(), legacy.as_deref())
+}
+fn restore_source(phase: Phase) -> Result<()> {
+    let names = source_intent(phase)?;
+    for directory in [marker("original"), marker("candidate"), PathBuf::from(CONFIG)] { files::trusted_dir(&directory)?; }
     let mut originals = Vec::new();
     for name in names {
         let old = files::read(&marker("original").join(&name))?;
@@ -351,8 +350,8 @@ pub fn status() -> Result<()> {
         if let Some(floor) = crate::release::read_floor()? {
             println!("Authenticated release high-water mark: r-{} (not a boot-success receipt)", floor.sequence);
         }
-        println!("Interrupted operation: {}",Path::new(TXN).try_exists().map_err(|e| Error::new(e.to_string()))?);
-        println!("Pending maintenance reboot: {}",Path::new(PENDING).try_exists().map_err(|e| Error::new(e.to_string()))?);
+        println!("Interrupted operation: {}",state_entry_exists(TXN)?);
+        println!("Pending maintenance reboot: {}",state_entry_exists(PENDING)?);
     } else {
         println!("Run sudo assbox status to inspect private release, recovery and pending-reboot state.");
     }
@@ -362,12 +361,15 @@ pub fn status() -> Result<()> {
 }
 pub fn boot_check() -> Result<()> {
     let _lock=lock()?;
+    if state_entry_exists(TXN)? { return Err(Error::new("unresolved transaction blocks boot success and cleanup")); }
+    let pending = pending_state()?;
     if probe::current_system()?!=probe::profile_system()? {
         return Err(Error::new("running generation differs from the selected boot profile; inspect bootloader/rollback state"));
     }
     Commands.run("systemctl", &["is-active","network.target"])?;
-    if Path::new(PENDING).exists() {
-        if files::text(Path::new(PENDING))?==probe::current_system()? { io(fs::remove_file(PENDING))?; }
+    if let Some(system) = pending {
+        if system != probe::current_system()? { return Err(Error::new("pending reboot differs from running generation")); }
+        files::remove_regular(Path::new(PENDING))?;
     }
     println!("Running and selected system generations agree. Application authentication and real firmware acceptance remain separate checks.");
     let runtime = probe::runtime(&Commands)?;
@@ -454,7 +456,7 @@ fn generations() -> Result<Vec<(u64, String)>> {
     Ok(out)
 }
 fn cleanup_locked() -> Result<()> {
-    if Path::new(TXN).exists() || Path::new(PENDING).exists() { return Ok(()); }
+    if state_entry_exists(TXN)? || state_entry_exists(PENDING)? { return Ok(()); }
     let current = probe::current_system()?;
     if probe::profile_system()? != current { return Ok(()); }
     let (_, keep) = maintenance_numbers()?;
@@ -475,6 +477,7 @@ fn cleanup_locked() -> Result<()> {
             if generations()? != before || probe::profile_system()? != current {
                 return Err(Error::new("generation links changed before retention"));
             }
+            files::atomic_write(&marker("changed-files"), b"", 0o600)?;
             journal(Phase::Activating)?;
             let numbers: Vec<_> = obsolete.iter().map(u64::to_string).collect();
             let mut args = vec!["--profile", PROFILE, "--delete-generations"];

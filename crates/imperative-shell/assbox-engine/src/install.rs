@@ -16,7 +16,7 @@ fn make_dirs(root: &Path, relative: &str) -> Result<PathBuf> {
     for component in relative.split('/') {
         if component.is_empty() || component==".." || component=="." { return Err(Error::new("invalid target directory")); }
         path.push(component);
-        if !path.exists() { files::create_private(&path)?; io(fs::set_permissions(&path,fs::Permissions::from_mode(0o755)))?; }
+        if !files::entry_exists(&path)? { files::create_private(&path)?; io(fs::set_permissions(&path,fs::Permissions::from_mode(0o755)))?; }
         files::trusted_dir(&path)?;
     }
     Ok(path)
@@ -166,8 +166,16 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     let mut backup=Mount::new(&c,&plan.backup().path,&point("backup"),backup_options)?;
     let available=c.text("stat", &["-f","--format=%a %S",files::path_text(&backup.point)?])?;
     let values:Vec<u64>=available.split_whitespace().map(|s|s.parse::<u64>().map_err(|_|Error::new("invalid backup free-space result"))).collect::<Result<_>>()?;
-    let esp_bytes=plan.esp().map_or(0,|p|p.bytes);
-    if values.len()!=2 || values[0].saturating_mul(values[1]) < esp_bytes.saturating_add(4*1024*1024) {
+    // Count all GNU tar headers, directory entries and long paths while the ESP
+    // is read-only. Reserve bounded command output, raw boot/table metadata and
+    // backup filesystem allocation slack in addition to the exact archive size.
+    let tar_bytes = match &esp_probe {
+        Some(esp) => c.output_size("tar", &["--create", "--file", "-", "--one-file-system",
+            "--directory", files::path_text(&esp.point)?, "."] )?,
+        None => 0,
+    };
+    let required = tar_bytes.checked_add(128 * 1024 * 1024).ok_or_else(|| Error::new("backup size overflow"))?;
+    if values.len()!=2 || values[0].checked_mul(values[1]).is_none_or(|free| free < required) {
         return Err(Error::new("backup lacks room for the full ESP plus boot/table metadata"));
     }
     let backup_name=format!("assbox-{}",files::random_id()?);

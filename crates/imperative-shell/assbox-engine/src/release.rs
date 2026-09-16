@@ -122,7 +122,7 @@ pub(crate) fn fetch(c: &Commands, requested: Option<&str>, directory: &Path,
     if policy.repository_id == 0 || policy.owner_id == 0 {
         return Err(Error::new("release trust is unprovisioned; set actual GitHub repository/owner IDs in release/policy.json during bootstrap"));
     }
-    if directory.try_exists().map_err(|e| Error::new(e.to_string()))? {
+    if files::entry_exists(directory)? {
         return Err(Error::new("release download directory already exists; inspect it rather than overwrite it"));
     }
     files::create_private(directory)?;

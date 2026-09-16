@@ -10,7 +10,7 @@ python3 scripts/architecture.py
 python3 scripts/workflow_policy.py
 python3 -m unittest discover -s tests/tooling -v
 python3 scripts/model_check.py
-node --test infra/release-scheduler/tests/*.test.mjs infra/release-monitor/tests/*.test.mjs
+node --test infra/release-monitor/tests/*.test.mjs
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo build --workspace --locked
@@ -22,6 +22,6 @@ nixfmt --check "${nix_sources[@]}"
 shellcheck scripts/format scripts/verify scripts/release-check modules/sessions/x11.sh modules/sessions/wayland.sh modules/sessions/wayland-ready.sh
 for script in modules/sessions/*.sh; do bash -n "$script"; done
 while IFS= read -r -d '' script; do bash -n "$script"; done < <(find scripts -maxdepth 1 -type f ! -name '*.py' -print0)
-actionlint
+actionlint .github/workflows/*.yml
 systemd-analyze calendar '*-*-* 18:00:00' hourly >/dev/null
 nix flake check --no-update-lock-file --no-write-lock-file --keep-going

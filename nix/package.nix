@@ -4,7 +4,7 @@ let tools = import ./tool-environment.nix { inherit pkgs; };
 in
 rustPlatform.buildRustPackage {
   pname = "assbox";
-  version = "0.1.0";
+  version = (builtins.fromTOML (builtins.readFile ../Cargo.toml)).workspace.package.version;
   src = lib.cleanSourceWith {
     src = ../.;
     filter = path: type: lib.cleanSourceFilter path type

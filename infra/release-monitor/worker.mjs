@@ -3,7 +3,7 @@
 const REPO = "assboxai/assbox";
 const API = `https://api.github.com/repos/${REPO}`;
 const WORKFLOW = ".github/workflows/release.yml";
-const RUNS = `${API}/actions/workflows/release.yml/runs?branch=master&event=workflow_dispatch`;
+const RUNS = `${API}/actions/workflows/release.yml/runs?branch=master`;
 export const HISTORY_PAGES = 16; // Per inventory, 100 entries/page; no partial success.
 export const RUN_GRACE = 20 * 3600; // Full multi-stage native pipeline, not one job.
 export const QUEUE_GRACE = 2 * 3600;
@@ -31,7 +31,7 @@ export function assessIdentity(env, repo, workflow) {
 }
 
 function runIdentity(run, repo, workflow) {
-  return object(run) && identifier(run.id) && run.head_branch === "master" && run.event === "workflow_dispatch" &&
+  return object(run) && identifier(run.id) && run.head_branch === "master" && ["schedule", "workflow_dispatch"].includes(run.event) &&
     run.repository?.id === repo.id && run.workflow_id === workflow.id;
 }
 function firstRun(response) {

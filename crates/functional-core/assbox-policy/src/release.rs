@@ -7,7 +7,7 @@ fn validate(manifest: &ReleaseManifest, digest: &Digest, facts: &ProvenanceFacts
     trust: &ReleaseTrust, floor: Option<&ReleaseFloor>, now: u64, historical: bool) -> Result<ReleaseFloor> {
     if trust.repository_id == 0 || trust.owner_id == 0 { return Err(Error::new("release trust IDs are not provisioned; complete cold-administrator bootstrap")); }
     if facts.repository_id != trust.repository_id || facts.owner_id != trust.owner_id
-        || facts.source_commit != manifest.core_commit || facts.trigger != "workflow_dispatch" {
+        || facts.source_commit != manifest.core_commit || facts.trigger.parse::<ReleaseTrigger>().is_err() {
         return Err(Error::new("release provenance does not match the provisioned repository and release policy"));
     }
     validate_parent_shape(manifest)?;
@@ -108,8 +108,12 @@ mod tests {
     fn expiry_future_times_identity_and_events_fail_closed() {
         let (m, d, p, t) = sample();
         for now in [0, 699, 605800, 999999] { assert!(validate_release(&m, &d, &p, &t, None, now).is_err()); }
-        for trigger in ["schedule", "pull_request", "pull_request_target", "workflow_run", "push", ""] {
+        for trigger in ["repository_dispatch", "pull_request", "pull_request_target", "workflow_run", "push", "", "unknown"] {
             let mut wrong = p.clone(); wrong.trigger = trigger.into(); assert!(validate_release(&m, &d, &wrong, &t, None, 1100).is_err());
+        }
+        for trigger in ["schedule", "workflow_dispatch"] {
+            let mut allowed = p.clone(); allowed.trigger = trigger.into();
+            assert!(validate_release(&m, &d, &allowed, &t, None, 1100).is_ok());
         }
         let mut wrong = p.clone(); wrong.owner_id = 1; assert!(validate_release(&m, &d, &wrong, &t, None, 1100).is_err());
         let mut wrong = p.clone(); wrong.repository_id = 1; assert!(validate_release(&m, &d, &wrong, &t, None, 1100).is_err());
@@ -211,5 +215,47 @@ mod transaction_tests {
         for names in [vec![], vec!["release-state"], vec!["../release-state"], vec!["local.nix"], vec!["flake.lock", "flake.lock"]] {
             assert!(managed_changes(&names).is_err());
         }
+    }
+}
+
+/// Empty current intent explicitly means no source changes, except Published
+/// requires changes. Absence and conflicting formats never mean "no changes".
+pub fn recovery_source_intent(phase: crate::Phase, current: Option<&str>, legacy: Option<&str>) -> Result<Vec<String>> {
+    if current.is_some() && legacy.is_some() { return Err(Error::new("conflicting recovery intent formats")); }
+    if let Some(text) = current {
+        if text.is_empty() {
+            if phase == crate::Phase::Published { return Err(Error::new("published source intent is empty")); }
+            return Ok(Vec::new());
+        }
+        let names: Vec<&str> = text.lines().collect();
+        if managed_changes(&names)? != text { return Err(Error::new("noncanonical recovery change list")); }
+        return Ok(names.into_iter().map(str::to_owned).collect());
+    }
+    if let Some(name) = legacy { managed_changes(&[name])?; return Ok(vec![name.to_owned()]); }
+    Err(Error::new("required recovery source intent is missing; journal retained"))
+}
+#[cfg(test)]
+mod recovery_intent_tests {
+    use super::*;
+    use crate::Phase;
+    #[test]
+    fn absence_and_conflicting_formats_fail_closed() {
+        for phase in [Phase::Published, Phase::Activating, Phase::Committed] {
+            assert!(recovery_source_intent(phase, None, None).is_err());
+            assert!(recovery_source_intent(phase, Some(""), Some("flake.lock")).is_err());
+        }
+        assert!(recovery_source_intent(Phase::Published, Some(""), None).is_err());
+        assert!(recovery_source_intent(Phase::Activating, Some(""), None).unwrap().is_empty());
+        assert!(recovery_source_intent(Phase::Committed, Some(""), None).unwrap().is_empty());
+    }
+    #[test]
+    fn canonical_current_and_unambiguous_legacy_intent() {
+        for text in ["flake.lock", "flake.lock\r\n", "flake.lock\n\n", "flake.lock\nflake.lock\n",
+            "../release-state\n", "release-state\n", "local.nix\n", "\n"] {
+            assert!(recovery_source_intent(Phase::Published, Some(text), None).is_err());
+        }
+        assert_eq!(recovery_source_intent(Phase::Published, Some("flake.lock\n"), None).unwrap(), ["flake.lock"]);
+        assert_eq!(recovery_source_intent(Phase::Activating, None, Some("flake.lock")).unwrap(), ["flake.lock"]);
+        assert!(recovery_source_intent(Phase::Activating, None, Some("flake.lock\n")).is_err());
     }
 }

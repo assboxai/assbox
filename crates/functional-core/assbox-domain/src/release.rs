@@ -115,3 +115,17 @@ pub struct ProvenanceFacts {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseTrust { pub repository_id: u64, pub owner_id: u64 }
+
+/// Unknown or future Actions events are not implicitly trusted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReleaseTrigger { Schedule, WorkflowDispatch }
+impl std::str::FromStr for ReleaseTrigger {
+    type Err = Error;
+    fn from_str(value: &str) -> Result<Self> {
+        match value {
+            "schedule" => Ok(Self::Schedule),
+            "workflow_dispatch" => Ok(Self::WorkflowDispatch),
+            _ => Err(Error::new("unreviewed release provenance trigger")),
+        }
+    }
+}

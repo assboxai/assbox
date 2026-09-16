@@ -55,12 +55,27 @@ pub fn read(path: &Path) -> Result<Vec<u8>> {
 }
 pub fn text(path: &Path) -> Result<String> { String::from_utf8(read(path)?).map_err(|_|Error::new("configuration is not UTF-8")) }
 
+/// Only a missing directory entry is absent state. In particular, a dangling
+/// symlink is present and observation failures must not authorize an effect.
+pub fn entry_exists(path: &Path) -> Result<bool> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(Error::new(format!("cannot inspect {}: {e}", path.display()))),
+    }
+}
+/// State deletion must validate the entry and durably publish its absence.
+pub fn remove_regular(path: &Path) -> Result<()> {
+    let parent = path.parent().ok_or_else(|| Error::new("missing parent"))?;
+    trusted_dir(parent)?;
+    regular(path)?;
+    io(fs::remove_file(path))?;
+    io(io(File::open(parent))?.sync_all())
+}
 pub fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> Result<()> {
     let parent=path.parent().ok_or_else(||Error::new("file has no parent"))?;
     trusted_dir(parent)?;
-    if path.try_exists().map_err(|e|Error::new(e.to_string()))? { regular(path)?; }
-    // symlink_metadata also sees dangling symlinks, unlike Path::exists.
-    if let Ok(m)=fs::symlink_metadata(path) { if !m.is_file() { return Err(Error::new("refusing non-regular destination")); } }
+    if entry_exists(path)? { regular(path)?; }
     let temp=parent.join(format!(".assbox-write-{}",random_id()?));
     let result=(|| {
         let mut f=io(OpenOptions::new().write(true).create_new(true).mode(mode).open(&temp))?;
@@ -75,7 +90,7 @@ pub struct Lock { _file: File }
 impl Lock {
     pub fn acquire(path: &Path) -> Result<Self> {
         trusted_dir(path.parent().ok_or_else(||Error::new("lock parent missing"))?)?;
-        if let Ok(m)=fs::symlink_metadata(path) { if !m.is_file() { return Err(Error::new("invalid lock file")); } }
+        if entry_exists(path)? { regular(path)?; }
         let f=io(OpenOptions::new().read(true).write(true).create(true).truncate(false).mode(0o600).open(path))?;
         regular(path)?;
         f.try_lock().map_err(|e|Error::new(format!("another Assbox operation holds the lock: {e}")))?;
@@ -112,7 +127,7 @@ pub fn publish_directory(prepared: &Path, destination: &Path) -> Result<()> {
     let parent = destination.parent().ok_or_else(|| Error::new("directory has no parent"))?;
     trusted_dir(parent)?;
     trusted_dir(prepared)?;
-    if prepared.parent() != Some(parent) || fs::symlink_metadata(destination).is_ok() {
+    if prepared.parent() != Some(parent) || entry_exists(destination)? {
         return Err(Error::new("journal publication requires an absent sibling destination"));
     }
     io(File::open(prepared))?.sync_all().map_err(|e| Error::new(e.to_string()))?;
@@ -126,6 +141,8 @@ pub fn retire_directory(path: &Path) -> Result<()> {
     let parent = path.parent().ok_or_else(|| Error::new("directory has no parent"))?;
     trusted_dir(path)?;
     let retired = parent.join(format!("transaction-retired-{}", random_id()?));
+    trusted_dir(parent)?;
+    if entry_exists(&retired)? { return Err(Error::new("retirement name occupied")); }
     io(fs::rename(path, &retired))?;
     io(File::open(parent))?.sync_all().map_err(|e| Error::new(e.to_string()))?;
     io(fs::remove_dir_all(retired))?;

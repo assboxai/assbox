@@ -45,6 +45,20 @@ impl Commands {
         if output.stdout.len() > 32*1024*1024 { return Err(Error::new("tool output exceeds the safety limit")); }
         Ok(output.stdout)
     }
+    /// Count archive output in constant memory without writing a temporary file.
+    pub fn output_size(&self, name: &str, args: &[&str]) -> Result<u64> {
+        let mut child = self.command(name, args)?.stdin(Stdio::null()).stdout(Stdio::piped())
+            .stderr(Stdio::inherit()).spawn().map_err(|e| Error::new(e.to_string()))?;
+        let counted = match child.stdout.take() {
+            Some(mut stream) => std::io::copy(&mut stream, &mut std::io::sink()),
+            None => { let _ = child.kill(); let _ = child.wait(); return Err(Error::new("missing archive stream")); }
+        };
+        if counted.is_err() { let _ = child.kill(); }
+        let status = child.wait().map_err(|e| Error::new(e.to_string()))?;
+        let size = counted.map_err(|e| Error::new(e.to_string()))?;
+        if !status.success() { return Err(Error::new(format!("{name} archive sizing failed ({status})"))); }
+        Ok(size)
+    }
     pub fn text(&self, name: &str, args: &[&str]) -> Result<String> {
         String::from_utf8(self.capture(name,args)?).map_err(|_|Error::new("tool output is not UTF-8"))
     }
