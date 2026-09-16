@@ -246,10 +246,10 @@ console.log(JSON.stringify(cases.map(([releases, tags]) => {{
             with self.assertRaises(ValueError): publisher.api('/repos/assboxai/assbox', token=True)
         with self.assertRaises(ValueError): publisher.NoRedirect().redirect_request(None, None, 302, '', {}, 'https://example.test')
 
-    def test_workflow_is_dispatch_only_and_live_verification_is_both_architectures(self):
+    def test_workflow_has_exact_reviewed_triggers_and_both_live_architectures(self):
         import yaml
         w = yaml.safe_load((ROOT / '.github/workflows/release.yml').read_text())
-        self.assertEqual(w['on'], {'workflow_dispatch': None})
+        self.assertEqual(w['on'], {'schedule': [{'cron': '23 4 * * *'}], 'workflow_dispatch': None})
         jobs = w['jobs']
         matrix = jobs['live-verify']['strategy']['matrix']['include']
         self.assertEqual({v['system'] for v in matrix}, set(data.SYSTEMS))

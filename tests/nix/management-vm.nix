@@ -69,6 +69,8 @@ pkgs.testers.runNixOSTest {
 
     for phase in ["prepared", "built", "committed"]:
         machine.succeed("mkdir -m700 " + txn + "; printf %s " + phase + " > " + txn + "/phase")
+        if phase == "committed":
+            machine.succeed("touch " + txn + "/changed-files")
         machine.succeed("assbox recover")
         machine.fail("test -e " + txn)
 

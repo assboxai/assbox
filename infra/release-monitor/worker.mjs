@@ -8,6 +8,8 @@ export const HISTORY_PAGES = 16; // Per inventory, 100 entries/page; no partial 
 export const RUN_GRACE = 20 * 3600; // Full multi-stage native pipeline, not one job.
 export const QUEUE_GRACE = 2 * 3600;
 const RUN_FRESHNESS = 36 * 3600;
+export const BOOTSTRAP_FRESHNESS = 15 * 86400;
+const BOOTSTRAP = ".github/workflows/bootstrap.yml";
 
 class ObservationError extends Error {}
 const fail = reason => { throw new ObservationError(reason); };
@@ -38,7 +40,7 @@ function firstRun(response) {
   if (!object(response) || !Array.isArray(response.workflow_runs) || response.workflow_runs.length > 1) return undefined;
   return response.workflow_runs[0];
 }
-export function assessRuns(repo, workflow, latestRuns, successfulRuns, now) {
+export function assessRuns(repo, workflow, latestRuns, successfulRuns, now, freshness = RUN_FRESHNESS) {
   const latest = firstRun(latestRuns);
   if (!runIdentity(latest, repo, workflow)) return "latest-run-invalid-or-missing";
   const created = timestamp(latest.created_at), updated = timestamp(latest.updated_at);
@@ -59,7 +61,7 @@ export function assessRuns(repo, workflow, latestRuns, successfulRuns, now) {
   const successful = firstRun(successfulRuns);
   if (!runIdentity(successful, repo, workflow) || successful.status !== "completed" || successful.conclusion !== "success") return "no-successful-run";
   const completed = timestamp(successful.updated_at);
-  if (!validTime(completed, now) || now - completed > RUN_FRESHNESS) return "run-stale";
+  if (!validTime(completed, now) || now - completed > freshness) return "run-stale";
   return null;
 }
 
@@ -156,6 +158,15 @@ export async function check(env, fetcher = fetch, now = Math.floor(Date.now() / 
   const successfulRuns = await json(fetcher, `${RUNS}&status=success&per_page=1`);
   const runState = assessRuns(repo, workflow, latestRuns, successfulRuns, now);
   if (runState) return runState;
+  const bootstrap = await json(fetcher, `${API}/actions/workflows/bootstrap.yml`);
+  if (!object(bootstrap) || !identifier(bootstrap.id) || bootstrap.state !== "active" || bootstrap.path !== BOOTSTRAP) {
+    return "bootstrap-workflow-disabled-or-changed";
+  }
+  const bootstrapRuns = `${API}/actions/workflows/bootstrap.yml/runs?branch=master`;
+  const bootstrapLatest = await json(fetcher, `${bootstrapRuns}&per_page=1`);
+  const bootstrapSuccess = await json(fetcher, `${bootstrapRuns}&status=success&per_page=1`);
+  const bootstrapState = assessRuns(repo, bootstrap, bootstrapLatest, bootstrapSuccess, now, BOOTSTRAP_FRESHNESS);
+  if (bootstrapState) return `bootstrap-${bootstrapState}`;
   const releases = await inventory(fetcher, "releases");
   const tags = await inventory(fetcher, "tags");
   const head = historyHead(releases, tags);

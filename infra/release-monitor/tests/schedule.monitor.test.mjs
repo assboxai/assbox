@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from "node:test";
 import assert from "node:assert/strict";
-import worker, { assessIdentity, assessRuns, assessRelease, historyHead, check, HISTORY_PAGES, RUN_GRACE, QUEUE_GRACE } from "../worker.mjs";
+import worker, { assessIdentity, assessRuns, assessRelease, historyHead, check, HISTORY_PAGES, RUN_GRACE, QUEUE_GRACE, BOOTSTRAP_FRESHNESS } from "../worker.mjs";
 const now = 1800000000;
 const iso = offset => new Date((now + offset) * 1000).toISOString();
 const env = { GITHUB_REPOSITORY_ID: "22", GITHUB_OWNER_ID: "33" };
@@ -10,6 +10,8 @@ const repo = { id: 22, owner: { id: 33 }, full_name: "assboxai/assbox", default_
 const workflow = { id: 44, state: "active", path: ".github/workflows/release.yml" };
 const run = { id: 55, status: "completed", conclusion: "success", head_branch: "master", event: "schedule",
   repository: { id: 22 }, workflow_id: 44, created_at: iso(-3600), run_started_at: iso(-3500), updated_at: iso(-1800) };
+const bootstrap = { id: 66, state: "active", path: ".github/workflows/bootstrap.yml" };
+const bootstrapRun = { ...run, id: 77, workflow_id: 66 };
 const list = r => ({ workflow_runs: r ? [r] : [] });
 const assess = (newest = run, success = run) => assessRuns(repo, workflow, list(newest), list(success), now);
 const record = number => ({ id: number, tag_name: `r-${number}`, immutable: true, draft: false, prerelease: false });
@@ -20,8 +22,11 @@ function fixture(changes = {}) {
   const replies = new Map([
     ["/repos/assboxai/assbox", repo],
     ["/repos/assboxai/assbox/actions/workflows/release.yml", workflow],
-    ["/repos/assboxai/assbox/actions/workflows/release.yml/runs?branch=master&event=schedule&per_page=1", list(changes.run ?? run)],
-    ["/repos/assboxai/assbox/actions/workflows/release.yml/runs?branch=master&event=schedule&status=success&per_page=1", list(run)],
+    ["/repos/assboxai/assbox/actions/workflows/release.yml/runs?branch=master&per_page=1", list(changes.run ?? run)],
+    ["/repos/assboxai/assbox/actions/workflows/release.yml/runs?branch=master&status=success&per_page=1", list(run)],
+    ["/repos/assboxai/assbox/actions/workflows/bootstrap.yml", changes.bootstrap ?? bootstrap],
+    ["/repos/assboxai/assbox/actions/workflows/bootstrap.yml/runs?branch=master&per_page=1", list(changes.bootstrapRun ?? bootstrapRun)],
+    ["/repos/assboxai/assbox/actions/workflows/bootstrap.yml/runs?branch=master&status=success&per_page=1", list(changes.bootstrapSuccess ?? bootstrapRun)],
     ["/repos/assboxai/assbox/releases?per_page=100&page=1", changes.releases ?? [record(1), record(1000)]],
     ["/repos/assboxai/assbox/tags?per_page=100&page=1", changes.tags ?? [tag(1), tag(1000)]],
     ["/repos/assboxai/assbox/releases/latest", changes.latest ?? record(1000)],
@@ -45,7 +50,7 @@ test("current successful run and release head with expiry headroom are healthy",
   assert.equal(assessIdentity(env, repo, workflow), null);
   assert.equal(assess(), null);
   assert.equal(assessRelease(record(1000), record(1000), manifest, now), null);
-  const f = fixture(); assert.equal(await check(env, f.fetcher, now), null); assert.equal(f.calls.length, 8);
+  const f = fixture(); assert.equal(await check(env, f.fetcher, now), null); assert.equal(f.calls.length, 11);
 });
 test("a previous success cannot hide a completed failure/cancellation", () => {
   for (const conclusion of ["failure", "cancelled", "timed_out", "action_required", "neutral", "skipped", "startup_failure", null]) {
@@ -60,7 +65,7 @@ test("latest-run failures are returned before release freshness can hide them", 
 test("latest and successful run identities, shapes and times are required", () => {
   assert.equal(assess(null), "latest-run-invalid-or-missing");
   assert.equal(assess(run, null), "no-successful-run");
-  for (const patch of [{ head_branch: "other" }, { event: "schedule" }, { workflow_id: 99 }, { repository: { id: 99 } }, { id: null }]) {
+  for (const patch of [{ head_branch: "other" }, { event: "push" }, { workflow_id: 99 }, { repository: { id: 99 } }, { id: null }]) {
     assert.equal(assess({ ...run, ...patch }), "latest-run-invalid-or-missing");
     assert.equal(assess(run, { ...run, ...patch }), "no-successful-run");
   }
@@ -116,7 +121,7 @@ test("source tags and non-Assbox releases do not alter the established channel",
     assert.equal(historyHead(r, t).tag_name, "r-1000");
     const f = fixture({ releases: r, tags: t });
     assert.equal(await check(env, f.fetcher, now), null);
-    assert.equal(f.calls.length, 8);
+    assert.equal(f.calls.length, 11);
     assert.ok(f.calls.at(-1).endsWith("/r-1000/release.json"));
   }
 });
@@ -221,4 +226,35 @@ test("health endpoint has no write route, never caches success and sanitizes fai
     assert.equal((await response.json()).reason, "upstream-unavailable");
     assert.equal(await (await worker.fetch(new Request("https://example/health", { method: "HEAD" }), env)).text(), "");
   } finally { globalThis.fetch = original; }
+});
+
+test("both reviewed triggers work and neither hides the other's newer failure", async () => {
+  for (const event of ["schedule", "workflow_dispatch"]) {
+    const other = event === "schedule" ? "workflow_dispatch" : "schedule";
+    assert.equal(assess({ ...run, event }, { ...run, event: other }), null);
+    assert.equal(assess({ ...run, event, conclusion: "failure" }, { ...run, event: other }), "latest-run-failed");
+    const f = fixture({ run: { ...run, event } });
+    assert.equal(await check(env, f.fetcher, now), null);
+    assert.ok(f.calls.filter(url => url.includes("/runs?")).every(url => !url.includes("event=")));
+  }
+  for (const event of ["push", "pull_request", "pull_request_target", "repository_dispatch", "workflow_run", "", null]) {
+    assert.equal(assess({ ...run, event }), "latest-run-invalid-or-missing");
+  }
+});
+test("bootstrap liveness is independent of release freshness", async () => {
+  for (const [patch, reason] of [
+    [{ bootstrap: { ...bootstrap, state: "disabled_inactivity" } }, "bootstrap-workflow-disabled-or-changed"],
+    [{ bootstrap: { ...bootstrap, path: ".github/workflows/other.yml" } }, "bootstrap-workflow-disabled-or-changed"],
+    [{ bootstrapRun: { ...bootstrapRun, conclusion: "failure" } }, "bootstrap-latest-run-failed"],
+    [{ bootstrapRun: { ...bootstrapRun, event: "push" } }, "bootstrap-latest-run-invalid-or-missing"],
+    [{ bootstrapSuccess: { ...bootstrapRun, updated_at: iso(-BOOTSTRAP_FRESHNESS - 1) } }, "bootstrap-run-stale"],
+    [{ bootstrapRun: { ...bootstrapRun, status: "queued", conclusion: null, created_at: iso(-QUEUE_GRACE - 1) } }, "bootstrap-run-queue-stalled"],
+  ]) {
+    const f = fixture(patch);
+    assert.equal(await check(env, f.fetcher, now), reason);
+    assert.ok(!f.calls.some(url => url.endsWith("/releases/latest")));
+  }
+  const weekly = { ...bootstrapRun, created_at: iso(-8 * 86400 - 100), updated_at: iso(-8 * 86400) };
+  const f = fixture({ bootstrapRun: weekly, bootstrapSuccess: weekly });
+  assert.equal(await check(env, f.fetcher, now), null);
 });

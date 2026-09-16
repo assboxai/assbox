@@ -70,11 +70,10 @@ fn download(c: &Commands, url: &str, path: &Path, limit: u64) -> Result<()> {
     Ok(())
 }
 pub(crate) fn read_floor() -> Result<Option<ReleaseFloor>> {
-    match fs::symlink_metadata(FLOOR) {
-        Ok(_) => ReleaseFloor::parse(&files::text(Path::new(FLOOR))?).map(Some),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(Error::new(format!("cannot inspect release high-water mark: {e}"))),
-    }
+    let path = Path::new(FLOOR);
+    files::trusted_dir(path.parent().ok_or_else(|| Error::new("release-state parent missing"))?)?;
+    if !files::entry_exists(path)? { return Ok(None); }
+    ReleaseFloor::parse(&files::text(path)?).map(Some)
 }
 pub(crate) fn record_floor(value: &ReleaseFloor) -> Result<()> {
     files::create_private(Path::new("/var/lib/assbox"))?;

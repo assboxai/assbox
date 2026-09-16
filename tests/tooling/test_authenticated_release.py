@@ -78,7 +78,7 @@ class AuthenticatedReleaseTests(unittest.TestCase):
         self.assertEqual(workflow['permissions'], {'contents':'read'})
         self.assertIn('live-verify', workflow['jobs']['advertise']['needs'])
         self.assertNotIn('environment', workflow['jobs']['live-verify'])
-        self.assertEqual(workflow.get('on', workflow.get(True)), {'workflow_dispatch': None})
+        self.assertEqual(workflow.get('on', workflow.get(True)), {'schedule': [{'cron': '23 4 * * *'}], 'workflow_dispatch': None})
 
     def test_publication_checks_immutability_and_never_sets_latest(self):
         with tempfile.TemporaryDirectory() as temp:

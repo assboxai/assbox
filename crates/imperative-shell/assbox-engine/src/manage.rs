@@ -61,6 +61,7 @@ fn begin() -> Result<()> {
     if state_entry_exists(TXN)? {
         return Err(Error::new("an interrupted operation exists; run assbox recover before changing anything"));
     }
+    pending_state()?;
     clear_orphans()?;
     let prepared = Path::new(STATE).join(format!("transaction-preparing-{}", files::random_id()?));
     files::create_private(&prepared)?;

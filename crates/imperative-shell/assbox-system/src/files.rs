@@ -58,6 +58,13 @@ pub fn text(path: &Path) -> Result<String> { String::from_utf8(read(path)?).map_
 /// Only a missing directory entry is absent state. In particular, a dangling
 /// symlink is present and observation failures must not authorize an effect.
 pub fn entry_exists(path: &Path) -> Result<bool> {
+    // ENOENT may describe a missing/dangling ancestor rather than this entry.
+    if !path.is_absolute() { return Err(Error::new("state observation requires an absolute path")); }
+    let parent = path.parent().ok_or_else(|| Error::new("state path has no parent"))?;
+    for ancestor in parent.ancestors() {
+        let metadata = io(fs::symlink_metadata(ancestor))?;
+        if !metadata.is_dir() { return Err(Error::new(format!("invalid state ancestor: {}", ancestor.display()))); }
+    }
     match fs::symlink_metadata(path) {
         Ok(_) => Ok(true),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
