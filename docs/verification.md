@@ -10,25 +10,31 @@ Publishing the repository makes implementation available for review. It does not
 approve an authenticated release, deploy infrastructure or authorize installation
 on a production machine. The order is native bootstrap and source review, complete
 release/VM acceptance, controlled infrastructure deployment and disposable manual
-VM testing, then production rollout. Keep the release scheduler disabled until its
-own dispatch, resource-limit and notification tests pass.
+VM testing, then production rollout. Enable the native release/bootstrap workflows
+only after their gates and repository protections are ready; provision and test
+independent monitor alerts separately.
 
-The full acceptance derivations below are not yet implemented. They remain hard
-promotion blockers on **both architectures**; the existing build matrix and fixture
-VMs are not substitutes. Track implementation here rather than repeating dated
-validation reports throughout product documentation.
+The acceptance checks remain hard promotion blockers on **both architectures**.
+The existing build matrix and fixture VMs are not substitutes. Track engineering
+here and keep dated, source-specific execution reports outside the repository.
 
-| Required check | Acceptance it must establish |
+| Required check | Implementation and remaining acceptance |
 | --- | --- |
-| `install-boot-vm` | Production install, pre-write refusal, installed-disk boot |
-| `activation-recovery-vm` | Real staging/activation, interruption, recovery and retention |
-| `authenticated-release-vm` | Real verification, lineage, replay and tamper refusal |
-| `application-chatgpt-vm` | ChatGPT profile and authenticated application behavior |
-| `application-opencode-vm` | OpenCode profile and authenticated application behavior |
-| `application-openclaw-vm` | OpenClaw profile and authenticated application behavior |
+| `install-boot-vm` | Not defined yet: shared production install, pre-write refusal and installed-disk boot |
+| `activation-recovery-vm` | Not defined yet: real staging/activation, interruption, recovery and retention |
+| `authenticated-release-vm` | Defined: compiled pipeline with controlled external evidence, plus genuine upstream signature fixtures; complete native execution and public-release acceptance remain required |
+| `application-chatgpt-vm` | Defined: actual locked package in X11; native execution and provider-authenticated tasks remain required |
+| `application-opencode-vm` | Defined: actual locked package in headless/X11/Wayland, local authentication and lifecycle; native execution and provider tasks remain required |
+| `application-openclaw-vm` | Defined: actual locked package in headless/X11/Wayland, local gateway authentication and lifecycle; native execution and provider tasks remain required |
 
-A genuine reviewed `flake.lock` and provisioned repository/owner identities are
-also required. Default zero IDs intentionally refuse release acceptance. No source
+The follow-up tranche must complete the two missing suites and execute/fix the
+new release, application and resource VMs, then run the full native gates, coverage,
+mutations and vulnerability scans. Broad builds and VM-driven fixes are deliberately
+kept in that tranche while other work shares the development host. A stopped or
+partially executed check supplies no passing result.
+
+A genuine `flake.lock` is committed. Reviewed pins and provisioned repository/owner
+identities are also required. Default zero IDs intentionally refuse release acceptance. No source
 checksum, test fixture or local report substitutes for successful native gates and
 verified external provisioning.
 
@@ -36,7 +42,7 @@ verified external provisioning.
 
 `scripts/verify` requires the internal dependency/effect guard, native Rust formatting,
 warning-free Clippy, locked workspace build/tests, source/tooling tests, independent
-bounded specification checks, Node tests for both infrastructure Workers, and
+bounded specification checks, Node tests for the read-only monitor Worker, and
 native guard-removal mutations. It also requires
 Nix formatting, Bash/ShellCheck, actionlint and genuine Nix flake checks, including
 representative system builds and the defined disposable VMs.
@@ -76,6 +82,24 @@ checks that pending-boot handling precedes a corrupt staging budget, and that an
 unresolved journal blocks it even with exhausted retries. These fixtures do not
 exercise real package activation, a completed update, generation pruning or
 filesystem power loss.
+
+The new release VM invokes an ignored, root-only Rust test executable compiled with
+a fixture tool closure. It calls the same release-fetch function as production,
+while the external HTTP and verified-certificate observations are deterministic.
+A separate phase executes the pinned real GitHub CLI against its genuine upstream
+signed fixtures, including tampered bytes and incorrect certificate constraints.
+The test executable is not installed as `assbox`, and the production binary retains
+its compiled trust IDs, fixed tools and normal CA bundle. Neither test layer proves
+that an Assbox release or GitHub environment is correctly provisioned.
+
+The application VMs use the actual locked packages and real user services/session
+managers. They define local credential gates, loopback checks, process failure and
+restart, logout, shutdown and reboot checks. They use disposable local credentials;
+no provider account is logged in and no paid model task is claimed.
+
+`resources-vm` observes the background slice, a real Nix sandbox child and zram's
+logical/allocated size. It checks the absence of Assbox CPU quotas and memory
+ceilings. See [resource behavior](resources.md) for the intended policy.
 
 ## Required end-to-end acceptance
 
@@ -214,13 +238,12 @@ is not a complete proof of shell/action behavior and cannot inspect repository s
 must be checked in the real GitHub settings: it is not a certificate field that the
 client has established it can verify.
 
-Worker tests use synthetic HTTP effects; the scheduler additionally signs/verifies
-real ephemeral test JWTs through Node WebCrypto. Deploy to the actual Workers Free
-plan only after source review, confirm CPU and subrequest limits, provision exactly
-one repository's App installation, and execute real dispatch/disabled-workflow/API
-error cases. Inspect the actual returned token permissions and repository IDs.
-Confirm that no token, key or provider response body is written into logs. Test
-App suspension/revocation as the emergency stop, not just workflow disabling.
+Monitor tests use synthetic read-only HTTP effects. Before deployment, confirm the
+actual Workers plan's CPU/subrequest limits and exercise disabled-workflow, stalled
+run and API-error cases. Test the bootstrap writer's environment protection and
+non-forcing expected-head update in the provisioned repository. Its ephemeral
+repository token must not reach candidate evaluation or logs. The monitor requires
+no GitHub App installation or dispatch credential.
 
 Configure the external monitor, force backward latest despite unexpired metadata,
 missing/orphaned/paginated history, harmless non-`r-*` source tags/releases after
@@ -231,6 +254,6 @@ or make a non-head latest healthy. Test fresh failure despite an earlier success
 queue/run-grace expiry, stale success and near-expiry cases, and confirm an
 actual notification and recovery message. A plain request to GitHub that returns
 200 is not a freshness test. The monitor endpoint is read-only availability
-telemetry, not release signature verification; account compromise of its shared
+telemetry, not release signature verification; account compromise of its
 hosting provider can falsify it. Neither passing local tests nor a successful
 Wrangler dry run proves that a deployed Cron or notification service is active.

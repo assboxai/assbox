@@ -80,7 +80,9 @@ by reboot after a ten-minute grace period. An active graphical session or agent 
 is not a veto. Low or uncertain battery power defers reboot. Failed scheduled
 staging gets a bounded hourly retry budget. Conservative generation retention and
 store cleanup run only without a pending boot/recovery operation.
-See [maintenance and recovery](docs/maintenance.md) for exact behavior and limits.
+See [maintenance and recovery](docs/maintenance.md) for exact behavior and limits,
+and [resource behavior](docs/resources.md) for background scheduling, zram and
+application restart policy. Build parallelism remains at the upstream defaults.
 
 ## Development and release gate
 
@@ -93,16 +95,16 @@ Source publication is not production release approval. Both architectures requir
 native Rust/Nix gates, coverage, mutation and vulnerability checks, plus full
 installation, recovery, authenticated-release and application acceptance. The
 [verification guide](docs/verification.md#publication-and-acceptance) lists the
-unimplemented acceptance checks that currently block promotion. Do not deploy
-production machines before those gates and disposable-VM acceptance pass.
+missing checks and outstanding acceptance that currently block promotion. Do not
+deploy production machines before those gates and disposable-VM acceptance pass.
 
 The protected source branch is **`master`**. Routine dependency releases do not
 commit to it: read-only builders compose tested pins, and isolated publication jobs
 attest a manifest and publish immutable release assets. The installed client verifies
 release and build attestations before candidate Nix evaluation. There is no private
 release key, daily manual approval, installed GitHub token or mutable-branch update
-fallback. Actual repository/owner IDs in `release/policy.json` and a genuine bootstrap
-lock must be provisioned; the default zero IDs fail closed. See
+fallback. A genuine bootstrap lock is committed. Actual repository/owner IDs in
+`release/policy.json` still need provisioning; the default zero IDs fail closed. See
 [release authentication](docs/release-authentication.md),
 [governance](docs/governance.md) and
 [verification](docs/verification.md).

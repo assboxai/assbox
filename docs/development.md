@@ -5,15 +5,17 @@ selects native packages/toolchains for the running system. ARM development in an
 Apple Silicon host's Linux VM is covered in [Parallels](parallels.md); this is not a
 Darwin build or cross-installation workflow.
 
-## Bootstrap once on master, then commit the real lock
+## Use the committed toolchain
 
 ```sh
-nix flake lock
-git add flake.lock
-nix develop --command scripts/format
-# Review the actual resolved inputs and native formatter changes, then commit.
-nix develop --command scripts/verify
+nix develop --no-update-lock-file --no-write-lock-file --command scripts/verify
 ```
+
+The repository includes a genuine Nix-generated lock. Routine verification uses
+those pins without changing them. Run `scripts/format` in the same development
+shell when intentionally formatting source, then review the diff. Initial
+`nix flake lock` is a bootstrap operation only for a new tree without a lock;
+review and commit its real result before using the normal gates.
 
 Provision the actual numeric repository and owner IDs in `release/policy.json`
 under the cold-administrator procedure in [governance](governance.md). Zero IDs

@@ -126,6 +126,12 @@ the selected generation. `sudo assbox rollback` similarly stages a retained earl
 generation without reverting local source. A later update may reconstruct the newer
 configuration unless its desired revision/settings are changed.
 
+Recovery preserves a pending reboot when the restored generation is not the running
+generation, including when it was already staged before the interrupted operation.
+An invalid generation path, an unrelated selected profile or an unrelated pending
+marker prevents activation recovery. Unreadable or malformed pending state also
+blocks recovery when no active transaction exists.
+
 Every Assbox generation carries a schema-2 boot receipt containing separate
 immutable bindings and mutable loader policy. The CLI validates the destination
 receipt, including an older rollback target, against the running one before profile

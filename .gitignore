@@ -6,7 +6,7 @@
 __pycache__/
 *.pyc
 
-# External scheduler local state/secrets are never source.
+# Monitor deployment state and secrets are never source.
 **/.wrangler/
 **/.dev.vars
 **/.dev.vars.*
