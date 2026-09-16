@@ -26,7 +26,30 @@ pkgs.testers.runNixOSTest {
       imports = [ module ];
       assbox = {
         enable = true;
-        inherit application presentation;
+        inherit presentation;
+        components =
+          if application == "chatgpt" then
+            {
+              chatgpt-desktop = {
+                enable = true;
+                allowMutableCode = true;
+              };
+            }
+          else
+            {
+              ${application}.enable = true;
+              ${if application == "opencode" then "opencode-server" else "openclaw-gateway"}.enable = true;
+            };
+        session.autostart = lib.optionals (presentation != "headless") [
+          (
+            if application == "chatgpt" then
+              "chatgpt-desktop"
+            else if application == "opencode" then
+              "opencode-attach"
+            else
+              "openclaw-dashboard"
+          )
+        ];
         acceptUnfree = application == "chatgpt";
         updates.enable = false;
       };
@@ -79,7 +102,7 @@ pkgs.testers.runNixOSTest {
         machine.fail("runuser -u agent -- cat /etc/shadow")
         machine.fail("runuser -u agent -- head -c1 /dev/vda")
         machine.fail("runuser -u agent -- sudo -n true")
-        machine.fail("assbox application setup")
+        machine.fail("assbox component setup opencode-server")
         if application != "chatgpt":
             machine.fail(user("systemctl --user is-active " + unit))
             machine.succeed(user(application + " --version"), timeout=120)
@@ -93,7 +116,7 @@ pkgs.testers.runNixOSTest {
                 "gateway": {"mode": "local", "bind": "loopback", "auth": {"mode": "token", "token": "disposable-test-token"}}
             }))
         else:
-            machine.succeed(user("assbox application setup"))
+            machine.succeed(user("assbox component setup chatgpt-desktop"))
             machine.succeed(user("codex --version"), timeout=120)
         machine.succeed(user("systemctl --user restart " + unit))
         active(unit)

@@ -83,15 +83,15 @@ class ReviewGuards(unittest.TestCase):
 
     def test_browser_dependency_and_consent_are_narrow(self):
         apps = (ROOT / "modules/applications.nix").read_text()
-        self.assertIn('cfg.presentation != "headless" && cfg.application == "openclaw"', apps)
+        self.assertIn('launch "openclaw-dashboard"', apps)
         self.assertNotIn('builtins.elem cfg.application [ "opencode" "openclaw" ]', apps)
         main = (ROOT / "crates/imperative-shell/assbox-cli/src/main.rs").read_text()
-        self.assertIn('["application","set",app,presentation,"--accept-unfree"]', re.sub(r"\s+", "", main))
+        self.assertIn('["component","set",app,presentation,"--accept-unfree"]', re.sub(r"\s+", "", main))
         engine = (ROOT / "crates/imperative-shell/assbox-engine/src/manage.rs").read_text()
-        selection = engine[engine.index("pub fn application_set"):engine.index("pub fn rollback")]
-        self.assertLess(selection.index("validate_application_selection"), selection.index("begin()?"))
-        self.assertEqual(selection.count("validate_application_selection"), 2)
-        self.assertLess(selection.rindex("validate_application_selection"), selection.index("build(&Commands)"))
+        selection = engine[engine.index("pub fn components_set"):engine.index("pub fn rollback")]
+        self.assertLess(selection.index("validate_component_selection"), selection.index("begin()?"))
+        self.assertEqual(selection.count("validate_component_selection"), 2)
+        self.assertLess(selection.rindex("validate_component_selection"), selection.index("build(&Commands)"))
 
     def run_acceptance_presence_gate(self, names):
         # Run the delivered shell gate with explicitly fake Nix discovery and a
@@ -101,6 +101,7 @@ class ReviewGuards(unittest.TestCase):
             tools, candidate = directory / "tools", directory / "candidate"
             tools.mkdir(); candidate.mkdir(); (candidate / "scripts").mkdir()
             (candidate / "release-context.json").write_text("{}\n")
+            (candidate / "scripts/component_families.py").write_text((ROOT / "scripts/component_families.py").read_text())
             nix = tools / "nix"
             nix.write_text("#!/usr/bin/env bash\nset -eu\n"
                 "if [[ \"$*\" == *builtins.currentSystem* ]]; then printf x86_64-linux; "
@@ -116,8 +117,9 @@ class ReviewGuards(unittest.TestCase):
             return result, (candidate / "verification-reached").exists()
 
     def test_every_required_acceptance_name_is_a_release_prerequisite(self):
-        required = ["install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
+        required = ["access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
                     "application-chatgpt-vm", "application-opencode-vm", "application-openclaw-vm"]
+        required += ["application-" + family + "-vm" for family in __import__("component_families").FAMILIES if "application-" + family + "-vm" not in required]
         for absent in required:
             with self.subTest(absent=absent):
                 result, reached = self.run_acceptance_presence_gate([name for name in required if name != absent])
@@ -126,8 +128,9 @@ class ReviewGuards(unittest.TestCase):
                 self.assertFalse(reached)
 
     def test_implemented_names_proceed_to_verification_not_automatic_approval(self):
-        required = ["install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
+        required = ["access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
                     "application-chatgpt-vm", "application-opencode-vm", "application-openclaw-vm"]
+        required += ["application-" + family + "-vm" for family in __import__("component_families").FAMILIES if "application-" + family + "-vm" not in required]
         result, reached = self.run_acceptance_presence_gate(required)
         self.assertTrue(reached, result.stderr)
         self.assertEqual(result.returncode, 73, "the subsequent verification failure must propagate")

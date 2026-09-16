@@ -13,15 +13,35 @@ in
 {
   options.assbox = {
     enable = mkEnableOption "the Assbox appliance substrate";
-    application = mkOption {
+    selectedComponents = mkOption {
+      type = types.listOf types.str;
+      readOnly = true;
+      internal = true;
+      description = "Evaluated enabled component IDs.";
+    };
+    session.autostart = mkOption {
+      type = types.listOf (
+        types.enum [
+          "chatgpt-desktop"
+          "claude-desktop"
+          "vscode"
+          "zed"
+          "emacs"
+          "opencode-attach"
+          "openclaw-dashboard"
+        ]
+      );
+      default = [ ];
+      description = "Explicit launchers for the owned graphical session.";
+    };
+    editor.default = mkOption {
       type = types.enum [
-        "none"
-        "chatgpt"
-        "opencode"
-        "openclaw"
+        "nano"
+        "vim"
+        "emacs"
       ];
-      default = "none";
-      description = "Exactly zero or one managed application profile.";
+      default = "nano";
+      description = "Console editor; the selected optional editor must be installed.";
     };
     presentation = mkOption {
       type = types.enum [
@@ -44,7 +64,6 @@ in
     };
     acceptUnfree = flag "Machine-wide permission for unfree nixpkgs packages, including selected proprietary applications; retained when switching applications.";
     network = {
-      ssh.enable = flag "Expose key-only SSH for admin. The installer enables this only when an SSH public key is supplied.";
       discoverable = flag "Advertise the hostname using multicast DNS (Avahi) on the local network.";
     };
     display.scale = mkOption {

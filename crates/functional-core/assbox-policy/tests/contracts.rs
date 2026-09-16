@@ -5,23 +5,27 @@ fn choices() -> Choices {
     Choices {
         hostname: Hostname::parse("assbox-example").unwrap(),
         timezone: "America/New_York".into(),
-        application: Application::None,
+        components: Components::default(),
         presentation: Presentation::Headless,
         platform: Platform::Generic,
         devices: DevicePolicy::default(),
         scale: 1,
         allow_unfree: true,
+        allow_mutable_code: true,
+        autostart: Vec::new(),
         admin_ssh_key: None,
+        agent_ssh_key: None,
+        happy_backends: Components::default(),
     }
 }
 #[test]
 fn exactly_ten_application_presentation_combinations_are_valid() {
     let mut valid = 0;
     for app in [
-        Application::None,
-        Application::Chatgpt,
-        Application::Opencode,
-        Application::Openclaw,
+        Components::default(),
+        Components::from(Component::ChatgptDesktop),
+        Components::from(Component::Opencode),
+        Components::from(Component::Openclaw),
     ] {
         for presentation in [
             Presentation::Headless,
@@ -29,9 +33,10 @@ fn exactly_ten_application_presentation_combinations_are_valid() {
             Presentation::Wayland,
         ] {
             let mut c = choices();
-            c.application = app;
+            c.components = app;
             c.presentation = presentation;
-            let expected = app != Application::Chatgpt || presentation == Presentation::X11;
+            let expected = app != Components::from(Component::ChatgptDesktop)
+                || presentation == Presentation::X11;
             assert_eq!(c.validate().is_ok(), expected);
             if expected {
                 valid += 1;
@@ -43,7 +48,7 @@ fn exactly_ten_application_presentation_combinations_are_valid() {
 #[test]
 fn input_contract_rejects_injection_and_unfree_without_consent() {
     let mut c = choices();
-    c.application = Application::Chatgpt;
+    c.components = Components::from(Component::ChatgptDesktop);
     c.presentation = Presentation::X11;
     c.allow_unfree = false;
     assert!(c.validate().is_err());
@@ -70,6 +75,25 @@ fn input_contract_rejects_injection_and_unfree_without_consent() {
     assert!(c.validate().is_err());
     let mut c = choices();
     c.admin_ssh_key = Some("ssh-ed25519 AAAA\ncommand=evil".into());
+    assert!(c.validate().is_err());
+}
+#[test]
+fn installer_requires_happy_backends_and_separate_editor_access() {
+    let mut c = choices();
+    c.components = "happy,happy-remote,codex,gemini-cli".parse().unwrap();
+    assert!(c.validate().is_err());
+    c.happy_backends = Component::GeminiCli.into();
+    assert!(c.validate().is_err());
+    c.happy_backends = Component::ClaudeCode.into();
+    assert!(c.validate().is_err());
+    c.happy_backends = Component::Codex.into();
+    assert!(c.validate().is_ok());
+    c.components.insert(Component::ZedRemoteHost);
+    c.admin_ssh_key = Some("ssh-ed25519 admin-fixture".into());
+    assert!(c.validate().is_err());
+    c.agent_ssh_key = Some("ssh-ed25519 agent-fixture".into());
+    assert!(c.validate().is_ok());
+    c.agent_ssh_key = Some("command=evil ssh-ed25519 fixture".into());
     assert!(c.validate().is_err());
 }
 fn edid(px: u16, mm: u16) -> [u8; 128] {
@@ -107,7 +131,7 @@ fn edid_is_a_validated_suggestion_not_a_headless_setting() {
 fn audit() -> Audit {
     Audit {
         enabled: true,
-        application: Application::None,
+        components: Components::default(),
         presentation: Presentation::Headless,
         firewall: true,
         root_locked: true,
@@ -141,7 +165,7 @@ fn evaluated_policy_guards_are_independent_of_module_defaults() {
             9 => a.agent_groups.push("wheel".into()),
             10 => a.trusted_users.push("agent".into()),
             11 => a.efi_writes = true,
-            12 => a.application = Application::Chatgpt,
+            12 => a.components = Components::from(Component::ChatgptDesktop),
             _ => a.agent_groups.push("disk".into()),
         }
         assert!(validate_audit(&a).is_err(), "issue={issue}");
@@ -166,10 +190,10 @@ fn restart_recovery_contract_is_exhaustive_and_typed() {
 fn application_architecture_matrix_is_explicit() {
     for architecture in [Architecture::X86_64, Architecture::Aarch64] {
         for app in [
-            Application::None,
-            Application::Chatgpt,
-            Application::Opencode,
-            Application::Openclaw,
+            Components::default(),
+            Components::from(Component::ChatgptDesktop),
+            Components::from(Component::Opencode),
+            Components::from(Component::Openclaw),
         ] {
             for presentation in [
                 Presentation::Headless,
@@ -177,8 +201,9 @@ fn application_architecture_matrix_is_explicit() {
                 Presentation::Wayland,
             ] {
                 assert_eq!(
-                    application_supported(architecture, app, presentation),
-                    app != Application::Chatgpt || presentation == Presentation::X11
+                    components_supported(architecture, app, presentation),
+                    app != Components::from(Component::ChatgptDesktop)
+                        || presentation == Presentation::X11
                 );
             }
         }
@@ -323,15 +348,20 @@ fn application_selection_never_implies_proprietary_package_consent() {
         Presentation::X11,
     ] {
         for app in [
-            Application::None,
-            Application::Openclaw,
-            Application::Opencode,
+            Components::default(),
+            Components::from(Component::Openclaw),
+            Components::from(Component::Opencode),
         ] {
-            assert!(validate_application_selection(app, presentation, false).is_ok());
+            assert!(validate_component_selection(app, presentation, false).is_ok());
         }
         for consent in [false, true] {
             assert_eq!(
-                validate_application_selection(Application::Chatgpt, presentation, consent).is_ok(),
+                validate_component_selection(
+                    Components::from(Component::ChatgptDesktop),
+                    presentation,
+                    consent
+                )
+                .is_ok(),
                 presentation == Presentation::X11 && consent
             );
         }

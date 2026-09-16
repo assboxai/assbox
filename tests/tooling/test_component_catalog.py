@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Exercise selection modules with Nix's module library, without NixOS builds."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import unittest
+import yaml
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
+import component_catalog as catalog
+import component_families
+import release_data
+
+
+class ComponentCatalogTests(unittest.TestCase):
+    def test_generated_metadata_and_release_families_match(self):
+        subprocess.run([sys.executable, 'scripts/component_catalog.py', '--check'], cwd=ROOT, check=True)
+        rows = catalog.read_catalog()
+        self.assertEqual(len(rows), 28)
+        expected = tuple(sorted({r['family'] for r in rows} - {'nixpkgs'}))
+        self.assertEqual(component_families.FAMILIES, expected)
+        release_data.validate_lock(json.loads((ROOT / 'flake.lock').read_text()))
+        for id in ['chatgpt-remote', 'cowork-dispatch', 'antigravity-remote']:
+            self.assertTrue(next(r for r in rows if r['id'] == id)['blocked'])
+
+    def test_release_workflow_requires_each_family_on_both_architectures(self):
+        document = yaml.safe_load((ROOT / '.github/workflows/release.yml').read_text())
+        rows = document['jobs']['probe']['strategy']['matrix']['include']
+        actual = [(r['application'], r['system']) for r in rows]
+        expected = [(family, system) for family in component_families.FAMILIES for system in release_data.SYSTEMS]
+        self.assertEqual(sorted(actual), sorted(expected))
+
+    @classmethod
+    def setUpClass(cls):
+        path = os.environ.get('ASSBOX_NIX_LIB')
+        if not path:
+            # The Nix dev shell supplies this in normal CI; local static runs may
+            # use an already cached nixpkgs, never download or evaluate a flake.
+            candidates = [p for p in Path('/nix/store').glob('*-source/lib')
+                          if (p / 'modules.nix').is_file() and (p / 'default.nix').is_file()]
+            path = str(sorted(candidates)[0]) if candidates else None
+        cls.lib = path
+
+    def evaluate(self, selected, *, presentation='headless', network=None, autostart=None,
+                 accept_unfree=True, unfree_packages=None):
+        if not self.lib:
+            self.skipTest('Nix module library unavailable; run in the development shell')
+        def nix_json(value):
+            return 'builtins.fromJSON ' + json.dumps(json.dumps(value))
+        args = ['nix-instantiate', '--eval', '--strict', '--json', 'tests/nix/component-eval.nix',
+                '--arg', 'libPath', self.lib, '--arg', 'selection', nix_json(selected),
+                '--argstr', 'presentation', presentation, '--arg', 'network', nix_json(network or {}),
+                '--arg', 'autostart', nix_json(autostart or []),
+                '--arg', 'acceptUnfree', nix_json(accept_unfree),
+                '--arg', 'unfreePackages', nix_json(unfree_packages or [])]
+        result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_empty_selection_has_no_packages_or_remote_units(self):
+        result = self.evaluate({})
+        self.assertEqual(result['selected'], [])
+        self.assertEqual(result['packages'], [])
+        self.assertFalse(result['sshEnabled'])
+        self.assertEqual(result['services']['user']['services'], {})
+        self.assertTrue(all(isinstance(paths, list) and paths for paths in result['identities'].values()))
+
+    def test_external_package_license_cannot_bypass_machine_consent(self):
+        selection = {'codex': {'enable': True}}
+        self.assertFalse(self.evaluate(selection, accept_unfree=False)['failures'])
+        result = self.evaluate(selection, accept_unfree=False, unfree_packages=['codex'])
+        self.assertTrue(any('package license' in failure for failure in result['failures']))
+
+    def test_lan_source_cidrs_are_validated_before_firewall_generation(self):
+        network = {'ssh': {'agent': {'enable': True, 'keys': ['ssh-ed25519 fixture']},
+                           'exposure': 'lan', 'lanInterfaces': ['eth0']}}
+        for cidr in ['192.0.2.0/24', '0.0.0.0/0', '2001:db8::/32', '::1/128']:
+            network['ssh']['lanSourceCidrs'] = [cidr]
+            with self.subTest(cidr=cidr):
+                self.assertFalse(self.evaluate({}, network=network)['failures'])
+        for cidr in ['999.0.0.0/8', '192.0.2.1/33', ':1::2/64', '::1:/64', '1::2::3/64', '::/129']:
+            network['ssh']['lanSourceCidrs'] = [cidr]
+            with self.subTest(cidr=cidr):
+                self.assertTrue(any('CIDRs' in failure for failure in self.evaluate({}, network=network)['failures']))
+
+    def test_dependency_and_mutable_code_consent_are_explicit(self):
+        self.assertTrue(self.evaluate({'cursor-worker': {'enable': True}})['failures'])
+        self.assertTrue(self.evaluate({'chatgpt-desktop': {'enable': True}}, presentation='x11')['failures'])
+        result = self.evaluate({'cursor-agent': {'enable': True}, 'cursor-worker': {'enable': True}})
+        self.assertFalse(result['failures'])
+        unit = result['services']['user']['services']['assbox-cursor-worker']
+        self.assertIn('/bin/cursor-agent', unit['serviceConfig']['ExecStart'])
+        self.assertIn('onboarded/cursor-worker-', unit['unitConfig']['ConditionPathExists'])
+        self.assertEqual(unit['unitConfig']['StartLimitBurst'], 3)
+        self.assertEqual(unit['serviceConfig']['StandardOutput'], 'null')
+
+    def test_every_available_runtime_alone_has_no_implicit_runtime_or_service(self):
+        for row in catalog.read_catalog():
+            if not row['package'] or row['blocked']:
+                continue
+            with self.subTest(id=row['id']):
+                result = self.evaluate({row['id']: {'enable': True, 'allowMutableCode': True}},
+                                       presentation=row['presentations'][0])
+                self.assertEqual(result['selected'], [row['id']])
+                self.assertFalse(result['failures'])
+                self.assertEqual(result['services']['user']['services'], {})
+
+    def test_blocked_capabilities_never_silently_pass(self):
+        for id, dep in [('antigravity-remote','antigravity-cli'),('chatgpt-remote','chatgpt-desktop'),('cowork-dispatch','claude-desktop')]:
+            result = self.evaluate({name: {'enable': True, 'allowMutableCode': True} for name in (id,dep)}, presentation='x11')
+            self.assertTrue(any(id in failure for failure in result['failures']))
+
+    def test_autostart_and_display_do_not_install_missing_components(self):
+        self.assertTrue(self.evaluate({}, autostart=['vscode'], presentation='x11')['failures'])
+        selection = {'cursor-agent': {'enable': True}, 'cursor-worker': {'enable': True, 'computerUse': {'enable': True}}}
+        self.assertTrue(self.evaluate(selection)['failures'])
+        result = self.evaluate(selection, presentation='x11')
+        self.assertFalse(result['failures'])
+        unit = result['services']['user']['services']['assbox-cursor-worker']
+        self.assertEqual(unit['partOf'], ['graphical-session.target'])
+        self.assertIn('--display :0', unit['serviceConfig']['ExecStart'])
+        self.assertNotIn('tigervnc', str(result['packages']))
+
+    def test_remote_recipes_merge_common_and_specific_options(self):
+        cases = {
+            'claude-code-remote': ['claude-code'],
+            'openclaw-node': ['openclaw'],
+            'happy-remote': ['happy', 'codex', 'claude-code'],
+            'vscode-tunnel': ['vscode-cli'],
+        }
+        for id, dependencies in cases.items():
+            with self.subTest(id=id):
+                selection = {key: {'enable': True, 'allowMutableCode': True} for key in [id, *dependencies]}
+                if id == 'happy-remote':
+                    selection[id]['backends'] = ['codex', 'claude-code']
+                result = self.evaluate(selection)
+                self.assertFalse(result['failures'])
+                unit = result['services']['user']['services']['assbox-' + id]
+                self.assertEqual(unit['serviceConfig']['WorkingDirectory'], '/home/agent/projects')
+                self.assertEqual(unit['unitConfig']['ConditionUser'], 'agent')
+                self.assertIn('onboarded/' + id, unit['unitConfig']['ConditionPathExists'])
+
+    def test_editor_hosts_require_agent_access_and_consent(self):
+        selected = {'zed-remote-host': {'enable': True, 'allowMutableCode': True}}
+        self.assertTrue(self.evaluate(selected)['failures'])
+        network = {'tailscale': {'enable': True}, 'ssh': {'agent': {'enable': True, 'keys': ['ssh-ed25519 fixture']}}}
+        self.assertFalse(self.evaluate(selected, network=network)['failures'])
+        network['tailscale']['enable'] = False
+        self.assertTrue(self.evaluate(selected, network=network)['failures'])

@@ -19,14 +19,6 @@ in
         ];
         message = "Assbox supports x86-64 PCs and generic AArch64 UEFI machines.";
       }
-      {
-        assertion = cfg.application != "chatgpt" || cfg.presentation == "x11";
-        message = "ChatGPT requires the X11 presentation.";
-      }
-      {
-        assertion = cfg.application != "chatgpt" || cfg.acceptUnfree;
-        message = "ChatGPT requires explicit assbox.acceptUnfree consent.";
-      }
     ];
     nixpkgs.config.allowUnfree = cfg.acceptUnfree;
     # Redistributable device firmware is allowed independently of proprietary apps.
@@ -73,7 +65,7 @@ in
       rsync
       openssh
     ];
-    environment.variables.EDITOR = lib.mkDefault "nano";
+    environment.variables.EDITOR = lib.mkDefault cfg.editor.default;
     nix.settings = {
       experimental-features = [
         "nix-command"
@@ -115,18 +107,7 @@ in
     networking.networkmanager.enable = true;
     networking.firewall.enable = true;
     services.timesyncd.enable = lib.mkDefault true;
-    networking.firewall.allowedTCPPorts = lib.optionals cfg.network.ssh.enable [ 22 ];
     services.dbus.enable = true;
-    services.openssh = {
-      enable = cfg.network.ssh.enable;
-      openFirewall = cfg.network.ssh.enable;
-      settings = {
-        PasswordAuthentication = false;
-        KbdInteractiveAuthentication = false;
-        PermitRootLogin = "no";
-        AllowUsers = [ "admin" ];
-      };
-    };
     services.udisks2.enable = false;
     services.gvfs.enable = false;
     services.avahi = {
@@ -143,7 +124,7 @@ in
     ];
     environment.etc."assbox/runtime.json".text = builtins.toJSON {
       inherit (cfg)
-        application
+        selectedComponents
         presentation
         platform
         updates

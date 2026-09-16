@@ -29,10 +29,11 @@ const HELP: &str = r#"Assbox — Assistant Box
   assbox package add NAME                Build and activate one additional package
   assbox package remove NAME             Remove one CLI-managed additional package
   assbox config edit                    Edit human-owned /etc/nixos/local.nix
-  assbox application set APP MODE [--accept-unfree]
-                                        Stage one application and presentation;
+  assbox component set IDS MODE [--accept-unfree]
+                                        Stage an explicit component set and presentation;
                                         ChatGPT requires X11; consent permits unfree packages machine-wide
-  assbox application setup               Onboard as the unprivileged agent user
+  assbox component list                  List curated IDs, dependencies and blockers
+  assbox component setup ID               Onboard as the unprivileged agent user
   assbox logs                           Show the maintenance journal
 
 Changes to machine configuration require sudo from the admin account.
@@ -99,13 +100,37 @@ fn run(args: &[&str]) -> Result<()> {
         ["package", "add", name] => manage::package_change(PackageName::parse(name)?, true),
         ["package", "remove", name] => manage::package_change(PackageName::parse(name)?, false),
         ["config", "edit"] => edit(),
-        ["application", "set", app, presentation] => {
-            manage::application_set(app.parse()?, presentation.parse()?, false)
+        ["component", "list"] => {
+            for component in Component::ALL {
+                let dependencies = component
+                    .dependencies()
+                    .iter()
+                    .map(|d| d.as_str())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                println!(
+                    "{component} | dependencies: {dependencies} | proprietary: {} | mutable helpers: {}{}",
+                    component.unfree(),
+                    component.mutable_code(),
+                    if component.blocked().is_empty() {
+                        String::new()
+                    } else {
+                        format!(" | unavailable: {}", component.blocked())
+                    }
+                );
+                if !component.code_notes().is_empty() {
+                    println!("  {}", component.code_notes());
+                }
+            }
+            Ok(())
         }
-        ["application", "set", app, presentation, "--accept-unfree"] => {
-            manage::application_set(app.parse()?, presentation.parse()?, true)
+        ["component", "set", app, presentation] => {
+            manage::components_set(app.parse()?, presentation.parse()?, false)
         }
-        ["application", "setup"] => user::setup(),
+        ["component", "set", app, presentation, "--accept-unfree"] => {
+            manage::components_set(app.parse()?, presentation.parse()?, true)
+        }
+        ["component", "setup", id] => user::setup(id.parse()?),
         ["logs"] => Commands.run(
             "journalctl",
             &[

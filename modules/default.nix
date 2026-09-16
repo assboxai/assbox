@@ -4,11 +4,15 @@
   imports = [
     ./options.nix
     ./base.nix
+    ./access.nix
     ./devices.nix
     ./boot.nix
     ./platform.nix
     ./presentation.nix
+    ./components.nix
     ./applications.nix
+    ./remotes.nix
+    ./editors.nix
     ./maintenance.nix
     ./resources.nix
     ./audit.nix

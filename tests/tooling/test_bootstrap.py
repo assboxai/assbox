@@ -19,7 +19,7 @@ ENV = {'GITHUB_REPOSITORY': 'assboxai/assbox', 'GITHUB_REF': 'refs/heads/master'
 
 
 def lock(revision):
-    names = ('nixpkgs', 'chatgpt-packages', 'opencode-packages', 'openclaw-packages')
+    names = b.data.INPUTS
     nodes = {'root': {'inputs': {n: n for n in names}}}
     for name in names:
         nodes[name] = {'locked': {'type': 'github', 'owner': 'fixture', 'repo': name,

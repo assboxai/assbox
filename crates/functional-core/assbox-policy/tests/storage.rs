@@ -79,13 +79,17 @@ fn base(firmware: Firmware, table: Table) -> (Inventory, InstallRequest) {
             choices: Choices {
                 hostname: Hostname::parse("assbox-test").unwrap(),
                 timezone: "UTC".into(),
-                application: Application::None,
+                components: Components::default(),
                 presentation: Presentation::Headless,
                 platform: Platform::Generic,
                 devices: DevicePolicy::default(),
                 scale: 1,
                 allow_unfree: false,
+                allow_mutable_code: false,
+                autostart: Vec::new(),
                 admin_ssh_key: None,
+                agent_ssh_key: None,
+                happy_backends: Components::default(),
             },
         },
     )

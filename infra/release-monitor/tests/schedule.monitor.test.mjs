@@ -16,7 +16,7 @@ const list = r => ({ workflow_runs: r ? [r] : [] });
 const assess = (newest = run, success = run) => assessRuns(repo, workflow, list(newest), list(success), now);
 const record = number => ({ id: number, tag_name: `r-${number}`, immutable: true, draft: false, prerelease: false });
 const tag = number => ({ name: `r-${number}`, commit: { sha: "a".repeat(40) } });
-const manifest = { schema: 2, protocol: 2, channel: "stable", tag: "r-1000", issuedAt: now - 1000, expiresAt: now - 1000 + 604800 };
+const manifest = { schema: 3, protocol: 3, channel: "stable", tag: "r-1000", issuedAt: now - 1000, expiresAt: now - 1000 + 604800 };
 
 function fixture(changes = {}) {
   const replies = new Map([

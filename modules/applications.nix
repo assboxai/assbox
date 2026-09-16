@@ -8,7 +8,13 @@
 }:
 let
   cfg = config.assbox;
-  apps = assboxApplications.${cfg.application} or { };
+  apps = {
+    chatgpt = assboxApplications.chatgpt.chatgpt;
+    opencode = assboxApplications.opencode.opencode;
+    openclaw = assboxApplications.openclaw.openclaw;
+  };
+  enabled = id: cfg.components.${id}.enable;
+  launch = id: builtins.elem id cfg.session.autostart;
   common = {
     Restart = "on-failure";
     RestartSec = 5;
@@ -20,13 +26,13 @@ let
     TimeoutStopSec = 60;
     KillMode = "control-group";
     UMask = "0077";
+    StandardOutput = "null";
+    StandardError = "null";
     NoNewPrivileges = true;
     Environment = "PATH=/run/current-system/sw/bin:/run/wrappers/bin";
   };
   terminal =
     if cfg.presentation == "wayland" then "${pkgs.foot}/bin/foot" else "${pkgs.xterm}/bin/xterm -e";
-  browser =
-    if pkgs.stdenv.hostPlatform.system == "aarch64-linux" then pkgs.chromium else pkgs.google-chrome;
   chatgpt = apps.chatgpt.override {
     commandLineArgs = "--ozone-platform=x11 --password-store=basic --force-device-scale-factor=${toString cfg.display.scale}";
   };
@@ -34,29 +40,28 @@ in
 {
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
-      (lib.mkIf (cfg.presentation != "headless" && cfg.application == "openclaw") {
+      (lib.mkIf (launch "openclaw-dashboard") {
         environment.systemPackages = [ pkgs.chromium ];
       })
-      (lib.mkIf (cfg.application == "chatgpt") {
+      (lib.mkIf (enabled "chatgpt-desktop") {
         environment.systemPackages = [
           chatgpt
-          apps.codex
-          browser
         ];
-        systemd.user.services.assbox-chatgpt = {
-          description = "ChatGPT Remote Linux graphical application";
+        systemd.user.services.assbox-chatgpt = lib.mkIf (launch "chatgpt-desktop") {
+          description = "ChatGPT Linux graphical application";
           wantedBy = [ "graphical-session.target" ];
           partOf = [ "graphical-session.target" ];
           after = [ "graphical-session.target" ];
           unitConfig.ConditionUser = "agent";
           serviceConfig = common // {
             ExecStart = "${chatgpt}/bin/chatgpt";
+            ExitType = "cgroup";
           };
         };
       })
-      (lib.mkIf (cfg.application == "opencode") {
+      (lib.mkIf (enabled "opencode-server") {
         environment.systemPackages = [ apps.opencode ];
-        systemd.user.services.assbox-opencode-ui = lib.mkIf (cfg.presentation != "headless") {
+        systemd.user.services.assbox-opencode-ui = lib.mkIf (launch "opencode-attach") {
           description = "OpenCode terminal frontend attached to the managed service";
           wantedBy = [ "graphical-session.target" ];
           partOf = [ "graphical-session.target" ];
@@ -70,6 +75,7 @@ in
             ConditionPathExists = "%h/.config/assbox/opencode.env";
           };
           serviceConfig = common // {
+            ExitType = "cgroup";
             EnvironmentFile = "%h/.config/assbox/opencode.env";
             ExecStart = "${terminal} ${apps.opencode}/bin/opencode attach http://127.0.0.1:4096";
             WorkingDirectory = "%h";
@@ -89,13 +95,11 @@ in
           };
         };
       })
-      (lib.mkIf (cfg.application == "openclaw") {
+      (lib.mkIf (enabled "openclaw-gateway") {
         environment.systemPackages = [
           apps.openclaw
-          apps.codex
-          apps.opencode
         ];
-        systemd.user.services.assbox-openclaw-ui = lib.mkIf (cfg.presentation != "headless") {
+        systemd.user.services.assbox-openclaw-ui = lib.mkIf (launch "openclaw-dashboard") {
           description = "OpenClaw local Control UI; authenticate in the browser";
           wantedBy = [ "graphical-session.target" ];
           partOf = [ "graphical-session.target" ];
@@ -109,6 +113,7 @@ in
             ConditionPathExists = "%h/.openclaw/openclaw.json";
           };
           serviceConfig = common // {
+            ExitType = "cgroup";
             # The fixed public loopback URL has no token, password or secret fragment.
             ExecStart = "${pkgs.chromium}/bin/chromium --app=http://127.0.0.1:18789/";
             WorkingDirectory = "%h";

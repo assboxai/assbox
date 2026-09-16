@@ -650,7 +650,7 @@ pub fn status() -> Result<()> {
     let r = probe::runtime(&Commands)?;
     if r.len() == 6 {
         println!(
-            "Application: {} | Presentation: {} | Maintenance: {}",
+            "Components: {} | Presentation: {} | Maintenance: {}",
             r[0], r[1], r[2]
         );
     }
@@ -686,8 +686,8 @@ pub fn boot_check() -> Result<()> {
     Ok(())
 }
 
-pub fn application_set(
-    application: Application,
+pub fn components_set(
+    components: Components,
     presentation: Presentation,
     accept_unfree: bool,
 ) -> Result<()> {
@@ -705,14 +705,14 @@ pub fn application_set(
     if !matches!(existing.trim(), "true" | "false") {
         return Err(Error::new("invalid evaluated proprietary-package policy"));
     }
-    assbox_policy::validate_application_selection(
-        application,
+    assbox_policy::validate_component_selection(
+        components,
         presentation,
         accept_unfree || existing.trim() == "true",
     )?;
     let settings = assbox_config::selection(
         &files::text(&Path::new(CONFIG).join("assbox-settings.nix"))?,
-        application,
+        components,
         presentation,
         accept_unfree,
     )?;
@@ -742,27 +742,37 @@ pub fn application_set(
                 "a local override denies proprietary packages; review local.nix instead of repeating --accept-unfree",
             ));
         }
-        assbox_policy::validate_application_selection(
-            application,
+        assbox_policy::validate_component_selection(
+            components,
             presentation,
             consent.trim() == "true",
         )?;
         for (attribute, expected) in [
-            ("application", application.as_str()),
-            ("presentation", presentation.as_str()),
+            (
+                "selectedComponents",
+                format!(
+                    "[{}]",
+                    components
+                        .iter()
+                        .map(|c| format!("\"{c}\""))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ),
+            ),
+            ("presentation", format!("\"{presentation}\"")),
         ] {
             let output = Commands.text(
                 "nix",
                 &[
                     "eval",
-                    "--raw",
+                    "--json",
                     "--no-write-lock-file",
                     &format!("{candidate}#nixosConfigurations.assbox.config.assbox.{attribute}"),
                 ],
             )?;
-            if output != expected {
+            if output.trim() != expected {
                 return Err(Error::new(
-                    "a local override conflicts with the requested application/presentation; no changes activated",
+                    "a local override conflicts with the requested components/presentation; no changes activated",
                 ));
             }
         }
@@ -770,7 +780,7 @@ pub fn application_set(
         // A session/backend change is staged for a clean reboot, not switched underneath a GUI.
         commit(&Commands, &system, &["assbox-settings.nix"], "boot")?;
         println!(
-            "Application selection is staged for reboot. Stored application data and credentials were not deleted."
+            "Component selection is staged for reboot. Stored application data and credentials were not deleted."
         );
         Ok(())
     })();

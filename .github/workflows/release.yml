@@ -55,22 +55,70 @@ jobs:
         include:
         - system: x86_64-linux
           runner: ubuntu-24.04
+          application: antigravity
+        - system: x86_64-linux
+          runner: ubuntu-24.04
           application: chatgpt
         - system: x86_64-linux
           runner: ubuntu-24.04
-          application: opencode
+          application: claude-code
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: claude-desktop
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: codex
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: cursor
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: gemini-cli
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: grok
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: happy
         - system: x86_64-linux
           runner: ubuntu-24.04
           application: openclaw
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: opencode
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: antigravity
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
           application: chatgpt
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
-          application: opencode
+          application: claude-code
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: claude-desktop
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: codex
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: cursor
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: gemini-cli
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: grok
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: happy
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
           application: openclaw
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: opencode
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 360
     steps:

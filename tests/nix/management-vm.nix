@@ -7,7 +7,7 @@ let
   # Immutable observation fixture for maintenance ordering, not a real upgrade.
   maintenancePolicy = pkgs.writeText "assbox-maintenance-fixture.json" (
     builtins.toJSON {
-      application = "none";
+      components = { };
       presentation = "headless";
       updates = {
         enable = true;
@@ -37,7 +37,7 @@ pkgs.testers.runNixOSTest {
     imports = [ module ];
     assbox.enable = true;
     assbox.updates.enable = false;
-    assbox.application = "none";
+    assbox.components = { };
     assbox.presentation = "headless";
     boot.loader.systemd-boot.enable = lib.mkForce false;
     boot.loader.grub.enable = lib.mkForce false;

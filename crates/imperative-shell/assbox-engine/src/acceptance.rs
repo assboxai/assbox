@@ -107,13 +107,17 @@ fn install_apply() {
         choices: Choices {
             hostname: Hostname::parse("assbox-vm").unwrap(),
             timezone: "UTC".into(),
-            application: Application::None,
+            components: Components::default(),
             presentation: Presentation::Headless,
             platform: values[3].parse().unwrap(),
             devices: DevicePolicy::default(),
             scale: 1,
             allow_unfree: false,
+            allow_mutable_code: false,
+            autostart: Vec::new(),
             admin_ssh_key: Some(values[4].clone()),
+            agent_ssh_key: None,
+            happy_backends: Components::default(),
         },
     };
     let plan =

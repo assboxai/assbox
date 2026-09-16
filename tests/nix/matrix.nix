@@ -19,7 +19,14 @@ let
         name = "uefi-${application}-${presentation}";
         value = fixture {
           assbox = {
-            inherit application presentation;
+            inherit presentation;
+            components = lib.optionalAttrs (application != "none") {
+              ${application}.enable = true;
+              ${if application == "opencode" then "opencode-server" else "openclaw-gateway"}.enable = true;
+            };
+            session.autostart = lib.optionals (presentation != "headless" && application != "none") [
+              (if application == "opencode" then "opencode-attach" else "openclaw-dashboard")
+            ];
             boot.mode = "uefi";
           };
         };
@@ -31,7 +38,10 @@ let
     // {
       uefi-chatgpt-x11 = fixture {
         assbox = {
-          application = "chatgpt";
+          components.chatgpt-desktop = {
+            enable = true;
+            allowMutableCode = true;
+          };
           presentation = "x11";
           acceptUnfree = true;
         };
@@ -44,7 +54,10 @@ let
         assbox = {
           platform = "macbookpro11-1";
           boot.mode = "apple-refind";
-          application = "chatgpt";
+          components.chatgpt-desktop = {
+            enable = true;
+            allowMutableCode = true;
+          };
           presentation = "x11";
           acceptUnfree = true;
         };
@@ -57,9 +70,83 @@ let
         };
       };
     };
+  catalog = builtins.fromJSON (builtins.readFile ../../catalog/components.json);
+  available = builtins.filter (r: r.blocked == "") catalog;
+  expand =
+    ids:
+    let
+      next = lib.unique (
+        ids
+        ++ lib.concatMap (
+          id: (lib.findFirst (r: r.id == id) (throw "Unknown test component") catalog).dependencies
+        ) ids
+      );
+    in
+    if builtins.length next == builtins.length ids then next else expand next;
+  selectedFixture =
+    ids: presentation:
+    let
+      selected = expand ids;
+    in
+    fixture {
+      assbox = {
+        inherit presentation;
+        acceptUnfree = true;
+        components =
+          lib.recursiveUpdate
+            (lib.genAttrs selected (_: {
+              enable = true;
+              allowMutableCode = true;
+            }))
+            {
+              happy-remote.backends = lib.optionals (builtins.elem "happy-remote" selected) [
+                "codex"
+                "claude-code"
+              ];
+              openclaw-node.tls = false;
+            };
+        network =
+          lib.optionalAttrs
+            (builtins.any (id: builtins.elem id selected) [
+              "vscode-remote-host"
+              "zed-remote-host"
+            ])
+            {
+              tailscale.enable = true;
+              ssh.agent = {
+                enable = true;
+                keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKTestFixtureOnlyNotARealKeyExample fixture" ];
+              };
+            };
+      };
+    };
+  componentConfigurations =
+    lib.listToAttrs (
+      map (row: {
+        name = "component-${row.id}";
+        value = selectedFixture (
+          [ row.id ]
+          ++ lib.optionals (row.id == "happy-remote") [
+            "codex"
+            "claude-code"
+          ]
+        ) (builtins.head row.presentations);
+      }) available
+    )
+    // {
+      mixed-cli = selectedFixture (map (r: r.id) (
+        builtins.filter (r: r.package != "" && builtins.elem "headless" r.presentations) available
+      )) "headless";
+      editors-x11 = selectedFixture [ "vscode" "zed" "vim" "emacs" ] "x11";
+      editor-hosts = selectedFixture [ "vscode-remote-host" "zed-remote-host" ] "headless";
+      full-x11 = selectedFixture (map (r: r.id) available) "x11";
+      full-wayland = selectedFixture (map (r: r.id) (
+        builtins.filter (r: builtins.elem "wayland" r.presentations) available
+      )) "wayland";
+    };
   configurations = lib.mapAttrs' (
     name: machine: lib.nameValuePair "${pkgs.stdenv.hostPlatform.system}-${name}" machine
-  ) localConfigurations;
+  ) (localConfigurations // componentConfigurations);
   audit =
     name: machine:
     let
@@ -76,7 +163,7 @@ let
         && !a.passwordlessSudo
         && !(builtins.elem "wheel" a.agentGroups)
         && (a.boot != "apple-refind" || !a.efiWrites)
-        && (a.application != "chatgpt" || a.presentation == "x11");
+        && (!(builtins.elem "chatgpt-desktop" a.selectedComponents) || a.presentation == "x11");
       assertions = builtins.all (entry: entry.assertion) machine.config.assertions;
     in
     assert good && assertions;
@@ -85,7 +172,10 @@ let
     '';
   invalid = fixture {
     assbox = {
-      application = "chatgpt";
+      components.chatgpt-desktop = {
+        enable = true;
+        allowMutableCode = true;
+      };
       presentation = "wayland";
       acceptUnfree = true;
     };
@@ -105,6 +195,10 @@ in
   checks =
     lib.mapAttrs' (
       name: machine: lib.nameValuePair "policy-${name}" (audit name machine)
+    ) configurations
+    // lib.mapAttrs' (
+      name: machine:
+      lib.nameValuePair "closure-${name}" (import ./component-closure.nix { inherit pkgs machine name; })
     ) configurations
     // lib.mapAttrs' (
       name: machine: lib.nameValuePair "build-${name}" machine.config.system.build.toplevel

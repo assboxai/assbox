@@ -159,17 +159,47 @@ pub fn install(args: &[&str]) -> Result<()> {
         Some(recommended.as_str()),
     )?
     .parse()?;
-    let application: Application = ask(
-        "Application: none / chatgpt / opencode / openclaw",
-        Some("none"),
-    )?
-    .parse()?;
-    let presentation: Presentation = if application == Application::Chatgpt {
-        println!("ChatGPT Remote uses the X11 graphical profile on Linux.");
-        Presentation::X11
+    println!(
+        "Optional components: {}",
+        Component::ALL
+            .iter()
+            .map(|c| c.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let mut components: Components =
+        ask("Components (comma-separated IDs, or none)", Some("none"))?.parse()?;
+    let expanded = components.with_dependencies();
+    if expanded != components {
+        println!("Required selection: {expanded}");
+        if !yes("Include these required components?", Some(false))? {
+            return Err(Error::new("component dependencies were not accepted"));
+        }
+        components = expanded;
+    }
+    let happy_backends = if components.contains(Component::HappyRemote) {
+        let backends: Components = ask(
+            "Happy backends (codex, claude-code, or both comma-separated)",
+            None,
+        )?
+        .parse()?;
+        if backends == Components::default()
+            || backends
+                .iter()
+                .any(|id| !matches!(id, Component::Codex | Component::ClaudeCode))
+        {
+            return Err(Error::new("select at least one supported Happy backend"));
+        }
+        for backend in backends.iter() {
+            components.insert(backend);
+        }
+        println!("Complete selection including your Happy backends: {components}");
+        backends
     } else {
-        ask("Presentation: headless / wayland / x11", Some("headless"))?.parse()?
+        Components::default()
     };
+    let presentation: Presentation =
+        ask("Presentation: headless / wayland / x11", Some("headless"))?.parse()?;
     let network = probe::default_network(&c).unwrap_or_default();
     let wifi = assbox_policy::suggested_wifi(&network);
     if wifi.is_none() {
@@ -201,24 +231,68 @@ pub fn install(args: &[&str]) -> Result<()> {
             .map_err(|_| Error::new("invalid display scale"))?
     };
     let allow_unfree = yes(
-        "Allow unfree nixpkgs packages machine-wide (required for ChatGPT, persists after switching applications)?",
+        "Allow proprietary packages machine-wide (required by some components; persists after changing the selection)?",
         Some(false),
     )?;
+    for component in components.iter().filter(|c| !c.code_notes().is_empty()) {
+        println!("{component}: {}", component.code_notes());
+    }
+    let mutable = components.iter().any(|c| c.mutable_code());
+    if mutable {
+        println!(
+            "Selected components may download provider-controlled executable helpers into the agent home. All components share agent files and credentials."
+        );
+    }
+    let allow_mutable_code = mutable
+        && yes(
+            "Accept these provider/client-managed executable downloads?",
+            Some(false),
+        )?;
+    if mutable && !allow_mutable_code {
+        return Err(Error::new("mutable helper provisioning was not accepted"));
+    }
+    let autostart = if presentation == Presentation::Headless {
+        Vec::new()
+    } else {
+        let text = ask(
+            "Graphical autostart IDs (chatgpt-desktop, claude-desktop, vscode, zed, opencode-attach, openclaw-dashboard; or none)",
+            Some("none"),
+        )?;
+        if text == "none" {
+            Vec::new()
+        } else {
+            text.split(',').map(str::to_owned).collect()
+        }
+    };
     let key = ask(
-        "Optional admin SSH public key (enter none for console-only access)",
+        "Optional admin SSH public key (enables Tailscale-only SSH; owner must log in from console; enter none for console-only access)",
         Some("none"),
     )?;
     let admin_ssh_key = if key == "none" { None } else { Some(key) };
+    let agent_ssh_key = if components.contains(Component::VscodeRemoteHost)
+        || components.contains(Component::ZedRemoteHost)
+    {
+        Some(ask(
+            "Agent SSH public key for remote editors (separate from admin access; enables Tailscale-only SSH and requires console login)",
+            None,
+        )?)
+    } else {
+        None
+    };
     let choices = Choices {
         hostname,
         timezone,
-        application,
+        components,
         presentation,
         platform,
         devices,
         scale,
         allow_unfree,
+        allow_mutable_code,
+        autostart,
         admin_ssh_key,
+        agent_ssh_key,
+        happy_backends,
     };
     let request = InstallRequest {
         root,
@@ -232,7 +306,7 @@ pub fn install(args: &[&str]) -> Result<()> {
         plan.request().choices.hostname.as_str(),
         plan.inventory().architecture,
         plan.boot(),
-        application,
+        components,
         presentation
     );
     println!(

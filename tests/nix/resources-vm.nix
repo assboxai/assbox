@@ -18,7 +18,7 @@ pkgs.testers.runNixOSTest {
   nodes.machine = { lib, ... }: {
     imports = [ module ];
     assbox.enable = true;
-    assbox.application = "none";
+    assbox.components = { };
     assbox.presentation = "headless";
     boot.loader.systemd-boot.enable = lib.mkForce false;
     boot.loader.grub.enable = lib.mkForce false;

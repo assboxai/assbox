@@ -39,6 +39,9 @@ let
       security.pki.certificateFiles = [ ${ca} ];
       nix.settings.substituters = lib.mkForce [];
       nix.settings.builders = lib.mkForce "";
+      assbox.network.tailscale.enable = lib.mkForce false;
+      assbox.network.ssh.exposure = "lan";
+      assbox.network.ssh.lanInterfaces = [ "eth1" ];
       assbox.updates = { enable = false; rebootGraceSeconds = 0; keepGenerations = 2; };
       # Tests invoke maintenance deliberately; calendar firing would race cuts.
       systemd.timers.assbox-maintenance.enable = lib.mkForce false;
@@ -56,7 +59,7 @@ let
       {
         assbox = {
           enable = true;
-          application = "none";
+          components = { };
           presentation = "headless";
           boot.mode = mode;
           platform = if apple then "macbookpro12-1" else "generic";

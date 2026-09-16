@@ -41,7 +41,7 @@ def main(binary):
     archive_bytes = payload.read_bytes()
     prefetched = json.loads(run('nix', 'flake', 'prefetch', '--json', 'file://' + str(payload)))
     issued = int(time.time()) - 30
-    first = dict(schema=2, protocol=2, channel='stable', tag='r-1', coreCommit='a' * 40,
+    first = dict(schema=3, protocol=3, channel='stable', tag='r-1', coreCommit='a' * 40,
                  coreVersion='0.1.0', issuedAt=issued, expiresAt=issued + 604800,
                  sourceSha256=digest(archive_bytes), sourceNarHash=prefetched['hash'],
                  lockSha256=digest(lock), systems=['aarch64-linux', 'x86_64-linux'], heldInputs=[],

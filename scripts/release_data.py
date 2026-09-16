@@ -11,7 +11,9 @@ import re
 import tarfile
 from pathlib import PurePosixPath
 
-APPLICATIONS = ("chatgpt", "opencode", "openclaw")
+from component_families import FAMILIES
+
+APPLICATIONS = FAMILIES
 INPUTS = ("nixpkgs", *(f"{name}-packages" for name in APPLICATIONS))
 SYSTEMS = ("aarch64-linux", "x86_64-linux")
 
@@ -201,8 +203,8 @@ def validate_manifest(manifest: dict) -> None:
               "issuedAt", "expiresAt", "sourceSha256", "sourceNarHash", "lockSha256",
               "systems", "heldInputs", "previousTag", "previousManifestSha256"}
     if (not isinstance(manifest, dict) or set(manifest) != fields
-            or type(manifest["schema"]) is not int or manifest["schema"] != 2
-            or type(manifest["protocol"]) is not int or manifest["protocol"] != 2
+            or type(manifest["schema"]) is not int or manifest["schema"] != 3
+            or type(manifest["protocol"]) is not int or manifest["protocol"] != 3
             or manifest["channel"] != "stable" or manifest["systems"] != list(SYSTEMS)):
         raise ValueError("unsupported release manifest schema/protocol/channel")
     m = manifest
@@ -252,7 +254,7 @@ def make_manifest(core_commit: str, core_version: str, issued_at: int, previous:
         if issued_at < previous["issuedAt"]:
             raise ValueError("release clock moved backwards")
     tag = "r-1" if previous is None else f"r-{max(issued_at, release_sequence(previous['tag']) + 1)}"
-    manifest = {"schema": 2, "protocol": 2, "channel": "stable", "tag": tag,
+    manifest = {"schema": 3, "protocol": 3, "channel": "stable", "tag": tag,
                 "coreCommit": core_commit, "coreVersion": core_version, "issuedAt": issued_at,
                 "expiresAt": issued_at + 604800, "sourceSha256": source_sha, "sourceNarHash": source_nar,
                 "lockSha256": lock_sha, "systems": list(SYSTEMS), "heldInputs": held,

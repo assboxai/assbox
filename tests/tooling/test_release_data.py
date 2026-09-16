@@ -83,7 +83,7 @@ class ReleaseDataTests(unittest.TestCase):
                    for app in data.APPLICATIONS for system in data.SYSTEMS]
         self.assertEqual(data.select_inputs(reports, 'd'*64), set(data.INPUTS))
         reports[0].update(passed=False, exitCode=1)
-        self.assertEqual(data.select_inputs(reports, 'd'*64), set(data.INPUTS) - {'chatgpt-packages'})
+        self.assertEqual(data.select_inputs(reports, 'd'*64), set(data.INPUTS) - {data.APPLICATIONS[0] + '-packages'})
         for bad in [reports[:-1], reports + [reports[0]], [dict(r, planSha256='wrong') for r in reports],
                     [dict(r, passed=False, exitCode=0) for r in reports]]:
             with self.assertRaises(ValueError): data.select_inputs(bad, 'd'*64)

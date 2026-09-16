@@ -90,8 +90,47 @@ pub fn retarget_flake(
 
 pub fn settings(c: &Choices) -> Result<String> {
     c.validate()?;
-    let ssh = c.admin_ssh_key.as_ref().map_or("  assbox.network.ssh.enable = lib.mkDefault false;\n".to_owned(), |k|
-        format!("  assbox.network.ssh.enable = lib.mkDefault true;\n  users.users.admin.openssh.authorizedKeys.keys = [ {} ];\n", nix_string(k)));
+    let mut ssh = String::new();
+    for (role, key) in [("admin", &c.admin_ssh_key), ("agent", &c.agent_ssh_key)] {
+        ssh.push_str(&format!(
+            "  assbox.network.ssh.{role}.enable = lib.mkDefault {};\n",
+            key.is_some()
+        ));
+        if let Some(key) = key {
+            ssh.push_str(&format!(
+                "  assbox.network.ssh.{role}.keys = [ {} ];\n",
+                nix_string(key)
+            ));
+        }
+    }
+    if c.admin_ssh_key.is_some() || c.agent_ssh_key.is_some() {
+        ssh.push_str("  assbox.network.tailscale.enable = lib.mkDefault true;\n");
+    }
+    let mut extras = String::new();
+    for component in c.components.iter().filter(|c| c.mutable_code()) {
+        extras.push_str(&format!(
+            "  assbox.components.{component}.allowMutableCode = lib.mkDefault {};\n",
+            c.allow_mutable_code
+        ));
+    }
+    if c.components.contains(Component::HappyRemote) {
+        extras.push_str(&format!(
+            "  assbox.components.happy-remote.backends = lib.mkDefault [ {} ];\n",
+            c.happy_backends
+                .iter()
+                .map(|id| nix_string(id.as_str()))
+                .collect::<Vec<_>>()
+                .join(" ")
+        ));
+    }
+    extras.push_str(&format!(
+        "  assbox.session.autostart = lib.mkDefault [ {} ];\n",
+        c.autostart
+            .iter()
+            .map(|id| nix_string(id))
+            .collect::<Vec<_>>()
+            .join(" ")
+    ));
     Ok(format!(
         r#"# Assbox installer choices. Override in local.nix using `assbox config edit`.
 {{ lib, ... }}:
@@ -99,7 +138,7 @@ pub fn settings(c: &Choices) -> Result<String> {
   assbox.enable = true;
   networking.hostName = lib.mkDefault {};
   time.timeZone = lib.mkDefault {};
-  assbox.application = lib.mkDefault {};
+  assbox.components = {};
   assbox.presentation = lib.mkDefault {};
   assbox.platform = lib.mkDefault {};
   assbox.display.scale = lib.mkDefault {};
@@ -115,7 +154,7 @@ pub fn settings(c: &Choices) -> Result<String> {
 "#,
         nix_string(c.hostname.as_str()),
         nix_string(&c.timezone),
-        nix_string(c.application.as_str()),
+        component_attributes(c.components),
         nix_string(c.presentation.as_str()),
         nix_string(c.platform.as_str()),
         c.scale,
@@ -125,7 +164,7 @@ pub fn settings(c: &Choices) -> Result<String> {
         c.devices.bluetooth,
         c.devices.suspend,
         c.allow_unfree,
-        ssh
+        ssh + &extras
     ))
 }
 
@@ -207,13 +246,44 @@ pub const LOCAL: &str = r#"# Yours to edit. Assbox never rewrites this file duri
 }
 "#;
 
+pub fn component_attributes(components: Components) -> String {
+    let entries: Vec<_> = components
+        .iter()
+        .map(|c| format!("{}.enable = lib.mkDefault true;", c.as_str()))
+        .collect();
+    format!("{{ {} }}", entries.join(" "))
+}
+
+fn read_component_attributes(text: &str) -> Result<Components> {
+    let body = text
+        .strip_prefix("{ ")
+        .and_then(|s| s.strip_suffix(" }"))
+        .ok_or_else(|| Error::new("custom component attributes"))?;
+    let mut components = Components::default();
+    for entry in body.split_terminator("; ") {
+        let name = entry
+            .strip_suffix(".enable = lib.mkDefault true;")
+            .or_else(|| entry.strip_suffix(".enable = lib.mkDefault true"))
+            .ok_or_else(|| Error::new("custom component entry"))?;
+        let component: Component = name.parse()?;
+        if components.contains(component) {
+            return Err(Error::new("duplicate component"));
+        }
+        components.insert(component);
+    }
+    if component_attributes(components) != text {
+        return Err(Error::new("noncanonical component selection"));
+    }
+    Ok(components)
+}
+
 pub fn selection(
     text: &str,
-    application: Application,
+    components: Components,
     presentation: Presentation,
     accept_unfree: bool,
 ) -> Result<String> {
-    if application == Application::Chatgpt && presentation != Presentation::X11 {
+    if components.contains(Component::ChatgptDesktop) && presentation != Presentation::X11 {
         return Err(Error::new(
             "ChatGPT requires X11; choose an explicitly compatible presentation",
         ));
@@ -223,11 +293,16 @@ pub fn selection(
     let mut consent_count = 0;
     let mut result = String::new();
     for line in text.lines() {
-        if line.starts_with("  assbox.application = ") {
+        if line.starts_with("  assbox.components = ") {
             app_count += 1;
+            let literal = line
+                .strip_prefix("  assbox.components = ")
+                .and_then(|value| value.strip_suffix(';'))
+                .ok_or_else(|| Error::new("custom component selection; edit local.nix instead"))?;
+            read_component_attributes(literal)?;
             result.push_str(&format!(
-                "  assbox.application = lib.mkDefault {};\n",
-                nix_string(application.as_str())
+                "  assbox.components = {};\n",
+                component_attributes(components)
             ));
         } else if line.starts_with("  assbox.presentation = ") {
             presentation_count += 1;

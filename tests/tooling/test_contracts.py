@@ -75,12 +75,12 @@ class ProductSurfaceTests(unittest.TestCase):
 
     def test_profiles_keep_application_and_presentation_independent(self):
         options = re.sub(r"\s+", "", (ROOT / "modules/options.nix").read_text())
-        self.assertIn('["none""chatgpt""opencode""openclaw"]', options)
+        self.assertIn("selectedComponents", options)
         self.assertIn('["headless""x11""wayland"]', options)
         apps = (ROOT / "modules/applications.nix").read_text()
-        self.assertIn('[apps.openclawapps.codexapps.opencode]', re.sub(r"\s+", "", apps))
-        self.assertIn('cfg.application == "opencode"', apps)
-        self.assertIn('cfg.application == "openclaw"', apps)
+        self.assertNotIn("apps.codex", apps)
+        self.assertIn('enabled "opencode-server"', apps)
+        self.assertIn('enabled "openclaw-gateway"', apps)
         self.assertNotIn("--no-sandbox", apps)
 
     def test_device_rules_precede_seat_acl_assignment(self):

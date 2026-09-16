@@ -3,17 +3,33 @@
   description = "Assbox — a NixOS assistant appliance substrate";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    antigravity-packages.url = "github:numtide/llm-agents.nix";
     chatgpt-packages.url = "github:numtide/llm-agents.nix";
-    opencode-packages.url = "github:numtide/llm-agents.nix";
+    claude-code-packages.url = "github:numtide/llm-agents.nix";
+    claude-desktop-packages.url = "github:numtide/llm-agents.nix";
+    codex-packages.url = "github:numtide/llm-agents.nix";
+    cursor-packages.url = "github:numtide/llm-agents.nix";
+    gemini-cli-packages.url = "github:numtide/llm-agents.nix";
+    grok-packages.url = "github:numtide/llm-agents.nix";
+    happy-packages.url = "github:numtide/llm-agents.nix";
     openclaw-packages.url = "github:numtide/llm-agents.nix";
+    opencode-packages.url = "github:numtide/llm-agents.nix";
   };
   outputs =
     {
       self,
       nixpkgs,
+      antigravity-packages,
       chatgpt-packages,
-      opencode-packages,
+      claude-code-packages,
+      claude-desktop-packages,
+      codex-packages,
+      cursor-packages,
+      gemini-cli-packages,
+      grok-packages,
+      happy-packages,
       openclaw-packages,
+      opencode-packages,
       ...
     }:
     let
@@ -35,9 +51,18 @@
         imports = [ ./modules ];
         _module.args.assboxPackage = self.packages.${pkgs.stdenv.hostPlatform.system}.assbox;
         _module.args.assboxApplications = {
+          antigravity = antigravity-packages.packages.${pkgs.stdenv.hostPlatform.system};
           chatgpt = chatgpt-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          opencode = opencode-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          claude-code = claude-code-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          claude-desktop = claude-desktop-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          codex = codex-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          cursor = cursor-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          gemini-cli = gemini-cli-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          grok = grok-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          happy = happy-packages.packages.${pkgs.stdenv.hostPlatform.system};
           openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          opencode = opencode-packages.packages.${pkgs.stdenv.hostPlatform.system};
+
         };
       };
       platform = eachSystem (
@@ -108,6 +133,7 @@
                 cargo-audit
                 vulnix
               ]);
+            ASSBOX_NIX_LIB = "${nixpkgs}/lib";
             ASSBOX_TOOL_PATH = p.tools.path;
             ASSBOX_SOURCE_REVISION = sourceRevision;
             ASSBOX_REPOSITORY_ID = toString releasePolicy.repositoryId;
@@ -126,8 +152,38 @@
           p = platform.${system};
         in
         p.matrix.checks
+        //
+          nixpkgs.lib.genAttrs
+            (map (family: "application-${family}-vm") [
+              "antigravity"
+              "claude-code"
+              "claude-desktop"
+              "codex"
+              "cursor"
+              "gemini-cli"
+              "grok"
+              "happy"
+            ])
+            (
+              name:
+              import ./tests/nix/component-family-vm.nix {
+                inherit module;
+                inherit (p) pkgs;
+                family = nixpkgs.lib.removeSuffix "-vm" (nixpkgs.lib.removePrefix "application-" name);
+              }
+            )
         // {
           workspace = p.assbox;
+          access-lan-vm = import ./tests/nix/access-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+            exposure = "lan";
+          };
+          access-tailscale-vm = import ./tests/nix/access-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+            exposure = "tailscale";
+          };
           policy-vm = import ./tests/nix/policy-vm.nix {
             inherit module;
             inherit (p) pkgs;
@@ -146,9 +202,17 @@
             inputs = {
               inherit
                 nixpkgs
+                antigravity-packages
                 chatgpt-packages
-                opencode-packages
+                claude-code-packages
+                claude-desktop-packages
+                codex-packages
+                cursor-packages
+                gemini-cli-packages
+                grok-packages
+                happy-packages
                 openclaw-packages
+                opencode-packages
                 ;
             };
           };
@@ -158,9 +222,17 @@
             inputs = {
               inherit
                 nixpkgs
+                antigravity-packages
                 chatgpt-packages
-                opencode-packages
+                claude-code-packages
+                claude-desktop-packages
+                codex-packages
+                cursor-packages
+                gemini-cli-packages
+                grok-packages
+                happy-packages
                 openclaw-packages
+                opencode-packages
                 ;
             };
           };

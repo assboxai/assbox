@@ -60,7 +60,10 @@ impl Architecture {
     }
 }
 
-named_enum!(Application { None => "none", Chatgpt => "chatgpt", Opencode => "opencode", Openclaw => "openclaw" });
+mod component_ids;
+pub use component_ids::{Component, RELEASE_HELD_INPUT_CHECK};
+mod components;
+pub use components::Components;
 named_enum!(Presentation { Headless => "headless", X11 => "x11", Wayland => "wayland" });
 named_enum!(Platform { Generic => "generic", AppleIntel => "apple-intel", Macbookpro11_1 => "macbookpro11-1", Macbookpro12_1 => "macbookpro12-1" });
 named_enum!(Firmware { Uefi => "uefi", Bios => "bios" });
@@ -143,13 +146,17 @@ pub struct DevicePolicy {
 pub struct Choices {
     pub hostname: Hostname,
     pub timezone: String,
-    pub application: Application,
+    pub components: Components,
     pub presentation: Presentation,
     pub platform: Platform,
     pub devices: DevicePolicy,
     pub scale: u8,
     pub allow_unfree: bool,
+    pub allow_mutable_code: bool,
+    pub autostart: Vec<String>,
     pub admin_ssh_key: Option<String>,
+    pub agent_ssh_key: Option<String>,
+    pub happy_backends: Components,
 }
 impl Choices {
     pub fn validate(&self) -> Result<()> {
@@ -169,19 +176,60 @@ impl Choices {
         {
             return Err(Error::new("invalid timezone identifier"));
         }
-        if self.application == Application::Chatgpt {
-            if self.presentation != Presentation::X11 {
+        self.components
+            .validate(self.presentation, self.allow_unfree)?;
+        if !self.allow_mutable_code && self.components.iter().any(Component::mutable_code) {
+            return Err(Error::new(
+                "selected components require explicit consent to provider/client-managed executable downloads",
+            ));
+        }
+        let mut launchers = std::collections::BTreeSet::new();
+        for launcher in &self.autostart {
+            let owner = match launcher.as_str() {
+                "chatgpt-desktop" => Component::ChatgptDesktop,
+                "claude-desktop" => Component::ClaudeDesktop,
+                "vscode" => Component::Vscode,
+                "zed" => Component::Zed,
+                "opencode-attach" => Component::OpencodeServer,
+                "openclaw-dashboard" => Component::OpenclawGateway,
+                _ => {
+                    return Err(Error::new(
+                        "unknown installer graphical launcher; configure GUI Emacs explicitly in local.nix",
+                    ));
+                }
+            };
+            if self.presentation == Presentation::Headless
+                || !self.components.contains(owner)
+                || !launchers.insert(launcher)
+            {
                 return Err(Error::new(
-                    "the ChatGPT application requires the X11 presentation",
-                ));
-            }
-            if !self.allow_unfree {
-                return Err(Error::new(
-                    "ChatGPT requires explicit acceptance of proprietary packages",
+                    "graphical autostart requires a unique selected component and a headed presentation",
                 ));
             }
         }
-        if let Some(key) = &self.admin_ssh_key {
+        if self.components.contains(Component::HappyRemote)
+            && (self.happy_backends == Components::default()
+                || self.happy_backends.iter().any(|backend| {
+                    !matches!(backend, Component::Codex | Component::ClaudeCode)
+                        || !self.components.contains(backend)
+                }))
+        {
+            return Err(Error::new(
+                "Happy requires explicit installed Codex/Claude backends",
+            ));
+        }
+        if (self.components.contains(Component::VscodeRemoteHost)
+            || self.components.contains(Component::ZedRemoteHost))
+            && self.agent_ssh_key.is_none()
+        {
+            return Err(Error::new(
+                "SSH editor hosts require an agent SSH public key",
+            ));
+        }
+        for key in [&self.admin_ssh_key, &self.agent_ssh_key]
+            .into_iter()
+            .flatten()
+        {
             let kind = key.split_whitespace().next().unwrap_or("");
             let known = matches!(
                 kind,
@@ -369,7 +417,7 @@ pub struct PreparedRootEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Audit {
     pub enabled: bool,
-    pub application: Application,
+    pub components: Components,
     pub presentation: Presentation,
     pub firewall: bool,
     pub root_locked: bool,

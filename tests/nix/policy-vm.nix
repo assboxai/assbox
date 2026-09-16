@@ -19,7 +19,7 @@ pkgs.testers.runNixOSTest {
     assbox.enable = true;
     assbox.updates.enable = false;
     assbox.presentation = "headless";
-    assbox.application = "none";
+    assbox.components = { };
     boot.loader.systemd-boot.enable = lib.mkForce arm;
     boot.loader.grub.enable = lib.mkForce false;
     systemd.services.assbox-boot-check.enable = lib.mkForce false;
@@ -69,7 +69,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("test $(id -Gn agent | tr ' ' '\\n' | grep -Ec '^(wheel|disk|input|docker|networkmanager)$') -eq 0")
     machine.succeed("test $(stat -c %a /var/lib/assbox) = 700")
     runtime = json.loads(machine.succeed("cat /etc/assbox/runtime.json"))
-    assert runtime["application"] == "none"
+    assert runtime["selectedComponents"] == []
     assert runtime["presentation"] == "headless"
     assert runtime["updates"]["calendar"] == "*-*-* 18:00:00"
 

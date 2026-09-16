@@ -30,7 +30,7 @@ in
   config = lib.mkIf cfg.enable {
     assbox.audit = {
       enabled = cfg.enable;
-      inherit (cfg) application presentation;
+      inherit (cfg) selectedComponents presentation;
       boot = cfg.boot.mode;
       firewall = config.networking.firewall.enable;
       rootLocked = locked config.users.users.root;

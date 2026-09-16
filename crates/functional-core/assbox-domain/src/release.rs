@@ -87,8 +87,8 @@ impl ReleaseManifest {
     /// This does NOT imply that a signature has been checked.
     pub fn from_fields(f: &[String]) -> Result<Self> {
         if f.len() != 14
-            || f[0] != "2"
-            || f[1] != "2"
+            || f[0] != "3"
+            || f[1] != "3"
             || f[2] != "stable"
             || f[11] != "aarch64-linux,x86_64-linux"
         {

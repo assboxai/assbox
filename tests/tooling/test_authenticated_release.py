@@ -23,6 +23,7 @@ class AuthenticatedReleaseTests(unittest.TestCase):
 
     def decode(self, name, value):
         decoder = re.search(r'const '+name+r': &str = r#"(.*?)"#;', self.source, re.S).group(1)
+        decoder = decoder.replace('@HELD_CHECK@', ' and '.join(f'. != \"{f}-packages\"' for f in data.APPLICATIONS))
         return subprocess.run(['jq', '-j', decoder], input=json.dumps(value), capture_output=True, text=True, check=False)
 
     def test_manifest_decoder_accepts_canonical_and_rejects_bad_schema_types(self):

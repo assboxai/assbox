@@ -25,7 +25,7 @@ pub fn check_evaluation(c: &Commands, flake: &str) -> Result<()> {
     )?;
     let f = c.jq_fields(
         &json,
-        r#"[.enabled,.application,.presentation,.firewall,.rootLocked,.agentLocked,
+        r#"[.enabled,(.selectedComponents|join(",")),.presentation,.firewall,.rootLocked,.agentLocked,
         (.agentGroups|join(",")),(.trustedUsers|join(",")),.sandbox,.requireSignatures,
         .acceptFlakeConfig,.automount,.passwordlessSudo,.efiWrites,.boot] |
         .[] | tostring + "\u0000""#,
@@ -49,7 +49,7 @@ pub fn check_evaluation(c: &Commands, flake: &str) -> Result<()> {
     };
     assbox_policy::validate_audit(&Audit {
         enabled: yes(&f[0])?,
-        application: f[1].parse()?,
+        components: f[1].parse()?,
         presentation: f[2].parse()?,
         firewall: yes(&f[3])?,
         root_locked: yes(&f[4])?,

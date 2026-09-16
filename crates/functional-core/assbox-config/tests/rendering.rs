@@ -6,19 +6,23 @@ fn choices() -> Choices {
     Choices {
         hostname: Hostname::parse("assbox-local").unwrap(),
         timezone: "UTC".into(),
-        application: Application::None,
+        components: Components::default(),
         presentation: Presentation::Headless,
         platform: Platform::Generic,
         devices: DevicePolicy::default(),
         scale: 1,
         allow_unfree: false,
+        allow_mutable_code: true,
+        autostart: Vec::new(),
         admin_ssh_key: None,
+        agent_ssh_key: None,
+        happy_backends: Components::default(),
     }
 }
 fn release() -> assbox_domain::release::ReleaseManifest {
     let fields = [
-        "2",
-        "2",
+        "3",
+        "3",
         "stable",
         "r-42",
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -35,7 +39,7 @@ fn release() -> assbox_domain::release::ReleaseManifest {
     .map(str::to_owned);
     assbox_domain::release::ReleaseManifest::from_fields(&fields).unwrap()
 }
-// All config rendering tests use this schema-2 fixture, including the local-flake
+// All config rendering tests use this schema-3 fixture, including the local-flake
 // regression. It is test-only data, not a release/cryptographic authorization.
 #[test]
 fn local_flake_imports_machine_state_not_upstream_hosts() {
@@ -105,7 +109,7 @@ fn application_selection_has_no_implicit_presentation_change() {
     assert!(
         selection(
             &original,
-            Application::Chatgpt,
+            Components::from(Component::ChatgptDesktop),
             Presentation::Wayland,
             false
         )
@@ -113,18 +117,18 @@ fn application_selection_has_no_implicit_presentation_change() {
     );
     let next = selection(
         &original,
-        Application::Openclaw,
+        Components::from(Component::Openclaw),
         Presentation::Wayland,
         false,
     )
     .unwrap();
-    assert!(next.contains("assbox.application = lib.mkDefault \"openclaw\""));
+    assert!(next.contains("assbox.components = { openclaw.enable = lib.mkDefault true; }"));
     assert!(next.contains("assbox.presentation = lib.mkDefault \"wayland\""));
     assert!(next.contains("networking.hostName = lib.mkDefault \"assbox-local\""));
     assert!(
         selection(
             "{ ... }: {}",
-            Application::None,
+            Components::default(),
             Presentation::Headless,
             false
         )
@@ -132,8 +136,8 @@ fn application_selection_has_no_implicit_presentation_change() {
     );
     assert!(
         selection(
-            &(original.clone() + "  assbox.application = lib.mkDefault \"none\";\n"),
-            Application::None,
+            &(original.clone() + "  assbox.components = {  };\n"),
+            Components::default(),
             Presentation::Headless,
             false
         )
@@ -180,12 +184,30 @@ fn local_flake_system_and_package_search_follow_observed_architecture() {
 #[test]
 fn selection_changes_consent_only_after_an_explicit_grant() {
     let original = settings(&choices()).unwrap();
-    let no_grant = selection(&original, Application::Chatgpt, Presentation::X11, false).unwrap();
+    let no_grant = selection(
+        &original,
+        Components::from(Component::ChatgptDesktop),
+        Presentation::X11,
+        false,
+    )
+    .unwrap();
     assert!(no_grant.contains("assbox.acceptUnfree = lib.mkDefault false;"));
-    let granted = selection(&original, Application::Chatgpt, Presentation::X11, true).unwrap();
+    let granted = selection(
+        &original,
+        Components::from(Component::ChatgptDesktop),
+        Presentation::X11,
+        true,
+    )
+    .unwrap();
     assert!(granted.contains("assbox.acceptUnfree = lib.mkDefault true;"));
     assert!(!granted.contains("assbox.acceptUnfree = lib.mkDefault false;"));
-    let switched = selection(&granted, Application::None, Presentation::Headless, false).unwrap();
+    let switched = selection(
+        &granted,
+        Components::default(),
+        Presentation::Headless,
+        false,
+    )
+    .unwrap();
     assert!(switched.contains("assbox.acceptUnfree = lib.mkDefault true;"));
     for bad in [
         original.replace("  assbox.acceptUnfree = lib.mkDefault false;\n", ""),
@@ -195,7 +217,15 @@ fn selection_changes_consent_only_after_an_explicit_grant() {
         ),
         original.clone() + "  assbox.acceptUnfree = lib.mkDefault false;\n",
     ] {
-        assert!(selection(&bad, Application::Chatgpt, Presentation::X11, true).is_err());
+        assert!(
+            selection(
+                &bad,
+                Components::from(Component::ChatgptDesktop),
+                Presentation::X11,
+                true
+            )
+            .is_err()
+        );
     }
 }
 
@@ -336,13 +366,13 @@ fn console_only_does_not_enable_ssh_but_an_explicit_key_does() {
     assert!(
         settings(&c)
             .unwrap()
-            .contains("assbox.network.ssh.enable = lib.mkDefault false;")
+            .contains("assbox.network.ssh.admin.enable = lib.mkDefault false;")
     );
     c.admin_ssh_key =
         Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKTestFixtureOnlyNotARealKeyExample test".into());
     assert!(
         settings(&c)
             .unwrap()
-            .contains("assbox.network.ssh.enable = lib.mkDefault true;")
+            .contains("assbox.network.ssh.admin.enable = lib.mkDefault true;")
     );
 }

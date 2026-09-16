@@ -19,10 +19,10 @@ const CERT_IDENTITY: &str =
     "https://github.com/assboxai/assbox/.github/workflows/release.yml@refs/heads/master";
 const MANIFEST_FIELDS: &str = r#"
   if (keys | sort) != (["schema","protocol","channel","tag","coreCommit","coreVersion","issuedAt","expiresAt","sourceSha256","sourceNarHash","lockSha256","systems","heldInputs","previousTag","previousManifestSha256"] | sort)
-    or .schema != 2 or .protocol != 2
+    or .schema != 3 or .protocol != 3
     or (.heldInputs | type) != "array" or (.systems | sort) != ["aarch64-linux","x86_64-linux"]
     or (.heldInputs | sort | unique) != .heldInputs
-    or any(.heldInputs[]; . != "chatgpt-packages" and . != "opencode-packages" and . != "openclaw-packages")
+    or any(.heldInputs[]; @HELD_CHECK@)
     or any([.channel,.tag,.coreCommit,.coreVersion,.sourceSha256,.sourceNarHash,.lockSha256][]; type != "string")
     or any([.previousTag,.previousManifestSha256][]; type != "string" and type != "null")
     or ((.previousTag == null) != (.previousManifestSha256 == null))
@@ -151,7 +151,10 @@ fn manifest_from_bytes(c: &Commands, path: &Path) -> Result<(ReleaseManifest, Ve
             "release manifest must be canonical sorted JSON with one final newline",
         ));
     }
-    let manifest = ReleaseManifest::from_fields(&c.jq_fields(&bytes, MANIFEST_FIELDS)?)?;
+    let manifest = ReleaseManifest::from_fields(&c.jq_fields(
+        &bytes,
+        &MANIFEST_FIELDS.replace("@HELD_CHECK@", assbox_domain::RELEASE_HELD_INPUT_CHECK),
+    )?)?;
     assbox_policy::release::validate_parent_shape(&manifest)?;
     Ok((manifest, bytes))
 }

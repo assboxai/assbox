@@ -123,20 +123,13 @@ pub fn validate_machine(
     Ok(())
 }
 
-pub fn application_supported(
+pub fn components_supported(
     architecture: Architecture,
-    application: Application,
+    components: Components,
     presentation: Presentation,
 ) -> bool {
-    match (architecture, application) {
-        (Architecture::X86_64 | Architecture::Aarch64, Application::Chatgpt) => {
-            presentation == Presentation::X11
-        }
-        (
-            Architecture::X86_64 | Architecture::Aarch64,
-            Application::None | Application::Opencode | Application::Openclaw,
-        ) => true,
-    }
+    matches!(architecture, Architecture::X86_64 | Architecture::Aarch64)
+        && components.validate(presentation, true).is_ok()
 }
 
 fn validate_live_media(inv: &Inventory) -> Result<()> {
@@ -244,9 +237,9 @@ pub fn plan_install(inv: Inventory, req: InstallRequest) -> Result<InstallPlan> 
         req.choices.platform,
         req.choices.devices.wifi,
     )?;
-    if !application_supported(
+    if !components_supported(
         inv.architecture,
-        req.choices.application,
+        req.choices.components,
         req.choices.presentation,
     ) {
         return Err(Error::new(
@@ -576,7 +569,7 @@ pub fn validate_audit(a: &Audit) -> Result<()> {
             "evaluated NixOS configuration violates the Assbox security contract",
         ));
     }
-    if a.application == Application::Chatgpt && a.presentation != Presentation::X11 {
+    if a.components.contains(Component::ChatgptDesktop) && a.presentation != Presentation::X11 {
         return Err(Error::new("ChatGPT requires X11"));
     }
     if a.agent_groups.iter().any(|g| {
@@ -829,20 +822,10 @@ pub fn validate_prepared_root(entries: &[PreparedRootEntry]) -> Result<()> {
     Ok(())
 }
 
-pub fn validate_application_selection(
-    application: Application,
+pub fn validate_component_selection(
+    components: Components,
     presentation: Presentation,
     accepted_unfree: bool,
 ) -> Result<()> {
-    if application == Application::Chatgpt {
-        if presentation != Presentation::X11 {
-            return Err(Error::new("ChatGPT requires X11; select chatgpt x11"));
-        }
-        if !accepted_unfree {
-            return Err(Error::new(
-                "ChatGPT requires explicit proprietary-package consent. Review it, then repeat with --accept-unfree, or set assbox.acceptUnfree in local.nix",
-            ));
-        }
-    }
-    Ok(())
+    components.validate(presentation, accepted_unfree)
 }

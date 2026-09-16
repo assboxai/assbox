@@ -360,6 +360,6 @@ pub fn runtime_json() -> Result<Vec<u8>> {
 }
 pub fn runtime(c: &Commands) -> Result<Vec<String>> {
     let bytes = runtime_json()?;
-    c.jq_fields(&bytes,r#"[.application,.presentation,.updates.calendar,(.updates.rebootGraceSeconds|tostring),
+    c.jq_fields(&bytes,r#"[(.selectedComponents|join(",")),.presentation,.updates.calendar,(.updates.rebootGraceSeconds|tostring),
         (.updates.minimumBatteryPercent|tostring),(.updates.enable|tostring)] | .[] | . + "\u0000""#)
 }

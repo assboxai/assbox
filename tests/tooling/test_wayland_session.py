@@ -97,11 +97,10 @@ sys.exit(int(os.environ.get('WM_STATUS','0')))
         self.assertNotIn('agreety',source)
 
     def test_console_only_and_unfree_labels_match_actual_policy(self):
-        base=(ROOT/'modules/base.nix').read_text(); settings=(ROOT/'crates/functional-core/assbox-config/src/lib.rs').read_text()
-        self.assertIn('enable = cfg.network.ssh.enable;',base)
-        self.assertIn('lib.optionals cfg.network.ssh.enable [ 22 ]',base)
-        self.assertIn('enable = cfg.network.discoverable;',base)
-        self.assertIn('assbox.network.ssh.enable = lib.mkDefault false;',settings)
+        base=(ROOT/'modules/access.nix').read_text()
+        self.assertIn('enable = enabled;',base)
+        self.assertIn('allowedTCPPorts = lib.optional enabled 22',base)
+        self.assertIn('enable = cfg.network.discoverable;', (ROOT/'modules/base.nix').read_text())
         options=(ROOT/'modules/options.nix').read_text()
         self.assertIn('machine-wide',options.lower())
 

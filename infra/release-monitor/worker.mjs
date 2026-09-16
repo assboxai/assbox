@@ -97,7 +97,7 @@ export function historyHead(releases, tags) {
 export function assessRelease(latest, head, manifest, now) {
   if (!object(latest) || latest.immutable !== true || latest.draft !== false || latest.prerelease !== false) return "release-unavailable";
   if (latest.id !== head.id || latest.tag_name !== head.tag_name) return "latest-not-history-head";
-  if (!object(manifest) || manifest.schema !== 2 || manifest.protocol !== 2 || manifest.channel !== "stable" || manifest.tag !== head.tag_name ||
+  if (!object(manifest) || manifest.schema !== 3 || manifest.protocol !== 3 || manifest.channel !== "stable" || manifest.tag !== head.tag_name ||
       !Number.isSafeInteger(manifest.issuedAt) || manifest.issuedAt <= 0 || !Number.isSafeInteger(manifest.expiresAt) ||
       manifest.issuedAt > now + 300 || manifest.expiresAt - manifest.issuedAt !== 604800) return "release-metadata-invalid";
   if (manifest.expiresAt - now < 48 * 3600) return "release-expiry-near";

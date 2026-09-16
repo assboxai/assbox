@@ -39,7 +39,7 @@ def prepare(source, destination):
     urls, previous = {}, None
     for number in [1, 2]:
         tag = f'r-{number}'
-        manifest = dict(schema=2, protocol=2, channel='stable', tag=tag,
+        manifest = dict(schema=3, protocol=3, channel='stable', tag=tag,
                         coreCommit='a' * 40, coreVersion=version, issuedAt=issued + number,
                         expiresAt=issued + number + 604800, sourceSha256=digest(raw),
                         sourceNarHash=nar, lockSha256=digest(lock),

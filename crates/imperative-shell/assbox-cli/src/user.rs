@@ -10,13 +10,17 @@ use std::{
 };
 
 fn interactive(program: &str, args: &[&str]) -> Result<()> {
+    interactive_executable(&installed_program(program)?, args)
+}
+
+fn interactive_executable(program: &Path, args: &[&str]) -> Result<()> {
     let uid = Commands.text("id", &["-u"])?;
     let uid = uid
         .trim()
         .parse::<u32>()
         .map_err(|_| Error::new("invalid user identity"))?;
     let runtime = format!("/run/user/{uid}");
-    let status = Command::new(installed_program(program)?)
+    let status = Command::new(program)
         .args(args)
         .env(
             "PATH",
@@ -34,32 +38,42 @@ fn interactive(program: &str, args: &[&str]) -> Result<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(Error::new(format!("{program} exited with {status}")))
+        Err(Error::new(format!(
+            "{} exited with {status}",
+            program.display()
+        )))
     }
 }
-pub fn setup() -> Result<()> {
+pub fn setup(component: Component) -> Result<()> {
     if Commands.text("id", &["-un"])?.trim() != "agent" {
         return Err(Error::new(
-            "run onboarding as the unprivileged agent user: sudo -iu agent assbox application setup",
+            "run onboarding as the unprivileged agent user: sudo -iu agent assbox component setup ID",
         ));
     }
     let runtime = probe::runtime(&Commands)?;
-    let application: Application = runtime
+    let selected: Components = runtime
         .first()
-        .ok_or_else(|| Error::new("application configuration missing"))?
+        .ok_or_else(|| Error::new("component configuration missing"))?
         .parse()?;
-    match application {
-        Application::None => {
-            println!("No application selected. The terminal and ordinary NixOS tools are ready.");
-            Ok(())
+    if !selected.contains(component) {
+        return Err(Error::new("component is not enabled"));
+    }
+    let onboarding = Path::new("/etc/assbox/onboarding").join(component.as_str());
+    if onboarding.exists() {
+        let script = files::io(fs::canonicalize(onboarding))?;
+        if !script.starts_with("/nix/store") {
+            return Err(Error::new("onboarding script is not immutable Nix code"));
         }
-        Application::Chatgpt => {
+        return interactive_executable(&script, &[]);
+    }
+    match component {
+        Component::ChatgptDesktop => {
             println!(
-                "Sign in using the ChatGPT window in the X11 session. The Linux Remote workflow is supported; this profile is not headless."
+                "Sign in using the ChatGPT window in the X11 session. Linux Remote pairing is not yet established."
             );
             Ok(())
         }
-        Application::Opencode => {
+        Component::OpencodeServer => {
             let dir = Path::new("/home/agent/.config/assbox");
             files::io(fs::create_dir_all(dir))?;
             files::io(fs::set_permissions(dir, fs::Permissions::from_mode(0o700)))?;
@@ -97,31 +111,34 @@ pub fn setup() -> Result<()> {
                 "systemctl",
                 &["--user", "restart", "assbox-opencode.service"],
             )?;
-            if runtime.get(1).is_some_and(|p| p != "headless") {
-                interactive(
-                    "systemctl",
-                    &["--user", "restart", "assbox-opencode-ui.service"],
-                )?;
-            }
             println!(
                 "OpenCode server is configured on loopback. Its password stays in ~/.config/assbox/opencode.env."
             );
             Ok(())
         }
-        Application::Openclaw => {
+        Component::OpenclawGateway => {
             interactive("openclaw", &["onboard", "--skip-daemon"])?;
             interactive(
                 "systemctl",
                 &["--user", "restart", "assbox-openclaw.service"],
             )?;
-            if runtime.get(1).is_some_and(|p| p != "headless") {
-                interactive(
-                    "systemctl",
-                    &["--user", "restart", "assbox-openclaw-ui.service"],
-                )?;
-            }
             println!(
-                "Assbox owns the user service. Codex and OpenCode are also installed; authenticate them separately when needed."
+                "Assbox owns the gateway service. Other agent runtimes are separate selections."
+            );
+            Ok(())
+        }
+        Component::Happy => interactive("happy", &["auth", "login"]),
+        Component::Codex => interactive("codex", &["login"]),
+        Component::ClaudeCode => interactive("claude", &[]),
+        Component::GeminiCli => interactive("gemini", &[]),
+        Component::Grok => interactive("grok", &[]),
+        Component::CursorAgent => interactive("cursor-agent", &["login"]),
+        Component::AntigravityCli => interactive("agy", &[]),
+        Component::Opencode => interactive("opencode", &["auth", "login"]),
+        Component::Openclaw => interactive("openclaw", &["onboard", "--skip-daemon"]),
+        _ => {
+            println!(
+                "{component}: see /etc/assbox/components.json for setup requirements. No authentication or remote health is inferred from installation."
             );
             Ok(())
         }
