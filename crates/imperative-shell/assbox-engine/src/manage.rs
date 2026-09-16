@@ -36,9 +36,14 @@ fn marker(name: &str) -> PathBuf {
     Path::new(TXN).join(name)
 }
 fn journal(phase: Phase) -> Result<()> {
-    files::atomic_write(&marker("phase"), phase.as_str().as_bytes(), 0o600)
+    files::atomic_write(&marker("phase"), phase.as_str().as_bytes(), 0o600)?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint(&format!("manage-{}", phase.as_str()))?;
+    Ok(())
 }
 fn remove_txn() -> Result<()> {
+    #[cfg(test)]
+    crate::acceptance::checkpoint("manage-pre-retire")?;
     files::retire_directory(Path::new(TXN))
 }
 fn snapshot_files(path: &Path) -> Result<BTreeSet<PathBuf>> {
@@ -120,7 +125,12 @@ fn begin() -> Result<()> {
             Phase::Prepared.as_str().as_bytes(),
             0o600,
         )?;
-        files::publish_directory(&prepared, Path::new(TXN))
+        #[cfg(test)]
+        crate::acceptance::checkpoint("manage-pre-publish")?;
+        files::publish_directory(&prepared, Path::new(TXN))?;
+        #[cfg(test)]
+        crate::acceptance::checkpoint("manage-prepared")?;
+        Ok(())
     })();
     // If rename succeeded but parent fsync failed, retain the active transaction.
     if result.is_err() && files::entry_exists(&prepared)? {
@@ -188,14 +198,20 @@ fn commit(c: &Commands, new_system: &str, changed_files: &[&str], mode: &str) ->
                 &files::read(&marker("candidate").join(name))?,
                 0o644,
             )?;
+            #[cfg(test)]
+            crate::acceptance::checkpoint(&format!("manage-source-{name}"))?;
         }
     }
     journal(Phase::Activating)?;
     if old != new_system {
         c.run("nix-env", &["--profile", PROFILE, "--set", new_system])?;
     }
+    #[cfg(test)]
+    crate::acceptance::checkpoint("manage-profile")?;
     guard.verify(c)?;
     c.activate(new_system, mode)?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("manage-activated")?;
     guard.verify(c)?;
     if mode == "boot" && probe::current_system()? != new_system {
         files::atomic_write(Path::new(PENDING), new_system.as_bytes(), 0o600)?;

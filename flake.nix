@@ -140,6 +140,30 @@
             inherit module;
             inherit (p) pkgs;
           };
+          install-boot-vm = import ./tests/nix/install-boot-vm.nix {
+            inherit module;
+            inherit (p) pkgs assbox;
+            inputs = {
+              inherit
+                nixpkgs
+                chatgpt-packages
+                opencode-packages
+                openclaw-packages
+                ;
+            };
+          };
+          activation-recovery-vm = import ./tests/nix/activation-recovery-vm.nix {
+            inherit module;
+            inherit (p) pkgs assbox;
+            inputs = {
+              inherit
+                nixpkgs
+                chatgpt-packages
+                opencode-packages
+                openclaw-packages
+                ;
+            };
+          };
           authenticated-release-vm = import ./tests/nix/authenticated-release-vm.nix {
             inherit (p) pkgs assbox;
           };

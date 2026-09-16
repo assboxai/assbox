@@ -16,7 +16,10 @@ case = json.loads((root / 'case.json').read_text())
 assert not any(os.environ.get(k) for k in ('GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN'))
 with (root / 'calls.jsonl').open('a') as log:
     log.write(json.dumps([tool, *args]) + '\n')
-if tool == 'timedatectl':
+if tool == 'systemd-ask-password':
+    assert args in [['Choose an administrator password:'], ['Repeat the administrator password:']]
+    print('disposable-test-password')
+elif tool == 'timedatectl':
     assert args == ['show', '--property=NTPSynchronized', '--value']
     print(case.get('time', 'yes'))
 elif tool == 'curl':

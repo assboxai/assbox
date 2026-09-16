@@ -54,3 +54,91 @@ fn release_fetch() {
         assert!(!files::entry_exists(&directory.join("accepted-floor")).unwrap());
     }
 }
+
+/// Deliberate cut points exist only in this noninstalled test executable.
+pub(crate) fn checkpoint(name: &str) -> assbox_domain::Result<()> {
+    let control = Path::new("/var/lib/assbox-acceptance/cut");
+    if !control.exists() {
+        return Ok(());
+    }
+    require_vm();
+    let value = files::text(control)?;
+    if value.trim() == format!("fail:{name}") {
+        return Err(assbox_domain::Error::new(format!(
+            "injected failure: {name}"
+        )));
+    }
+    if value.trim() == format!("pause:{name}") {
+        files::atomic_write(
+            Path::new("/var/lib/assbox-acceptance/reached"),
+            name.as_bytes(),
+            0o600,
+        )?;
+        while control.exists() {
+            assbox_system::cancellation::check()?;
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn install_configuration(directory: &Path) -> assbox_domain::Result<()> {
+    require_vm();
+    let local = files::read(Path::new("/etc/assbox-acceptance-local.nix"))?;
+    files::atomic_write(&directory.join("local.nix"), &local, 0o644)
+}
+
+#[test]
+#[ignore = "requires disposable prepared disks and fixture release transport"]
+fn install_apply() {
+    use assbox_domain::*;
+    require_vm();
+    let values = Commands
+        .jq_fields(
+            &files::read(Path::new("/var/lib/assbox-acceptance/install.json")).unwrap(),
+            r#"[.root,.esp,.backup,.platform,.key] | .[] | . + "\u0000""#,
+        )
+        .unwrap();
+    assert_eq!(values.len(), 5);
+    let request = InstallRequest {
+        root: values[0].clone(),
+        esp: (!values[1].is_empty()).then(|| values[1].clone()),
+        backup: values[2].clone(),
+        choices: Choices {
+            hostname: Hostname::parse("assbox-vm").unwrap(),
+            timezone: "UTC".into(),
+            application: Application::None,
+            presentation: Presentation::Headless,
+            platform: values[3].parse().unwrap(),
+            devices: DevicePolicy::default(),
+            scale: 1,
+            allow_unfree: false,
+            admin_ssh_key: Some(values[4].clone()),
+        },
+    };
+    let plan =
+        assbox_policy::plan_install(assbox_system::probe::inventory(&Commands).unwrap(), request)
+            .unwrap();
+    crate::install::apply(plan, Some("r-1")).unwrap();
+}
+
+#[test]
+#[ignore = "requires an installed disposable Assbox system"]
+fn management() {
+    use assbox_domain::PackageName;
+    require_vm();
+    match std::env::var("ASSBOX_TEST_OPERATION").unwrap().as_str() {
+        "add" => crate::manage::package_change(PackageName::parse("hello").unwrap(), true),
+        "remove" => crate::manage::package_change(PackageName::parse("hello").unwrap(), false),
+        "stage" => crate::manage::rebuild(true),
+        "switch" => crate::manage::rebuild(false),
+        "update" => crate::manage::update(false),
+        "maintenance" => crate::manage::maintenance(false),
+        "retry" => crate::manage::maintenance(true),
+        "recover" => crate::manage::recover(false),
+        "recover-rollback" => crate::manage::recover(true),
+        "cleanup" => crate::manage::cleanup(),
+        operation => panic!("unknown operation {operation}"),
+    }
+    .unwrap();
+}

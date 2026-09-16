@@ -332,6 +332,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             files::path_text(&config.join("hardware-configuration.nix"))?,
         ],
     )?;
+    #[cfg(test)]
+    crate::acceptance::install_configuration(&config)?;
     // Ask real Nix to validate the rebased graph; it is forbidden to update pins.
     let local = format!("path:{}", files::path_text(&config)?);
     c.run("nix", &["flake", "lock", "--no-update-lock-file", &local])?;
@@ -534,10 +536,14 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         return Err(Error::new("installation write intent read-back failed"));
     }
     recheck(&plan, &c, &[&backup])?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-pre-write")?;
     // FIRST TARGET WRITE: preflight and independent backup succeeded. A failed
     // build can now leave an incomplete Linux root; boot files stay read-only.
     let mut root = Mount::new(&c, &plan.root().path, &point("target"), "rw")?;
     files::atomic_write(&root.point.join(".assbox-install.json"), &record, 0o600)?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-target-writes")?;
     let mut esp = if let Some(p) = plan.esp() {
         let parent = make_dirs(&root.point, "boot")?;
         Some(Mount::new(
@@ -599,6 +605,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         files::path_text(&installed_config)?
     );
     write_phase(&c, &root.point, &record, "building", None)?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-building")?;
     let system = loop {
         recheck(&plan, &c, &mounts)?;
         crate::release::check_freshness(&c, &fetched.release.manifest)?;
@@ -655,6 +663,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             "installation configuration changed during build",
         ));
     }
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-built")?;
     crate::boot_guard::verify_install_target_in_store(&c, &root.point, &system, &plan)?;
     crate::source::verify_local_lock(&c, &installed_config, &fetched.release.manifest)?;
     if let Some(e) = &esp {
@@ -688,6 +698,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         mounts.push(e);
     }
     recheck(&plan, &c, &mounts)?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-activating")?;
     // Install this already-built closure. Never evaluate/refetch the machine flake here.
     cancellation::run(
         &c,
@@ -702,6 +714,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         ],
         &logs,
     )?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-activated")?;
     c.run("sync", &[])?;
     recheck(&plan, &c, &mounts)?;
     if c.capture("sfdisk", &["--json", &plan.root().parent])? != before_table {
@@ -735,6 +749,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         return Err(Error::new("build root link changed unexpectedly"));
     }
     io(fs::remove_file(&output_link))?;
+    #[cfg(test)]
+    crate::acceptance::checkpoint("install-completing")?;
     write_phase(&c, &root.point, &record, "complete", Some(&system))?;
     drop(mounts);
     if let Some(e) = &mut esp {
