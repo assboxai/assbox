@@ -134,10 +134,7 @@ fn installed_wifi(c: &Commands, enabled: bool) -> Result<Option<String>> {
         "Installed Wi-Fi SSID (personal WPA; blank means configure later from the admin console): "
     );
     files::io(io::stdout().flush())?;
-    let mut ssid = String::new();
-    if files::io(io::stdin().read_line(&mut ssid))? == 0 {
-        return Err(Error::new("input closed before network setup"));
-    }
+    let ssid = cancellation::read_line()?;
     let ssid = ssid.trim_end_matches(['\r', '\n']);
     if ssid.is_empty() {
         println!(
@@ -145,7 +142,7 @@ fn installed_wifi(c: &Commands, enabled: bool) -> Result<Option<String>> {
         );
         return Ok(None);
     }
-    let bytes = c.capture("systemd-ask-password", &["Installed Wi-Fi passphrase:"])?;
+    let bytes = cancellation::password(c, "Installed Wi-Fi passphrase:")?;
     let password =
         String::from_utf8(bytes).map_err(|_| Error::new("Wi-Fi password must be UTF-8"))?;
     assbox_config::wifi_keyfile(ssid, password.trim_end_matches(['\r', '\n'])).map(Some)
@@ -480,14 +477,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     }
     recheck(&plan, &c, &[&backup])?;
     // Password is obtained before target writes and never enters argv or Nix source.
-    let password = c.capture(
-        "systemd-ask-password",
-        &["Choose an administrator password:"],
-    )?;
-    let confirm = c.capture(
-        "systemd-ask-password",
-        &["Repeat the administrator password:"],
-    )?;
+    let password = cancellation::password(&c, "Choose an administrator password:")?;
+    let confirm = cancellation::password(&c, "Repeat the administrator password:")?;
     if password != confirm || password.iter().filter(|b| !b.is_ascii_whitespace()).count() < 12 {
         return Err(Error::new(
             "administrator passwords must match and contain at least 12 non-whitespace characters",

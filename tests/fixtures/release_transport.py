@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
+import time
 
 root = Path('/var/lib/assbox-acceptance')
 tool, *args = sys.argv[1:]
@@ -18,6 +19,9 @@ with (root / 'calls.jsonl').open('a') as log:
     log.write(json.dumps([tool, *args]) + '\n')
 if tool == 'systemd-ask-password':
     assert args in [['Choose an administrator password:'], ['Repeat the administrator password:']]
+    if case.get('pause_password'):
+        (root / 'password-pid').write_text(str(os.getpid()))
+        time.sleep(3600)
     print('disposable-test-password')
 elif tool == 'timedatectl':
     assert args == ['show', '--property=NTPSynchronized', '--value']

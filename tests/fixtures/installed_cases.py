@@ -145,6 +145,20 @@ if scenario == 'install':
     assert installer.succeed('sha256sum ' + disk) == before
     installer.succeed('mount /dev/vdb1 /mnt/full-backup; rm /mnt/full-backup/filler; umount /mnt/full-backup')
     format_target()
+    # Cancellation also interrupts the password client and reaps it without ever
+    # putting its output in logs or waiting for user input to release the mounts.
+    evidence = json.loads(installer.succeed('cat ' + CASE + '/case.json'))
+    write(installer, CASE + '/case.json', json.dumps(dict(evidence, pause_password=True)))
+    before = installer.succeed('sha256sum ' + disk)
+    start_install()
+    installer.wait_until_succeeds('test -f ' + CASE + '/password-pid', timeout=1800)
+    password_pid = installer.succeed('cat ' + CASE + '/password-pid').strip()
+    installer.succeed('kill -TERM $(cat /tmp/install.pid)')
+    wait_install_exit()
+    installer.fail('kill -0 ' + password_pid)
+    assert installer.succeed('sha256sum ' + disk) == before
+    write(installer, CASE + '/case.json', json.dumps(evidence))
+    format_target()
     # A cancellation after target writes is not a boot activation and does not
     # authorize restart against a populated root.
     write(installer, CASE + '/cut', 'pause:install-building')

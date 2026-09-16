@@ -5,7 +5,7 @@ use crate::{commands::Commands, files};
 use assbox_domain::{Error, Result};
 use std::{
     fs::{self, OpenOptions},
-    io::{self, IsTerminal, Write},
+    io::{self, IsTerminal, Read, Write},
     os::unix::{fs::OpenOptionsExt, process::CommandExt},
     path::Path,
     process::Stdio,
@@ -58,20 +58,88 @@ pub fn retry_build() -> Result<bool> {
     }
     print!("Retry this exact build after correcting the problem? [y/N]: ");
     files::io(io::stdout().flush())?;
+    Ok(matches!(read_line()?.trim(), "y" | "yes"))
+}
+
+/// The CLI exits on cancellation; an outstanding stdin reader cannot delay that
+/// exit or hold a mount. Do not issue another prompt after this returns an error.
+pub fn read_line() -> Result<String> {
+    check()?;
     let (sender, receiver) = mpsc::channel();
     thread::spawn(move || {
         let mut answer = String::new();
-        let result = io::stdin().read_line(&mut answer).map(|_| answer);
+        let result = io::stdin().read_line(&mut answer).and_then(|length| {
+            if length == 0 {
+                Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "installation input closed",
+                ))
+            } else {
+                Ok(answer)
+            }
+        });
         let _ = sender.send(result);
     });
     loop {
         check()?;
         match receiver.recv_timeout(Duration::from_millis(100)) {
-            Ok(answer) => return Ok(matches!(files::io(answer)?.trim(), "y" | "yes")),
+            Ok(answer) => return files::io(answer),
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(_) => return Err(Error::new("installation input closed")),
         }
     }
+}
+
+/// Only the fixed, single-process systemd password client uses this adapter.
+/// Secret output is bounded in memory and never written into command logs.
+pub fn password(c: &Commands, prompt: &str) -> Result<Vec<u8>> {
+    check()?;
+    let mut child = c
+        .command("systemd-ask-password", &[prompt])?
+        .process_group(0)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .map_err(|e| Error::new(e.to_string()))?;
+    // stdout is piped above; handle even an unexpected missing pipe before exit.
+    let Some(stream) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(Error::new("password output unavailable"));
+    };
+    let reader = thread::spawn(move || {
+        let mut bytes = Vec::new();
+        stream.take(4097).read_to_end(&mut bytes).map(|_| bytes)
+    });
+    let status = loop {
+        if let Err(error) = check() {
+            let _ = child.kill();
+            let _ = child.wait();
+            break Err(error);
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => break Ok(status),
+            Ok(None) => thread::sleep(Duration::from_millis(100)),
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break Err(Error::new(error.to_string()));
+            }
+        }
+    };
+    let output = reader
+        .join()
+        .map_err(|_| Error::new("password reader failed"))?;
+    if !status?.success() {
+        return Err(Error::new("password request failed"));
+    }
+    let output = files::io(output)?;
+    if output.len() > 4096 {
+        return Err(Error::new("password output exceeds limit"));
+    }
+    check()?;
+    Ok(output)
 }
 
 /// stdout/stderr go to private files, never unbounded in-memory capture. The
