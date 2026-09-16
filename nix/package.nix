@@ -1,14 +1,28 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-{ lib, pkgs, rustPlatform, sourceRevision ? "", releasePolicy }:
-let tools = import ./tool-environment.nix { inherit pkgs; };
+{
+  lib,
+  pkgs,
+  rustPlatform,
+  sourceRevision ? "",
+  releasePolicy,
+}:
+let
+  tools = import ./tool-environment.nix { inherit pkgs; };
 in
 rustPlatform.buildRustPackage {
   pname = "assbox";
   version = (builtins.fromTOML (builtins.readFile ../Cargo.toml)).workspace.package.version;
   src = lib.cleanSourceWith {
     src = ../.;
-    filter = path: type: lib.cleanSourceFilter path type
-      && !(builtins.elem (baseNameOf path) [ "target" "reports" "result" "__pycache__" ]);
+    filter =
+      path: type:
+      lib.cleanSourceFilter path type
+      && !(builtins.elem (baseNameOf path) [
+        "target"
+        "reports"
+        "result"
+        "__pycache__"
+      ]);
   };
   cargoLock.lockFile = ../Cargo.lock;
   cargoBuildFlags = [ "--workspace" ];
@@ -23,7 +37,10 @@ rustPlatform.buildRustPackage {
     description = "NixOS appliance installation and administration";
     homepage = "https://assbox.com";
     license = lib.licenses.gpl3Plus;
-    platforms = [ "x86_64-linux" "aarch64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     mainProgram = "assbox";
   };
 }

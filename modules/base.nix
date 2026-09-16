@@ -1,29 +1,84 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-{ config, lib, pkgs, assboxPackage, ... }:
-let cfg = config.assbox;
+{
+  config,
+  lib,
+  pkgs,
+  assboxPackage,
+  ...
+}:
+let
+  cfg = config.assbox;
 in
 {
   config = lib.mkIf cfg.enable {
     assertions = [
-      { assertion = builtins.elem pkgs.stdenv.hostPlatform.system [ "x86_64-linux" "aarch64-linux" ]; message = "Assbox supports x86-64 PCs and generic AArch64 UEFI machines."; }
-      { assertion = cfg.application != "chatgpt" || cfg.presentation == "x11"; message = "ChatGPT requires the X11 presentation."; }
-      { assertion = cfg.application != "chatgpt" || cfg.acceptUnfree; message = "ChatGPT requires explicit assbox.acceptUnfree consent."; }
+      {
+        assertion = builtins.elem pkgs.stdenv.hostPlatform.system [
+          "x86_64-linux"
+          "aarch64-linux"
+        ];
+        message = "Assbox supports x86-64 PCs and generic AArch64 UEFI machines.";
+      }
+      {
+        assertion = cfg.application != "chatgpt" || cfg.presentation == "x11";
+        message = "ChatGPT requires the X11 presentation.";
+      }
+      {
+        assertion = cfg.application != "chatgpt" || cfg.acceptUnfree;
+        message = "ChatGPT requires explicit assbox.acceptUnfree consent.";
+      }
     ];
     nixpkgs.config.allowUnfree = cfg.acceptUnfree;
     # Redistributable device firmware is allowed independently of proprietary apps.
-    nixpkgs.config.allowUnfreePredicate = package:
-      builtins.elem lib.licenses.unfreeRedistributableFirmware
-        (lib.toList (package.meta.license or [ ]));
+    nixpkgs.config.allowUnfreePredicate =
+      package:
+      builtins.elem lib.licenses.unfreeRedistributableFirmware (lib.toList (package.meta.license or [ ]));
     hardware.enableRedistributableFirmware = lib.mkDefault true;
     environment.systemPackages = with pkgs; [
-      assboxPackage just bash coreutils findutils gnugrep gnused gawk perl python3
-      curl git jq ripgrep fd less file which gnutar gzip xz zstd unzip
-      procps psmisc util-linux iproute2 pciutils usbutils bind htop tmux nano
-      nixfmt nixos-rebuild rsync openssh
+      assboxPackage
+      just
+      bash
+      coreutils
+      findutils
+      gnugrep
+      gnused
+      gawk
+      perl
+      python3
+      curl
+      git
+      jq
+      ripgrep
+      fd
+      less
+      file
+      which
+      gnutar
+      gzip
+      xz
+      zstd
+      unzip
+      procps
+      psmisc
+      util-linux
+      iproute2
+      pciutils
+      usbutils
+      bind
+      htop
+      tmux
+      nano
+      nixfmt
+      nixos-rebuild
+      rsync
+      openssh
     ];
     environment.variables.EDITOR = lib.mkDefault "nano";
     nix.settings = {
-      experimental-features = [ "nix-command" "flakes" ];
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       sandbox = true;
       require-sigs = true;
       accept-flake-config = false;
@@ -74,13 +129,25 @@ in
     };
     services.udisks2.enable = false;
     services.gvfs.enable = false;
-    services.avahi = { enable = cfg.network.discoverable; nssmdns4 = cfg.network.discoverable; publish = { enable = cfg.network.discoverable; addresses = cfg.network.discoverable; }; };
+    services.avahi = {
+      enable = cfg.network.discoverable;
+      nssmdns4 = cfg.network.discoverable;
+      publish = {
+        enable = cfg.network.discoverable;
+        addresses = cfg.network.discoverable;
+      };
+    };
     systemd.tmpfiles.rules = [
       "d /var/lib/assbox 0700 root root -"
       "d /var/lib/assbox-secrets 0700 root root -"
     ];
     environment.etc."assbox/runtime.json".text = builtins.toJSON {
-      inherit (cfg) application presentation platform updates;
+      inherit (cfg)
+        application
+        presentation
+        platform
+        updates
+        ;
       boot = cfg.boot;
     };
   };

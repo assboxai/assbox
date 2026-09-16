@@ -15,7 +15,9 @@ notification.
 
 The probe checks the configured repository and owner numeric identities, public
 nonfork repository with master as default, and the exact active `release.yml`
-workflow. It queries both the **latest run regardless of outcome** and the last
+workflow, plus the exact active bootstrap-maintenance workflow. It requires a
+bootstrap success within 15 days. For each workflow it queries both the
+**latest run regardless of outcome**, including scheduled and manual runs, and the last
 successful run. A completed failure, cancellation, timeout, skipped/neutral result
 or other non-success causes 503 on the next poll even if yesterday's success is
 less than 36 hours old.
@@ -53,8 +55,8 @@ The raw inventories, including unrelated source tags/releases, are bounded to
 **16 pages of 100 records each**. Filtering occurs only after pagination completes;
 a page containing only source tags is not an end-of-history signal. A final short
 raw page is required, so a full 1,600-record observation is refused rather than
-assumed complete. The worst successful request uses at most 41 upstream requests
-including three allowed HTTPS asset redirects; the smallest healthy check uses eight.
+assumed complete. The worst successful request uses at most 44 upstream requests
+including three allowed HTTPS asset redirects; the smallest healthy check uses eleven.
 Reaching `history-observation-limit` requires a reviewed observer-capacity or hosting
 change, never deleting authenticated history or pretending a truncated set is the
 head. This monitor bound does not change the CI or installed-client history policy.
@@ -79,7 +81,7 @@ history from a compromised trusted provider is outside what it can establish.
 
 ## Provisioning and independent alerts
 
-Use a separate Worker deployment from the [dispatcher](../release-scheduler/README.md).
+Deploy this read-only Worker independently of the GitHub workflows.
 Replace both public zero IDs in `wrangler.toml` with the values independently
 verified for `release/policy.json`. No secret binding is needed or permitted by
 this implementation. From the reviewed Nix shell:
@@ -106,10 +108,9 @@ source archive.
 
 The observer's **timer and alert delivery run outside Cloudflare/GitHub Actions**.
 A Cloudflare outage makes the probe unreachable and can therefore be detected by
-cron-job.org. However, the example probe shares Cloudflare as a hosting provider
-with the dispatcher: compromise of a shared account could falsify the probe or
-change its logic. This is outage detection, not independent evidence against that
-compromise. Deploy the same read-only policy on another provider for stronger
+cron-job.org. Compromise of the monitor hosting account could falsify the probe
+or change its logic. This is outage detection, not independent evidence against
+that compromise. Deploy the same read-only policy on another provider for stronger
 separation without changing Assbox clients or granting new GitHub permissions.
 
 There is no payment-method requirement in this design and no paid-plan fallback.

@@ -92,7 +92,7 @@ sys.exit(int(os.environ.get('WM_STATUS','0')))
 
     def test_greetd_recurs_as_agent_instead_of_locked_password_greeter(self):
         source=(ROOT/'modules/presentation.nix').read_text()
-        self.assertIn('default_session = { command = session; user = "agent"; };',source)
+        self.assertIn('default_session = { command = session; user = "agent"; };', ' '.join(source.split()))
         self.assertNotIn('initial_session',source)
         self.assertNotIn('agreety',source)
 

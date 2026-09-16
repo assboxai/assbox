@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-{ config, lib, pkgs, ... }:
-let cfg = config.assbox;
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.assbox;
 in
 {
   config = lib.mkIf cfg.enable {
@@ -13,23 +19,34 @@ in
     # Leave USB input, networking and admin-controlled storage available. Do not
     # grant the workload raw block devices, serial adapters, cameras or sound by
     # accident through an active-seat ACL.
-    services.udev.packages = [ (pkgs.writeTextDir "lib/udev/rules.d/72-assbox-policy.rules" (''
-      SUBSYSTEM=="block", TAG-="uaccess", OWNER="root", GROUP="disk", MODE="0660"
-      SUBSYSTEM=="tty", KERNEL=="ttyUSB*", TAG-="uaccess", OWNER="root", GROUP="dialout", MODE="0660"
-      SUBSYSTEM=="tty", KERNEL=="ttyACM*", TAG-="uaccess", OWNER="root", GROUP="dialout", MODE="0660"
-    '' + lib.optionalString (!cfg.devices.camera.enable) ''
-      SUBSYSTEM=="video4linux", TAG-="uaccess", OWNER="root", GROUP="root", MODE="0600"
-    '' + lib.optionalString (!cfg.devices.audio.enable) ''
-      SUBSYSTEM=="sound", TAG-="uaccess", OWNER="root", GROUP="root", MODE="0600"
-    '' + lib.optionalString (!cfg.devices.wifi.enable) ''
-      ACTION=="add", SUBSYSTEM=="rfkill", ATTR{type}=="wlan", RUN+="${pkgs.util-linux}/bin/rfkill block wlan"
-    '')) ];
+    services.udev.packages = [
+      (pkgs.writeTextDir "lib/udev/rules.d/72-assbox-policy.rules" (
+        ''
+          SUBSYSTEM=="block", TAG-="uaccess", OWNER="root", GROUP="disk", MODE="0660"
+          SUBSYSTEM=="tty", KERNEL=="ttyUSB*", TAG-="uaccess", OWNER="root", GROUP="dialout", MODE="0660"
+          SUBSYSTEM=="tty", KERNEL=="ttyACM*", TAG-="uaccess", OWNER="root", GROUP="dialout", MODE="0660"
+        ''
+        + lib.optionalString (!cfg.devices.camera.enable) ''
+          SUBSYSTEM=="video4linux", TAG-="uaccess", OWNER="root", GROUP="root", MODE="0600"
+        ''
+        + lib.optionalString (!cfg.devices.audio.enable) ''
+          SUBSYSTEM=="sound", TAG-="uaccess", OWNER="root", GROUP="root", MODE="0600"
+        ''
+        + lib.optionalString (!cfg.devices.wifi.enable) ''
+          ACTION=="add", SUBSYSTEM=="rfkill", ATTR{type}=="wlan", RUN+="${pkgs.util-linux}/bin/rfkill block wlan"
+        ''
+      ))
+    ];
     networking.networkmanager.unmanaged = lib.optional (!cfg.devices.wifi.enable) "type:wifi";
     systemd.services.assbox-radio-policy = lib.mkIf (!cfg.devices.wifi.enable) {
       description = "Apply the selected disabled Wi-Fi policy";
       wantedBy = [ "multi-user.target" ];
       after = [ "systemd-udev-trigger.service" ];
-      serviceConfig = { Type = "oneshot"; RemainAfterExit = true; ExecStart = "${pkgs.util-linux}/bin/rfkill block wlan"; };
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = "${pkgs.util-linux}/bin/rfkill block wlan";
+      };
     };
     # New Wi-Fi radios are blocked by the udev rule; drivers remain available.
     systemd.targets.sleep.enable = cfg.power.suspend.enable;

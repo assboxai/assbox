@@ -2,22 +2,28 @@
 { config, lib, ... }:
 let
   cfg = config.assbox;
-  locked = user:
-    user.enable && user.hashedPassword == "!"
-    && user.hashedPasswordFile == null && user.password == null
-    && user.initialPassword == null && user.initialHashedPassword == null
+  locked =
+    user:
+    user.enable
+    && user.hashedPassword == "!"
+    && user.hashedPasswordFile == null
+    && user.password == null
+    && user.initialPassword == null
+    && user.initialHashedPassword == null
     && !config.users.mutableUsers;
   agent = config.users.users.agent;
   agentGroups = lib.unique (
-    [ agent.group ] ++ agent.extraGroups
-    ++ lib.attrNames (lib.filterAttrs (_: group: builtins.elem "agent" group.members) config.users.groups)
+    [ agent.group ]
+    ++ agent.extraGroups
+    ++ lib.attrNames (
+      lib.filterAttrs (_: group: builtins.elem "agent" group.members) config.users.groups
+    )
   );
   # A conservative check, not a general sudoers theorem prover.
-  noPasswordCommand = command:
-    builtins.isAttrs command && builtins.elem "NOPASSWD" (command.options or [ ]);
-  extraSudo = builtins.any (rule:
-    builtins.elem "agent" rule.users
-    || builtins.any noPasswordCommand rule.commands
+  noPasswordCommand =
+    command: builtins.isAttrs command && builtins.elem "NOPASSWD" (command.options or [ ]);
+  extraSudo = builtins.any (
+    rule: builtins.elem "agent" rule.users || builtins.any noPasswordCommand rule.commands
   ) config.security.sudo.extraRules;
 in
 {
@@ -35,7 +41,9 @@ in
       requireSignatures = config.nix.settings.require-sigs;
       acceptFlakeConfig = config.nix.settings.accept-flake-config;
       automount = config.services.udisks2.enable || config.services.gvfs.enable;
-      passwordlessSudo = !config.security.sudo.wheelNeedsPassword || extraSudo
+      passwordlessSudo =
+        !config.security.sudo.wheelNeedsPassword
+        || extraSudo
         || lib.hasInfix "NOPASSWD" config.security.sudo.extraConfig
         || lib.hasInfix "agent" config.security.sudo.extraConfig;
       efiWrites = config.boot.loader.efi.canTouchEfiVariables;

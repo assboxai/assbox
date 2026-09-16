@@ -11,10 +11,14 @@ pub use source::Revision;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error(pub String);
 impl Error {
-    pub fn new(message: impl Into<String>) -> Self { Self(message.into()) }
+    pub fn new(message: impl Into<String>) -> Self {
+        Self(message.into())
+    }
 }
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str(&self.0) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
 }
 impl StdError for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
@@ -47,7 +51,10 @@ named_enum!(BatteryPresence { Present => "present", Absent => "absent", Unknown 
 
 impl Architecture {
     pub const fn nix_system(self) -> &'static str {
-        match self { Self::X86_64 => "x86_64-linux", Self::Aarch64 => "aarch64-linux" }
+        match self {
+            Self::X86_64 => "x86_64-linux",
+            Self::Aarch64 => "aarch64-linux",
+        }
     }
 }
 
@@ -60,24 +67,39 @@ named_enum!(FileSystem { Ext4 => "ext4", Fat => "vfat", Exfat => "exfat", None =
 named_enum!(BootKind { Uefi => "uefi", BiosGpt => "bios-gpt", BiosMbr => "bios-mbr", AppleRefind => "apple-refind" });
 
 impl Platform {
-    pub const fn is_apple(self) -> bool { !matches!(self, Self::Generic) }
+    pub const fn is_apple(self) -> bool {
+        !matches!(self, Self::Generic)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hostname(String);
 impl Hostname {
     pub fn parse(s: &str) -> Result<Self> {
-        if s.is_empty() || s.len() > 63 || s.starts_with('-') || s.ends_with('-')
-            || !s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-') {
-            return Err(Error::new("hostname must be 1–63 lowercase letters, digits or interior hyphens"));
+        if s.is_empty()
+            || s.len() > 63
+            || s.starts_with('-')
+            || s.ends_with('-')
+            || !s
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        {
+            return Err(Error::new(
+                "hostname must be 1–63 lowercase letters, digits or interior hyphens",
+            ));
         }
         Ok(Self(s.to_owned()))
     }
-    pub fn as_str(&self) -> &str { &self.0 }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
     /// The shell supplies uniformly distributed bytes; no machine identifier is used.
     pub fn from_entropy(bytes: [u8; 6]) -> Self {
         const ALPHABET: &[u8; 32] = b"abcdefghjkmnpqrstuvwxyz234567890";
-        let suffix: String = bytes.iter().map(|b| char::from(ALPHABET[usize::from(b & 31)])).collect();
+        let suffix: String = bytes
+            .iter()
+            .map(|b| char::from(ALPHABET[usize::from(b & 31)]))
+            .collect();
         Self(format!("assbox-{suffix}"))
     }
 }
@@ -86,16 +108,24 @@ impl Hostname {
 pub struct PackageName(String);
 impl PackageName {
     pub fn parse(s: &str) -> Result<Self> {
-        if s.len() > 200 || s.split('.').any(|part| {
-            part.is_empty()
-                || !part.as_bytes()[0].is_ascii_alphabetic() && part.as_bytes()[0] != b'_'
-                || !part.bytes().all(|b| b.is_ascii_alphanumeric() || b"_+-".contains(&b))
-        }) {
-            return Err(Error::new("use a nixpkgs attribute such as htop or python3Packages.requests"));
+        if s.len() > 200
+            || s.split('.').any(|part| {
+                part.is_empty()
+                    || !part.as_bytes()[0].is_ascii_alphabetic() && part.as_bytes()[0] != b'_'
+                    || !part
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b"_+-".contains(&b))
+            })
+        {
+            return Err(Error::new(
+                "use a nixpkgs attribute such as htop or python3Packages.requests",
+            ));
         }
         Ok(Self(s.to_owned()))
     }
-    pub fn as_str(&self) -> &str { &self.0 }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -124,26 +154,47 @@ impl Choices {
         if !(1..=3).contains(&self.scale) {
             return Err(Error::new("display scale must be 1, 2 or 3"));
         }
-        if self.timezone.is_empty() || self.timezone.starts_with('/')
-            || self.timezone.split('/').any(|s| s.is_empty() || s == "." || s == "..")
-            || !self.timezone.bytes().all(|b| b.is_ascii_alphanumeric() || b"/_+-".contains(&b)) {
+        if self.timezone.is_empty()
+            || self.timezone.starts_with('/')
+            || self
+                .timezone
+                .split('/')
+                .any(|s| s.is_empty() || s == "." || s == "..")
+            || !self
+                .timezone
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"/_+-".contains(&b))
+        {
             return Err(Error::new("invalid timezone identifier"));
         }
         if self.application == Application::Chatgpt {
             if self.presentation != Presentation::X11 {
-                return Err(Error::new("the ChatGPT application requires the X11 presentation"));
+                return Err(Error::new(
+                    "the ChatGPT application requires the X11 presentation",
+                ));
             }
             if !self.allow_unfree {
-                return Err(Error::new("ChatGPT requires explicit acceptance of proprietary packages"));
+                return Err(Error::new(
+                    "ChatGPT requires explicit acceptance of proprietary packages",
+                ));
             }
         }
         if let Some(key) = &self.admin_ssh_key {
             let kind = key.split_whitespace().next().unwrap_or("");
-            let known = matches!(kind, "ssh-ed25519" | "ssh-rsa" | "ecdsa-sha2-nistp256"
-                | "ecdsa-sha2-nistp384" | "ecdsa-sha2-nistp521" | "sk-ssh-ed25519@openssh.com"
-                | "sk-ecdsa-sha2-nistp256@openssh.com");
+            let known = matches!(
+                kind,
+                "ssh-ed25519"
+                    | "ssh-rsa"
+                    | "ecdsa-sha2-nistp256"
+                    | "ecdsa-sha2-nistp384"
+                    | "ecdsa-sha2-nistp521"
+                    | "sk-ssh-ed25519@openssh.com"
+                    | "sk-ecdsa-sha2-nistp256@openssh.com"
+            );
             if key.contains(['\n', '\r', '\0']) || !known {
-                return Err(Error::new("supply one OpenSSH public key, without authorized_keys options"));
+                return Err(Error::new(
+                    "supply one OpenSSH public key, without authorized_keys options",
+                ));
             }
         }
         Ok(())
@@ -181,11 +232,16 @@ pub struct Partition {
 }
 impl Partition {
     pub fn same_identity(&self, other: &Self) -> bool {
-        self.path == other.path && self.parent == other.parent
-            && self.major_minor == other.major_minor && self.bytes == other.bytes
-            && self.start_bytes == other.start_bytes && self.fs == other.fs
-            && self.uuid == other.uuid && self.partuuid == other.partuuid
-            && self.part_type == other.part_type && self.read_only == other.read_only
+        self.path == other.path
+            && self.parent == other.parent
+            && self.major_minor == other.major_minor
+            && self.bytes == other.bytes
+            && self.start_bytes == other.start_bytes
+            && self.fs == other.fs
+            && self.uuid == other.uuid
+            && self.partuuid == other.partuuid
+            && self.part_type == other.part_type
+            && self.read_only == other.read_only
             && self.has_holders == other.has_holders
     }
 }
@@ -193,21 +249,38 @@ impl Partition {
 /// as a read-only optical device. Neither representation permits loop/network roots.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiveMedia {
-    Disk { disk: String, source: String, major_minor: String },
+    Disk {
+        disk: String,
+        source: String,
+        major_minor: String,
+    },
     Optical {
-        device: String, major_minor: String, bytes: u64,
-        filesystem: String, uuid: String, read_only: bool, mounted_read_only: bool,
+        device: String,
+        major_minor: String,
+        bytes: u64,
+        filesystem: String,
+        uuid: String,
+        read_only: bool,
+        mounted_read_only: bool,
     },
 }
 impl LiveMedia {
     pub fn disk(&self) -> Option<&str> {
-        match self { Self::Disk { disk, .. } => Some(disk), Self::Optical { .. } => None }
+        match self {
+            Self::Disk { disk, .. } => Some(disk),
+            Self::Optical { .. } => None,
+        }
     }
     pub fn source(&self) -> &str {
-        match self { Self::Disk { source, .. } => source, Self::Optical { device, .. } => device }
+        match self {
+            Self::Disk { source, .. } => source,
+            Self::Optical { device, .. } => device,
+        }
     }
     pub fn major_minor(&self) -> &str {
-        match self { Self::Disk { major_minor, .. } | Self::Optical { major_minor, .. } => major_minor }
+        match self {
+            Self::Disk { major_minor, .. } | Self::Optical { major_minor, .. } => major_minor,
+        }
     }
 }
 
@@ -221,11 +294,15 @@ pub struct Inventory {
 }
 impl Inventory {
     pub fn partition(&self, name: &str) -> Result<&Partition> {
-        self.partitions.iter().find(|p| p.path == name)
+        self.partitions
+            .iter()
+            .find(|p| p.path == name)
             .ok_or_else(|| Error::new(format!("not a supported physical partition: {name}")))
     }
     pub fn disk(&self, name: &str) -> Result<&Disk> {
-        self.disks.iter().find(|p| p.path == name)
+        self.disks
+            .iter()
+            .find(|p| p.path == name)
             .ok_or_else(|| Error::new(format!("not a supported physical disk: {name}")))
     }
 }
@@ -314,11 +391,22 @@ mod tests {
         for bad in ["", "A", "-box", "box-", "a.b", "a b", "a\n"] {
             assert!(Hostname::parse(bad).is_err(), "{bad:?}");
         }
-        for b in 0..=255 { assert!(Hostname::parse(Hostname::from_entropy([b; 6]).as_str()).is_ok()); }
+        for b in 0..=255 {
+            assert!(Hostname::parse(Hostname::from_entropy([b; 6]).as_str()).is_ok());
+        }
     }
     #[test]
     fn package_inputs_cannot_be_expressions_or_options() {
-        for bad in ["", "--impure", "a..b", "a; builtins.abort", "a${x}", "a/b", "a\n", "1foo"] {
+        for bad in [
+            "",
+            "--impure",
+            "a..b",
+            "a; builtins.abort",
+            "a${x}",
+            "a/b",
+            "a\n",
+            "1foo",
+        ] {
             assert!(PackageName::parse(bad).is_err(), "{bad:?}");
         }
         for good in ["htop", "python3Packages.requests", "git-lfs", "libstdcxx5"] {

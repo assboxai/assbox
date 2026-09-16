@@ -147,7 +147,7 @@ Before candidate Nix evaluation the shell downloads bounded manifest/bundle byte
 verifies the manifest as an immutable release asset, then verifies artifact
 provenance with the exact certificate identity, issuer, source ref, source digest
 and signer digest. Self-hosted runner provenance is refused. Numeric identities and
-the sole allowed `workflow_dispatch` trigger are taken from verified certificate
+the allowed `schedule` or `workflow_dispatch` trigger are taken from verified certificate
 extensions, not arbitrary claims inside a predicate. A predicate cannot authorize
 its own repository, runner or triggering event. The `release-automation` environment
 is an externally configured GitHub restriction, not an invented certificate claim;

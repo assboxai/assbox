@@ -58,11 +58,12 @@ Nix nor candidate programs.
 
 `scripts/workflow_policy.py`, invoked by the mandatory gate, checks **every
 workflow regardless of trigger**. Only `release.yml`'s reviewed `publish` and
-`advertise` jobs may hold publication authority or a protected environment. Other
-workflows must have explicit contents-read permissions, no secret/environment
+`advertise` jobs may hold publication authority. The separately reviewed bootstrap
+`write` job has lock-only/empty-commit authority and its own protected environment.
+All remaining jobs must have explicit contents-read permissions, no secret/environment
 access (including reusable-workflow secret declarations), no reusable/local
 unreviewed action calls, only reviewed hosted runners, and allowlisted command/action
-entrypoints. Bootstrap/verification may write local build results and upload run
+entrypoints. Read-only preparation/verification may write local build results and upload run
 artifacts; "read-only" refers to repository, release and administrative authority,
 not a prohibition on local build effects. A new filename or a push-only,
 workflow-run, scheduled or reusable trigger does not grant an exception.
@@ -83,9 +84,9 @@ is tested independently of the YAML lint.
 Create a `release-automation` environment restricted to `master`. **Do not require a
 human approval for every daily run.** Human controls apply to rare changes of the
 workflow, core, branch/environment rules and identities. No ordinary successful PR
-can publish. Routine `workflow_dispatch` execution of the reviewed master workflow is
-intentionally automatic after every gate passes. There is no GitHub cron trigger
-and no workflow input that changes source, dependencies, checks or release identity.
+can publish. Routine scheduled and inputless manual execution of the reviewed
+master workflow is automatic after every gate passes. No workflow input changes
+source, dependencies, checks or release identity.
 
 The short-lived `GITHUB_TOKEN` with `contents: write` is not a release-only privilege;
 it can authorize broader repository-content operations. Permissions apply to a
@@ -118,51 +119,27 @@ up from older floors.
 
 ## One scheduler, separate observation
 
-Production scheduling is **Cloudflare Cron only**, daily at **07:23 UTC**. The
-committed [dispatcher](../infra/release-scheduler/README.md) signs a short-lived
-GitHub App JWT, obtains a narrowed installation token and requests exactly
-`release.yml` on `master` with no inputs. It has no public HTTP dispatch route.
-The GitHub workflow has only `workflow_dispatch`; there is no nominal fallback
-cron that can quietly become disabled after repository inactivity. See GitHub's
-[schedule reference](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
-Manual dispatch is the recovery path and runs precisely the same gates.
+Release creation runs daily at 04:23 UTC through GitHub Actions, with inputless
+manual dispatch using the same gates. Weekly bootstrap maintenance runs Sunday
+at 03:41 UTC and makes a verified lock-only or empty keepalive commit. See
+[automation](automation.md) for exact writer boundaries and repository-rule setup.
+The ephemeral repository token must be allowed to perform this bounded write;
+do not assume it bypasses arbitrary branch rules. Native verification happens
+before the write because that token's push does not trigger ordinary push CI.
 
-This is separate from appliance maintenance at 18:00 local. Unchanged source and
-dependencies normally produce no new release until the three-day authorization
-renewal is due. A successful daily resolution need not publish a daily release;
-a seven-day manifest expiry is not a promise that publication cannot fail.
-
-Install the GitHub App only on `assboxai/assbox`, with repository **Actions: write**
-and mandatory metadata read, but no contents/admin permission. The App is an
-online availability credential, not a release signing key. **GitHub does not offer
-a dispatch-only permission:** Actions write can also enable/disable workflows and
-perform other Actions-management operations. Hardcoded Worker destinations narrow
-what this program does, not what a stolen private key can do. Protect the App key,
-Cloudflare account and deployment credentials accordingly. A compromised scheduler
-can cause interruptions or extra executions; it must not bypass the reviewed
-workflow, branch/environment rules or client release verification.
-
-The dispatcher refuses a disabled workflow and never re-enables it. An emergency
-stop under suspected App-key compromise must also suspend/uninstall the App or
-revoke its key; merely disabling the workflow is insufficient because that same
-permission could re-enable it. There is no PAT, permanent release-signing secret,
-daily cold-account login, or source keepalive commit in the routine path.
+These schedules are separate from appliance maintenance at 18:00 local. Releases
+renew authorization after three days even when dependency contents are unchanged;
+manifest expiry remains seven days. A configured schedule is not execution evidence.
 
 The [monitor probe](../infra/release-monitor/README.md) has no credentials or write
-operations. An independently timed cron-job.org request checks its `/health`
-endpoint and sends failure/recovery notifications. It checks successful-resolution
-age (36 hours), workflow enablement and advertised-manifest expiry headroom (48
-hours), not just whether GitHub returned HTTP 200. It does not verify release
-signatures or authorize updates. The supplied probe can run as a separate public
-Worker: a Cloudflare outage is observable by the external requester, but this is
-not independence from compromise of a shared Cloudflare account. A different host
-can run the same read-only policy for stronger provider separation.
+operations. Independently poll its `/health` endpoint and configure failure and
+recovery alerts. It checks both manual and scheduled runs, release success within
+36 hours, bootstrap success within 15 days, workflow enablement, and at least
+48 hours of release lifetime. It does not verify signatures or authorize updates.
 
-Deployment, secret bindings, actual account/repository IDs, App installation,
-cron-job.org configuration and tested notification delivery are external
-provisioning obligations. Committed code is not proof that any of them exists.
-Measure the actual Worker on the no-payment free plan, including its CPU limit;
-local Node tests do not establish Cloudflare runtime/resource compatibility.
+Deployment, observed repository IDs, environment/branch rules and tested alert
+routing remain external provisioning. The probe may run on Cloudflare or another
+provider; measure actual request/resource limits before unattended operation.
 
 ## Outage and incident handling
 

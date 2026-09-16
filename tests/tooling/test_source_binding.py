@@ -75,7 +75,7 @@ class SourceBindingTests(unittest.TestCase):
         for step in ["crate::source::resolve", '"--print-out-paths"', "verify_install_target", "external backup read-back failed"]:
             self.assertLess(install.index(step), boundary)
         after = install[boundary:]
-        self.assertIn('"--system", system', after)
+        self.assertRegex(after, r'"--system",\s*system')
         self.assertNotIn('"--flake"', after)
         self.assertNotIn('"build"', after)
         source = (ROOT / "crates/imperative-shell/assbox-engine/src/source.rs").read_text()
@@ -86,7 +86,7 @@ class SourceBindingTests(unittest.TestCase):
 
     def test_boot_target_is_checked_before_profile_publication(self):
         text = (ROOT / "crates/imperative-shell/assbox-engine/src/manage.rs").read_text()
-        commit = text[text.index("fn commit("):text.index("fn fail_before_activation")]
+        commit = re.sub(r"\s+", "", text[text.index("fn commit("):text.index("fn fail_before_activation")])
         self.assertIn("BootGuard::capture(c,&marker(\"boot-before\"),new_system)", commit)
         self.assertLess(commit.index("BootGuard::capture"), commit.index('"--set"'))
         self.assertIn("publish_directory(&prepared", text)
@@ -94,11 +94,11 @@ class SourceBindingTests(unittest.TestCase):
 
     def test_architecture_closure_is_native_and_not_a_path_fallback(self):
         flake = (ROOT / "flake.nix").read_text()
-        self.assertIn('[ "x86_64-linux" "aarch64-linux" ]', flake)
+        self.assertRegex(flake, r'\[\s*"x86_64-linux"\s*"aarch64-linux"\s*\]')
         self.assertIn("pkgs.stdenv.hostPlatform.system", flake)
         self.assertIn("ASSBOX_TOOL_PATH = p.tools.path", flake)
         commands = (ROOT / "crates/imperative-shell/assbox-system/src/commands.rs").read_text()
-        self.assertIn('env!("ASSBOX_TOOL_PATH"', commands)
+        self.assertRegex(commands, r'env!\(\s*"ASSBOX_TOOL_PATH"')
         self.assertNotIn("/run/current-system/sw/bin", commands)
         for workflow in ["verify.yml", "release.yml"]:
             text = (ROOT / ".github/workflows" / workflow).read_text()

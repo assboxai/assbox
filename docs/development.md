@@ -20,8 +20,9 @@ under the cold-administrator procedure in [governance](governance.md). Zero IDs
 permit source development but refuse release acceptance and publication.
 
 Bootstrap is intentionally separate from verification. Never invent a `flake.lock`,
-NAR hash, compiler result or release receipt. The workflow named Bootstrap resolves
-and formats, then uploads a reviewable patch; it does not publish or certify it.
+NAR hash, compiler result or release receipt. The [bootstrap maintenance workflow](automation.md) verifies candidate and
+existing locks on both architectures before a bounded direct-to-master commit.
+It never commits formatting changes.
 Once a genuine lock is committed, gate invocations must not rewrite it.
 
 ## Rust and tools
@@ -77,8 +78,7 @@ keep delivery reports and environment-specific validation records outside it.
 ## Dependency release execution
 
 `.github/workflows/release.yml` runs from `master` only through inputless
-`workflow_dispatch`: the external Cloudflare scheduler or manual recovery. It has
-no GitHub cron trigger.
+`workflow_dispatch` or its fixed daily GitHub schedule.
 It authenticates a previous release, resolves candidate dependencies in temporary
 state, probes each advancing application on both architectures, and re-tests the
 composed final lock. Core source files must remain byte-for-byte identical to the
@@ -92,7 +92,7 @@ and its release lock. The candidate must independently verify the same public
 release in a new directory and agree on manifest/lock/source identity before latest
 can be advertised. No GitHub token is available to either client's child commands.
 
-The read-only bootstrap workflow does not configure rulesets, environments, numeric
+The bootstrap maintenance workflow does not configure rulesets, environments, numeric
 IDs or immutable releases. Those are explicit cold-administrator tasks. Do not
 remove missing-check guards or substitute placeholder passing derivations to get
 a first release. Current tests, remaining acceptance and operational limits are in
@@ -101,16 +101,15 @@ and [governance](governance.md).
 
 ## External infrastructure source
 
-The dispatcher and read-only monitor are conventional JavaScript ES modules under
-`infra/`. They use Web APIs and have no npm runtime dependencies. Run their tests
-without a Cloudflare login:
+The read-only monitor is a conventional JavaScript ES module under `infra/`.
+It uses Web APIs and has no npm runtime dependencies. Run its tests without a
+Cloudflare login:
 
 ```sh
-node --test infra/release-scheduler/tests/*.test.mjs infra/release-monitor/tests/*.test.mjs
+node --test infra/release-monitor/tests/*.test.mjs
 ```
 
-Scheduler tests perform real ephemeral RSA/JWT signing with Node WebCrypto while
-mocking GitHub effects. They do not verify GitHub release attestations, execute
-Cloudflare Cron or establish free-tier CPU consumption. Deployment is a separate
-administrator operation documented with each Worker. Do not commit App PEM keys,
-Wrangler credentials, `.dev.vars`, generated infrastructure state or account tokens.
+These tests mock GitHub observations; they do not establish deployed availability,
+public attestation validity or provider resource consumption. Deployment and alert
+routing are separate administrator operations. Do not commit Wrangler credentials,
+`.dev.vars`, generated infrastructure state or account tokens.

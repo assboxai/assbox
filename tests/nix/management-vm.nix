@@ -5,18 +5,20 @@
 let
   arm = pkgs.stdenv.hostPlatform.system == "aarch64-linux";
   # Immutable observation fixture for maintenance ordering, not a real upgrade.
-  maintenancePolicy = pkgs.writeText "assbox-maintenance-fixture.json" (builtins.toJSON {
-    application = "none";
-    presentation = "headless";
-    updates = {
-      enable = true;
-      calendar = "hourly";
-      rebootGraceSeconds = 0;
-      minimumBatteryPercent = 20;
-      maximumStageRetries = 3;
-      keepGenerations = 8;
-    };
-  });
+  maintenancePolicy = pkgs.writeText "assbox-maintenance-fixture.json" (
+    builtins.toJSON {
+      application = "none";
+      presentation = "headless";
+      updates = {
+        enable = true;
+        calendar = "hourly";
+        rebootGraceSeconds = 0;
+        minimumBatteryPercent = 20;
+        maximumStageRetries = 3;
+        keepGenerations = 8;
+      };
+    }
+  );
   foreign = pkgs.runCommand "nixos-system-assbox-foreign" { } ''
     mkdir -p "$out/bin"
     cat > "$out/bin/switch-to-configuration" <<'EOF'
@@ -27,6 +29,8 @@ let
   '';
 in
 pkgs.testers.runNixOSTest {
+  # Assbox configures unfree consent and redistributable firmware per machine.
+  node.pkgsReadOnly = false;
   name = "assbox-management-recovery";
   requiredFeatures.kvm = !arm;
   nodes.machine = { lib, ... }: {
@@ -38,11 +42,17 @@ pkgs.testers.runNixOSTest {
     boot.loader.systemd-boot.enable = lib.mkForce false;
     boot.loader.grub.enable = lib.mkForce false;
     systemd.services.assbox-boot-check.enable = lib.mkForce false;
+    # The test driver provides console access; production accounts remain locked.
+    users.allowNoPasswordLogin = true;
+    users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPassword = lib.mkForce "!";
     virtualisation.memorySize = 2048;
     virtualisation.qemu.forceAccel = !arm;
-    virtualisation.additionalPaths = [ foreign maintenancePolicy ];
+    virtualisation.additionalPaths = [
+      foreign
+      maintenancePolicy
+    ];
     system.stateVersion = "26.05";
   };
   testScript = ''
@@ -140,10 +150,10 @@ pkgs.testers.runNixOSTest {
     machine.succeed("mkdir -p /nix/var/nix/profiles; ln -sfn $(readlink -f /run/current-system) /nix/var/nix/profiles/system")
     pending = state + "/pending-reboot"
     budget = state + "/stage-retry"
-    for retry in ["", " --retry"]:
+    for retry_flag in ["", " --retry"]:
         machine.succeed("printf %s $(readlink -f /run/current-system) > " + pending + "; chmod 600 " + pending)
         machine.succeed("printf not-a-number > " + budget + "; chmod 600 " + budget)
-        machine.succeed("assbox internal maintenance" + retry)
+        machine.succeed("assbox internal maintenance" + retry_flag)
         machine.fail("test -e " + pending)
         assert machine.succeed("cat " + budget) == "not-a-number"
         assert machine.succeed("cat " + floor_file) == floor_bytes
@@ -151,7 +161,7 @@ pkgs.testers.runNixOSTest {
         machine.succeed("mkdir -m700 " + txn)
         machine.succeed("printf %s $(readlink -f /run/current-system) > " + pending + "; chmod 600 " + pending)
         machine.succeed("printf 3 > " + budget)
-        error = machine.fail("assbox internal maintenance" + retry + " 2>&1")
+        error = machine.fail("assbox internal maintenance" + retry_flag + " 2>&1")
         assert "interrupted operation" in error
         machine.succeed("test -d " + txn + "; test -f " + pending)
         assert machine.succeed("cat " + budget) == "3"

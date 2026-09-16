@@ -2,7 +2,15 @@
 { ... }:
 {
   imports = [
-    ./options.nix ./base.nix ./devices.nix ./boot.nix ./platform.nix
-    ./presentation.nix ./applications.nix ./maintenance.nix ./audit.nix ./generation.nix
+    ./options.nix
+    ./base.nix
+    ./devices.nix
+    ./boot.nix
+    ./platform.nix
+    ./presentation.nix
+    ./applications.nix
+    ./maintenance.nix
+    ./audit.nix
+    ./generation.nix
   ];
 }

@@ -26,7 +26,7 @@ class ReviewGuards(unittest.TestCase):
         observation = observation[observation.index("pub fn prepared_root_entries"):]
         self.assertIn("symlink_metadata", observation)
         self.assertIn('name == "lost+found" && metadata.is_dir()', observation)
-        self.assertIn(".next().transpose()", observation)
+        self.assertRegex(observation, r"\.next\(\)\s*\.transpose\(\)")
         self.assertNotIn("remove", observation)
 
     def test_boot_decoder_separates_policy_from_binding_and_rejects_old_schema(self):
@@ -75,7 +75,7 @@ class ReviewGuards(unittest.TestCase):
     def test_disk_summary_contains_whole_disk_identity_and_confirmation(self):
         probe = (ROOT / "crates/imperative-shell/assbox-system/src/probe.rs").read_text()
         self.assertIn("MOUNTPOINTS,MODEL", probe)
-        self.assertIn("model:f[13]", probe)
+        self.assertRegex(probe, r"model:\s*f\[13\]")
         ui = (ROOT / "crates/imperative-shell/assbox-cli/src/wizard.rs").read_text()
         self.assertIn("confirmation_phrase(&plan)", ui)
         self.assertEqual(ui.count("plan_storage_summary(&plan)"), 2)
@@ -86,7 +86,7 @@ class ReviewGuards(unittest.TestCase):
         self.assertIn('cfg.presentation != "headless" && cfg.application == "openclaw"', apps)
         self.assertNotIn('builtins.elem cfg.application [ "opencode" "openclaw" ]', apps)
         main = (ROOT / "crates/imperative-shell/assbox-cli/src/main.rs").read_text()
-        self.assertIn('["application","set",app,presentation,"--accept-unfree"]', main)
+        self.assertIn('["application","set",app,presentation,"--accept-unfree"]', re.sub(r"\s+", "", main))
         engine = (ROOT / "crates/imperative-shell/assbox-engine/src/manage.rs").read_text()
         selection = engine[engine.index("pub fn application_set"):engine.index("pub fn rollback")]
         self.assertLess(selection.index("validate_application_selection"), selection.index("begin()?"))

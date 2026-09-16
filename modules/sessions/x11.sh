@@ -5,6 +5,8 @@
 # pulls in graphical-session.target as a dependency (never a manual start).
 set -eu
 child=
+# Invoked by the EXIT trap; cleanup itself clears that trap before exiting.
+# shellcheck disable=SC2329
 cleanup() {
   status=$?
   trap - EXIT HUP INT TERM
@@ -21,7 +23,7 @@ cleanup() {
   fi
   exit "$status"
 }
-trap cleanup EXIT
+trap 'cleanup' EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM

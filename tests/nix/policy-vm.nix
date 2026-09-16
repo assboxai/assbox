@@ -10,6 +10,8 @@ let
   '';
 in
 pkgs.testers.runNixOSTest {
+  # Assbox configures unfree consent and redistributable firmware per machine.
+  node.pkgsReadOnly = false;
   name = "assbox-policy-and-storage-adapters";
   requiredFeatures.kvm = !arm;
   nodes.machine = { lib, ... }: {
@@ -21,11 +23,18 @@ pkgs.testers.runNixOSTest {
     boot.loader.systemd-boot.enable = lib.mkForce arm;
     boot.loader.grub.enable = lib.mkForce false;
     systemd.services.assbox-boot-check.enable = lib.mkForce false;
+    # The test driver provides console access; production accounts remain locked.
+    users.allowNoPasswordLogin = true;
+    users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPassword = lib.mkForce "!";
     virtualisation = {
       memorySize = 2048;
-      emptyDiskImages = [ 512 512 64 ];
+      emptyDiskImages = [
+        512
+        512
+        64
+      ];
       useEFIBoot = arm;
       useBootLoader = arm;
       diskSize = 8192;
@@ -37,7 +46,12 @@ pkgs.testers.runNixOSTest {
       ];
     };
     environment.systemPackages = with pkgs; [
-      jq util-linux e2fsprogs dosfstools exfatprogs gptfdisk
+      jq
+      util-linux
+      e2fsprogs
+      dosfstools
+      exfatprogs
+      gptfdisk
     ];
     system.stateVersion = "26.05";
   };

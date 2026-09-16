@@ -45,12 +45,13 @@ its own terms. Do not represent an audit result as proof of full system isolatio
 
 GitHub, its OIDC/Sigstore trust services, the protected repository/workflow and the
 initial trusted verifier are trust roots, not adversaries
-this scheme can independently defeat. The sole production scheduler is an external
-Cloudflare Worker; observe workflow freshness and release expiry outside the
-publisher. Its App has repository-wide Actions write, not dispatch-only authority.
-The program refuses disabled workflows, but a stolen App key can re-enable them;
-suspend the App as part of an emergency stop. Time synchronization is required, but this
-is not a trusted-clock design against hostile root or time infrastructure.
+this scheme can independently defeat. Releases and bootstrap maintenance use
+reviewed native GitHub schedules with inputless manual recovery. The bootstrap
+writer can commit only a verified lock or an empty keepalive after both native
+architectures pass. No external scheduler credential is required. Observe both
+workflow freshness and release expiry through independent read-only monitoring.
+Time synchronization is required, but this is not a trusted-clock design against
+hostile root or time infrastructure.
 
 The updater advances its anti-replay high-water mark before evaluating authorized
 candidate Nix. Candidate lineage must reach the exact local floor; a higher number

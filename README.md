@@ -85,9 +85,9 @@ See [maintenance and recovery](docs/maintenance.md) for exact behavior and limit
 ## Development and release gate
 
 Start with [development](docs/development.md). A source checkout without a genuine
-`flake.lock` is a bootstrap candidate, not an installable release. Bootstrap resolves
-the lock with Nix and applies native formatting for review; it does not assert a
-passing build or acceptance result.
+`flake.lock` is a bootstrap candidate, not an installable release. Initial bootstrap resolves the lock with Nix. Scheduled maintenance verifies
+the candidate before its bounded lock-only or empty commit; it never formats or
+changes arbitrary source.
 
 Source publication is not production release approval. Both architectures require
 native Rust/Nix gates, coverage, mutation and vulnerability checks, plus full
@@ -112,13 +112,13 @@ latest label is only an installed-client discovery hint. The first release is
 reserved as `r-1`, and an installed client's acceptance floor cannot be reset by
 rolling back a system generation. Source protocol changes require explicit review.
 
-The sole production clock is the committed
-[Cloudflare dispatcher](infra/release-scheduler/README.md), not GitHub cron. Its
-GitHub App requests the fixed master workflow; it does not authorize release
-contents. A separate [read-only health probe](infra/release-monitor/README.md) is
-queried by an external alerting service. Deploy these resources explicitly using
-their provisioning guides; verify real dispatch and notification delivery before
-enabling unattended release operation.
+Releases run on a fixed daily GitHub Actions schedule, with inputless manual
+recovery. Weekly [bootstrap maintenance](docs/automation.md) verifies both native
+architectures before committing only the bootstrap lock or an empty keepalive to
+master. It uses the ephemeral repository token. The independent
+[read-only health probe](infra/release-monitor/README.md) observes both workflows
+and release freshness. Provision and test external alert delivery before enabling
+unattended release operation.
 
 ## Documentation
 

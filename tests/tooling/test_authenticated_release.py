@@ -45,7 +45,7 @@ class AuthenticatedReleaseTests(unittest.TestCase):
 
     def test_crypto_precedes_prefetch_and_policy_precedes_source_evaluation(self):
         self.assertLess(self.source.index('"verify-asset"'), self.source.index('let (manifest, manifest_bytes)'))
-        self.assertLess(self.source.index('"attestation", "verify"'), self.source.index('validate_release('))
+        self.assertLess(re.search(r'"attestation",\s*"verify"', self.source).start(), self.source.index('validate_release('))
         self.assertLess(self.source.index('validate_release('), self.source.index('"prefetch"'))
         for flag in ['--cert-identity','--source-ref','--source-digest','--signer-digest','--deny-self-hosted-runners']:
             self.assertIn(flag, self.source)
