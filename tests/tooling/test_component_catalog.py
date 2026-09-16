@@ -45,7 +45,7 @@ class ComponentCatalogTests(unittest.TestCase):
         cls.lib = path
 
     def evaluate(self, selected, *, presentation='headless', network=None, autostart=None,
-                 accept_unfree=True, unfree_packages=None):
+                 accept_unfree=True, unfree_packages=None, package_revision=''):
         if not self.lib:
             self.skipTest('Nix module library unavailable; run in the development shell')
         def nix_json(value):
@@ -55,7 +55,8 @@ class ComponentCatalogTests(unittest.TestCase):
                 '--argstr', 'presentation', presentation, '--arg', 'network', nix_json(network or {}),
                 '--arg', 'autostart', nix_json(autostart or []),
                 '--arg', 'acceptUnfree', nix_json(accept_unfree),
-                '--arg', 'unfreePackages', nix_json(unfree_packages or [])]
+                '--arg', 'unfreePackages', nix_json(unfree_packages or []),
+                '--argstr', 'packageRevision', package_revision]
         result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)

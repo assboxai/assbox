@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import signal
 import subprocess
 import sys
@@ -14,7 +15,7 @@ import unittest
 import test_component_catalog as catalog_tests
 
 
-class RemoteDiagnosticsTests(unittest.TestCase):
+class RemoteScriptFixture:
     @classmethod
     def setUpClass(cls):
         catalog_tests.ComponentCatalogTests.setUpClass()
@@ -66,16 +67,26 @@ elif name == 'systemd-run':
         path.write_text(json.dumps(state))
     else: print('PRIVATE_PROVIDER_TOKEN')
     sys.exit(7)
+else:
+    # Provider descendants must not inherit the onboarding operation lock.
+    try: os.fstat(9)
+    except OSError: pass
+    else: sys.exit(88)
 ''')
         stub.chmod(0o755)
-        for name in ['id', 'systemctl', 'systemd-run']:
+        for name in ['id', 'systemctl', 'systemd-run', 'claude', 'cursor-agent', 'openclaw', 'happy', 'assbox-vscode']:
             (self.bin / name).symlink_to(stub)
         self.env = os.environ | {'CALLS': str(self.calls), 'STATE': str(self.state),
                                  'XDG_RUNTIME_DIR': str(self.runtime)}
 
-    def script(self, id):
-        text = self.scripts['assbox/diagnostics/' + id]
+    def script(self, id, kind='diagnostics'):
+        text = self.scripts['assbox/' + kind + '/' + id]
         text = text.replace('/home/agent', str(self.home))
+        text = text.replace('export PATH=/run/current-system/sw/bin:/run/wrappers/bin',
+                            'export PATH=' + shlex.quote(os.environ['PATH']))
+        for package, command in [('claude-code', 'claude'), ('cursor-agent', 'cursor-agent'),
+                                 ('openclaw', 'openclaw'), ('happy-coder', 'happy'), ('vscode-cli', 'assbox-vscode')]:
+            text = text.replace(f'/nix/store/test-{package}/bin/{command}', str(self.bin / command))
         for name in ['id', 'systemctl', 'systemd-run']:
             package = 'coreutils' if name == 'id' else 'systemd'
             text = text.replace(f'/nix/store/test-{package}/bin/{name}', str(self.bin / name))
@@ -94,6 +105,8 @@ elif name == 'systemd-run':
         return subprocess.run(['bash', str(self.script(id))], env=self.env | {'MODE': mode},
                               text=True, capture_output=True, timeout=5)
 
+
+class RemoteDiagnosticsTests(RemoteScriptFixture, unittest.TestCase):
     def test_each_adapter_captures_privately_and_restores_after_failure(self):
         for id in ['claude-code-remote', 'cursor-worker', 'openclaw-node', 'happy-remote', 'vscode-tunnel']:
             with self.subTest(id=id):

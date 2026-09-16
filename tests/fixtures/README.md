@@ -25,6 +25,11 @@ The system-adapter Cargo tests separately run `password_terminal.py` against the
 real password helper in a private PTY. They cover entry, cancellation, helper
 failure, terminal restoration and secret output; no password agent or VM is needed.
 
+`remote_provider.py` supplies harmless executables for the remote lifecycle VM's
+real adapter units. It can fail, exit cleanly or leave a child running and emits
+only a synthetic diagnostic sentinel. It never authenticates or contacts providers
+and is not installed by production modules.
+
 The optical image is an installation-media observation fixture, not a claim that
 the VM booted the public NixOS ISO. The Intel Mac fixture boots real rEFInd and
 preserves an unrelated ESP payload and APFS-type partition. It contains no macOS.

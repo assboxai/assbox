@@ -174,6 +174,9 @@
             )
         // {
           workspace = p.assbox;
+          remote-lifecycle-vm = import ./tests/nix/remote-lifecycle-vm.nix {
+            inherit (p) pkgs assbox;
+          };
           access-lan-vm = import ./tests/nix/access-vm.nix {
             inherit module;
             inherit (p) pkgs;

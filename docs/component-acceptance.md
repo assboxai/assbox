@@ -61,6 +61,11 @@ blocker requires its adapter and regression coverage in the same reviewed change
 - `tests/tooling/test_component_catalog.py`: real Nix module merging with inert
   package values; absence of implicit packages/services, onboarding gating, GUI
   lifetime, explicit mutable-code consent and access dependencies. No system build.
+- Local remote-script tests execute the Nix-rendered onboarding and diagnostic
+  scripts with substitute provider and user-manager commands. They check explicit
+  permission, operation locks, private file modes, output limits, cancellation and
+  restoration. Module tests also distinguish changed settings from package updates
+  when computing permission markers. These tests do not execute systemd services.
 - `component-*`, `mixed-cli`, `editors-x11`, `editor-hosts`, `full-x11` and
   `full-wayland` configurations: policy and native build checks. Existing base,
   BIOS, Apple and session fixtures remain.
@@ -71,6 +76,13 @@ blocker requires its adapter and regression coverage in the same reviewed change
   Existing OpenCode/OpenClaw VMs test local authentication and session lifecycle;
   new remote units must remain dormant before interactive onboarding. None of
   these credential-free VMs certifies provider login or completed remote tasks.
+- `remote-lifecycle-vm`: real production adapter modules and systemd user units with
+  harmless substitute provider programs. It exercises onboarding, repeated failures
+  beyond the former start limit, clean-exit recovery, explicit stop, descendant
+  cleanup, GUI launcher handoff and normal close, graphical-session teardown,
+  structured doctor output, private diagnostic capture, changed settings and
+  component removal through NixOS reconfiguration. Only restart delays are shortened;
+  native execution remains required on both architectures.
 - `access-lan-vm` and `access-tailscale-vm`: real OpenSSH keys, privilege refusal,
   IPv4/IPv6 packets, untrusted ingress and disappearance of the admitted interface.
   The tailnet fixture simulates `tailscale0`; real overlay login remains below.

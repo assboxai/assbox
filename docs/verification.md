@@ -26,6 +26,7 @@ here and keep dated, source-specific execution reports outside the repository.
 | `application-chatgpt-vm` | Defined: actual locked package in X11; native execution and provider-authenticated tasks remain required |
 | `application-opencode-vm` | Defined: actual locked package in headless/X11/Wayland, local authentication and lifecycle; native execution and provider tasks remain required |
 | `application-openclaw-vm` | Defined: actual locked package in headless/X11/Wayland, local gateway authentication and lifecycle; native execution and provider tasks remain required |
+| `remote-lifecycle-vm` | Defined: real remote/editor units with substitute providers, onboarding, crash/clean-exit recovery, descendant/session cleanup, diagnostics and NixOS reconfiguration; native execution remains required |
 
 Engineering readiness requires implemented behavior and substantive verification
 gates capable of checking it. Pending execution alone is different from missing
@@ -150,6 +151,13 @@ The application VMs use the actual locked packages and real user services/sessio
 managers. They define local credential gates, loopback checks, process failure and
 restart, logout, shutdown and reboot checks. They use disposable local credentials;
 no provider account is logged in and no paid model task is claimed.
+
+The separate `remote-lifecycle-vm` runs the production remote/editor adapter modules
+with harmless substitute provider executables. It checks Assbox's service supervision,
+permission markers, graphical ownership, doctor output and private diagnostic capture,
+including actual NixOS switches that change settings or remove a component. It keeps
+the production restart policy and shortens only delays. This mandatory gate complements
+the package VMs; it cannot establish compatibility with provider binaries or accounts.
 
 `resources-vm` observes the background slice, a real Nix sandbox child and zram's
 logical/allocated size. It checks the absence of Assbox CPU quotas and memory

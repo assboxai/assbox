@@ -21,7 +21,7 @@ architecture=$(nix eval --impure --raw --expr builtins.currentSystem)
 check_names=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#checks.$architecture" --apply builtins.attrNames)
 family_checks_text=$(python3 -c 'import sys; sys.path.insert(0, "scripts"); from component_families import FAMILIES; print("\n".join("application-" + family + "-vm" for family in FAMILIES))')
 mapfile -t family_checks <<< "$family_checks_text"
-for required in "${family_checks[@]}" access-lan-vm access-tailscale-vm install-boot-vm activation-recovery-vm authenticated-release-vm application-chatgpt-vm application-opencode-vm application-openclaw-vm; do
+for required in "${family_checks[@]}" remote-lifecycle-vm access-lan-vm access-tailscale-vm install-boot-vm activation-recovery-vm authenticated-release-vm application-chatgpt-vm application-opencode-vm application-openclaw-vm; do
   if ! jq -e --arg required "$required" 'index($required) != null' <<< "$check_names" >/dev/null; then
     echo "Release promotion blocked: checks.$architecture.$required must be implemented and pass." >&2
     echo "Plan-only storage and fixture tests do not replace full installation, activation, application or authenticated-release acceptance." >&2

@@ -7,11 +7,14 @@
   autostart ? [ ],
   acceptUnfree ? true,
   unfreePackages ? [ ],
+  packageRevision ? "",
 }:
 let
   lib = import libPath;
   pkg = name: {
-    outPath = "/nix/store/test-${name}";
+    outPath = "/nix/store/test-${name}${
+      lib.optionalString (packageRevision != "") "-${packageRevision}"
+    }";
     meta.license.free = !(builtins.elem name unfreePackages);
     __toString = self: self.outPath;
     override = _: pkg name;
