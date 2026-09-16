@@ -18,10 +18,13 @@ proprietary applications have their own trust and licensing considerations.
 The prepared installer never repairs or repartitions disks. It checks filesystem
 integrity, isolated backup media, identities and mount ownership near writes. These
 checks reduce risk but do not make installation transactional across a power loss.
-The full system is built before target writes, but live-store capacity may limit
-that approach on small machines. Virtual backup disks separate guest devices, not
-physical failure domains. Independent data backups and hardware acceptance remain
-necessary.
+Release authentication, configuration checks, credentials and verified external
+boot backups precede the first target write. The build then uses the target root;
+a failed build can leave incomplete Linux files. The ESP stays read-only until the
+exact built generation passes receipt checks. Once activation starts, boot files
+may be partially changed. Durable phase records support inspection, not automatic
+resume or rollback. Virtual backup disks separate guest devices, not physical
+failure domains. Independent data backups and hardware acceptance remain necessary.
 
 Initial installer core identity and authenticated release source/lock identities are
 checked before target writes. Installed update authentication uses GitHub immutable

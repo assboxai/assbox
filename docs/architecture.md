@@ -80,7 +80,7 @@ publication it checks that the original local tree and system profile are unchan
 The operation lock coordinates Assbox commands, not other root administrators or
 normal `nixos-rebuild`; concurrent non-Assbox changes can therefore cause refusal.
 
-## Immutable source and prebuild boundary
+## Immutable source and installation boundaries
 
 An immutable core revision, release tag, manifest digest and release high-water mark
 are distinct domain values. The release adapter delegates cryptography to the
@@ -92,8 +92,22 @@ consumption. Installation additionally binds the binary's core commit; updates c
 accept an authorized newer core under the existing trust policy.
 
 The machine flake carries the authenticated graph with literal immutable input
-syntax. The final system is prebuilt in live state and checked against the install
-plan before the target becomes writable. Installation uses that exact closure.
+syntax. Release authentication, local configuration evaluation, credential capture
+and external boot-backup read-back finish before the first target write. The
+installer uses Nix's standard target/chroot store and a build directory on that
+same root, keeping the ESP read-only. After the build it resolves the immutable
+receipt inside the target store and validates it against the captured install plan.
+`nixos-install --system` then activates that exact closure without resolving a new
+graph. No additional scratch disk or intermediate installed OS is needed.
+
+Initial installation has its own deliberately small phase record:
+`target-writes → building → activating → complete`. Its external write intent and
+target record bind the operation, storage identities, backup name and release/config
+digests. They are diagnostic evidence, never authorization to resume. Build retries
+require explicit input within the original process and recheck identity, owned
+mounts, configuration bytes and release freshness. Signals cancel the operation;
+build/installation subprocesses run in dedicated systemd cgroups that are stopped
+before mount leases can be dropped. Password-client output stays in bounded memory.
 Release CI uses ordinary Python scripts with a pure release-data module and an
 effectful orchestrator. The installed program remains the six-crate Rust workspace.
 

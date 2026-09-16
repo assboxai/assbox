@@ -20,18 +20,21 @@ here and keep dated, source-specific execution reports outside the repository.
 
 | Required check | Implementation and remaining acceptance |
 | --- | --- |
-| `install-boot-vm` | Not defined yet: shared production install, pre-write refusal and installed-disk boot |
-| `activation-recovery-vm` | Not defined yet: real staging/activation, interruption, recovery and retention |
+| `install-boot-vm` | Defined: prepared-media refusal, verified backup, target-store build, explicit retry/cancellation, power-loss cuts and actual installed-disk boot; native execution and real-media/hardware acceptance remain required |
+| `activation-recovery-vm` | Defined: real package changes, staging/activation, failed effects, interruption, recovery, pending reboot and retention/GC; native execution remains required |
 | `authenticated-release-vm` | Defined: compiled pipeline with controlled external evidence, plus genuine upstream signature fixtures; complete native execution and public-release acceptance remain required |
 | `application-chatgpt-vm` | Defined: actual locked package in X11; native execution and provider-authenticated tasks remain required |
 | `application-opencode-vm` | Defined: actual locked package in headless/X11/Wayland, local authentication and lifecycle; native execution and provider tasks remain required |
 | `application-openclaw-vm` | Defined: actual locked package in headless/X11/Wayland, local gateway authentication and lifecycle; native execution and provider tasks remain required |
 
-The follow-up tranche must complete the two missing suites and execute/fix the
-new release, application and resource VMs, then run the full native gates, coverage,
-mutations and vulnerability scans. Broad builds and VM-driven fixes are deliberately
-kept in that tranche while other work shares the development host. A stopped or
-partially executed check supplies no passing result.
+Engineering readiness requires implemented behavior and substantive verification
+gates capable of checking it. Pending execution alone is different from missing
+implementation. The named suites are now present; their definitions are not passing
+results. The expensive follow-up tranche must execute and fix the installation,
+activation, release, application and resource VMs, then run the full native gates,
+coverage, mutations and vulnerability scans. A stopped or partially executed check
+supplies no passing result. Execution-driven fixes remain in that tranche while
+other work shares the development host.
 
 A genuine `flake.lock` is committed. Reviewed pins and provisioned repository/owner
 identities are also required. Default zero IDs intentionally refuse release acceptance. No source
@@ -83,6 +86,29 @@ unresolved journal blocks it even with exhausted retries. These fixtures do not
 exercise real package activation, a completed update, generation pruning or
 filesystem power loss.
 
+The installation gate calls the production installer through a noninstalled Rust
+test executable, performs real `nix build --store` and `nixos-install --system`,
+then boots the resulting disk without the live medium. It includes x86 UEFI/GPT,
+BIOS/GPT, BIOS/MBR and rEFInd/shared-ESP variants, ARM UEFI/GPT, and 4Kn UEFI on
+both architectures. Cases cover root-content refusals, corrupt backup read-back,
+insufficient backup space,
+pre-write byte preservation, credential cancellation, termination of an actual
+builder grandchild, configuration/mount drift, target ENOSPC, same-process retry
+after an unavailable fixed-output build input, and abrupt VM exits at durable
+installation boundaries. It checks private credentials/state and real admin SSH
+after boot. The optical source is still an observation fixture; real ISO boot is
+manual acceptance.
+
+The activation gate uses that installed disk for real add/remove, generation-limit
+changes, foreign binding/schema refusal, failed build/activation, three-file release
+publication, staging, reboot and retention/GC. Power cuts bracket preparation,
+publication, profile/activation and durable retirement. A pending generation must
+boot with unavailable release transport and a corrupt or exhausted retry budget;
+unresolved journals must still block it. Source recovery preserves the real release
+high-water mark. The shared offline source mirror serves locked archives whose NAR
+hashes Nix verifies. Release certificate observations remain test-controlled; these
+gates do not replace public cryptographic release acceptance.
+
 The new release VM invokes an ignored, root-only Rust test executable compiled with
 a fixture tool closure. It calls the same release-fetch function as production,
 while the external HTTP and verified-certificate observations are deterministic.
@@ -110,9 +136,9 @@ must pass the full gate on both architectures. The release script checks their
 presence and refuses missing checks. Adding names or dummy passing derivations is
 not sufficient; review implementations and execution against the contract below.
 
-Full installation acceptance must execute the production source binding, prebuild,
-external backup, target apply, installed-disk boot and post-boot checks for x86
-UEFI/GPT, BIOS/GPT, BIOS/MBR and ARM UEFI/GPT. Hash target bytes at injected failures
+Full installation acceptance must execute the production source binding, external
+backup, target-store build, target activation, installed-disk boot and post-boot checks for x86
+UEFI/GPT, BIOS/GPT, BIOS/MBR and ARM UEFI/GPT. Compare all target bytes at injected failures
 before the first-write boundary. Exercise nonempty/dirty media, recovered files
 inside `lost+found`, misleading recovery-directory types/ownership, optical/live-media
 exclusion, EFI boot paths and subsequent rescue access. Check displayed disk model,
@@ -132,8 +158,8 @@ actual verifier, replay/expiry rules and publication journal described in
 [release authentication](release-authentication.md); a valid Git branch or a Nix
 substitute signature is not a substitute for that release-approval check.
 
-4Kn storage, hardware disappearance, actual power loss, EFI ownership and the Intel
-Apple shared-ESP path require appropriate dedicated tests. No test may claim to
+The virtual 4Kn and shared-ESP cases supplement physical checks of hardware
+disappearance, actual power loss, EFI ownership and Intel Apple firmware. No test may claim to
 boot macOS from an APFS-type sentinel containing no macOS installation.
 
 ## Hardware and application acceptance

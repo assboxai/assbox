@@ -69,10 +69,12 @@ disks; an attached read-only optical ISO can serve as the live medium instead.
 Virtual disks provide guest-device separation, not independent physical backups.
 
 An applying installation requires an explicit `--release r-N`. The installer
-authenticates that immutable release and binds its core identity and exact dependency lock,
-generates the machine configuration in live state, and builds the final system
-before its first target write. A RAM-backed live Nix store must have sufficient
-capacity for that build. Read [installation](docs/installation.md) before use.
+authenticates that immutable release, binds its core identity and exact dependency
+lock, evaluates the machine configuration and verifies an external boot backup.
+It then builds in the prepared target's Nix store with disk-backed build space,
+validates the resulting generation and installs its bootloader. One live-media
+session completes setup; there is no intermediate plain-NixOS installation.
+Read [installation](docs/installation.md), including its failure phases, before use.
 
 Maintenance defaults to daily **18:00 local time**, up to 15 minutes of jitter, and
 catch-up after missed windows. Changed updates are staged, announced and followed
@@ -95,7 +97,7 @@ Source publication is not production release approval. Both architectures requir
 native Rust/Nix gates, coverage, mutation and vulnerability checks, plus full
 installation, recovery, authenticated-release and application acceptance. The
 [verification guide](docs/verification.md#publication-and-acceptance) lists the
-missing checks and outstanding acceptance that currently block promotion. Do not
+implemented gates and outstanding acceptance that block promotion. Do not
 deploy production machines before those gates and disposable-VM acceptance pass.
 
 The protected source branch is **`master`**. Routine dependency releases do not

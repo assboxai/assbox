@@ -19,9 +19,10 @@ Do not pass through a host physical disk. Disable unnecessary host-folder sharin
 and never expose host credentials for an installer test. A host snapshot is useful
 for test reset, not a substitute for independent backups.
 
-Provide enough memory/live-store space for prebuilding the selected system; see the
-[capacity limitation](installation.md#live-store-capacity). No tested minimum is
-claimed. More virtual target disk space does not enlarge a RAM-backed live store.
+Provide enough target disk space for packages, build intermediates and retained
+generations; see [build capacity](installation.md#build-capacity). The full build
+uses that disk. Authentication/evaluation and the running compiler still need RAM;
+no tested minimum is claimed.
 The backup needs space for complete ESP/boot metadata, not merely the partition
 list. Distinct guest disks may still share one physical host disk.
 

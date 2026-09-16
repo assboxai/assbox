@@ -74,6 +74,13 @@ end-to-end tests deliberately block promotion rather than creating a successful
 placeholder. CI uses native x86-64 and ARM runners; ARM QEMU tests can use software
 emulation without assuming nested KVM availability.
 
+The install/recovery gates build real systems in disposable guests and boot the
+produced disks. Their test executable adds interruption checkpoints and controlled
+release transport; neither is compiled into the installed CLI. See
+[`tests/fixtures/README.md`](../tests/fixtures/README.md) for the public disposable
+TLS material and fixture boundaries. These gates are expensive; syntax checking
+and compiling their harness do not execute them.
+
 Keep logs/coverage/scan outputs external to distributable source. Never include real
 hardware profiles, credentials, build caches or machine-specific validation captures
 in the repository. Maintain source, tests and durable product/engineering documentation;

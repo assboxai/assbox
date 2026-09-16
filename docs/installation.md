@@ -4,6 +4,27 @@ Read the [security model](../SECURITY.md) and [verification requirements](verifi
 first. This document describes the installer contract, not a hardware certification.
 Never use a source-only bootstrap candidate on valuable disks.
 
+## End-user sequence
+
+1. Back up existing data. Prepare the supported empty Linux partition(s) and a
+   separate backup disk. On Intel Macs, do the partition preparation from macOS
+   and install/test rEFInd first.
+2. Boot matching-architecture NixOS live media and establish networking. Obtain
+   the trusted native Assbox executable and select an authenticated release as
+   described below. There is no separate minimal-NixOS installation step.
+3. Run the Assbox wizard, select the prepared root/ESP/backup, choose the machine
+   settings and inspect the plan. Applying the plan asks for the exact disk
+   confirmation and administrator credentials.
+4. Leave the live session running while Assbox verifies the backup, builds on the
+   target disk and installs the bootloader. Follow an explicit retry prompt only
+   after correcting a build problem; interruptions have the limits described below.
+5. Disconnect the live medium and boot the installed disk (through rEFInd on an
+   Intel Mac). Log in as administrator and complete application onboarding.
+
+The same flow applies to every supported machine. It produces an ordinary
+`/etc/nixos` configuration ready for normal NixOS administration; a copied Git
+checkout and a second setup wizard are not required.
+
 ## Supported shapes
 
 The native executable and running kernel must agree: `x86_64` or `aarch64`.
@@ -93,37 +114,48 @@ the ESP is also inspected read-only. Existing root contents are refused.
 
 The installer generates the complete local configuration under
 `/run/assbox-install/machine`, carries the one resolved lock, evaluates policy,
-and builds the exact NixOS system in the live environment. It validates the built
-generation's immutable architecture/boot/storage receipt against the install plan.
-Only after this succeeds does it create and read back the external boot backup.
+and snapshots the exact configuration bytes. It then creates and reads back the
+external boot backup.
 The archive includes partition-table/boot metadata and, where applicable, the ESP.
 On ext4 recovery directories/files use 0700/0600; FAT/exFAT use restrictive mount
 masks. Backup is remounted read-only for verification of every artifact and the
 checksum manifest bytes.
 
-Only then is the target mounted writable. The prepared configuration and private
-credentials are copied, and `nixos-install --system` installs that exact prebuilt
-system. It does not rebuild from a newly resolved flake after the boundary.
-Identities and mount ownership are rechecked near consequential operations; final
-table/firmware/ESP checks precede completion. Before the boundary, failures leave
-the target unchanged; writes to live working state and the external backup are
-separate from target writes.
+Administrator/network credentials are collected before target writes and never
+enter Nix source. A separate `<backup-name>-install-intent.json` is written and
+read back beside the immutable backup archive. It identifies the operation,
+selected storage, release manifest, configuration digest and backup name.
 
-## Live-store capacity
+## Building and boot activation
 
-The full prebuild uses the live environment's Nix store, not the uncommitted target.
-Stock ISO environments can have a RAM-backed writable store. A graphical/app closure
-and uncached builds can therefore exceed a small VM's or old laptop's live memory.
-This design does not claim a tested minimum RAM or storage budget. Allocate adequate
-live-store capacity, inspect `findmnt -T /nix/store` and `df -h /nix/store`, and test
-`none`/headless first. An out-of-space/build failure before the write boundary leaves
-the target untouched.
+Only then is the target root mounted writable. Assbox records `target-writes` in
+`/.assbox-install.json`, copies the prepared configuration and private credentials,
+then records `building`. Nix uses the target's `/nix/store` and
+`/var/tmp/assbox-build`; it can reuse trusted paths from the live store. The ESP
+remains read-only. Logs are private files under `/var/log/assbox-install` on the
+target, and the live terminal prints their paths and the transient service name.
 
-Assbox does not yet provision a disk-backed scratch build store. Do not work around
-this by mounting an empty disk over `/nix` or by making the selected target writable
-behind the installer's back. A supported low-memory scratch-store path needs its
-own isolation, capacity and recovery tests. This limitation must be resolved/tested
-for memory-constrained hardware before advertising it as installation-ready.
+Before activation, Assbox rechecks storage identities, owned mounts, configuration
+bytes, release freshness and the built generation's immutable architecture/boot/
+storage receipt. Receipt lookup uses the target store. It records `activating`
+before making the ESP writable and invoking standard `nixos-install --system`
+with that exact closure. There is no second flake resolution or second OS build.
+Final partition-table, firmware, ESP and backup checks precede `complete`.
+
+## Build capacity
+
+The full system and build intermediates live on the target disk, so they need not
+fit in a live ISO's RAM-backed writable store. Authentication, source acquisition
+and evaluation still use live state, and compilers still need working memory.
+Provide adequate root space for builds, packages, generations and application data;
+there is no measured minimum RAM/storage claim. Start hardware acceptance with
+`none`/headless before testing the desired application.
+
+Assbox does not cap build concurrency, raise agent priorities or protect agents
+from the OOM killer. Installed-system resource behavior uses upstream build
+parallelism, relative background weights and zram; see [resources](resources.md).
+Disk-backed builds reduce live-store pressure without guaranteeing that every
+workload will fit in RAM or preventing all OOM failures.
 
 ## Intel Apple preservation
 
@@ -135,20 +167,49 @@ x86-64 PE32+ EFI-application header, not a filename substring. Other rEFInd layo
 require explicit expert preparation; the installer does not relocate them. A header
 check is a format/precondition check, not proof that firmware will boot it. The
 existing loader is preserved, and Assbox's Apple loader
-is confined to its own directory. EFI-variable writes are disabled and reported
+is confined to `EFI/Assbox` on the ESP (with GRUB support files on the Linux root).
+EFI-variable writes are disabled and reported
 firmware/unrelated ESP state is checked around boot operations.
+
+Boot the live medium from rEFInd, complete the same wizard, then use rEFInd to
+select the Assbox loader. Confirm both Assbox and the existing macOS installation
+boot before retiring rescue media. Firmware discovery and device drivers vary by
+Intel Mac model; T2 hardware is not implied to work without model-specific support.
+The shared-ESP checks detect unexpected changes; they cannot make loader writes
+atomic or restore an interrupted boot operation automatically. Installation from
+live media does not change the installed runtime privilege or update policy.
 
 This is Intel Mac support only. An AArch64 VM running on an Apple Silicon Mac uses
 generic guest UEFI; it neither configures nor boots the host's Apple boot ecosystem.
 
 ## Failure and recovery limits
 
-After target writes begin, installation is not a transaction across power loss.
-Keep the external backup and live media, inspect the error and mounted devices, and
-do not blindly retry or delete work state. Ambiguous partially installed roots are
-refused; automatic install resume/restore is not provided. Owned-mount cleanup is
-attempted even when post-mount observation fails, but if ownership cannot be proven
-it reports manual inspection rather than unmounting an unknown replacement.
+| Last boundary | What a failure means |
+| --- | --- |
+| Before target writes | Target bytes remain unchanged; live work and external backup files may exist. |
+| `target-writes` or `building` | Linux root may be incomplete; Assbox has not activated a bootloader. |
+| `activating` | Boot files/profile may be partially changed; inspect from rescue media. |
+| `complete` | Installation and its final checks finished; actual disk boot and application acceptance are still required. |
+
+A failed build offers an explicit retry only in the same live process. Correct the
+network/space problem and answer `y` to retry the same release and configuration.
+Changes to configuration, device identity, mount ownership or release validity
+refuse retry. Noninteractive runs do not retry. Activation failures never trigger
+an automatic build/activation retry.
+
+Ctrl-C, termination and hangup cancel the installer. It stops and reaps owned
+build/install cgroups before releasing mounts. If systemd cannot confirm that a
+writer stopped, the installer retains ownership and reports the problem. SIGKILL,
+power loss or disappearing hardware can bypass cleanup; inspect before acting.
+Owned-mount cleanup refuses to unmount a replacement it cannot identify.
+
+After a process restart, any installation record or other unexpected root content
+is refused, including malformed records. Neither deleting a record nor copying an
+old intent back authorizes resume. Preserve the external backup, target record,
+configuration and logs for inspection. If the root is damaged or a record is
+missing, treat its phase as uncertain. See [installation recovery](install-recovery.md)
+for an inspection procedure. Restarting from an empty root is an explicit storage
+preparation decision, never an automatic Assbox repair or rollback.
 
 `assbox recover` handles installed-machine management journals, not initial disk
 restoration. Boot backups do not include all personal data. A virtual backup disk
