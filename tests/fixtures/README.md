@@ -7,7 +7,10 @@ as the production `assbox` command. The authenticated-release VM separately runs
 the pinned real verifier against genuine upstream signed fixtures.
 
 `source_server.py` serves the exact locked source archives over isolated VM HTTPS.
-Nix still verifies their NAR hashes. `mirror-test.key` and `mirror-cert.crt` are
+`source_mirror.py` preserves link targets and verifies each archive's unpacked NAR
+against the lock before publishing its routes. Nix also verifies the downloads.
+Small-tree tooling regressions exercise the same packer and reject the old link
+transformation without building a VM. `mirror-test.key` and `mirror-cert.crt` are
 public, disposable test TLS material, trusted only by this isolated test closure.
 They are not release signing keys or production credentials. Never trust this CA
 on a real machine or expose this fixture server outside the test network.

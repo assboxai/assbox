@@ -22,7 +22,12 @@ let
       source = builtins.head (builtins.filter (item: item.value.narHash == node.locked.narHash) sources);
     in
     {
-      inherit (node.locked) owner repo rev;
+      inherit (node.locked)
+        owner
+        repo
+        rev
+        narHash
+        ;
       path = source.key;
     }
   ) nodes;
@@ -33,6 +38,7 @@ pkgs.runCommand "assbox-input-source-mirror"
       pkgs.python3
       pkgs.gnutar
       pkgs.gzip
+      pkgs.nix
     ];
     sourceRecords = builtins.toJSON records;
     # Preserve references that JSON/path conversion would otherwise discard.
@@ -40,17 +46,5 @@ pkgs.runCommand "assbox-input-source-mirror"
   }
   ''
     mkdir -p "$out"
-    python3 - <<'PY'
-    import hashlib, json, os, pathlib, subprocess
-    out = pathlib.Path(os.environ['out'])
-    routes = {}
-    for source in json.loads(os.environ['sourceRecords']):
-        path = pathlib.Path(source['path'])
-        filename = hashlib.sha256(str(path).encode()).hexdigest() + '.tar.gz'
-        if not (out / filename).exists():
-            subprocess.run(['tar', '-czf', str(out / filename), '--transform=s,^,source/,', '-C', str(path), '.'], check=True)
-        routes['/repos/{owner}/{repo}/tarball/{rev}'.format(**source)] = filename
-        routes['/{owner}/{repo}/archive/{rev}.tar.gz'.format(**source)] = filename
-    (out / 'routes.json').write_text(json.dumps(routes))
-    PY
+    python3 ${../fixtures/source_mirror.py}
   ''
