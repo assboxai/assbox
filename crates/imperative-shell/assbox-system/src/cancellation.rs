@@ -3,6 +3,7 @@
 //! cancellation stops builders and grandchildren before owned mounts are dropped.
 use crate::{commands::Commands, files};
 use assbox_domain::{Error, Result};
+use rustix::termios::{self, OptionalActions, Termios};
 use std::{
     fs::{self, OpenOptions},
     io::{self, IsTerminal, Read, Write},
@@ -90,60 +91,37 @@ pub fn read_line() -> Result<String> {
     }
 }
 
-/// Restore terminal modes even when cancellation has to kill the password client.
-/// Use the existing trusted coreutils closure rather than introducing unsafe TTY
-/// calls. Noninteractive callers retain systemd's password-agent behavior.
-struct TerminalState<'a> {
-    commands: &'a Commands,
-    saved: Option<String>,
+/// Restore terminal modes and discard unread secrets on every unsuccessful exit.
+/// Noninteractive callers retain systemd's password-agent behavior.
+struct TerminalState {
+    saved: Option<Termios>,
 }
 
-impl<'a> TerminalState<'a> {
-    fn save(commands: &'a Commands) -> Result<Self> {
+impl TerminalState {
+    fn save() -> Result<Self> {
         let saved = if io::stdin().is_terminal() {
-            let output = commands
-                .command("stty", &["--save"])?
-                .stdin(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .output()
-                .map_err(|e| Error::new(e.to_string()))?;
-            if !output.status.success() {
-                return Err(Error::new("cannot save password terminal settings"));
-            }
-            Some(
-                String::from_utf8(output.stdout)
-                    .map_err(|_| Error::new("invalid terminal settings"))?
-                    .trim()
-                    .to_owned(),
-            )
+            Some(termios::tcgetattr(io::stdin()).map_err(|e| Error::new(e.to_string()))?)
         } else {
             None
         };
-        Ok(Self { commands, saved })
+        Ok(Self { saved })
     }
 
-    fn restore(&mut self) -> Result<()> {
+    fn restore(&mut self, action: OptionalActions) -> Result<()> {
         if let Some(saved) = &self.saved {
-            let status = self
-                .commands
-                .command("stty", &[saved])?
-                .stdin(Stdio::inherit())
-                .stdout(Stdio::null())
-                .stderr(Stdio::inherit())
-                .status()
-                .map_err(|e| Error::new(e.to_string()))?;
-            if !status.success() {
-                return Err(Error::new("cannot restore password terminal settings"));
-            }
+            termios::tcsetattr(io::stdin(), action, saved)
+                .map_err(|e| Error::new(format!("cannot restore password terminal: {e}")))?;
             self.saved = None;
         }
         Ok(())
     }
 }
 
-impl Drop for TerminalState<'_> {
+impl Drop for TerminalState {
     fn drop(&mut self) {
-        if let Err(error) = self.restore() {
+        // The password helper has been reaped before this guard is dropped.
+        // TCSAFLUSH discards queued input as the original modes are restored.
+        if let Err(error) = self.restore(OptionalActions::Flush) {
             eprintln!("{error}");
         }
     }
@@ -153,7 +131,7 @@ impl Drop for TerminalState<'_> {
 /// Secret output is bounded in memory and never written into command logs.
 pub fn password(c: &Commands, prompt: &str) -> Result<Vec<u8>> {
     check()?;
-    let mut terminal = TerminalState::save(c)?;
+    let mut terminal = TerminalState::save()?;
     let mut child = c
         .command("systemd-ask-password", &["--echo=no", prompt])?
         // TTY reads must stay in the installer's foreground process group.
@@ -191,7 +169,6 @@ pub fn password(c: &Commands, prompt: &str) -> Result<Vec<u8>> {
     let output = reader
         .join()
         .map_err(|_| Error::new("password reader failed"))?;
-    terminal.restore()?;
     if !status?.success() {
         return Err(Error::new("password request failed"));
     }
@@ -200,6 +177,7 @@ pub fn password(c: &Commands, prompt: &str) -> Result<Vec<u8>> {
         return Err(Error::new("password output exceeds limit"));
     }
     check()?;
+    terminal.restore(OptionalActions::Now)?;
     Ok(output)
 }
 

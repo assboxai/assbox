@@ -3,6 +3,8 @@
 from __future__ import annotations
 import importlib.util
 import re
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,6 +18,28 @@ spec.loader.exec_module(architecture)
 class ArchitectureTests(unittest.TestCase):
     def test_workspace_graph(self):
         self.assertEqual(architecture.check(ROOT), [])
+
+    def test_terminal_adapter_features_versions_and_checksums_are_fixed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = Path(temporary)
+            shutil.copytree(ROOT / "crates", tree / "crates")
+            for name in ("Cargo.toml", "Cargo.lock"):
+                shutil.copyfile(ROOT / name, tree / name)
+            manifest = tree / "crates/imperative-shell/assbox-system/Cargo.toml"
+            original = manifest.read_text()
+            for changed in (original.replace('"std", "termios"', '"std", "termios", "net"'),
+                            original.replace('"=1.1.4"', '"1.1.4"')):
+                manifest.write_text(changed)
+                self.assertTrue(architecture.check(tree))
+            manifest.write_text(original)
+            lock = tree / "Cargo.lock"
+            locked = lock.read_text()
+            changes = (locked.replace('name = "rustix"\nversion = "1.1.4"',
+                                      'name = "rustix"\nversion = "1.1.5"'),
+                       re.sub(r'checksum = "[a-f0-9]+"', 'checksum = "' + '0' * 64 + '"', locked, count=1))
+            for changed in changes:
+                lock.write_text(changed)
+                self.assertTrue(architecture.check(tree))
 
     def test_core_lint_detects_direct_grouped_and_alias_effects(self):
         for example in ["use std::fs;", "use std::{fs,fmt};", "std::time::SystemTime::now();",

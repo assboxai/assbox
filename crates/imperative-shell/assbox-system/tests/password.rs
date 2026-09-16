@@ -28,6 +28,9 @@ fn password_terminal_child() {
         assert_eq!(second, b"second-disposable-password\n");
     } else {
         assert!(result.is_err(), "interrupted password client succeeded");
-        assert_eq!(cancellation::check().is_err(), mode != "helper-failure");
+        assert_eq!(
+            cancellation::check().is_err(),
+            !mode.starts_with("helper-failure")
+        );
     }
 }

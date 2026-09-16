@@ -67,14 +67,23 @@ def exercise(mode):
                 helper = children.pop()
                 assert os.getpgid(helper) == os.tcgetpgrp(master) == pid
                 first_sent = True
+                if mode.endswith(("-partial", "-line")):
+                    # Freeze consumption to make the unread-input race deterministic.
+                    os.kill(helper, signal.SIGSTOP)
+                    stopped_by = time.monotonic() + 2
+                    while "State:\tT" not in Path(f"/proc/{helper}/status").read_text():
+                        assert time.monotonic() < stopped_by, "helper did not stop"
+                        time.sleep(0.01)
+                    queued = b"queued-disposable-password"
+                    os.write(master, queued + (b"\n" if mode.endswith("-line") else b""))
                 if mode == "success":
                     os.write(master, b"disposable-test-password\n")
-                elif mode == "interrupt":
+                elif mode.startswith("interrupt"):
                     os.write(master, b"\x03")  # Real terminal-generated SIGINT.
-                elif mode == "helper-failure":
+                elif mode.startswith("helper-failure"):
                     os.kill(helper, signal.SIGKILL)
                 else:
-                    os.kill(pid, signal.SIGTERM if mode == "terminate" else signal.SIGHUP)
+                    os.kill(pid, signal.SIGTERM if mode.startswith("terminate") else signal.SIGHUP)
             if (mode == "success" and not second_sent and no_echo
                     and b"Assbox second password:" in terminal):
                 second_sent = True
@@ -103,7 +112,20 @@ def exercise(mode):
         restored[2] &= ~termios.CIBAUD
         assert restored == original, (mode, "terminal settings not restored", original, restored)
         assert not Path(f"/proc/{helper}").exists(), (mode, "password helper survived")
+        # Read in noncanonical mode so a partial line cannot hide in the queue.
+        readable = termios.tcgetattr(slave)
+        readable[3] &= ~(termios.ICANON | termios.ECHO)
+        readable[6][termios.VMIN] = 0
+        readable[6][termios.VTIME] = 0
+        termios.tcsetattr(slave, termios.TCSANOW, readable)
+        os.set_blocking(slave, False)
+        try:
+            unread = os.read(slave, 4096)
+        except BlockingIOError:
+            unread = b""
+        assert not unread, (mode, "password input survived cleanup")
         for output in streams.values():
+            assert b"queued-disposable-password" not in output, (mode, "queued password leaked")
             assert b"disposable-test-password" not in output, (mode, "password leaked")
             assert b"second-disposable-password" not in output, (mode, "password leaked")
     finally:
@@ -119,5 +141,8 @@ def exercise(mode):
     print(f"password terminal: {mode} passed", flush=True)
 
 
-for case in ("success", "terminate", "interrupt", "hangup", "helper-failure"):
+cases = ["success", "terminate", "interrupt", "hangup", "helper-failure"]
+cases += [mode + suffix for mode in ("terminate", "hangup", "helper-failure")
+          for suffix in ("-partial", "-line")]
+for case in cases:
     exercise(case)

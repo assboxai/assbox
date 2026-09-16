@@ -36,8 +36,10 @@ Tooling tests use Python with PyYAML supplied by the Nix development shell.
 The shell also supplies Node.js for dependency-free Worker tests and Wrangler for
 explicit infrastructure deployment. These are development tools, not new installed
 Assbox runtime dependencies.
-The shell uses the pinned `signal-hook` adapter for cooperative installer cancellation;
-its MIT/Apache-2.0 dependency graph is explicitly reviewed in the architecture guard.
+The shell uses pinned `signal-hook` for cooperative cancellation and `rustix`
+(with only `std` and `termios`) for safe terminal restoration and unread-password
+flushing. Their MIT/Apache-compatible dependency graphs, versions and checksums
+are explicitly reviewed in the architecture guard; Assbox itself still forbids unsafe code.
 The functional core still uses only internal dependencies. Structured command output
 uses the Nix-provided `jq`. Review dependency changes, including licenses and transitive graphs.
 

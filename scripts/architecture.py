@@ -15,8 +15,13 @@ GRAPH = {
     "assbox-engine": {"assbox-domain", "assbox-policy", "assbox-config", "assbox-system"},
     "assbox-cli": {"assbox-domain", "assbox-policy", "assbox-config", "assbox-system", "assbox-engine"},
 }
-# Reviewed MIT/Apache-2.0 signal adapter graph. Windows entries are lock-only on Linux.
-REVIEWED_SIGNAL_DEPENDENCIES = [{'name': 'errno', 'version': '0.3.14', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': '39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb', 'dependencies': ['libc', 'windows-sys']}, {'name': 'libc', 'version': '0.2.189', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': '3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2'}, {'name': 'signal-hook', 'version': '0.4.4', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'b2a0c28ca5908dbdbcd52e6fdaa00358ab88637f8ab33e1f188dd510eb44b53d', 'dependencies': ['libc', 'signal-hook-registry']}, {'name': 'signal-hook-registry', 'version': '1.4.8', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b', 'dependencies': ['errno', 'libc']}, {'name': 'windows-link', 'version': '0.2.1', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5'}, {'name': 'windows-sys', 'version': '0.61.2', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc', 'dependencies': ['windows-link']}]
+# Reviewed MIT/Apache-compatible signal and terminal adapters; Windows is lock-only.
+# rustix's build script probes the compiler/target, with no network or external build dependencies.
+REVIEWED_ADAPTERS = {
+    "signal-hook": {"version": "=0.4.4", "default-features": False},
+    "rustix": {"version": "=1.1.4", "default-features": False, "features": ["std", "termios"]},
+}
+REVIEWED_ADAPTER_DEPENDENCIES = [{'name': 'bitflags', 'version': '2.13.1', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da'}, {'name': 'errno', 'version': '0.3.14', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': '39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb', 'dependencies': ['libc', 'windows-sys']}, {'name': 'libc', 'version': '0.2.189', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': '3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2'}, {'name': 'linux-raw-sys', 'version': '0.12.1', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': '32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53'}, {'name': 'rustix', 'version': '1.1.4', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190', 'dependencies': ['bitflags', 'errno', 'libc', 'linux-raw-sys', 'windows-sys']}, {'name': 'signal-hook', 'version': '0.4.4', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'b2a0c28ca5908dbdbcd52e6fdaa00358ab88637f8ab33e1f188dd510eb44b53d', 'dependencies': ['libc', 'signal-hook-registry']}, {'name': 'signal-hook-registry', 'version': '1.4.8', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b', 'dependencies': ['errno', 'libc']}, {'name': 'windows-link', 'version': '0.2.1', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5'}, {'name': 'windows-sys', 'version': '0.61.2', 'source': 'registry+https://github.com/rust-lang/crates.io-index', 'checksum': 'ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc', 'dependencies': ['windows-link']}]
 
 EFFECT_MODULES = {"fs", "io", "net", "process", "thread", "time", "env", "sync"}
 
@@ -111,7 +116,7 @@ def check(root: Path) -> list[str]:
         manifest = tomllib.loads((path / "Cargo.toml").read_text())
         name = manifest["package"]["name"]
         dependencies = manifest.get("dependencies", {})
-        found[name] = set(dependencies) - ({"signal-hook"} if name == "assbox-system" else set())
+        found[name] = set(dependencies) - (set(REVIEWED_ADAPTERS) if name == "assbox-system" else set())
         side = "functional-core" if name in {"assbox-domain", "assbox-policy", "assbox-config"} else "imperative-shell"
         if Path(relative).parts[:2] != ("crates", side):
             errors.append(f"incorrect architectural location: {name}")
@@ -122,7 +127,7 @@ def check(root: Path) -> list[str]:
         if (path / "build.rs").exists() or "build-dependencies" in manifest:
             errors.append(f"unreviewed build-time execution: {name}")
         for dep, spec in dependencies.items():
-            if name == "assbox-system" and dep == "signal-hook" and spec == {"version": "=0.4.4", "default-features": False}:
+            if name == "assbox-system" and dep in REVIEWED_ADAPTERS and spec == REVIEWED_ADAPTERS[dep]:
                 continue
             if not isinstance(spec, dict) or set(spec) != {"path"}:
                 errors.append(f"only reviewed internal path dependencies are currently allowed: {name}/{dep}")
@@ -140,10 +145,10 @@ def check(root: Path) -> list[str]:
         errors.append(f"internal dependency graph changed without an architectural update: {found}")
     lock = tomllib.loads((root / "Cargo.lock").read_text())
     internal = [p for p in lock["package"] if p["name"] in GRAPH]
-    locked = {p["name"]: set(p.get("dependencies", [])) - ({"signal-hook"} if p["name"] == "assbox-system" else set()) for p in internal}
+    locked = {p["name"]: set(p.get("dependencies", [])) - (set(REVIEWED_ADAPTERS) if p["name"] == "assbox-system" else set()) for p in internal}
     registry = [p for p in lock["package"] if p["name"] not in GRAPH]
-    if registry != REVIEWED_SIGNAL_DEPENDENCIES:
-        errors.append("unreviewed signal adapter dependency graph; review exact versions, licenses and checksums")
+    if registry != REVIEWED_ADAPTER_DEPENDENCIES:
+        errors.append("unreviewed system adapter dependency graph; review exact versions, licenses and checksums")
     if locked != GRAPH or any("source" in p or p["version"] != package["version"] for p in internal):
         errors.append("Cargo.lock does not describe the internal workspace exactly")
     for path in root.rglob("*"):
