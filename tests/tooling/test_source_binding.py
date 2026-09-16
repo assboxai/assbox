@@ -125,7 +125,10 @@ class SourceBindingTests(unittest.TestCase):
         self.assertLess(script.index("Release promotion blocked"), script.index("scripts/verify"))
         flake = (ROOT / "flake.nix").read_text()
         self.assertIn("management-vm", flake)
-        self.assertIn("nix flake check", (ROOT / "scripts/verify").read_text())
+        verify = (ROOT / "scripts/verify").read_text()
+        self.assertIn('".#checks.$system" --apply builtins.attrNames', verify)
+        self.assertIn('nix build --no-link --no-update-lock-file --no-write-lock-file --keep-going ".#checks.$system.$check"', verify)
+        self.assertIn('((status == 0)) || exit "$status"', verify)
 
     def test_mount_and_runtime_policy_ownership_are_explicit(self):
         mounts = (ROOT / "crates/imperative-shell/assbox-system/src/mounts.rs").read_text()

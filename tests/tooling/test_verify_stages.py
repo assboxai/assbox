@@ -30,6 +30,8 @@ class VerifyStagesTests(unittest.TestCase):
                     'import json, os, pathlib, sys\n'
                     'call = [pathlib.Path(sys.argv[0]).name] + sys.argv[1:]\n'
                     'with open(os.environ["CALLS"], "a") as out: out.write(json.dumps(call) + "\\n")\n'
+                    'if call[0] == "nix" and call[1] == "eval": print("aarch64-linux" if "builtins.currentSystem" in call else json.dumps(["one", "two"]))\n'
+                    'if call[0] == "jq": print("one\\ntwo")\n'
                     'sys.exit(71 if call == json.loads(os.environ["FAIL_CALL"]) else 0)\n')
             for name in TOOLS:
                 path = tools / name; path.write_text(stub); path.chmod(0o755)
@@ -56,7 +58,7 @@ class VerifyStagesTests(unittest.TestCase):
                          ['cargo', 'build', '--workspace', '--locked'],
                          ['cargo', 'test', '--workspace', '--all-targets', '--locked'],
                          ['python3', 'scripts/mutations.py'],
-                         ['nix', 'flake', 'check', '--no-update-lock-file', '--no-write-lock-file', '--keep-going']):
+                         ['nix', 'build', '--no-link', '--no-update-lock-file', '--no-write-lock-file', '--keep-going', '.#checks.aarch64-linux.two']):
             self.assertIn(required, all_calls)
         for tool in ('node', 'nixfmt', 'shellcheck', 'actionlint', 'systemd-analyze'):
             self.assertIn(tool, [call[0] for call in all_calls])
@@ -73,11 +75,18 @@ class VerifyStagesTests(unittest.TestCase):
         for failed in (['python3', 'scripts/architecture.py'],
                        ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings'],
                        ['python3', 'scripts/mutations.py'],
-                       ['nix', 'flake', 'check', '--no-update-lock-file', '--no-write-lock-file', '--keep-going']):
+                       ['nix', 'build', '--no-link', '--no-update-lock-file', '--no-write-lock-file', '--keep-going', '.#checks.aarch64-linux.two']):
             with self.subTest(failed=failed):
                 result, calls = self.run_stage(fail=failed)
                 self.assertEqual(result.returncode, 71, result.stderr)
                 self.assertEqual(calls[-1], failed)
+
+    def test_failed_nix_check_does_not_skip_later_checks_or_become_success(self):
+        first = ['nix', 'build', '--no-link', '--no-update-lock-file', '--no-write-lock-file', '--keep-going', '.#checks.aarch64-linux.one']
+        result, calls = self.run_stage('nix', fail=first)
+        self.assertEqual(result.returncode, 71)
+        self.assertIn(first, calls)
+        self.assertIn(first[:-1] + ['.#checks.aarch64-linux.two'], calls)
 
     def test_bad_arguments_execute_nothing(self):
         for args in (('unknown',), ('',), ('static', 'rust')):

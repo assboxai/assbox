@@ -17,7 +17,7 @@ case "$stage" in
   static) tools=(python3 node cargo rustfmt nix nixfmt shellcheck actionlint jq systemd-analyze) ;;
   rust) tools=(cargo rustc python3) ;;
   mutations) tools=(python3 cargo rustc) ;;
-  nix) tools=(nix) ;;
+  nix) tools=(nix jq) ;;
   *) echo "Unknown verification stage: $stage" >&2; exit 2 ;;
 esac
 for tool in "${tools[@]}"; do
@@ -27,6 +27,7 @@ done
 echo "Verification stage: $stage"
 case "$stage" in
   static)
+    python3 scripts/component_catalog.py --check
     python3 scripts/architecture.py
     python3 scripts/workflow_policy.py
     python3 -m unittest discover -s tests/tooling -v
@@ -51,7 +52,17 @@ case "$stage" in
     python3 scripts/mutations.py
     ;;
   nix)
-    nix flake check --no-update-lock-file --no-write-lock-file --keep-going
+    # Separate evaluator lifetimes keep the expanded matrix from accumulating
+    # every system in one process. Each check retains normal Nix build parallelism.
+    system=$(nix eval --raw --impure --expr builtins.currentSystem)
+    checks_json=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#checks.$system" --apply builtins.attrNames)
+    check_names=$(jq -er 'if type == "array" and length > 0 then .[] else error("empty native check matrix") end' <<< "$checks_json")
+    status=0
+    while IFS= read -r check; do
+      echo "Nix check: $system.$check"
+      nix build --no-link --no-update-lock-file --no-write-lock-file --keep-going ".#checks.$system.$check" || status=$?
+    done <<< "$check_names"
+    ((status == 0)) || exit "$status"
     ;;
 esac
 echo "Verification stage passed: $stage"
