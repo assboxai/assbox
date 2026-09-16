@@ -140,6 +140,9 @@
             inherit module;
             inherit (p) pkgs;
           };
+          authenticated-release-vm = import ./tests/nix/authenticated-release-vm.nix {
+            inherit (p) pkgs assbox;
+          };
         }
       );
     };

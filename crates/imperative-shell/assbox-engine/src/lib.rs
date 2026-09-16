@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #![forbid(unsafe_code)]
+#[cfg(test)]
+mod acceptance;
 mod boot_guard;
 pub mod install;
 pub mod manage;
