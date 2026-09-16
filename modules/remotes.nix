@@ -100,9 +100,12 @@ let
       umask 077
       export HOME=/home/agent
       export PATH=/run/current-system/sw/bin:/run/wrappers/bin
+      exec 9>"$XDG_RUNTIME_DIR/assbox-${id}.lock"
+      ${pkgs.util-linux}/bin/flock -n 9 || { echo 'Onboarding or diagnostics already owns this service.' >&2; exit 1; }
+      ${pkgs.systemd}/bin/systemctl --user stop assbox-${id}.service
       mkdir -p ${lib.escapeShellArg cfg.components.${id}.workingDirectory}
       cd ${lib.escapeShellArg cfg.components.${id}.workingDirectory}
-      ${setupCommands.${id}}
+      ( exec 9>&-; ${setupCommands.${id}} )
       printf 'Setup complete and ready to start the Assbox service? Type yes: '
       read -r answer
       test "$answer" = yes
@@ -112,6 +115,40 @@ let
       ${pkgs.systemd}/bin/systemctl --user restart assbox-${id}.service
       echo 'Service start requested. This is not evidence of a successful provider task.'
     '';
+  diagnostic =
+    id:
+    pkgs.writeShellScript "assbox-diagnostic-${id}" (
+      builtins.replaceStrings
+        [
+          "@id@"
+          "@flock@"
+          "@mkdir@"
+          "@chmod@"
+          "@mktemp@"
+          "@head@"
+          "@systemctl@"
+          "@systemd-run@"
+          "@unit@"
+          "@graphical@"
+          "@workdir@"
+          "@command@"
+        ]
+        [
+          "${pkgs.coreutils}/bin/id"
+          "${pkgs.util-linux}/bin/flock"
+          "${pkgs.coreutils}/bin/mkdir"
+          "${pkgs.coreutils}/bin/chmod"
+          "${pkgs.coreutils}/bin/mktemp"
+          "${pkgs.coreutils}/bin/head"
+          "${pkgs.systemd}/bin/systemctl"
+          "${pkgs.systemd}/bin/systemd-run"
+          "assbox-${id}"
+          (lib.boolToString (graphical id))
+          (lib.escapeShellArg cfg.components.${id}.workingDirectory)
+          (lib.escapeShellArgs command.${id})
+        ]
+        (builtins.readFile ./diagnostics/remote.sh)
+    );
 in
 {
   options.assbox.components =
@@ -212,13 +249,16 @@ in
           pkgs.dbus
         ];
     environment.etc = lib.listToAttrs (
-      map (
-        id:
-        lib.nameValuePair "assbox/onboarding/${id}" {
+      lib.concatMap (id: [
+        (lib.nameValuePair "assbox/onboarding/${id}" {
           source = onboard id;
           mode = "0755";
-        }
-      ) (builtins.filter enabled ids)
+        })
+        (lib.nameValuePair "assbox/diagnostics/${id}" {
+          source = diagnostic id;
+          mode = "0755";
+        })
+      ]) (builtins.filter enabled ids)
     );
     systemd.user.services = lib.listToAttrs (
       map (

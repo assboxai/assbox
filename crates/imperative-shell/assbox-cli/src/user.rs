@@ -44,7 +44,7 @@ fn interactive_executable(program: &Path, args: &[&str]) -> Result<()> {
         )))
     }
 }
-pub fn setup(component: Component) -> Result<()> {
+fn require_selected(component: Component) -> Result<()> {
     if Commands.text("id", &["-un"])?.trim() != "agent" {
         return Err(Error::new(
             "run onboarding as the unprivileged agent user: sudo -iu agent assbox component setup ID",
@@ -58,6 +58,22 @@ pub fn setup(component: Component) -> Result<()> {
     if !selected.contains(component) {
         return Err(Error::new("component is not enabled"));
     }
+    Ok(())
+}
+
+pub fn diagnose(component: Component) -> Result<()> {
+    require_selected(component)?;
+    let path = Path::new("/etc/assbox/diagnostics").join(component.as_str());
+    let script = fs::canonicalize(path)
+        .map_err(|_| Error::new("this component has no managed remote diagnostic command"))?;
+    if !script.starts_with("/nix/store") {
+        return Err(Error::new("diagnostic script is not immutable Nix code"));
+    }
+    interactive_executable(&script, &[])
+}
+
+pub fn setup(component: Component) -> Result<()> {
+    require_selected(component)?;
     let onboarding = Path::new("/etc/assbox/onboarding").join(component.as_str());
     if onboarding.exists() {
         let script = files::io(fs::canonicalize(onboarding))?;

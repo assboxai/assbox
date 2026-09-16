@@ -6,5 +6,6 @@ pub mod commands;
 pub mod files;
 pub mod hardware;
 pub mod probe;
+pub mod services;
 
 mod mounts;

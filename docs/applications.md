@@ -107,9 +107,29 @@ credential formats or isolate HOME in ways that break provider integration.
 
 Remote onboarding scripts run interactively as `agent`, outside build/activation.
 New remote units retry with a delay capped at five minutes and suppress provider output in the
-ordinary system journal because it may contain pairing material. Inspect the unit's
-exit status with `systemctl --user status assbox-COMPONENT`; reproduce the documented
-foreground command interactively when needed. Expired credentials require provider
+ordinary system journal because it may contain pairing material. `sudo assbox doctor`
+inspects both the system and agent user manager. It reports each configured unit's
+load/active/substate, result, exit code, restart count and condition result. A failed
+inspection is reported as unknown; an active process does not prove provider readiness.
+The same inspection is available by running `assbox doctor` as `agent`.
+
+For the five managed remote adapters, run `sudo -iu agent assbox component diagnose ID`.
+This temporarily stops that unit and runs the same command under a transient user
+service for at most five minutes, with up to ten seconds to terminate its process
+group. At most 1 MiB of output is captured in a new mode-0600 file under the agent's
+mode-0700 `~/.local/state/assbox/diagnostics` directory. The output is never relayed to
+the ordinary journal or printed by the helper. Treat the file as credentials, inspect
+it locally and delete it afterward; do not share it unredacted. This is an opt-in
+diagnostic action, not continuous logging or provider monitoring.
+
+Cancellation stops the diagnostic group. The original service is restored only if
+it was running/retrying before capture and, for Cursor computer use, its graphical
+session still exists. A service that was stopped stays stopped. Onboarding and
+diagnostics for the same adapter cannot run concurrently. Re-onboarding stops the
+managed unit before interactive login; canceled setup leaves it stopped until an
+explicit start or later boot. Successful setup explicitly restarts it.
+
+Expired credentials require provider
 login; the managed service keeps retrying without a permanent start-count lockout. No background
 probe continuously calls provider APIs or declares account eligibility.
 

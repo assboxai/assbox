@@ -17,7 +17,7 @@ const HELP: &str = r#"Assbox — Assistant Box
       Interactive prepared-storage installer. --apply requires --release. Without --apply, display the plan only.
   assbox release verify TAG DIRECTORY   Authenticate/download without installing
   assbox status                         Show running, boot and maintenance state
-  assbox doctor                         Check status and failed system units
+  assbox doctor                         Inspect system and agent-service state (sudo or agent)
   assbox check                          Validate and build without activation
   assbox rebuild [--boot]                Rebuild local NixOS configuration
   assbox update [--reboot]               Authenticate an immutable release and stage
@@ -34,6 +34,7 @@ const HELP: &str = r#"Assbox — Assistant Box
                                         ChatGPT requires X11; consent permits unfree packages machine-wide
   assbox component list                  List curated IDs, dependencies and blockers
   assbox component setup ID               Onboard as the unprivileged agent user
+  assbox component diagnose ID            Capture private remote-service diagnostics as agent
   assbox logs                           Show the maintenance journal
 
 Changes to machine configuration require sudo from the admin account.
@@ -79,6 +80,10 @@ fn run(args: &[&str]) -> Result<()> {
         ["doctor"] => {
             manage::status()?;
             Commands.run("systemctl", &["--failed", "--no-pager"])?;
+            println!(
+                "Agent service state (does not establish provider authentication or readiness):"
+            );
+            print!("{}", assbox_system::services::agent_report()?);
             Ok(())
         }
         ["check"] => manage::check(),
@@ -131,6 +136,7 @@ fn run(args: &[&str]) -> Result<()> {
             manage::components_set(app.parse()?, presentation.parse()?, true)
         }
         ["component", "setup", id] => user::setup(id.parse()?),
+        ["component", "diagnose", id] => user::diagnose(id.parse()?),
         ["logs"] => Commands.run(
             "journalctl",
             &[

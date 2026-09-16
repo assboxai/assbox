@@ -45,13 +45,14 @@ let
       "curl"
       "systemd"
       "coreutils"
+      "util-linux"
     ] pkg
     // {
       callPackage = _: _: pkg "vscode-cli";
       runCommand =
         name: _: _:
         pkg name;
-      writeShellScript = name: _: pkg name;
+      writeShellScript = name: text: (pkg name) // { scriptText = text; };
       stdenv.cc.cc = pkg "cc";
     };
   result = lib.evalModules {
@@ -118,4 +119,9 @@ in
   failures = map (a: a.message) (builtins.filter (a: !a.assertion) result.config.assertions);
   services = result.config.systemd;
   packages = map toString (result.config.environment.systemPackages or [ ]);
+  scripts = lib.mapAttrs (_: value: value.source.scriptText) (
+    lib.filterAttrs (
+      name: _: lib.hasPrefix "assbox/onboarding/" name || lib.hasPrefix "assbox/diagnostics/" name
+    ) result.config.environment.etc
+  );
 }

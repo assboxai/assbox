@@ -37,7 +37,7 @@ case "$stage" in
     mapfile -d '' nix_sources < <(find . -type d \( -name .git -o -name target -o -name reports \) -prune -o -type f -name '*.nix' -print0)
     ((${#nix_sources[@]} > 0))
     nixfmt --check "${nix_sources[@]}"
-    shellcheck scripts/format scripts/verify scripts/release-check modules/sessions/x11.sh modules/sessions/wayland.sh modules/sessions/wayland-ready.sh
+    shellcheck scripts/format scripts/verify scripts/release-check modules/sessions/x11.sh modules/sessions/wayland.sh modules/sessions/wayland-ready.sh modules/diagnostics/remote.sh
     for script in modules/sessions/*.sh; do bash -n "$script"; done
     while IFS= read -r -d '' script; do bash -n "$script"; done < <(find scripts -maxdepth 1 -type f ! -name '*.py' -print0)
     actionlint .github/workflows/*.yml

@@ -28,7 +28,8 @@ separate Assbox tuning interface.
 
 Use `systemd-cgtop`, `zramctl`, `free -h` and
 `journalctl -k -g 'oom|Out of memory'` to inspect pressure. For application failures,
-run `systemctl --user status assbox-opencode` (or the selected application's unit)
-as `agent`, and inspect its user journal. `systemctl show nix-daemon -p ControlGroup`
+run `sudo assbox doctor` or inspect `systemctl --user status assbox-opencode` as
+`agent`. Provider output is suppressed; use the [private diagnostic capture](applications.md)
+for managed remote adapters. `systemctl show nix-daemon -p ControlGroup`
 shows the build daemon's placement. Account for active builds and agents together
 when diagnosing memory exhaustion.
