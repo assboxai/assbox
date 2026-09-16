@@ -36,8 +36,10 @@ Tooling tests use Python with PyYAML supplied by the Nix development shell.
 The shell also supplies Node.js for dependency-free Worker tests and Wrangler for
 explicit infrastructure deployment. These are development tools, not new installed
 Assbox runtime dependencies.
-There are no third-party Rust dependencies at present; structured command output
-uses the Nix-provided `jq`. Review any future dependency's license/transitive graph.
+The shell uses the pinned `signal-hook` adapter for cooperative installer cancellation;
+its MIT/Apache-2.0 dependency graph is explicitly reviewed in the architecture guard.
+The functional core still uses only internal dependencies. Structured command output
+uses the Nix-provided `jq`. Review dependency changes, including licenses and transitive graphs.
 
 Use the Nix development shell even for Cargo:
 

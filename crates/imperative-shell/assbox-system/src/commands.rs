@@ -35,7 +35,7 @@ impl Commands {
             "required tool is not in the trusted tool closure: {name}"
         )))
     }
-    fn command(&self, name: &str, args: &[&str]) -> Result<Command> {
+    pub(crate) fn command(&self, name: &str, args: &[&str]) -> Result<Command> {
         let mut c = Command::new(self.executable(name)?);
         let effective_root = std::fs::read_to_string("/proc/self/status")
             .ok()

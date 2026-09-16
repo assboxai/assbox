@@ -12,3 +12,4 @@ workspace = true
 
 [dependencies]
 assbox-domain = { path = "../../functional-core/assbox-domain" }
+signal-hook = { version = "=0.4.4", default-features = false }
