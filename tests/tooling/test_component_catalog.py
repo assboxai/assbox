@@ -94,7 +94,10 @@ class ComponentCatalogTests(unittest.TestCase):
         unit = result['services']['user']['services']['assbox-cursor-worker']
         self.assertIn('/bin/cursor-agent', unit['serviceConfig']['ExecStart'])
         self.assertIn('onboarded/cursor-worker-', unit['unitConfig']['ConditionPathExists'])
-        self.assertEqual(unit['unitConfig']['StartLimitBurst'], 3)
+        self.assertEqual(unit['unitConfig']['StartLimitIntervalSec'], 0)
+        self.assertEqual(unit['serviceConfig']['Restart'], 'always')
+        self.assertEqual(unit['serviceConfig']['RestartSteps'], 5)
+        self.assertEqual(unit['serviceConfig']['RestartMaxDelaySec'], 300)
         self.assertEqual(unit['serviceConfig']['StandardOutput'], 'null')
 
     def test_every_available_runtime_alone_has_no_implicit_runtime_or_service(self):

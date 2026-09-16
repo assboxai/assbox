@@ -106,11 +106,11 @@ Provider-owned state stays in its supported home location; Assbox does not inven
 credential formats or isolate HOME in ways that break provider integration.
 
 Remote onboarding scripts run interactively as `agent`, outside build/activation.
-New remote units have bounded restart attempts and suppress provider output in the
+New remote units retry with a delay capped at five minutes and suppress provider output in the
 ordinary system journal because it may contain pairing material. Inspect the unit's
 exit status with `systemctl --user status assbox-COMPONENT`; reproduce the documented
 foreground command interactively when needed. Expired credentials require provider
-login; reset the unit's failed state after correcting the problem. No background
+login; the managed service keeps retrying without a permanent start-count lockout. No background
 probe continuously calls provider APIs or declares account eligibility.
 
 Disabling a component stops its managed unit after activation/reboot, without deleting

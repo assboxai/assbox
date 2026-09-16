@@ -231,15 +231,16 @@ in
           unitConfig = {
             ConditionUser = "agent";
             ConditionPathExists = "%h/${marker id}";
-            StartLimitIntervalSec = 600;
-            StartLimitBurst = 3;
+            StartLimitIntervalSec = 0; # Backoff limits retries without permanently stranding the unit.
           };
           serviceConfig = {
             ExecStart = lib.escapeShellArgs command.${id};
             WorkingDirectory = cfg.components.${id}.workingDirectory;
             Environment = "PATH=/run/current-system/sw/bin:/run/wrappers/bin";
-            Restart = "on-failure";
+            Restart = "always"; # A supervised server should also recover from a clean unexpected exit.
             RestartSec = 20;
+            RestartSteps = 5;
+            RestartMaxDelaySec = 300;
             TimeoutStopSec = 60;
             KillMode = "control-group";
             UMask = "0077";

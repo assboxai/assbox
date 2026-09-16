@@ -16,11 +16,15 @@ alter disk partitions. Compression helps with cold, compressible pages but canno
 make an arbitrarily large workload fit in memory.
 
 Existing local application services restart after failure, with delays increasing
-from five to sixty seconds. New remote integrations retry after twenty seconds,
-with at most three starts in ten minutes; correct onboarding or the outage and
-reset the failed unit to retry after that budget is exhausted. A normal exit stays stopped. Shutdown kills the whole service group
-after the existing sixty-second grace period. CPU, I/O and memory accounting make
-resource pressure visible without adding a separate Assbox tuning interface.
+from five to sixty seconds. Remote servers and editor launchers back off from twenty
+to three hundred seconds over five restart steps, without a start-count lockout.
+Remote servers restart after both successful and unsuccessful unexpected exits;
+closing a graphical editor normally leaves it closed. Explicit service stop,
+disablement and graphical-session teardown do not trigger automatic restarts.
+Expired credentials still require interactive login; retries do not grant access.
+Shutdown kills the whole service group after the sixty-second grace period.
+CPU, I/O and memory accounting make resource pressure visible without adding a
+separate Assbox tuning interface.
 
 Use `systemd-cgtop`, `zramctl`, `free -h` and
 `journalctl -k -g 'oom|Out of memory'` to inspect pressure. For application failures,

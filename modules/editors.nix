@@ -64,8 +64,7 @@ in
         after = [ "graphical-session.target" ];
         unitConfig = {
           ConditionUser = "agent";
-          StartLimitIntervalSec = 600;
-          StartLimitBurst = 3;
+          StartLimitIntervalSec = 0; # Backoff limits retries without permanently stranding the unit.
         };
         serviceConfig = {
           ExecStart = executable;
@@ -73,6 +72,8 @@ in
           WorkingDirectory = "%h";
           Restart = "on-failure";
           RestartSec = 20;
+          RestartSteps = 5;
+          RestartMaxDelaySec = 300;
           TimeoutStopSec = 60;
           KillMode = "control-group";
           UMask = "0077";
