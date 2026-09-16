@@ -10,6 +10,7 @@
     ./presentation.nix
     ./applications.nix
     ./maintenance.nix
+    ./resources.nix
     ./audit.nix
     ./generation.nix
   ];

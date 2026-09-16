@@ -29,10 +29,6 @@ jobs:
 
           accept-flake-config = false
 
-          max-jobs = 2
-
-          cores = 2
-
           '
     - name: Discover repository history in an isolated read-token step
       run: python3 scripts/release.py discover "$RUNNER_TEMP/assbox-discovery.json"
@@ -90,10 +86,6 @@ jobs:
 
           accept-flake-config = false
 
-          max-jobs = 2
-
-          cores = 2
-
           '
     - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
@@ -129,10 +121,6 @@ jobs:
         extra_nix_config: 'experimental-features = nix-command flakes
 
           accept-flake-config = false
-
-          max-jobs = 2
-
-          cores = 2
 
           '
     - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -178,10 +166,6 @@ jobs:
         extra_nix_config: 'experimental-features = nix-command flakes
 
           accept-flake-config = false
-
-          max-jobs = 2
-
-          cores = 2
 
           '
     - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -257,10 +241,6 @@ jobs:
         extra_nix_config: 'experimental-features = nix-command flakes
 
           accept-flake-config = false
-
-          max-jobs = 2
-
-          cores = 2
 
           '
     - name: Verify with bootstrap then authenticated candidate, both tokenless

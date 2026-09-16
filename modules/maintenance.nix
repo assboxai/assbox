@@ -18,6 +18,10 @@ let
       ExecStart = "${binary} ${command}";
       TimeoutStartSec = "4h";
       UMask = "0077";
+      Slice = "assbox.slice";
+      CPUAccounting = true;
+      IOAccounting = true;
+      MemoryAccounting = true;
     };
   };
 in

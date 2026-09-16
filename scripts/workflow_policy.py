@@ -71,7 +71,7 @@ def bootstrap_document():
     def nix(matrix=False):
         return {"uses": NIX, "with": {"install_url": "https://releases.nixos.org/nix/nix-2.35.2/install",
             "enable_kvm": "${{ matrix.system == 'x86_64-linux' }}" if matrix else True,
-            "extra_nix_config": "experimental-features = nix-command flakes\naccept-flake-config = false\nmax-jobs = 2\ncores = 2\n"}}
+            "extra_nix_config": "experimental-features = nix-command flakes\naccept-flake-config = false\n"}}
     def upload(name, path):
         return {"uses": UPLOAD, "with": {"name": name, "path": path, "if-no-files-found": "error", "retention-days": 14}}
     def download(name=None, pattern=None, path="${{ runner.temp }}/assbox-bootstrap/assets"):
@@ -194,8 +194,7 @@ def readonly_action(step):
                 and options["install_url"] == "https://releases.nixos.org/nix/nix-2.35.2/install"
                 and options["enable_kvm"] in (True, "${{ matrix.system == 'x86_64-linux' }}")
                 and options["extra_nix_config"].splitlines() == [
-                    "experimental-features = nix-command flakes", "accept-flake-config = false",
-                    "max-jobs = 2", "cores = 2"])
+                    "experimental-features = nix-command flakes", "accept-flake-config = false"])
     if action == UPLOAD:
         return options == {"name": "assbox-bootstrap-review", "path": "${{ runner.temp }}/assbox-bootstrap",
                            "if-no-files-found": "error"}

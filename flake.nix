@@ -136,6 +136,10 @@
             inherit module;
             inherit (p) pkgs;
           };
+          resources-vm = import ./tests/nix/resources-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
         }
       );
     };

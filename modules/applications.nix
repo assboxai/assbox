@@ -12,6 +12,11 @@ let
   common = {
     Restart = "on-failure";
     RestartSec = 5;
+    RestartSteps = 5;
+    RestartMaxDelaySec = 60;
+    CPUAccounting = true;
+    IOAccounting = true;
+    MemoryAccounting = true;
     TimeoutStopSec = 60;
     KillMode = "control-group";
     UMask = "0077";

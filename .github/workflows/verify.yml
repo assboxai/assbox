@@ -33,8 +33,6 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = false
-            max-jobs = 2
-            cores = 2
       - name: Require committed input lock
         run: test -f flake.lock && git ls-files --error-unmatch flake.lock
       - name: Native compilation, policy, builds and disposable VM
