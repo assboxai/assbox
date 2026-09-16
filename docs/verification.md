@@ -43,6 +43,13 @@ verified external provisioning.
 
 ## Existing gates
 
+`scripts/verify` with no arguments remains the full gate. For targeted local work,
+select exactly one stage: `static` (source/tooling/model/Node tests and formatting/lint),
+`rust` (Clippy, compilation and Rust tests), `mutations`, or `nix` (flake evaluation,
+system builds and VM checks). Stages stop on failure and preserve command exit codes.
+Selecting a stage never constitutes a passing full gate. Even the `rust` stage can
+be expensive on a cold cache; resource restrictions still apply.
+
 `scripts/verify` requires the internal dependency/effect guard, native Rust formatting,
 warning-free Clippy, locked workspace build/tests, source/tooling tests, independent
 bounded specification checks, Node tests for the read-only monitor Worker, and
