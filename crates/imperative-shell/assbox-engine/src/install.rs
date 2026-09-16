@@ -190,6 +190,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         "sync",
         "mkpasswd",
         "systemd-ask-password",
+        "stty",
     ] {
         c.executable(tool)?;
     }

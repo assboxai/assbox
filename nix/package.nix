@@ -27,6 +27,7 @@ rustPlatform.buildRustPackage {
   cargoLock.lockFile = ../Cargo.lock;
   cargoBuildFlags = [ "--workspace" ];
   cargoTestFlags = [ "--workspace" ];
+  nativeCheckInputs = [ pkgs.python3 ]; # PTY tests exercise the real password helper.
   ASSBOX_TOOL_PATH = tools.path;
   ASSBOX_SOURCE_REVISION = sourceRevision;
   ASSBOX_REPOSITORY_ID = toString releasePolicy.repositoryId;

@@ -18,6 +18,10 @@ The injected local NixOS module supplies the normal test-driver console and
 isolated network settings; it is not part of the installed product configuration.
 `installer_terminal.py` supplies explicit retry input through a test PTY.
 
+The system-adapter Cargo tests separately run `password_terminal.py` against the
+real password helper in a private PTY. They cover entry, cancellation, helper
+failure, terminal restoration and secret output; no password agent or VM is needed.
+
 The optical image is an installation-media observation fixture, not a claim that
 the VM booted the public NixOS ISO. The Intel Mac fixture boots real rEFInd and
 preserves an unrelated ESP payload and APFS-type partition. It contains no macOS.
