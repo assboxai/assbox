@@ -38,7 +38,7 @@ pkgs.testers.runNixOSTest {
       useEFIBoot = arm;
       useBootLoader = arm;
       diskSize = 8192;
-      qemu.forceAccel = !arm;
+      qemu.forceAccel = pkgs.lib.mkForce (!arm);
       qemu.options = [
         "-device virtio-scsi-pci,id=assbox-scsi"
         "-drive if=none,id=assbox-iso,media=cdrom,readonly=on,format=raw,file=${iso}"

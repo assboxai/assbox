@@ -27,7 +27,7 @@ pkgs.testers.runNixOSTest {
     users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
     virtualisation.memorySize = 2048;
-    virtualisation.qemu.forceAccel = !arm;
+    virtualisation.qemu.forceAccel = pkgs.lib.mkForce (!arm);
     virtualisation.additionalPaths = [
       worker
       pkgs.bash
