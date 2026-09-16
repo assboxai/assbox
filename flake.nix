@@ -143,6 +143,21 @@
           authenticated-release-vm = import ./tests/nix/authenticated-release-vm.nix {
             inherit (p) pkgs assbox;
           };
+          application-chatgpt-vm = import ./tests/nix/application-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+            application = "chatgpt";
+          };
+          application-opencode-vm = import ./tests/nix/application-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+            application = "opencode";
+          };
+          application-openclaw-vm = import ./tests/nix/application-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+            application = "openclaw";
+          };
         }
       );
     };

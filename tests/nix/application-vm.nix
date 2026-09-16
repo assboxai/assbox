@@ -1,0 +1,160 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Real locked application packages and session managers. No provider credentials.
+{
+  pkgs,
+  module,
+  application,
+}:
+let
+  arm = pkgs.stdenv.hostPlatform.isAarch64;
+  modes =
+    if application == "chatgpt" then
+      [ "x11" ]
+    else
+      [
+        "headless"
+        "x11"
+        "wayland"
+      ];
+in
+pkgs.testers.runNixOSTest {
+  name = "assbox-application-${application}";
+  node.pkgsReadOnly = false;
+  requiredFeatures.kvm = !arm;
+  nodes = pkgs.lib.genAttrs modes (
+    presentation: { lib, ... }: {
+      imports = [ module ];
+      assbox = {
+        enable = true;
+        inherit application presentation;
+        acceptUnfree = application == "chatgpt";
+        updates.enable = false;
+      };
+      boot.loader.systemd-boot.enable = lib.mkForce false;
+      boot.loader.grub.enable = lib.mkForce false;
+      systemd.services.assbox-boot-check.enable = lib.mkForce false;
+      users.allowNoPasswordLogin = true;
+      users.users.root.hashedPasswordFile = lib.mkForce null;
+      users.users.admin.hashedPasswordFile = lib.mkForce null;
+      environment.systemPackages = [
+        pkgs.python3
+        pkgs.xwininfo
+      ];
+      virtualisation.memorySize = if application == "chatgpt" then 4096 else 3072;
+      virtualisation.qemu.forceAccel = pkgs.lib.mkForce (!arm);
+      virtualisation.resolution = {
+        x = 1280;
+        y = 800;
+      };
+      system.stateVersion = "26.05";
+    }
+  );
+  testScript = ''
+    import json
+    import shlex
+
+    application = ${builtins.toJSON application}
+    modes = ${builtins.toJSON modes}
+    for mode in modes:
+        # Resolve by node name rather than assuming test-driver machine ordering.
+        machine = next(node for node in machines if node.name == mode)
+        machine.start()
+        machine.wait_for_unit("multi-user.target")
+        uid = machine.succeed("id -u agent").strip()
+        prefix = "runuser -u agent -- env HOME=/home/agent XDG_RUNTIME_DIR=/run/user/" + uid + " "
+
+        def user(command):
+            return prefix + "bash -c " + shlex.quote(command)
+
+        def active(unit):
+            machine.wait_until_succeeds(user("systemctl --user is-active " + unit), timeout=180)
+
+        def private_file(path, content):
+            machine.succeed("install -d -o agent -g users -m700 " + shlex.quote(path.rsplit('/', 1)[0]))
+            machine.succeed("printf %s " + shlex.quote(content) + " > " + shlex.quote(path))
+            machine.succeed("chown agent:users " + shlex.quote(path) + "; chmod 600 " + shlex.quote(path))
+
+        unit = "assbox-" + application + ".service"
+        machine.wait_for_unit("user@" + uid + ".service")
+        machine.fail("runuser -u agent -- cat /etc/shadow")
+        machine.fail("runuser -u agent -- head -c1 /dev/vda")
+        machine.fail("runuser -u agent -- sudo -n true")
+        machine.fail("assbox application setup")
+        if application != "chatgpt":
+            machine.fail(user("systemctl --user is-active " + unit))
+            machine.succeed(user(application + " --version"), timeout=120)
+        if application == "opencode":
+            # Local server authentication is separate from provider login.
+            private_file("/home/agent/.config/assbox/opencode.env", "OPENCODE_SERVER_PASSWORD=disposable-test-password\n")
+            machine.succeed(user("opencode auth --help"))
+        elif application == "openclaw":
+            machine.succeed(user("openclaw onboard --help"), timeout=120)
+            private_file("/home/agent/.openclaw/openclaw.json", json.dumps({
+                "gateway": {"mode": "local", "bind": "loopback", "auth": {"mode": "token", "token": "disposable-test-token"}}
+            }))
+        else:
+            machine.succeed(user("assbox application setup"))
+            machine.succeed(user("codex --version"), timeout=120)
+        machine.succeed(user("systemctl --user restart " + unit))
+        active(unit)
+
+        def local_auth():
+            if application == "opencode":
+                command = "curl -sS -o /tmp/auth-response -w '%{http_code}' http://127.0.0.1:4096/session"
+                machine.wait_until_succeeds("test $(" + command + ") = 401", timeout=180)
+                body = machine.succeed("curl --fail -sS -u opencode:disposable-test-password http://127.0.0.1:4096/session")
+                assert isinstance(json.loads(body), list)
+                created = json.loads(machine.succeed("curl --fail -sS -u opencode:disposable-test-password -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:4096/session"))
+                assert isinstance(created["id"], str) and created["id"]
+                machine.succeed("curl --fail -sS -u opencode:disposable-test-password http://127.0.0.1:4096/session/" + shlex.quote(created["id"]))
+            elif application == "openclaw":
+                machine.wait_until_succeeds(user("openclaw gateway health --url ws://127.0.0.1:18789 --token disposable-test-token"), timeout=180)
+                machine.fail(user("openclaw gateway health --url ws://127.0.0.1:18789 --token incorrect-test-token"))
+            if application != "chatgpt":
+                port = "4096" if application == "opencode" else "18789"
+                listeners = machine.succeed("ss -H -ltn 'sport = :" + port + "'")
+                assert listeners.strip()
+                for line in listeners.splitlines():
+                    assert line.split()[3] in ["127.0.0.1:" + port, "[::1]:" + port], line
+
+        local_auth()
+        if mode != "headless":
+            active("graphical-session.target")
+            if application != "chatgpt":
+                machine.succeed(user("systemctl --user restart assbox-" + application + "-ui.service"))
+                active("assbox-" + application + "-ui.service")
+            if mode == "x11":
+                machine.wait_until_succeeds(user("DISPLAY=:0 xwininfo -root -tree | grep -Ei '" + ("ChatGPT" if application == "chatgpt" else "opencode|OpenClaw|chromium|xterm") + "'"), timeout=180)
+            else:
+                machine.wait_until_succeeds(user("systemctl --user show-environment | grep '^WAYLAND_DISPLAY='"))
+            machine.screenshot(application + "-" + mode)
+            display = "display-manager" if mode == "x11" else "greetd"
+            machine.succeed("systemctl stop " + display)
+            machine.wait_until_fails(user("systemctl --user is-active graphical-session.target"))
+            if application != "chatgpt":
+                active(unit)  # Backend survives a graphical logout.
+                machine.fail(user("systemctl --user is-active assbox-" + application + "-ui.service"))
+            machine.succeed("systemctl start " + display)
+            active("graphical-session.target")
+            active(unit)
+        else:
+            machine.fail("systemctl is-active display-manager")
+            machine.fail("systemctl is-active greetd")
+
+        # Failure recovery and cgroup cleanup exercise the actual app process.
+        before = machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip()
+        machine.succeed(user("systemctl --user kill --signal=KILL " + unit))
+        machine.wait_until_succeeds(user("test $(systemctl --user show " + unit + " -p NRestarts --value) -ge 1"), timeout=120)
+        active(unit)
+        after = machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip()
+        assert after != before and int(after) > 0
+        assert machine.succeed(user("systemctl --user show " + unit + " -p RestartMaxDelayUSec --value")).strip() == "1min"
+        machine.succeed(user("systemctl --user stop " + unit), timeout=90)
+        assert machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip() == "0"
+        machine.reboot()
+        machine.wait_for_unit("multi-user.target")
+        active(unit)
+        local_auth()
+        machine.shutdown()
+  '';
+}
