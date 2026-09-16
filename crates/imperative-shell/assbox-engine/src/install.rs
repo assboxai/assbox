@@ -2,6 +2,7 @@
 use assbox_domain::*;
 use assbox_policy::{InstallPlan, filesystem_check};
 use assbox_system::{
+    cancellation,
     commands::Commands,
     files::{self, Lock, Mount, io},
     probe,
@@ -20,6 +21,7 @@ fn point(name: &str) -> PathBuf {
     Path::new(WORK).join(name)
 }
 fn recheck(plan: &InstallPlan, c: &Commands, mounts: &[&Mount]) -> Result<()> {
+    cancellation::check()?;
     let allowed: Vec<(&str, &str)> = mounts
         .iter()
         .map(|m| Ok((m.device(), files::path_text(&m.point)?)))
@@ -150,6 +152,17 @@ fn installed_wifi(c: &Commands, enabled: bool) -> Result<Option<String>> {
 }
 
 pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
+    cancellation::install_handlers()?;
+    let result = apply_inner(plan, release_tag);
+    if result.is_err() {
+        eprintln!(
+            "Installation did not complete. Inspect /run/assbox-install and the target's .assbox-install.json. Do not reboot into an incomplete target or delete its files blindly; see docs/installation.md#interrupted-installation."
+        );
+    }
+    result
+}
+
+fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     files::require_root()?;
     if !Path::new("/etc/NIXOS").exists() {
         return Err(Error::new(
@@ -159,7 +172,8 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     let c = Commands;
     for tool in [
         "nix",
-        "nix-store",
+        "systemd-run",
+        "systemctl",
         "nixos-install",
         "nixos-generate-config",
         "nix-instantiate",
@@ -233,6 +247,11 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     } else {
         None
     };
+    if files::entry_exists(&root_probe.point.join(".assbox-install.json"))? {
+        return Err(Error::new(
+            "target contains an installation record; incomplete or existing installations require inspection, never automatic resume",
+        ));
+    }
     assbox_policy::validate_prepared_root(&files::prepared_root_entries(&root_probe.point)?)?;
     let apple = plan.boot() == BootKind::AppleRefind;
     let before_esp = match &esp_probe {
@@ -265,8 +284,8 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     } else {
         Vec::new()
     };
-    // Build the exact final closure in live-media state while target filesystems
-    // remain read-only. Evaluation/build/network failures cannot dirty the target.
+    // Authenticate and evaluate the pinned machine graph before target writes.
+    // The full closure is built in the target store after backup verification.
     let config = point("machine");
     files::create_private(&config)?;
     let hardware = c.text(
@@ -318,46 +337,8 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     c.run("nix", &["flake", "lock", "--no-update-lock-file", &local])?;
     crate::source::verify_local_lock(&c, &config, &fetched.release.manifest)?;
     crate::check_evaluation(&c, &local)?;
-    println!(
-        "Prebuild uses the live Nix store, which may be RAM-backed. Target disk capacity does not enlarge it; a build failure here leaves the target unchanged."
-    );
-    c.run("df", &["-h", "/nix/store"])?;
-    let target = format!("{local}#nixosConfigurations.assbox.config.system.build.toplevel");
-    let output = c.text(
-        "nix",
-        &[
-            "build",
-            "--no-link",
-            "--print-out-paths",
-            "--no-update-lock-file",
-            "--no-write-lock-file",
-            &target,
-        ],
-    )?;
-    let system = output.trim();
-    if !assbox_system::commands::valid_store_system(system) {
-        return Err(Error::new(
-            "build did not return one immutable NixOS system",
-        ));
-    }
-    c.run(
-        "nix-store",
-        &[
-            "--add-root",
-            files::path_text(&point("built-system"))?,
-            "--indirect",
-            "--realise",
-            system,
-        ],
-    )?;
-    crate::boot_guard::verify_install_target(&c, system, &plan)?;
-    crate::source::verify_local_lock(&c, &config, &fetched.release.manifest)?;
-    println!(
-        "Built {} for {} from {}. Target filesystems remain read-only.",
-        system,
-        plan.inventory().architecture,
-        fetched.release.manifest.source_url()
-    );
+    let configuration = configuration_snapshot(&config)?;
+    let configuration_digest = configuration_digest(&c, &configuration)?;
     let mut mounts = vec![&root_probe];
     if let Some(e) = &esp_probe {
         mounts.push(e);
@@ -515,15 +496,55 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     drop(confirm);
     let wifi = installed_wifi(&c, plan.request().choices.devices.wifi)?;
     recheck(&plan, &c, &[&backup])?;
-    // FIRST TARGET WRITE: all resolution, validation, building and recovery read-back succeeded.
+    crate::release::check_freshness(&c, &fetched.release.manifest)?;
+    if configuration_snapshot(&config)? != configuration {
+        return Err(Error::new("configuration changed before target writes"));
+    }
+    let record = install_record(
+        &c,
+        &plan,
+        fetched.release.floor.manifest_sha256.as_str(),
+        &configuration_digest,
+        &backup_name,
+    )?;
+    // The backup contains the durable write intent even if the first target
+    // record cannot be created. This file is separate from the immutable archive.
+    backup.unmount(&c)?;
+    backup = Mount::new(&c, &plan.backup().path, &point("backup"), backup_options)?;
+    write_backup_file(
+        &backup
+            .point
+            .join(format!("{backup_name}-install-intent.json")),
+        &record,
+    )?;
+    c.run("sync", &[])?;
+    backup.unmount(&c)?;
+    backup = Mount::new(
+        &c,
+        &plan.backup().path,
+        &point("backup"),
+        "ro,nosuid,nodev,noexec",
+    )?;
+    if io(fs::read(
+        backup
+            .point
+            .join(format!("{backup_name}-install-intent.json")),
+    ))? != record
+    {
+        return Err(Error::new("installation write intent read-back failed"));
+    }
+    recheck(&plan, &c, &[&backup])?;
+    // FIRST TARGET WRITE: preflight and independent backup succeeded. A failed
+    // build can now leave an incomplete Linux root; boot files stay read-only.
     let mut root = Mount::new(&c, &plan.root().path, &point("target"), "rw")?;
+    files::atomic_write(&root.point.join(".assbox-install.json"), &record, 0o600)?;
     let mut esp = if let Some(p) = plan.esp() {
         let parent = make_dirs(&root.point, "boot")?;
         Some(Mount::new(
             &c,
             &p.path,
             &parent.join("efi"),
-            "rw,nosuid,nodev,noexec,fmask=0077,dmask=0077",
+            "ro,nosuid,nodev,noexec",
         )?)
     } else {
         None
@@ -554,18 +575,132 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         fs::Permissions::from_mode(0o700),
     ))?;
     files::atomic_write(&secrets.join("admin-password.hash"), &password_hash, 0o600)?;
+    let state = make_dirs(&root.point, "var/lib/assbox")?;
+    io(fs::set_permissions(
+        &state,
+        fs::Permissions::from_mode(0o700),
+    ))?;
+    files::atomic_write(
+        &state.join("release-state"),
+        fetched.release.floor.encode().as_bytes(),
+        0o600,
+    )?;
+    // Use the upstream chroot-store mechanism and disk-backed build directory.
+    let store = files::path_text(&root.point)?;
+    let build_dir = make_dirs(&root.point, "var/tmp/assbox-build")?;
+    let logs = make_dirs(&root.point, "var/log/assbox-install")?;
+    io(fs::set_permissions(
+        &logs,
+        fs::Permissions::from_mode(0o700),
+    ))?;
+    let output_link = root.point.join(".assbox-built-system");
+    let target = format!(
+        "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
+        files::path_text(&installed_config)?
+    );
+    write_phase(&c, &root.point, &record, "building", None)?;
+    let system = loop {
+        recheck(&plan, &c, &mounts)?;
+        crate::release::check_freshness(&c, &fetched.release.manifest)?;
+        if configuration_snapshot(&installed_config)? != configuration {
+            return Err(Error::new(
+                "installation configuration changed; retry refused",
+            ));
+        }
+        let attempt = cancellation::run(
+            &c,
+            "nix",
+            &[
+                "build",
+                "--store",
+                store,
+                "--extra-substituters",
+                "auto?trusted=1",
+                "--option",
+                "build-dir",
+                files::path_text(&build_dir)?,
+                "--out-link",
+                files::path_text(&output_link)?,
+                "--print-out-paths",
+                "--no-update-lock-file",
+                "--no-write-lock-file",
+                &target,
+            ],
+            &logs,
+        );
+        match attempt {
+            Ok(output) => {
+                let system = output.trim();
+                if !assbox_system::commands::valid_store_system(system) {
+                    return Err(Error::new(
+                        "build did not return one immutable NixOS system",
+                    ));
+                }
+                break system.to_owned();
+            }
+            Err(error) => {
+                eprintln!(
+                    "{error}. Linux root is incomplete; bootloader activation has not started."
+                );
+                if !cancellation::retry_build()? {
+                    return Err(error);
+                }
+            }
+        }
+    };
+    recheck(&plan, &c, &mounts)?;
+    crate::release::check_freshness(&c, &fetched.release.manifest)?;
+    if configuration_snapshot(&installed_config)? != configuration {
+        return Err(Error::new(
+            "installation configuration changed during build",
+        ));
+    }
+    crate::boot_guard::verify_install_target_in_store(&c, &root.point, &system, &plan)?;
+    crate::source::verify_local_lock(&c, &installed_config, &fetched.release.manifest)?;
+    if let Some(e) = &esp {
+        if esp_manifest(&c, &e.point, apple)? != before_esp {
+            return Err(Error::new("ESP changed during build"));
+        }
+    }
+    if c.capture("sfdisk", &["--json", &plan.root().parent])? != before_table
+        || (apple && c.capture("efibootmgr", &["-v"])? != firmware)
+    {
+        return Err(Error::new("boot state changed during build"));
+    }
+    // This phase is durable before the first writable ESP mount/activation.
+    write_phase(&c, &root.point, &record, "activating", Some(&system))?;
+    drop(mounts);
+    if let Some(e) = &mut esp {
+        e.unmount(&c)?;
+    }
+    esp = if let Some(p) = plan.esp() {
+        Some(Mount::new(
+            &c,
+            &p.path,
+            &root.point.join("boot/efi"),
+            "rw,nosuid,nodev,noexec,fmask=0077,dmask=0077",
+        )?)
+    } else {
+        None
+    };
+    let mut mounts = vec![&root, &backup];
+    if let Some(e) = &esp {
+        mounts.push(e);
+    }
     recheck(&plan, &c, &mounts)?;
     // Install this already-built closure. Never evaluate/refetch the machine flake here.
-    c.run(
+    cancellation::run(
+        &c,
         "nixos-install",
         &[
             "--root",
             files::path_text(&root.point)?,
             "--system",
-            system,
+            &system,
             "--no-root-passwd",
             "--no-channel-copy",
         ],
+        &logs,
     )?;
     c.run("sync", &[])?;
     recheck(&plan, &c, &mounts)?;
@@ -589,18 +724,18 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             return Err(Error::new("final backup verification failed"));
         }
     }
-    let state = make_dirs(&root.point, "var/lib/assbox")?;
-    io(fs::set_permissions(
-        &state,
-        fs::Permissions::from_mode(0o700),
-    ))?;
-    files::atomic_write(
-        &state.join("release-state"),
-        fetched.release.floor.encode().as_bytes(),
-        0o600,
-    )?;
     files::atomic_write(&state.join("install-receipt"),format!("hostname={}\narchitecture={}\nboot={}\nsource={}\nnar-hash={}\nsystem={}\nexternal-backup={}\n",
         plan.request().choices.hostname.as_str(),plan.inventory().architecture,plan.boot(),fetched.release.manifest.source_url(),fetched.release.manifest.source_nar_hash,system,backup_name).as_bytes(),0o600)?;
+    c.run("sync", &[])?;
+    cancellation::check()?;
+    if !io(fs::symlink_metadata(&output_link))?
+        .file_type()
+        .is_symlink()
+    {
+        return Err(Error::new("build root link changed unexpectedly"));
+    }
+    io(fs::remove_file(&output_link))?;
+    write_phase(&c, &root.point, &record, "complete", Some(&system))?;
     drop(mounts);
     if let Some(e) = &mut esp {
         e.unmount(&c)?;
@@ -612,4 +747,76 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         plan.request().choices.hostname.as_str()
     );
     Ok(())
+}
+
+fn configuration_snapshot(directory: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
+    files::trusted_dir(directory)?;
+    let mut result = BTreeMap::new();
+    for entry in io(fs::read_dir(directory))? {
+        let entry = io(entry)?;
+        let name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| Error::new("invalid configuration filename"))?;
+        if result.len() >= 32 {
+            return Err(Error::new("unexpected installation configuration entries"));
+        }
+        result.insert(name, files::read(&entry.path())?);
+    }
+    Ok(result)
+}
+fn configuration_digest(c: &Commands, snapshot: &BTreeMap<String, Vec<u8>>) -> Result<String> {
+    let mut bytes = Vec::new();
+    for (name, value) in snapshot {
+        bytes.extend_from_slice(name.as_bytes());
+        bytes.push(0);
+        bytes.extend_from_slice(value.len().to_string().as_bytes());
+        bytes.push(0);
+        bytes.extend_from_slice(value);
+    }
+    let output = c.input("sha256sum", &["-"], &bytes)?;
+    Ok(String::from_utf8(output)
+        .map_err(|_| Error::new("invalid configuration hash"))?
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| Error::new("missing configuration hash"))?
+        .to_owned())
+}
+fn install_record(
+    c: &Commands,
+    plan: &InstallPlan,
+    manifest: &str,
+    configuration: &str,
+    backup: &str,
+) -> Result<Vec<u8>> {
+    c.capture("jq", &["-n", "--arg", "operation", &files::random_id()?,
+        "--arg", "disk", &plan.inventory().disk(&plan.root().parent)?.persistent_path,
+        "--arg", "root", &plan.root().uuid, "--arg", "rootPart", &plan.root().partuuid,
+        "--arg", "esp", plan.esp().map_or("", |p| p.uuid.as_str()),
+        "--arg", "backupDevice", &plan.backup().uuid, "--arg", "backup", backup,
+        "--arg", "manifest", manifest, "--arg", "configuration", configuration,
+        r#"{schema:1,operation:$operation,phase:"target-writes",disk:$disk,rootUuid:$root,rootPartUuid:$rootPart,espUuid:$esp,backupUuid:$backupDevice,backup:$backup,manifestSha256:$manifest,configurationSha256:$configuration}"#])
+}
+fn write_phase(
+    c: &Commands,
+    root: &Path,
+    record: &[u8],
+    phase: &str,
+    system: Option<&str>,
+) -> Result<()> {
+    cancellation::check()?;
+    let bytes = c.input(
+        "jq",
+        &[
+            "--arg",
+            "phase",
+            phase,
+            "--arg",
+            "system",
+            system.unwrap_or(""),
+            ". + {phase:$phase,system:$system}",
+        ],
+        record,
+    )?;
+    files::atomic_write(&root.join(".assbox-install.json"), &bytes, 0o600)
 }

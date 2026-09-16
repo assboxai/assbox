@@ -69,15 +69,27 @@ class SourceBindingTests(unittest.TestCase):
             else: del metadata["locks"]["nodes"]["upstream"]["inputs"]["nixpkgs"]
             self.transform(metadata, success=False)
 
-    def test_prebuild_and_source_binding_precede_target_write(self):
+    def test_authenticated_preflight_precedes_target_build_and_boot_activation(self):
         install = (ROOT / "crates/imperative-shell/assbox-engine/src/install.rs").read_text()
         boundary = install.index("// FIRST TARGET WRITE")
-        for step in ["crate::source::resolve", '"--print-out-paths"', "verify_install_target", "external backup read-back failed"]:
+        for step in ["crate::source::resolve", "crate::check_evaluation", "external backup read-back failed", "installation write intent read-back failed"]:
             self.assertLess(install.index(step), boundary)
         after = install[boundary:]
-        self.assertRegex(after, r'"--system",\s*system')
+        build = after.index('"build"')
+        validate = after.index("verify_install_target_in_store")
+        activate = after.index('"nixos-install"')
+        self.assertLess(build, validate)
+        self.assertLess(validate, activate)
+        self.assertLess(after.index('"release-state"'), activate)
+        self.assertLess(after.index('"admin-password.hash"'), activate)
+        self.assertLess(after.index('"activating"'), activate)
+        self.assertLess(activate, after.index('"complete"'))
+        self.assertIn('"--store"', after)
+        self.assertIn('"build-dir"', after)
+        self.assertRegex(after, r'"--system",\s*&system')
         self.assertNotIn('"--flake"', after)
-        self.assertNotIn('"build"', after)
+        self.assertIn("configuration_snapshot(&installed_config)? != configuration", after)
+        self.assertIn("cancellation::retry_build()", after)
         source = (ROOT / "crates/imperative-shell/assbox-engine/src/source.rs").read_text()
         self.assertEqual(source.count('"metadata"'), 1)
         self.assertIn('"--no-update-lock-file"', source)

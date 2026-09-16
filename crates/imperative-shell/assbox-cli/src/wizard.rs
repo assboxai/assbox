@@ -231,6 +231,9 @@ pub fn install(args: &[&str]) -> Result<()> {
         "Confirm the physical disks again before proceeding:\n{}",
         assbox_config::storage_summary::plan_storage_summary(&plan)?
     );
+    println!(
+        "After preflight and backup verification, Assbox builds on the selected Linux root. A failed build can leave an incomplete installation. Bootloader activation follows validation of the built system."
+    );
     let phrase = assbox_config::storage_summary::confirmation_phrase(&plan)?;
     if ask(&format!("Type exactly: {phrase}"), None)? != phrase {
         return Err(Error::new(

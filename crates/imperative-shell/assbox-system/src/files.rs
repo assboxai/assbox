@@ -297,3 +297,37 @@ pub fn prepared_root_entries(root: &Path) -> Result<Vec<assbox_domain::PreparedR
     }
     Ok(observed)
 }
+
+/// The generated receipt is one absolute store symlink. Resolve that link in the
+/// selected chroot store, never through the live machine's /nix/store.
+pub fn target_store_receipt(root: &Path, system: &str) -> Result<Vec<u8>> {
+    if !root.is_absolute() || !assbox_domain::source::valid_store_system(system) {
+        return Err(Error::new("invalid target store or generation"));
+    }
+    let system_path = root.join(system.trim_start_matches('/'));
+    if io(fs::canonicalize(&system_path))? != system_path {
+        return Err(Error::new(
+            "target store generation uses a filesystem alias",
+        ));
+    }
+    let link = io(fs::read_link(system_path.join("assbox-boot-policy.json")))?;
+    let name = link
+        .strip_prefix("/nix/store")
+        .map_err(|_| Error::new("receipt escapes target store"))?;
+    if name.components().count() != 1
+        || !matches!(
+            name.components().next(),
+            Some(std::path::Component::Normal(_))
+        )
+    {
+        return Err(Error::new("receipt is not a store object"));
+    }
+    let path = root.join("nix/store").join(name);
+    if io(fs::canonicalize(&path))? != path || !io(fs::symlink_metadata(&path))?.is_file() {
+        return Err(Error::new("receipt uses a filesystem alias"));
+    }
+    if io(fs::metadata(&path))?.len() > 65536 {
+        return Err(Error::new("oversized boot receipt"));
+    }
+    io(fs::read(path))
+}

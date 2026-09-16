@@ -75,6 +75,15 @@ fn now(c: &Commands) -> Result<u64> {
         .map(|d| d.as_secs())
         .map_err(|_| Error::new("system clock precedes Unix epoch"))
 }
+pub(crate) fn check_freshness(c: &Commands, manifest: &ReleaseManifest) -> Result<()> {
+    let time = now(c)?;
+    if manifest.expires_at <= time || manifest.issued_at > time.saturating_add(300) {
+        return Err(Error::new(
+            "release expired or clock changed; installation cannot continue with this release",
+        ));
+    }
+    Ok(())
+}
 pub(crate) fn sha256(c: &Commands, path: &Path) -> Result<Digest> {
     let output = c.text("sha256sum", &["--", files::path_text(path)?])?;
     Digest::parse(output.split_whitespace().next().unwrap_or(""))

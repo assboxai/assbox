@@ -31,7 +31,11 @@ pub(crate) fn read_binding(c: &Commands, system: &str) -> Result<BootReceipt> {
             "generation receipt is not immutable store content",
         ));
     }
-    let fields = c.jq_fields(&io(fs::read(path))?, r#"if .schema != 2 then error("unknown boot receipt schema")
+    decode_binding(c, &io(fs::read(path))?)
+}
+
+fn decode_binding(c: &Commands, bytes: &[u8]) -> Result<BootReceipt> {
+    let fields = c.jq_fields(bytes, r#"if .schema != 2 then error("unknown boot receipt schema")
         elif (.binding.loader|type) != "object" then error("missing immutable loader binding")
         elif (.policy.generations|type) != "number" then error("missing generation policy")
         else [.binding.architecture,.binding.mode,.binding.platform,.binding.disk,
@@ -58,12 +62,14 @@ pub(crate) fn read_binding(c: &Commands, system: &str) -> Result<BootReceipt> {
     })
 }
 
-pub(crate) fn verify_install_target(
+pub(crate) fn verify_install_target_in_store(
     c: &Commands,
+    root: &Path,
     system: &str,
     plan: &assbox_policy::InstallPlan,
 ) -> Result<()> {
-    let binding = read_binding(c, system)?;
+    let bytes = assbox_system::files::target_store_receipt(root, system)?;
+    let binding = decode_binding(c, &bytes)?;
     assbox_policy::validate_boot_target(&binding, &binding)?;
     let binding = binding.binding;
     let esp = plan

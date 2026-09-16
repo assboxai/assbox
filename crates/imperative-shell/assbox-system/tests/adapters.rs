@@ -81,3 +81,38 @@ fn prepared_root_observation_does_not_follow_links_or_ignore_recovered_files() {
     assert_eq!(files::prepared_root_entries(&fixture.0).unwrap().len(), 2);
     assert!(files::prepared_root_entries(&recovery).is_err());
 }
+
+#[test]
+fn boot_receipt_is_resolved_only_in_the_target_store() {
+    use std::{fs, os::unix::fs::symlink};
+    let root =
+        std::env::temp_dir().join(format!("assbox-store-test-{}", files::random_id().unwrap()));
+    let system = "/nix/store/00000000000000000000000000000000-nixos-system-target";
+    let physical = root.join(system.trim_start_matches('/'));
+    fs::create_dir_all(&physical).unwrap();
+    let receipt = "/nix/store/11111111111111111111111111111111-assbox-boot-policy.json";
+    let leaf = root.join(receipt.trim_start_matches('/'));
+    fs::write(&leaf, b"target receipt").unwrap();
+    let link = physical.join("assbox-boot-policy.json");
+    symlink(receipt, &link).unwrap();
+    assert_eq!(
+        files::target_store_receipt(&root, system).unwrap(),
+        b"target receipt"
+    );
+    for bad in [
+        "/etc/shadow",
+        "/nix/store/../secret",
+        "/nix/store/relative/nested",
+        "relative",
+    ] {
+        fs::remove_file(&link).unwrap();
+        symlink(bad, &link).unwrap();
+        assert!(files::target_store_receipt(&root, system).is_err());
+    }
+    fs::remove_file(&link).unwrap();
+    symlink(receipt, &link).unwrap();
+    fs::remove_file(&leaf).unwrap();
+    symlink("/etc/passwd", &leaf).unwrap();
+    assert!(files::target_store_receipt(&root, system).is_err());
+    fs::remove_dir_all(root).unwrap();
+}
