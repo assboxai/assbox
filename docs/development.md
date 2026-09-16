@@ -68,6 +68,12 @@ Clippy and actual Nix failures must be fixed with the real tools.
 
 ## Tests and promotion
 
+The `Verify locked source` Actions workflow is manual-only (`workflow_dispatch`),
+including in development copies. A push or pull request does not start verification.
+Run it deliberately for the branch under review and check the resulting SHA before
+using its status for promotion. Production release/bootstrap schedules are guarded
+and can be disabled entirely in development copies; see [automation](automation.md).
+
 Read [verification](verification.md) before interpreting results. Ordinary verification
 runs the checks that exist; release promotion additionally requires named full
 installation/boot, activation/recovery, authenticated-release and per-application

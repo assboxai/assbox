@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 name: Verify locked source
 on:
-  push:
-    branches: [master]
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read

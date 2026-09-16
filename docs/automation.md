@@ -1,5 +1,9 @@
 # Autonomous maintenance and release authority
 
+Source verification (`verify.yml`) uses inputless manual dispatch only. Pushes and
+pull requests do not start it. Dispatch the branch to review deliberately and verify
+the run's exact SHA; a pass on an earlier commit does not qualify a newer one.
+
 Release creation runs on GitHub Actions at `23 4 * * *` and through inputless
 manual dispatch. Both events follow the same prepare, native architecture,
 publication, public verification and advertisement gates. Installed provenance
@@ -23,13 +27,36 @@ a single-parent commit whose tree differs only at `flake.lock`, or an empty comm
 with the unchanged tree. An exact expected-head, non-force GraphQL ref update
 rejects a concurrent master change. An uncertain API result is not retried with force.
 
-Native verification precedes the write: ordinary `push` CI is not triggered by
-pushes made with `GITHUB_TOKEN`. Weekly verified commits address GitHub's public
+Native verification precedes the write; the writer never relies on a follow-up
+push-triggered run. Weekly verified commits address GitHub's public
 repository inactivity suspension without requiring an external credentialed
 scheduler. All required acceptance checks must exist and pass before this route
 can maintain the branch. A missing check is a blocking failure, not optional coverage.
 
 ## Repository administration
+
+Only `release.yml` and `bootstrap.yml` may declare schedules. Their entry jobs
+require `assboxai/assbox`, `master`, and the reviewed schedule/manual events. The
+workflow policy checks that every subsequent job remains dependent on that entry
+guard and cannot run via an independent job or an `always()` job condition.
+
+GitHub job conditions skip work but can still leave skipped scheduled runs in a
+development copy's history. To suppress those events completely, disable the two
+production-only workflows in that development repository using GitHub's
+[workflow controls](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow).
+After confirming the selected repository is **not** `assboxai/assbox`:
+
+```sh
+gh workflow disable release.yml --repo DEVELOPMENT_OWNER/DEVELOPMENT_REPO
+gh workflow disable bootstrap.yml --repo DEVELOPMENT_OWNER/DEVELOPMENT_REPO
+gh workflow list --all --repo DEVELOPMENT_OWNER/DEVELOPMENT_REPO
+```
+
+This repository setting also disables manual dispatch of those two workflows.
+Leave `verify.yml` enabled for deliberate verification. Repeat this setup for each
+independent development copy; YAML cannot disable workflows in other repositories.
+Keep the schedules and production guard in source so the canonical repository
+retains its reviewed release and bootstrap maintenance behavior.
 
 The repository is expected at `assboxai/assbox`, on `master`. The zero repository
 and owner IDs in `release/policy.json` are deliberately unprovisioned and must be

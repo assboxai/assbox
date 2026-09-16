@@ -29,6 +29,43 @@ class WorkflowPolicyTests(unittest.TestCase):
         self.assertEqual(policy.check(ROOT), [])
         self.assertIn("python3 scripts/workflow_policy.py", (ROOT / "scripts/verify").read_text())
 
+    def test_verification_is_manual_only(self):
+        self.assertEqual(self.document['on'], {'workflow_dispatch': None})
+        for event, options in [('push', {'branches': ['master']}),
+                               ('pull_request', None),
+                               ('schedule', [{'cron': '23 7 * * *'}]),
+                               ('workflow_run', {'workflows': ['Build'], 'types': ['completed']})]:
+            for replace in (False, True):
+                doc = copy.deepcopy(self.document)
+                if replace: doc['on'] = {}
+                doc['on'][event] = options
+                self.reject(doc)
+
+    def test_scheduled_workflows_require_the_production_guard(self):
+        for name in ('release.yml', 'bootstrap.yml'):
+            original = load(name)
+            self.assertEqual(original['jobs']['prepare']['if'], policy.MAINTENANCE_GUARD)
+            for guard in (None, 'true', policy.MAINTENANCE_GUARD.replace('assboxai/assbox', 'buu700/assbox-dev'),
+                          "github.event_name == 'schedule'"):
+                doc = copy.deepcopy(original)
+                if guard is None: del doc['jobs']['prepare']['if']
+                else: doc['jobs']['prepare']['if'] = guard
+                self.reject(doc, name)
+
+    def test_scheduled_jobs_cannot_escape_the_production_guard(self):
+        for name in ('release.yml', 'bootstrap.yml'):
+            original = load(name)
+            for job in set(original['jobs']) - {'prepare'}:
+                for change in ('independent', 'always', 'cancelled'):
+                    doc = copy.deepcopy(original)
+                    if change == 'independent': doc['jobs'][job].pop('needs', None)
+                    else: doc['jobs'][job]['if'] = change + '()'
+                    self.reject(doc, name)
+            doc = copy.deepcopy(original)
+            doc['jobs']['extra'] = copy.deepcopy(doc['jobs']['prepare'])
+            del doc['jobs']['extra']['if']
+            self.reject(doc, name)
+
     def test_verification_stages_cannot_be_skipped_reordered_or_extended(self):
         for change in ('omit', 'reorder', 'duplicate', 'condition', 'arguments'):
             doc = copy.deepcopy(self.document)
@@ -183,7 +220,10 @@ class WorkflowPolicyTests(unittest.TestCase):
     def test_readonly_non_dispatch_workflows_remain_valid(self):
         for event, doc in self.non_dispatch_documents():
             with self.subTest(event=event):
-                self.assertEqual(policy.check_document("other.yml", doc), [])
+                if event == 'schedule':
+                    self.reject(doc, 'other.yml')
+                else:
+                    self.assertEqual(policy.check_document("other.yml", doc), [])
 
     def test_non_dispatch_workflows_cannot_gain_write_permissions_or_secret_grants(self):
         for event, original in self.non_dispatch_documents():

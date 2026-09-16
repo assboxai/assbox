@@ -59,6 +59,15 @@ VERIFY_UPLOAD = {
 RELEASE_CRON = "23 4 * * *"
 BOOTSTRAP_CRON = "41 3 * * 0"
 MAINTENANCE_GUARD = "github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')"
+RELEASE_JOB_GATES = {
+    'prepare': (None, MAINTENANCE_GUARD),
+    'probe': ('prepare', None),
+    'select': ('probe', None),
+    'native': ('select', "needs.select.outputs.publish == 'true'"),
+    'publish': ('native', None),
+    'live-verify': ('publish', None),
+    'advertise': (['publish', 'live-verify'], None),
+}
 BOOTSTRAP_DISCOVER = 'python3 scripts/bootstrap.py discover "$RUNNER_TEMP/assbox-bootstrap-discovery.json"'
 BOOTSTRAP_PREPARE = 'python3 scripts/bootstrap.py prepare "$RUNNER_TEMP/assbox-bootstrap-discovery.json" "$RUNNER_TEMP/assbox-bootstrap/assets"'
 BOOTSTRAP_NATIVE = 'python3 scripts/bootstrap.py native "$RUNNER_TEMP/assbox-bootstrap/assets" "$VARIANT" "$SYSTEM" "$RUNNER_TEMP/assbox-bootstrap-report/report-$VARIANT-$SYSTEM.json"'
@@ -217,6 +226,8 @@ def check_document(name, document):
     # Authority does not depend on the event: even a push-only workflow may be
     # rerun through repository Actions administration; no event expands authority.
     release = name == "release.yml"
+    if "schedule" in document["on"] and name not in {"release.yml", "bootstrap.yml"}:
+        refuse("scheduled workflows are restricted to the reviewed production release and bootstrap workflows")
     if "workflow_dispatch" in document["on"] and document["on"]["workflow_dispatch"] not in (None, {}):
         refuse("dispatch control inputs are not supported")
     called = document["on"].get("workflow_call")
@@ -239,6 +250,8 @@ def check_document(name, document):
             refuse("bootstrap workflow differs from its reviewed lock-only authority stencil")
         return errors
     if name == 'verify.yml':
+        if document['on'] != {'workflow_dispatch': None}:
+            refuse('verification must use inputless manual dispatch only')
         verification = jobs.get('verify', {})
         steps = verification.get('steps', []) if isinstance(verification, dict) else []
         if not isinstance(steps, list):
@@ -256,6 +269,15 @@ def check_document(name, document):
         refuse("release triggers must be the fixed schedule and inputless manual dispatch")
     if release and jobs.get("prepare", {}).get("if") != MAINTENANCE_GUARD:
         refuse("release source/event guard differs from reviewed master policy")
+    if release:
+        # Every job must remain downstream of the production guard. An independent
+        # job or an always() condition could otherwise run in a development copy.
+        if set(jobs) != set(RELEASE_JOB_GATES) or any(
+            not isinstance(jobs.get(job), dict)
+            or (jobs[job].get('needs'), jobs[job].get('if')) != gate
+            for job, gate in RELEASE_JOB_GATES.items()
+        ):
+            refuse('release jobs must retain the reviewed production-gated dependency chain')
     for job_name, job in jobs.items():
         if not isinstance(job, dict):
             refuse(f"invalid job {job_name}"); continue

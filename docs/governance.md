@@ -125,7 +125,8 @@ at 03:41 UTC and makes a verified lock-only or empty keepalive commit. See
 [automation](automation.md) for exact writer boundaries and repository-rule setup.
 The ephemeral repository token must be allowed to perform this bounded write;
 do not assume it bypasses arbitrary branch rules. Native verification happens
-before the write because that token's push does not trigger ordinary push CI.
+before the write; source verification is manual-only, and the writer must not rely
+on a later verification dispatch.
 
 These schedules are separate from appliance maintenance at 18:00 local. Releases
 renew authorization after three days even when dependency contents are unchanged;
