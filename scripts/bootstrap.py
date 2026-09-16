@@ -22,9 +22,8 @@ UPDATE = "mutation AssboxBootstrap($input: UpdateRefsInput!) { updateRefs(input:
 
 
 def release_sequence(tag: str) -> int:
-    if not isinstance(tag, str) or not re.fullmatch(r"r-[1-9][0-9]{0,19}", tag):
-        raise ValueError("invalid immutable release tag")
-    return int(tag[2:])
+    # Use the same 16-digit release namespace as the publisher and Rust client.
+    return data.release_sequence(tag)
 
 
 def identity() -> dict:
@@ -108,7 +107,7 @@ def prepare(discovery: Path, out: Path) -> None:
     tokenless()
     core = source()
     observed = rel.load(discovery)
-    if (set(observed) != {"schema", *identity(), "head", "previousTag"} or observed["schema"] != 1
+    if (set(observed) != {"schema", *identity(), "head", "previousTag"} or type(observed["schema"]) is not int or observed["schema"] != 1
             or any(observed[k] != v for k, v in identity().items())):
         raise ValueError("discovery is not from this exact run")
     current = core.get("flake.lock", (0, None))[1]
@@ -166,7 +165,7 @@ def prepare(discovery: Path, out: Path) -> None:
 def plan(assets: Path) -> tuple[dict, dict]:
     value = rel.load(assets / "plan.json")
     if (not isinstance(value, dict) or set(value) != {"schema", *identity(), "origin", "releaseTag", "candidateSha256", "currentSha256"}
-            or value["schema"] != 1 or any(value[k] != v for k, v in identity().items())
+            or type(value["schema"]) is not int or value["schema"] != 1 or any(value[k] != v for k, v in identity().items())
             or value["origin"] not in {"genesis", "existing", "authenticated-release", "existing-after-refusal"}):
         raise ValueError("invalid/stale bootstrap plan")
     if value["origin"] == "authenticated-release":
@@ -254,7 +253,7 @@ def select(assets: Path, reports: Path) -> tuple[dict, bytes, bytes | None]:
         if not isinstance(report, dict) or set(report) != {"schema", *identity(), "planSha256", "variant", "system", "lockSha256", "passed", "gates"}:
             raise ValueError("invalid bootstrap evidence schema")
         key = (report["variant"], report["system"])
-        if (key in seen or key[0] not in VARIANTS or key[1] not in data.SYSTEMS or report["schema"] != 1
+        if (key in seen or key[0] not in VARIANTS or key[1] not in data.SYSTEMS or type(report["schema"]) is not int or report["schema"] != 1
                 or any(report[k] != v for k, v in identity().items())
                 or report["planSha256"] != data.digest((assets / "plan.json").read_bytes())
                 or report["lockSha256"] != value[key[0] + "Sha256"] or type(report["passed"]) is not bool
@@ -295,7 +294,10 @@ def compare_and_swap(node: str, before: str, after: str) -> None:
     if len(raw) > 65536:
         raise ValueError("oversized ref update response; inspect master")
     result = data.decode(raw)
-    if result.get("errors") or result.get("data", {}).get("updateRefs", {}).get("clientMutationId") != mutation_id:
+    response_data = result.get("data") if isinstance(result, dict) else None
+    update = response_data.get("updateRefs") if isinstance(response_data, dict) else None
+    if (not isinstance(update, dict) or result.get("errors")
+            or update.get("clientMutationId") != mutation_id):
         raise ValueError("atomic ref update refused or uncertain; inspect master, never force")
 
 

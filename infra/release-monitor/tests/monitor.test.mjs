@@ -71,7 +71,7 @@ test("latest and successful run identities, shapes and times are required", () =
   for (const patch of [{ created_at: "bad" }, { updated_at: iso(3600) }, { created_at: iso(-1000) }]) {
     assert.equal(assess({ ...run, ...patch }), "run-time-invalid");
   }
-  assert.equal(assess(run, { ...run, updated_at: iso(-37 * 3600) }), "run-stale");
+  assert.equal(assess(run, { ...run, created_at: iso(-37 * 3600 - 100), run_started_at: iso(-37 * 3600 - 50), updated_at: iso(-37 * 3600) }), "run-stale");
   assert.equal(assessRuns(repo, workflow, { workflow_runs: [run, run] }, list(run), now), "latest-run-invalid-or-missing");
 });
 test("queue and running grace periods are bounded and cannot be refreshed by updated_at", () => {
@@ -246,14 +246,35 @@ test("bootstrap liveness is independent of release freshness", async () => {
     [{ bootstrap: { ...bootstrap, path: ".github/workflows/other.yml" } }, "bootstrap-workflow-disabled-or-changed"],
     [{ bootstrapRun: { ...bootstrapRun, conclusion: "failure" } }, "bootstrap-latest-run-failed"],
     [{ bootstrapRun: { ...bootstrapRun, event: "push" } }, "bootstrap-latest-run-invalid-or-missing"],
-    [{ bootstrapSuccess: { ...bootstrapRun, updated_at: iso(-BOOTSTRAP_FRESHNESS - 1) } }, "bootstrap-run-stale"],
+    [{ bootstrapSuccess: { ...bootstrapRun, created_at: iso(-BOOTSTRAP_FRESHNESS - 100), run_started_at: iso(-BOOTSTRAP_FRESHNESS - 50), updated_at: iso(-BOOTSTRAP_FRESHNESS - 1) } }, "bootstrap-run-stale"],
     [{ bootstrapRun: { ...bootstrapRun, status: "queued", conclusion: null, created_at: iso(-QUEUE_GRACE - 1) } }, "bootstrap-run-queue-stalled"],
   ]) {
     const f = fixture(patch);
     assert.equal(await check(env, f.fetcher, now), reason);
     assert.ok(!f.calls.some(url => url.endsWith("/releases/latest")));
   }
-  const weekly = { ...bootstrapRun, created_at: iso(-8 * 86400 - 100), updated_at: iso(-8 * 86400) };
+  const weekly = { ...bootstrapRun, created_at: iso(-8 * 86400 - 100), run_started_at: iso(-8 * 86400 - 50), updated_at: iso(-8 * 86400) };
   const f = fixture({ bootstrapRun: weekly, bootstrapSuccess: weekly });
   assert.equal(await check(env, f.fetcher, now), null);
+});
+
+test("bootstrap observations reject wrong identities, impossible chronology and stalled work", async () => {
+  for (const [patch, reason] of [
+    [{ bootstrapRun: { ...bootstrapRun, repository: { id: 999 } } }, "bootstrap-latest-run-invalid-or-missing"],
+    [{ bootstrapRun: { ...bootstrapRun, workflow_id: 999 } }, "bootstrap-latest-run-invalid-or-missing"],
+    [{ bootstrapSuccess: { ...bootstrapRun, workflow_id: 999 } }, "bootstrap-no-successful-run"],
+    [{ bootstrapSuccess: { ...bootstrapRun, created_at: "unknown" } }, "bootstrap-run-time-invalid"],
+    [{ bootstrapSuccess: { ...bootstrapRun, run_started_at: iso(1000) } }, "bootstrap-run-time-invalid"],
+    [{ bootstrapSuccess: { ...bootstrapRun, updated_at: iso(-4000) } }, "bootstrap-run-time-invalid"],
+    [{ bootstrapRun: { ...bootstrapRun, status: "in_progress", conclusion: null,
+       created_at: iso(-RUN_GRACE - 100), run_started_at: iso(-RUN_GRACE - 1), updated_at: iso(-1) } }, "bootstrap-run-in-progress-stalled"],
+  ]) {
+    const f = fixture(patch);
+    assert.equal(await check(env, f.fetcher, now), reason);
+    assert.ok(!f.calls.some(url => url.endsWith("/releases/latest")));
+  }
+  for (const conclusion of ["failure", "cancelled", "timed_out", "neutral", "skipped", "action_required"]) {
+    const f = fixture({ bootstrapRun: { ...bootstrapRun, conclusion } });
+    assert.equal(await check(env, f.fetcher, now), "bootstrap-latest-run-failed");
+  }
 });

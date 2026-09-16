@@ -4,6 +4,7 @@ import ast
 import base64
 import copy
 import json
+import io
 import os
 from pathlib import Path
 import sys
@@ -63,9 +64,45 @@ class BootstrapTests(unittest.TestCase):
         self.save_reports(candidate=False)
         self.assertEqual(b.select(self.assets, self.reports)[1], self.current)
 
+    def test_each_native_result_is_independent_and_required(self):
+        for variant in b.VARIANTS:
+            for system in b.data.SYSTEMS:
+                with self.subTest(variant=variant, system=system):
+                    self.save_reports()
+                    path = self.reports / f'{variant}-{system}.json'
+                    report = json.loads(path.read_text())
+                    report.update(passed=False, gates=[])
+                    path.write_bytes(b.data.json_bytes(report))
+                    selected = b.select(self.assets, self.reports)[1]
+                    self.assertEqual(selected, self.current if variant == 'candidate' else self.candidate)
+                    path.unlink()
+                    with self.assertRaises(ValueError): b.select(self.assets, self.reports)
+
+    def test_boolean_and_float_schema_versions_are_not_integer_versions(self):
+        for schema in [True, 1.0, '1', None, 2]:
+            with self.subTest(schema=schema):
+                self.value['schema'] = schema; self.save_plan()
+                with self.assertRaises(ValueError): b.plan(self.assets)
+                self.value['schema'] = 1; self.save_plan(); self.save_reports()
+                self.mutate_report('schema', schema)
+                with self.assertRaises(ValueError): b.select(self.assets, self.reports)
+
+    def test_release_namespace_matches_publisher_and_client_bounds(self):
+        for tag in ['r-1', 'r-9999999999999999']:
+            self.assertEqual(b.release_sequence(tag), b.data.release_sequence(tag))
+        for tag in ['r-10000000000000000', 'r-0', 'r-01', 'r--1', 'r-1\n', '', None]:
+            with self.assertRaises(ValueError): b.release_sequence(tag)
+
     def test_no_unverified_keepalive(self):
         self.save_reports(candidate=False, current=False)
         with self.assertRaises(ValueError): b.select(self.assets, self.reports)
+
+    def test_invalid_evidence_prevents_every_writer_effect(self):
+        self.mutate_report('runId', 'wrong-run')
+        with patch.object(b, 'observe_repository') as observe, patch.object(b.rel, 'api') as api, \
+                patch.object(b, 'compare_and_swap') as cas:
+            with self.assertRaises(ValueError): b.write(self.assets, self.reports)
+            observe.assert_not_called(); api.assert_not_called(); cas.assert_not_called()
 
     def test_missing_evidence_is_not_a_failed_optional_check(self):
         next(self.reports.iterdir()).unlink()
@@ -169,6 +206,30 @@ class BootstrapTests(unittest.TestCase):
             b.write(self.assets, self.reports)
             paths = [call.args[0] for call in api.call_args_list]
             self.assertFalse(any(path.endswith('/blobs') or path.endswith('/trees') for path in paths))
+
+    def test_compare_and_swap_is_exact_nonforcing_and_does_not_retry_uncertain_results(self):
+        mutation_id = 'assbox-bootstrap-42-1'
+        success = {'data': {'updateRefs': {'clientMutationId': mutation_id}}}
+        replies = [success, {'errors': [{'message': 'stale head'}]}, {}, None, [],
+                   {'data': None}, {'data': {'updateRefs': None}},
+                   {'data': {'updateRefs': {'clientMutationId': 'wrong-run'}}}]
+        for reply in replies:
+            with self.subTest(reply=reply), patch.object(b.rel, 'API_TOKEN', 'test-only-token'), \
+                    patch.object(b.urllib.request, 'build_opener') as factory:
+                opener = factory.return_value
+                opener.open.return_value = io.BytesIO(b.data.json_bytes(reply))
+                if reply == success:
+                    b.compare_and_swap('repository-node', 'a' * 40, 'b' * 40)
+                else:
+                    with self.assertRaises(ValueError): b.compare_and_swap('repository-node', 'a' * 40, 'b' * 40)
+                opener.open.assert_called_once()
+                request = opener.open.call_args.args[0]
+                self.assertEqual(request.full_url, 'https://api.github.com/graphql')
+                self.assertEqual(json.loads(request.data)['variables']['input'], {
+                    'repositoryId': 'repository-node', 'clientMutationId': mutation_id,
+                    'refUpdates': [{'name': 'refs/heads/master', 'beforeOid': 'a' * 40,
+                                    'afterOid': 'b' * 40, 'force': False}]})
+                factory.assert_called_once_with(b.rel.NoRedirect)
 
 
 if __name__ == '__main__': unittest.main()

@@ -72,7 +72,7 @@ test("latest and successful run identities, shapes and times are required", () =
   for (const patch of [{ created_at: "bad" }, { updated_at: iso(3600) }, { created_at: iso(-1000) }]) {
     assert.equal(assess({ ...run, ...patch }), "run-time-invalid");
   }
-  assert.equal(assess(run, { ...run, updated_at: iso(-37 * 3600) }), "run-stale");
+  assert.equal(assess(run, { ...run, created_at: iso(-37 * 3600 - 100), run_started_at: iso(-37 * 3600 - 50), updated_at: iso(-37 * 3600) }), "run-stale");
   assert.equal(assessRuns(repo, workflow, { workflow_runs: [run, run] }, list(run), now), "latest-run-invalid-or-missing");
 });
 test("queue and running grace periods are bounded and cannot be refreshed by updated_at", () => {
@@ -247,14 +247,14 @@ test("bootstrap liveness is independent of release freshness", async () => {
     [{ bootstrap: { ...bootstrap, path: ".github/workflows/other.yml" } }, "bootstrap-workflow-disabled-or-changed"],
     [{ bootstrapRun: { ...bootstrapRun, conclusion: "failure" } }, "bootstrap-latest-run-failed"],
     [{ bootstrapRun: { ...bootstrapRun, event: "push" } }, "bootstrap-latest-run-invalid-or-missing"],
-    [{ bootstrapSuccess: { ...bootstrapRun, updated_at: iso(-BOOTSTRAP_FRESHNESS - 1) } }, "bootstrap-run-stale"],
+    [{ bootstrapSuccess: { ...bootstrapRun, created_at: iso(-BOOTSTRAP_FRESHNESS - 100), run_started_at: iso(-BOOTSTRAP_FRESHNESS - 50), updated_at: iso(-BOOTSTRAP_FRESHNESS - 1) } }, "bootstrap-run-stale"],
     [{ bootstrapRun: { ...bootstrapRun, status: "queued", conclusion: null, created_at: iso(-QUEUE_GRACE - 1) } }, "bootstrap-run-queue-stalled"],
   ]) {
     const f = fixture(patch);
     assert.equal(await check(env, f.fetcher, now), reason);
     assert.ok(!f.calls.some(url => url.endsWith("/releases/latest")));
   }
-  const weekly = { ...bootstrapRun, created_at: iso(-8 * 86400 - 100), updated_at: iso(-8 * 86400) };
+  const weekly = { ...bootstrapRun, created_at: iso(-8 * 86400 - 100), run_started_at: iso(-8 * 86400 - 50), updated_at: iso(-8 * 86400) };
   const f = fixture({ bootstrapRun: weekly, bootstrapSuccess: weekly });
   assert.equal(await check(env, f.fetcher, now), null);
 });

@@ -278,5 +278,40 @@ class WorkflowPolicyTests(unittest.TestCase):
         self.assertIn("scripts/release.py live-verify", command)
         self.assertIn("GITHUB_RUN_ATTEMPT", command)
 
+    def test_bootstrap_writer_cannot_expand_its_authority_or_bypass_native_evidence(self):
+        original = load("bootstrap.yml")
+        mutations = [
+            lambda d: d["jobs"]["write"].update(needs=["prepare"]),
+            lambda d: d["jobs"]["write"].update({"if": "always()"}),
+            lambda d: d["jobs"]["write"].update(environment="unprotected"),
+            lambda d: d["jobs"]["write"].update(permissions={"contents": "write", "actions": "write"}),
+            lambda d: d["jobs"]["write"]["steps"].append({"run": "nix build path:/tmp/candidate"}),
+            lambda d: d["jobs"]["write"]["steps"][0]["with"].update(ref="master"),
+            lambda d: d["jobs"]["write"]["steps"][0]["with"].update({"persist-credentials": True}),
+            lambda d: d["jobs"]["write"]["steps"][1]["with"].update(path="scripts"),
+            lambda d: d["jobs"]["native"]["strategy"]["matrix"]["include"].pop(),
+            lambda d: d["jobs"]["native"].update({"continue-on-error": True}),
+            lambda d: d["jobs"]["native"].update(env={"GH_TOKEN": "${{ github.token }}"}),
+            lambda d: d["jobs"]["prepare"]["steps"].reverse(),
+            lambda d: d["on"].update(push={"branches": ["master"]}),
+            lambda d: d["concurrency"].update({"cancel-in-progress": True}),
+        ]
+        for mutate in mutations:
+            with self.subTest(mutation=mutations.index(mutate)):
+                document = copy.deepcopy(original); mutate(document)
+                self.reject(document, "bootstrap.yml")
+        self.reject(original, "renamed-bootstrap.yml")
+
+    def test_bootstrap_token_binding_cannot_be_reused_or_redirected(self):
+        original = load("bootstrap.yml")
+        for job_name, command in [("prepare", policy.BOOTSTRAP_DISCOVER), ("write", policy.BOOTSTRAP_WRITE)]:
+            for change in [{"shell": "bash"}, {"working-directory": "/tmp/candidate"},
+                           {"if": "always()"}, {"env": {"GH_TOKEN": "${{ github.token }}", "BASH_ENV": "candidate.sh"}}]:
+                with self.subTest(job=job_name, change=change):
+                    document = copy.deepcopy(original)
+                    step = next(s for s in document["jobs"][job_name]["steps"] if s.get("run") == command)
+                    step.update(change)
+                    self.reject(document, "bootstrap.yml")
+
 
 if __name__ == "__main__": unittest.main()

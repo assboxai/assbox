@@ -61,7 +61,10 @@ export function assessRuns(repo, workflow, latestRuns, successfulRuns, now, fres
   const successful = firstRun(successfulRuns);
   if (!runIdentity(successful, repo, workflow) || successful.status !== "completed" || successful.conclusion !== "success") return "no-successful-run";
   const completed = timestamp(successful.updated_at);
-  if (!validTime(completed, now) || now - completed > freshness) return "run-stale";
+  const successCreated = timestamp(successful.created_at), successStarted = timestamp(successful.run_started_at);
+  if (!validTime(completed, now) || !validTime(successCreated, now) || !validTime(successStarted, now) ||
+      successStarted < successCreated || successStarted > completed) return "run-time-invalid";
+  if (now - completed > freshness) return "run-stale";
   return null;
 }
 
