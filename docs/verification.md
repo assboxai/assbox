@@ -50,6 +50,20 @@ system builds and VM checks). Stages stop on failure and preserve command exit c
 Selecting a stage never constitutes a passing full gate. Even the `rust` stage can
 be expensive on a cold cache; resource restrictions still apply.
 
+The verification workflow runs these stages as separate steps through
+`scripts/verify_observed.py`. It records memory/swap availability, disk space,
+pressure indicators and readable cgroup memory-event counters before execution,
+every 30 seconds and at completion. Missing metrics are unknown, not zero. No
+environment dump, password, or process command line is collected. Diagnostics
+are best effort and do not turn failed or interrupted verification into success.
+
+Records stream to the job log and to `${RUNNER_TEMP}/assbox-verification` in Actions,
+or `reports/verification` for a deliberate local wrapper invocation. Each stage's
+file is capped at approximately 8 MiB plus its final record. The pinned final
+`always()` upload retains only that diagnostics directory for 14 days, named by
+architecture, commit and run attempt. A destroyed runner can prevent both final
+sampling and upload; absence of evidence never proves an OOM or a passing check.
+
 `scripts/verify` requires the internal dependency/effect guard, native Rust formatting,
 warning-free Clippy, locked workspace build/tests, source/tooling tests, independent
 bounded specification checks, Node tests for the read-only monitor Worker, and

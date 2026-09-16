@@ -48,6 +48,14 @@ READ_COMMANDS = {
     'test -f flake.lock && git ls-files --error-unmatch flake.lock',
     'nix develop --command scripts/verify',
 }
+VERIFY_COMMANDS = [f'python3 scripts/verify_observed.py {stage}'
+                   for stage in ('static', 'rust', 'mutations', 'nix')]
+VERIFY_UPLOAD = {
+    'if': 'always()', 'uses': UPLOAD,
+    'with': {'name': 'verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}',
+             'path': '${{ runner.temp }}/assbox-verification',
+             'if-no-files-found': 'warn', 'retention-days': 14},
+}
 RELEASE_CRON = "23 4 * * *"
 BOOTSTRAP_CRON = "41 3 * * 0"
 MAINTENANCE_GUARD = "github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')"
@@ -230,6 +238,20 @@ def check_document(name, document):
         if document != bootstrap_document():
             refuse("bootstrap workflow differs from its reviewed lock-only authority stencil")
         return errors
+    if name == 'verify.yml':
+        verification = jobs.get('verify', {})
+        steps = verification.get('steps', []) if isinstance(verification, dict) else []
+        if not isinstance(steps, list):
+            steps = []
+        runs = [step.get('run', '').strip() for step in steps
+                if isinstance(step, dict) and isinstance(step.get('run'), str)]
+        if runs != ['test -f flake.lock && git ls-files --error-unmatch flake.lock', *VERIFY_COMMANDS]:
+            refuse('verification must execute every reviewed stage exactly once in order')
+        if (not steps or not isinstance(steps[-1], dict)
+                or {key: value for key, value in steps[-1].items() if key != 'name'} != VERIFY_UPLOAD):
+            refuse('verification diagnostics must use the exact final always-upload step')
+        if sum(isinstance(step, dict) and step.get('uses') == UPLOAD for step in steps) != 1:
+            refuse('verification must have exactly one diagnostics upload')
     if release and document["on"] != {"schedule": [{"cron": RELEASE_CRON}], "workflow_dispatch": None}:
         refuse("release triggers must be the fixed schedule and inputless manual dispatch")
     if release and jobs.get("prepare", {}).get("if") != MAINTENANCE_GUARD:
@@ -264,6 +286,12 @@ def check_document(name, document):
             if not isinstance(step, dict):
                 refuse(f"invalid step in {job_name}"); continue
             if not release:
+                if name == 'verify.yml' and job_name == 'verify':
+                    reviewed = {key: value for key, value in step.items() if key != 'name'}
+                    if reviewed == VERIFY_UPLOAD:
+                        continue
+                    if set(reviewed) == {'run'} and reviewed['run'] in VERIFY_COMMANDS:
+                        continue
                 if set(step) - {"name", "uses", "with", "run"}:
                     refuse(f"unreviewed step credentials/condition/context in {job_name}")
                 if "uses" in step:

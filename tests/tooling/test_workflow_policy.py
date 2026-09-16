@@ -29,6 +29,31 @@ class WorkflowPolicyTests(unittest.TestCase):
         self.assertEqual(policy.check(ROOT), [])
         self.assertIn("python3 scripts/workflow_policy.py", (ROOT / "scripts/verify").read_text())
 
+    def test_verification_stages_cannot_be_skipped_reordered_or_extended(self):
+        for change in ('omit', 'reorder', 'duplicate', 'condition', 'arguments'):
+            doc = copy.deepcopy(self.document)
+            steps = doc['jobs']['verify']['steps']
+            index = next(i for i, step in enumerate(steps) if step.get('run') == policy.VERIFY_COMMANDS[0])
+            if change == 'omit': steps.pop(index)
+            elif change == 'reorder': steps[index], steps[index + 1] = steps[index + 1], steps[index]
+            elif change == 'duplicate': steps.insert(index, copy.deepcopy(steps[index]))
+            elif change == 'condition': steps[index]['if'] = 'false'
+            else: steps[index]['run'] += ' --skip'
+            self.reject(doc)
+
+    def test_verification_artifact_exception_is_exact_and_confined(self):
+        for change in ('path', 'retention-days', 'condition', 'env', 'action', 'remove'):
+            doc = copy.deepcopy(self.document)
+            step = doc['jobs']['verify']['steps'][-1]
+            if change == 'path': step['with']['path'] = '${{ runner.temp }}'
+            elif change == 'retention-days': step['with']['retention-days'] = 90
+            elif change == 'condition': step['if'] = 'success()'
+            elif change == 'env': step['env'] = {'GH_TOKEN': '${{ github.token }}'}
+            elif change == 'action': step['uses'] = 'actions/upload-artifact@main'
+            else: doc['jobs']['verify']['steps'].pop()
+            self.reject(doc)
+        self.reject(self.document, 'other.yml')
+
     def test_yaml_on_key_is_not_boolean_and_duplicate_keys_are_refused(self):
         self.assertIn("workflow_dispatch", self.document["on"])
         for source in ["on: {}\non: {}\n", "permissions:\n  contents: read\n  contents: write\n", "true: value\n"]:
@@ -149,6 +174,10 @@ class WorkflowPolicyTests(unittest.TestCase):
         ]:
             doc = copy.deepcopy(self.document)
             doc["on"] = {event: options}
+            # Other workflows retain the general read-only commands, without
+            # borrowing verify.yml's narrowly scoped diagnostic exceptions.
+            doc['jobs']['verify']['steps'] = doc['jobs']['verify']['steps'][:3] + [
+                {'run': 'nix develop --command scripts/verify'}]
             yield event, doc
 
     def test_readonly_non_dispatch_workflows_remain_valid(self):

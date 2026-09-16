@@ -35,5 +35,19 @@ jobs:
             accept-flake-config = false
       - name: Require committed input lock
         run: test -f flake.lock && git ls-files --error-unmatch flake.lock
-      - name: Native compilation, policy, builds and disposable VM
-        run: nix develop --command scripts/verify
+      - name: Static checks and tooling tests
+        run: python3 scripts/verify_observed.py static
+      - name: Native Rust checks
+        run: python3 scripts/verify_observed.py rust
+      - name: Guard-removal mutations
+        run: python3 scripts/verify_observed.py mutations
+      - name: Nix evaluation, system builds and disposable VMs
+        run: python3 scripts/verify_observed.py nix
+      - name: Retain verification diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/assbox-verification
+          if-no-files-found: warn
+          retention-days: 14
