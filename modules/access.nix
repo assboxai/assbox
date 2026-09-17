@@ -134,11 +134,7 @@ in
         AllowAgentForwarding = false;
         GatewayPorts = "no";
         AllowTcpForwarding = "local";
-        PermitOpen = [
-          "localhost:*"
-          "127.0.0.1:*"
-          "[::1]:*"
-        ];
+        PermitOpen = "localhost:* 127.0.0.1:* [::1]:*";
       };
     };
     networking.firewall.interfaces = lib.genAttrs (builtins.filter validInterface interfaces) (_: {

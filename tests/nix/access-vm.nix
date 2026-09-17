@@ -160,6 +160,8 @@ pkgs.testers.runNixOSTest {
         client.fail(ssh("agent", "agent", host, "sudo -n true"))
     box.succeed("sshd -T | grep -F 'allowagentforwarding no'")
     box.succeed("sshd -T | grep -F 'gatewayports no'")
+    box.succeed("sshd -T | grep -Fx 'allowtcpforwarding local'")
+    box.succeed("sshd -T | grep -Fx 'permitopen localhost:* 127.0.0.1:* [::1]:*'")
     if ${if exposure == "tailscale" then "True" else "False"}:
         box.succeed("ip link set tailscale0 down; ip link set tailscale0 name untrusted0; ip link set untrusted0 up")
         for host in ["192.168.10.1", "fd00:10::1"]:
