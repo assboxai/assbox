@@ -181,6 +181,12 @@ Session wrappers own `graphical-session.target` and clear stale display variable
 GUI units stop with that target. Headless services remain independent. Cursor's
 explicit X11 computer-use worker follows the graphical target as well.
 
+Desktop Zed and VS Code include Chromium and standard HTTP/HTTPS handlers, as do
+ChatGPT and Claude Desktop. Their account sign-in can open a browser in the agent
+session and return to a loopback listener on the same machine. This dependency
+does not select another agent application. User browser preferences can override
+the system defaults; headless editor hosts do not install a browser.
+
 X11 uses LightDM's greeterless autologin. Logout, Openbox failure and X-server
 failure cause a fresh agent session and its selected launchers to start, with
 systemd restart backoff. The agent password stays locked; administrative login

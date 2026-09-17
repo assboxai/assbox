@@ -20,7 +20,9 @@ pkgs.testers.runNixOSTest {
         enable = true;
         inherit presentation;
         updates.enable = false;
-        components = { };
+        # A Zed-only selection must supply its browser, not borrow one from a
+        # separate agent application or from the test's systemPackages.
+        components.zed.enable = true;
       };
       boot.loader.systemd-boot.enable = lib.mkForce false;
       boot.loader.grub.enable = lib.mkForce false;
@@ -29,11 +31,12 @@ pkgs.testers.runNixOSTest {
       users.users.root.hashedPasswordFile = lib.mkForce null;
       users.users.admin.hashedPasswordFile = lib.mkForce null;
       environment.etc."assbox-test/portal-probe.py".source = ../fixtures/portal-probe.py;
+      environment.etc."assbox-test/browser-probe.py".source = ../fixtures/browser-probe.py;
       environment.systemPackages = [
         python
         pkgs.libsecret
       ];
-      virtualisation.memorySize = 2048;
+      virtualisation.memorySize = 3072;
       virtualisation.qemu.forceAccel = lib.mkForce (!arm);
       virtualisation.resolution = {
         x = 1280;
@@ -87,6 +90,15 @@ pkgs.testers.runNixOSTest {
                 if mode != "cancel":
                     assert result["uris"] == ["file://" + path], result
                 machine.wait_until_fails(user("systemctl --user is-active assbox-portal-probe.service"))
+        def browser():
+            for scheme in ["http", "https"]:
+                assert machine.succeed(user("xdg-mime query default x-scheme-handler/" + scheme)).strip() == "chromium-browser.desktop"
+            # Inherit the production user manager's display environment. Use the
+            # installed handler and normal sandbox, without injecting Chromium flags.
+            machine.succeed(user("systemd-run --user --wait --pipe --collect --unit=assbox-browser-probe "
+                + "timeout 90 ${python}/bin/python3 /etc/assbox-test/browser-probe.py"), timeout=120)
+            machine.wait_until_fails(user("systemctl --user is-active assbox-browser-probe.service"))
+            machine.wait_until_fails("pgrep -u agent -x 'chromium|chrome|chrome_crashpad'", timeout=30)
 
         ready()
         assert machine.succeed("getent shadow agent | cut -d: -f2").strip() == "!"
@@ -104,6 +116,7 @@ pkgs.testers.runNixOSTest {
         credentials()
         machine.succeed(user("mkdir -p /home/agent/project; printf 'disposable fixture' > /home/agent/input.txt"))
         dialogs()
+        browser()
         # Portals must be relaunched with the new session's display environment.
         manager = "display-manager" if machine.name == "x11" else "greetd"
         machine.succeed("systemctl stop " + manager)
@@ -113,6 +126,7 @@ pkgs.testers.runNixOSTest {
         ready()
         credentials()
         dialogs()
+        browser()
         # Restart the actual D-Bus owner, then reboot: neither step may lose the
         # credential or require the absent agent login password.
         owner = json.loads(machine.succeed(user("busctl --user --json=short call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetConnectionUnixProcessID s org.freedesktop.secrets")))["data"][0]
@@ -123,6 +137,7 @@ pkgs.testers.runNixOSTest {
         ready()
         credentials()
         dialogs()
+        browser()
         machine.succeed(user("secret-tool clear assbox-test desktop"))
         status, _ = machine.execute(user("timeout 30 secret-tool lookup assbox-test desktop"))
         assert status == 1, status

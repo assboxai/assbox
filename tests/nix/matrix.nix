@@ -175,6 +175,20 @@ let
           || machine.config.programs.nix-ld.enable
         )
         && (
+          !(builtins.any (id: builtins.elem id a.selectedComponents) [
+            "chatgpt-desktop"
+            "claude-desktop"
+            "vscode"
+            "zed"
+          ])
+          || (
+            builtins.elem pkgs.chromium machine.config.environment.systemPackages
+            && machine.config.xdg.mime.defaultApplications."x-scheme-handler/http" == "chromium-browser.desktop"
+            &&
+              machine.config.xdg.mime.defaultApplications."x-scheme-handler/https" == "chromium-browser.desktop"
+          )
+        )
+        && (
           a.presentation == "headless"
           || (
             machine.config.xdg.portal.enable

@@ -33,6 +33,7 @@ let
   pkgs =
     lib.genAttrs [
       "chromium"
+      "xdg-utils"
       "vim"
       "emacs"
       "emacs-nox"
@@ -92,6 +93,10 @@ let
             type = lib.types.attrsOf lib.types.anything;
             default = { };
           };
+          xdg = lib.mkOption {
+            type = lib.types.attrsOf lib.types.anything;
+            default = { };
+          };
           services = lib.mkOption {
             type = lib.types.attrsOf lib.types.anything;
             default = { };
@@ -123,6 +128,7 @@ in
   failures = map (a: a.message) (builtins.filter (a: !a.assertion) result.config.assertions);
   services = result.config.systemd;
   programs = result.config.programs;
+  xdg = result.config.xdg;
   packages = map toString (result.config.environment.systemPackages or [ ]);
   scripts = lib.mapAttrs (_: value: value.source.scriptText) (
     lib.filterAttrs (

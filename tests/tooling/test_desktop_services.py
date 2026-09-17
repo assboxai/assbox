@@ -65,6 +65,7 @@ class DesktopServicesTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         ast.parse(json.loads(result.stdout))
         ast.parse((ROOT / 'tests/fixtures/portal-probe.py').read_text())
+        ast.parse((ROOT / 'tests/fixtures/browser-probe.py').read_text())
         self.assertIn('desktop-services-vm', (ROOT / 'scripts/release-check').read_text())
         self.assertIn('desktop-services-vm = import ./tests/nix/desktop-services-vm.nix', (ROOT / 'flake.nix').read_text())
 

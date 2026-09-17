@@ -112,6 +112,10 @@ blocker requires its adapter and regression coverage in the same reviewed change
   credential across fresh client processes, session restart, daemon restart and
   reboot, then checks deletion and private file permissions. It retains the
   production locked-password autologin account and uses no seeded keyring files.
+  A Zed-only selection supplies Chromium: the real session URL handler must open a
+  disposable loopback page whose JavaScript completes a callback, then its test
+  browser must stop. HTTP/HTTPS associations and the callback are checked again
+  after session restart and reboot. No browser flags or disabled sandbox are injected.
   The gate uses the same portal API as native Zed without provider credentials;
   it has not yet been executed. It complements rather than replaces `editor-vm`.
 - `access-lan-vm` and `access-tailscale-vm`: real OpenSSH keys, privilege refusal,

@@ -180,3 +180,20 @@ class ComponentCatalogTests(unittest.TestCase):
                                  {'/nix/store/test-' + name for name in ['cc', 'zlib', 'openssl', 'curl']})
         for selection in [{}, {'vim': {'enable': True}}, {'vscode-cli': {'enable': True}}]:
             self.assertNotIn('nix-ld', self.evaluate(selection)['programs'])
+
+    def test_desktop_account_login_has_a_browser_without_another_agent(self):
+        for id in ['zed', 'vscode', 'chatgpt-desktop', 'claude-desktop']:
+            with self.subTest(id=id):
+                result = self.evaluate({id: {'enable': True, 'allowMutableCode': True}}, presentation='x11')
+                self.assertFalse(result['failures'])
+                self.assertEqual(result['selected'], [id])
+                self.assertIn('/nix/store/test-chromium', result['packages'])
+                self.assertIn('/nix/store/test-xdg-utils', result['packages'])
+                self.assertEqual(result['xdg']['mime']['defaultApplications'], {
+                    'x-scheme-handler/http': 'chromium-browser.desktop',
+                    'x-scheme-handler/https': 'chromium-browser.desktop',
+                })
+        for id in [None, 'vim', 'emacs', 'opencode', 'zed-remote-host', 'vscode-remote-host', 'vscode-cli']:
+            result = self.evaluate({id: {'enable': True}} if id else {}, presentation='x11')
+            self.assertNotIn('/nix/store/test-chromium', result['packages'])
+            self.assertEqual(result['xdg']['mime'].get('defaultApplications', {}), {})

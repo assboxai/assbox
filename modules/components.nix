@@ -11,6 +11,12 @@ let
   catalog = builtins.fromJSON (builtins.readFile ../catalog/components.json);
   selected = builtins.filter (row: cfg.components.${row.id}.enable) catalog;
   enabled = id: cfg.components.${id}.enable;
+  needsBrowser = builtins.any enabled [
+    "chatgpt-desktop"
+    "claude-desktop"
+    "vscode"
+    "zed"
+  ];
   owners = {
     opencode-attach = "opencode-server";
     openclaw-dashboard = "openclaw-gateway";
@@ -141,7 +147,16 @@ in
     # ChatGPT's X11 wrapper is provided by applications.nix.
     environment.systemPackages =
       map packageFor (builtins.filter (row: row.package != "" && row.id != "chatgpt-desktop") selected)
-      ++ lib.optionals (enabled "chatgpt-desktop" || enabled "claude-desktop") [ pkgs.chromium ];
+      ++ lib.optionals needsBrowser [
+        pkgs.chromium
+        pkgs.xdg-utils
+      ];
+    # Account sign-in opens an external browser, sometimes with a loopback
+    # callback on this machine. Keep ordinary user MIME preferences overridable.
+    xdg.mime.defaultApplications = lib.mkIf needsBrowser {
+      "x-scheme-handler/http" = lib.mkDefault "chromium-browser.desktop";
+      "x-scheme-handler/https" = lib.mkDefault "chromium-browser.desktop";
+    };
     environment.etc."assbox/components.json".text = builtins.toJSON selected;
   };
 }
