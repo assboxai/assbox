@@ -72,6 +72,7 @@ class SourceBindingTests(unittest.TestCase):
     def test_authenticated_preflight_precedes_target_build_and_boot_activation(self):
         install = (ROOT / "crates/imperative-shell/assbox-engine/src/install.rs").read_text()
         boundary = install.index("// FIRST TARGET WRITE")
+        self.assertLess(install.index("    validate_ssh_keys("), install.index("let _lock = Lock::acquire"))
         for step in ["crate::source::resolve", "crate::check_evaluation", "external backup read-back failed", "installation write intent read-back failed"]:
             self.assertLess(install.index(step), boundary)
         after = install[boundary:]

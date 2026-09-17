@@ -159,6 +159,18 @@ pub fn apply(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     result
 }
 
+fn validate_ssh_keys(c: &Commands, admin: Option<&str>, agent: Option<&str>) -> Result<()> {
+    for (role, key) in [("admin", admin), ("agent", agent)] {
+        if let Some(key) = key {
+            c.input("ssh-keygen", &["-l", "-f", "-"], key.as_bytes())
+                .map_err(|error| {
+                    Error::new(format!("{role} SSH public key validation failed: {error}"))
+                })?;
+        }
+    }
+    Ok(())
+}
+
 fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     files::require_root()?;
     if !Path::new("/etc/NIXOS").exists() {
@@ -199,9 +211,11 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     if plan.inventory().disk(&plan.root().parent)?.table == Table::Gpt {
         c.executable("sgdisk")?;
     }
-    if let Some(key) = &plan.request().choices.admin_ssh_key {
-        c.input("ssh-keygen", &["-l", "-f", "-"], key.as_bytes())?;
-    }
+    validate_ssh_keys(
+        &c,
+        plan.request().choices.admin_ssh_key.as_deref(),
+        plan.request().choices.agent_ssh_key.as_deref(),
+    )?;
     let _lock = Lock::acquire(Path::new("/run/assbox-install.lock"))?;
     files::create_private(Path::new(WORK))?;
     // nixos-install rejects non-traversable ancestors of --root. Only this empty
@@ -828,4 +842,44 @@ fn write_phase(
         record,
     )?;
     files::atomic_write(&root.join(".assbox-install.json"), &bytes, 0o600)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Disposable public fixtures; no corresponding private keys are retained.
+    const ADMIN: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB0rTdA8CAqpAJnL7hXFaKhMCqfeJQ7ODLrjU+Y5Vkoi assbox-test-admin";
+    const AGENT: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ4/WMI73Pf/077tLNv52VqJs/KH+scPNdll11LPumZ6 assbox-test-agent";
+
+    #[test]
+    fn ssh_preflight_accepts_optional_distinct_role_keys() {
+        for (admin, agent) in [
+            (None, None),
+            (Some(ADMIN), None),
+            (None, Some(AGENT)),
+            (Some(ADMIN), Some(AGENT)),
+        ] {
+            validate_ssh_keys(&Commands, admin, agent).unwrap();
+        }
+    }
+
+    #[test]
+    fn ssh_preflight_rejects_malformed_keys_for_either_role() {
+        let bad = "ssh-ed25519 truncated-key";
+        for (admin, agent, role) in [
+            (Some(bad), Some(AGENT), "admin"),
+            (Some(ADMIN), Some(bad), "agent"),
+            (None, Some(bad), "agent"),
+        ] {
+            let error = validate_ssh_keys(&Commands, admin, agent)
+                .unwrap_err()
+                .to_string();
+            assert!(
+                error.starts_with(&format!("{role} SSH public key validation failed:")),
+                "{error}"
+            );
+            assert!(!error.contains(bad));
+        }
+    }
 }
