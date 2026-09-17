@@ -21,8 +21,10 @@ stdout is limited to 32 MiB while reading, and failures retain only the final
 accumulating in the administrator process; it does not limit build memory or
 parallelism. The live installer separately keeps private disk-backed build logs.
 
-Existing local application services restart after failure, with delays increasing
-from five to sixty seconds. Remote servers and editor launchers back off from twenty
+Local application services restart after failure, with delays increasing
+from five to sixty seconds. The OpenClaw Gateway also restarts after a successful
+exit because its configuration-reload restart path hands control to systemd this way.
+Remote servers and editor launchers back off from twenty
 to three hundred seconds over five restart steps, without a start-count lockout.
 Remote servers restart after both successful and unsuccessful unexpected exits;
 closing a graphical editor normally leaves it closed. Explicit service stop,

@@ -11,6 +11,10 @@ the managed backend. It also opens the corresponding frontend if selected in
 a selected frontend waits for the next graphical login. Closing a window normally leaves it closed;
 background backend restarts do not reopen it.
 
+The OpenClaw Gateway delegates requested process restarts to systemd by exiting
+successfully. Its backend service recovers these handoffs as well as crashes;
+an explicit `systemctl --user stop assbox-openclaw` still leaves it stopped.
+
 OpenCode setup publishes its password file atomically and preserves an existing
 valid password. Every managed server/frontend start validates
 `~/.config/assbox/opencode.env` before launching OpenCode. The file must be a private

@@ -165,7 +165,24 @@ pkgs.testers.runNixOSTest {
                 for line in listeners.splitlines():
                     assert line.split()[3] in ["127.0.0.1:" + port, "[::1]:" + port], line
 
+        def gateway_restart_handoff():
+            # The real Gateway detects systemd, drains, and exits zero to ask
+            # its supervisor for a fresh process. Signal only the main process;
+            # killing the cgroup or using systemctl restart bypasses that path.
+            before = machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip()
+            count = machine.succeed(user("systemctl --user show " + unit + " -p NRestarts --value")).strip()
+            assert int(before) > 0
+            machine.succeed(user("systemctl --user kill --kill-whom=main --signal=USR1 " + unit))
+            machine.wait_until_succeeds(user("test $(systemctl --user show " + unit + " -p NRestarts --value) -gt " + count), timeout=180)
+            active(unit)
+            after = machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip()
+            assert int(after) > 0 and after != before
+            machine.succeed("test ! -e /proc/" + before)
+            local_auth()
+
         local_auth()
+        if application == "openclaw" and mode == "headless":
+            gateway_restart_handoff()
         if mode != "headless":
             active("graphical-session.target")
             if application == "openclaw":
@@ -303,6 +320,7 @@ pkgs.testers.runNixOSTest {
                 def dashboard_stays_closed():
                     machine.wait_until_succeeds(user("systemctl --user show " + ui + " -p ActiveState --value | grep -x inactive"), timeout=90)
                     count = browser_property(ui, "NRestarts")
+                    gateway_restart_handoff()
                     time.sleep(65)  # Longer than the production maximum restart delay.
                     assert browser_property(ui, "ActiveState") == "inactive"
                     assert browser_property(ui, "MainPID") == "0"
@@ -343,13 +361,19 @@ pkgs.testers.runNixOSTest {
 
         # Failure recovery and cgroup cleanup exercise the actual app process.
         before = machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip()
+        count = machine.succeed(user("systemctl --user show " + unit + " -p NRestarts --value")).strip()
         machine.succeed(user("systemctl --user kill --signal=KILL " + unit))
-        machine.wait_until_succeeds(user("test $(systemctl --user show " + unit + " -p NRestarts --value) -ge 1"), timeout=120)
+        machine.wait_until_succeeds(user("test $(systemctl --user show " + unit + " -p NRestarts --value) -gt " + count), timeout=120)
         active(unit)
         after = machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip()
         assert after != before and int(after) > 0
         assert machine.succeed(user("systemctl --user show " + unit + " -p RestartMaxDelayUSec --value")).strip() == "1min"
         machine.succeed(user("systemctl --user stop " + unit), timeout=90)
+        if application == "openclaw":
+            count = machine.succeed(user("systemctl --user show " + unit + " -p NRestarts --value")).strip()
+            time.sleep(65)  # An explicit stop must override Restart=always.
+            assert machine.succeed(user("systemctl --user show " + unit + " -p ActiveState --value")).strip() == "inactive"
+            assert machine.succeed(user("systemctl --user show " + unit + " -p NRestarts --value")).strip() == count
         assert machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip() == "0"
         machine.reboot()
         machine.wait_for_unit("multi-user.target")

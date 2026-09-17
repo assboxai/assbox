@@ -140,6 +140,9 @@ in
             ConditionPathExists = "%h/.openclaw/openclaw.json";
           };
           serviceConfig = common // {
+            # OpenClaw exits successfully when handing a requested restart to
+            # systemd. Explicit service stops still suppress automatic restart.
+            Restart = "always";
             ExecStart = "${apps.openclaw}/bin/openclaw gateway run --bind loopback --port 18789";
             WorkingDirectory = "%h";
           };

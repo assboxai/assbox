@@ -76,6 +76,21 @@ class ApplicationLauncherTests(unittest.TestCase):
                 self.assertNotIn('assbox-openclaw-ui', result['services'])
                 self.assertNotIn('/inert/chromium', result['packages'])
 
+    def test_openclaw_gateway_recovers_successful_supervisor_handoffs(self):
+        for mode in ('headless', 'x11', 'wayland'):
+            with self.subTest(mode=mode):
+                result = self.evaluate(mode, [] if mode == 'headless' else ['openclaw-dashboard'])
+                services = result['services']
+                gateway = services['assbox-openclaw']['serviceConfig']
+                self.assertEqual(gateway['Restart'], 'always')
+                self.assertEqual(gateway['RestartSec'], 5)
+                self.assertEqual(gateway['RestartSteps'], 5)
+                self.assertEqual(gateway['RestartMaxDelaySec'], 60)
+                self.assertEqual(gateway['KillMode'], 'control-group')
+                self.assertEqual(services['assbox-opencode']['serviceConfig']['Restart'], 'on-failure')
+                if mode != 'headless':
+                    self.assertEqual(services['assbox-openclaw-ui']['serviceConfig']['Restart'], 'on-failure')
+
     def test_opencode_server_and_frontend_share_the_credential_loader(self):
         for mode in ('headless', 'x11', 'wayland'):
             with self.subTest(mode=mode):

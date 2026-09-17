@@ -293,9 +293,29 @@ pkgs.testers.runNixOSTest {
         gone(children)
         machine.succeed(ctl("restart " + unit(backend)))
         active(backend)
+        if backend == "openclaw":
+            # The fixture handles TERM by exiting zero; unlike systemctl stop,
+            # this must recover the persistent Gateway and clean up its helpers.
+            children = pids(backend)
+            before = starts(backend)
+            machine.succeed("kill -TERM " + str(children[0]))
+            gone(children)
+            machine.wait_until_succeeds(user("test $(wc -l < ~/lifecycle-fixture/" + backend + ".starts) -gt " + str(before)), timeout=60)
+            active(backend)
+            assert pids(backend)[0] != children[0]
         time.sleep(1)
         assert starts(backend + "-ui") == count
         inactive(backend + "-ui")
+        if backend == "openclaw":
+            children = pids(backend)
+            machine.succeed(ctl("stop " + unit(backend)))
+            gone(children)
+            stopped_count = starts(backend)
+            time.sleep(1)  # Longer than the fixture's maximum restart delay.
+            inactive(backend)
+            assert starts(backend) == stopped_count
+            machine.succeed(ctl("start " + unit(backend)))
+            active(backend)
     # Closing an editor normally must not restart it.
     for id in gui_ids:
         active(id)
