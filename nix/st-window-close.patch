@@ -1,0 +1,13 @@
+Prevent the child hangup from racing a deliberate window-manager close.
+The normal child-exit handler remains responsible for application failures.
+
+--- a/x.c
++++ b/x.c
+@@ -1906,6 +1906,7 @@ cmessage(XEvent *e)
+ 			win.mode &= ~MODE_FOCUSED;
+ 		}
+ 	} else if (e->xclient.data.l[0] == xw.wmdeletewin) {
++		signal(SIGCHLD, SIG_IGN);
+ 		ttyhangup();
+ 		exit(0);
+ 	}

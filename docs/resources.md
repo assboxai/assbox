@@ -31,6 +31,10 @@ Managed graphical launchers use foreground application entry points. Zed's publi
 CLI and VS Code's public CLI may detach and hide the application exit status, so
 the services use the wrapped application entry points instead. A main-process
 exit also stops remaining helpers; a surviving helper cannot hide a GUI crash.
+The X11 OpenCode attach launcher uses `st`, which reports a failed child as a
+failure to systemd, with a small patch preventing its close-generated hangup from
+being reported as a crash. Its ordinary window-manager close stays closed.
+Wayland uses `foot`; the regular X11 shell terminal remains `xterm`.
 Expired credentials still require interactive login; retries do not grant access.
 Shutdown kills the whole service group after the sixty-second grace period.
 CPU, I/O and memory accounting make resource pressure visible without adding a

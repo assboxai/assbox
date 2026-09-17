@@ -31,8 +31,16 @@ let
     NoNewPrivileges = true;
     Environment = "PATH=/run/current-system/sw/bin:/run/wrappers/bin";
   };
+  x11Terminal = import ../nix/st.nix { inherit (pkgs) st; };
   terminal =
-    if cfg.presentation == "wayland" then "${pkgs.foot}/bin/foot" else "${pkgs.xterm}/bin/xterm -e";
+    if cfg.presentation == "wayland" then
+      "${pkgs.foot}/bin/foot"
+    else
+      # xterm exits successfully even when its child crashes. st reports child
+      # failure, while an ordinary window-manager close still exits successfully.
+      "${x11Terminal}/bin/st -c AssboxOpenCode -f monospace:pixelsize=${
+        toString (12 * cfg.display.scale)
+      } -e";
   chatgpt = apps.chatgpt.override {
     commandLineArgs = "--ozone-platform=x11 --password-store=basic --force-device-scale-factor=${toString cfg.display.scale}";
   };
@@ -60,7 +68,11 @@ in
         };
       })
       (lib.mkIf (enabled "opencode-server") {
-        environment.systemPackages = [ apps.opencode ];
+        environment.systemPackages = [
+          apps.opencode
+        ]
+        # Include st's propagated terminfo as well as its executable.
+        ++ lib.optional (launch "opencode-attach" && cfg.presentation == "x11") x11Terminal;
         systemd.user.services.assbox-opencode-ui = lib.mkIf (launch "opencode-attach") {
           description = "OpenCode terminal frontend attached to the managed service";
           wantedBy = [ "graphical-session.target" ];

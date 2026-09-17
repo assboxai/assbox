@@ -62,6 +62,8 @@ pkgs.testers.runNixOSTest {
       environment.systemPackages = [
         pkgs.python3
         pkgs.xwininfo
+        pkgs.xdotool
+        pkgs.wmctrl
       ];
       virtualisation.memorySize = if application == "chatgpt" then 4096 else 3072;
       virtualisation.qemu.forceAccel = pkgs.lib.mkForce (!arm);
@@ -75,6 +77,7 @@ pkgs.testers.runNixOSTest {
   testScript = ''
     import json
     import shlex
+    import time
 
     application = ${builtins.toJSON application}
     modes = ${builtins.toJSON modes}
@@ -152,6 +155,67 @@ pkgs.testers.runNixOSTest {
                 machine.wait_until_succeeds(user("DISPLAY=:0 xwininfo -root -tree | grep -Ei '" + ("ChatGPT" if application == "chatgpt" else "opencode|OpenClaw|chromium|xterm") + "'"), timeout=180)
             else:
                 machine.wait_until_succeeds(user("systemctl --user show-environment | grep '^WAYLAND_DISPLAY='"))
+            if application == "opencode":
+                ui = "assbox-opencode-ui.service"
+
+                def ui_property(name):
+                    return machine.succeed(user("systemctl --user show " + ui + " -p " + name + " --value")).strip()
+
+                def frontend_pid():
+                    terminal = ui_property("MainPID")
+                    assert int(terminal) > 0
+                    command = "pgrep -P " + terminal + " -f 'opencode.* attach http://127[.]0[.]0[.]1:4096'"
+                    machine.wait_until_succeeds(command, timeout=180)
+                    pids = machine.succeed(command).splitlines()
+                    assert len(pids) == 1, pids
+                    return pids[0]
+
+                def frontend_window():
+                    command = user("DISPLAY=:0 xdotool search --onlyvisible --class '^AssboxOpenCode$'")
+                    machine.wait_until_succeeds(command, timeout=180)
+                    return machine.succeed(command).splitlines()[0]
+
+                backend = machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip()
+                terminal, child = ui_property("MainPID"), frontend_pid()
+                restarts = int(ui_property("NRestarts"))
+                # Kill only OpenCode attach. Killing the terminal or backend
+                # would miss a terminal that discards its child's failure status.
+                machine.succeed("kill -KILL " + child)
+                machine.wait_until_succeeds(user("test $(systemctl --user show " + ui + " -p NRestarts --value) -gt " + str(restarts)), timeout=180)
+                active(ui)
+                assert ui_property("MainPID") != terminal
+                assert frontend_pid() != child
+                for pid in [terminal, child]:
+                    machine.succeed("test ! -e /proc/" + pid)
+                assert machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip() == backend
+
+                def stays_closed():
+                    machine.wait_until_succeeds(user("systemctl --user show " + ui + " -p ActiveState --value | grep -x inactive"), timeout=90)
+                    count = ui_property("NRestarts")
+                    # Observe longer than the production maximum restart delay.
+                    time.sleep(65)
+                    assert ui_property("ActiveState") == "inactive"
+                    assert ui_property("MainPID") == "0"
+                    assert ui_property("NRestarts") == count
+                    active(unit)
+
+                if mode == "x11":
+                    # Exercise the packaged terminal itself as well as the real
+                    # frontend: zero/nonzero child exits and installed terminfo.
+                    machine.succeed(user("DISPLAY=:0 st -e python3 -c 'import curses; curses.setupterm()'"))
+                    machine.fail(user("DISPLAY=:0 st -e bash -c 'exit 42'"))
+                    machine.succeed(user("DISPLAY=:0 wmctrl -ic " + hex(int(frontend_window()))))
+                    stays_closed()
+                    machine.succeed(user("systemctl --user start " + ui))
+                    active(ui)
+                    frontend_window()
+                child = frontend_pid()
+                machine.succeed(user("systemctl --user stop " + ui))
+                stays_closed()
+                machine.succeed("test ! -e /proc/" + child)
+                machine.succeed(user("systemctl --user start " + ui))
+                active(ui)
+                frontend_pid()
             machine.screenshot(application + "-" + mode)
             display = "display-manager" if mode == "x11" else "greetd"
             machine.succeed("systemctl stop " + display)
