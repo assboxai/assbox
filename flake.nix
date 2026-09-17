@@ -147,6 +147,10 @@
             ASSBOX_OWNER_ID = toString releasePolicy.ownerId;
             ASSBOX_CA_BUNDLE = "${p.pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
             RUST_SRC_PATH = "${p.pkgs.rustPlatform.rustLibSrc}";
+            # Nix's Rust compiler has no rustup llvm-tools-preview component.
+            # Coverage profiles must be read by its matching LLVM toolchain.
+            LLVM_COV = "${p.pkgs.rustc.llvmPackages.llvm}/bin/llvm-cov";
+            LLVM_PROFDATA = "${p.pkgs.rustc.llvmPackages.llvm}/bin/llvm-profdata";
           };
         }
       );
