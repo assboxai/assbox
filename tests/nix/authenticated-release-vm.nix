@@ -23,7 +23,11 @@ pkgs.testers.runNixOSTest {
       gh
       unprovisioned
     ];
-    environment.etc."assbox-acceptance-vm".text = "disposable\n";
+    environment.etc."assbox-acceptance-vm" = {
+      text = "disposable\n";
+      # The harness deliberately requires a root-owned regular file.
+      mode = "0600";
+    };
     nix.settings.experimental-features = [
       "nix-command"
       "flakes"

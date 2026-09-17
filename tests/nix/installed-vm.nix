@@ -46,7 +46,7 @@ let
       # Tests invoke maintenance deliberately; calendar firing would race cuts.
       systemd.timers.assbox-maintenance.enable = lib.mkForce false;
       systemd.timers.assbox-reboot-retry.enable = lib.mkForce false;
-      environment.etc."assbox-acceptance-vm".text = "disposable\n";
+      environment.etc."assbox-acceptance-vm" = { text = "disposable\n"; mode = "0600"; };
       # Test instrumentation is isolated in the disposable machine-local module.
       # Actual appliance accounts, SSH policy and bootloader are not replaced.
     }
@@ -175,8 +175,15 @@ pkgs.testers.runNixOSTest {
         "api.github.com"
       ];
       security.pki.certificateFiles = [ ca ];
-      environment.etc."assbox-acceptance-vm".text = "disposable\n";
-      environment.etc."assbox-acceptance-local.nix".source = local;
+      # Trusted-file reads in the harness reject the default /etc symlinks.
+      environment.etc."assbox-acceptance-vm" = {
+        text = "disposable\n";
+        mode = "0600";
+      };
+      environment.etc."assbox-acceptance-local.nix" = {
+        source = local;
+        mode = "0600";
+      };
       environment.systemPackages =
         with pkgs;
         [
