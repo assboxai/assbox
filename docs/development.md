@@ -33,6 +33,9 @@ The workspace uses Rust edition 2024 and declares minimum Rust 1.90. Its six int
 crates are non-publishable and forbid unsafe code. `Cargo.lock` is committed. Rust,
 Cargo, rustfmt and Clippy come from the reviewed Nix lock, as do system tools.
 Tooling tests use Python with PyYAML supplied by the Nix development shell.
+The shell and package check environment also supply PyGObject and libnm's type
+metadata for the Wi-Fi renderer's real-parser regression test. Missing bindings
+fail that test; they do not silently skip it. No NetworkManager daemon is needed.
 The shell also supplies Node.js for dependency-free Worker tests and Wrangler for
 explicit infrastructure deployment. These are development tools, not new installed
 Assbox runtime dependencies.

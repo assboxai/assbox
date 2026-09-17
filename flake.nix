@@ -122,7 +122,10 @@
                 rustc
                 rustfmt
                 clippy
-                (python3.withPackages (ps: [ ps.pyyaml ]))
+                (python3.withPackages (ps: [
+                  ps.pyyaml
+                  ps.pygobject3
+                ]))
                 shellcheck
                 actionlint
                 just
@@ -134,6 +137,10 @@
                 vulnix
               ]);
             ASSBOX_NIX_LIB = "${nixpkgs}/lib";
+            GI_TYPELIB_PATH = p.pkgs.lib.makeSearchPath "lib/girepository-1.0" [
+              p.pkgs.networkmanager
+              p.pkgs.glib
+            ];
             ASSBOX_TOOL_PATH = p.tools.path;
             ASSBOX_SOURCE_REVISION = sourceRevision;
             ASSBOX_REPOSITORY_ID = toString releasePolicy.repositoryId;

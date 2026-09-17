@@ -354,9 +354,13 @@ pub fn wifi_keyfile(ssid: &str, password: &str) -> Result<String> {
         ));
     }
     let escape = |text: &str| text.replace('\\', "\\\\").replace(' ', "\\s");
+    // libnm accepts legacy decimal-byte lists for SSIDs (e.g. "65;66;").
+    // Escape every semicolon at the SSID layer, then escape that backslash for
+    // GLib's keyfile layer. PSKs are ordinary strings and need only the latter.
+    let ssid = escape(&ssid.replace(';', "\\;"));
     Ok(format!(
         "[connection]\nid=Assbox Wi-Fi\ntype=wifi\nautoconnect=true\n\n[wifi]\nmode=infrastructure\nssid={}\n\n[wifi-security]\nkey-mgmt=wpa-psk\npsk={}\n\n[ipv4]\nmethod=auto\n\n[ipv6]\nmethod=auto\n",
-        escape(ssid),
+        ssid,
         escape(password)
     ))
 }

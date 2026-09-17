@@ -27,7 +27,12 @@ rustPlatform.buildRustPackage {
   cargoLock.lockFile = ../Cargo.lock;
   cargoBuildFlags = [ "--workspace" ];
   cargoTestFlags = [ "--workspace" ];
-  nativeCheckInputs = [ pkgs.python3 ]; # PTY tests exercise the real password helper.
+  # PTY tests exercise the real password helper; libnm reads rendered Wi-Fi files.
+  nativeCheckInputs = [ (pkgs.python3.withPackages (ps: [ ps.pygobject3 ])) ];
+  GI_TYPELIB_PATH = lib.makeSearchPath "lib/girepository-1.0" [
+    pkgs.networkmanager
+    pkgs.glib
+  ];
   ASSBOX_TOOL_PATH = tools.path;
   ASSBOX_SOURCE_REVISION = sourceRevision;
   ASSBOX_REPOSITORY_ID = toString releasePolicy.repositoryId;

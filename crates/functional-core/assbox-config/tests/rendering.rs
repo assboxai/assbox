@@ -157,6 +157,9 @@ fn wifi_credentials_are_plain_local_keyfiles_not_nix_source() {
     assert!(keyfile.contains("ssid=my\\snetwork"));
     assert!(keyfile.contains("psk=pass\\sword123"));
     assert!(!keyfile.contains("/nix/store"));
+    let ambiguous = wifi_keyfile("65;66;", "pass;word123").unwrap();
+    assert!(ambiguous.contains("ssid=65\\\\;66\\\\;\n"));
+    assert!(ambiguous.contains("psk=pass;word123\n"));
     for (ssid, password) in [
         ("", "password123"),
         ("a\nb", "password123"),
