@@ -86,6 +86,11 @@ impl InstallPlan {
                 return Err(Error::new("partition geometry or identity changed"));
             }
         }
+        // Newly attached disks are outside the geometry comparison, but their
+        // identifiers can still make the installed UUID bindings ambiguous.
+        for partition in [self.root(), self.backup()].into_iter().chain(self.esp()) {
+            unique_partition_identity(now, partition)?;
+        }
         for p in now
             .partitions
             .iter()
@@ -213,6 +218,25 @@ pub fn validate_boot_target(current: &BootReceipt, target: &BootReceipt) -> Resu
     Ok(())
 }
 
+fn unique_partition_identity(inv: &Inventory, partition: &Partition) -> Result<()> {
+    if inv
+        .partitions
+        .iter()
+        .filter(|p| p.uuid == partition.uuid)
+        .count()
+        != 1
+        || inv
+            .partitions
+            .iter()
+            .filter(|p| p.partuuid == partition.partuuid)
+            .count()
+            != 1
+    {
+        return Err(Error::new("duplicate filesystem UUID or PARTUUID"));
+    }
+    Ok(())
+}
+
 fn writable_unmounted(p: &Partition) -> Result<()> {
     if p.read_only
         || p.has_holders
@@ -295,16 +319,7 @@ pub fn plan_install(inv: Inventory, req: InstallRequest) -> Result<InstallPlan> 
     }
     // UUID aliases on another disk can select the wrong filesystem after reboot.
     for p in [root, backup] {
-        if inv.partitions.iter().filter(|q| q.uuid == p.uuid).count() != 1
-            || inv
-                .partitions
-                .iter()
-                .filter(|q| q.partuuid == p.partuuid)
-                .count()
-                != 1
-        {
-            return Err(Error::new("duplicate filesystem UUID or PARTUUID"));
-        }
+        unique_partition_identity(&inv, p)?;
     }
     if (inv.firmware == Firmware::Bios || req.choices.platform.is_apple())
         && !target.persistent_path.starts_with("/dev/disk/by-id/")
@@ -330,16 +345,7 @@ pub fn plan_install(inv: Inventory, req: InstallRequest) -> Result<InstallPlan> 
                     "ESP must be a distinct FAT EFI System Partition on the target",
                 ));
             }
-            if inv.partitions.iter().filter(|q| q.uuid == esp.uuid).count() != 1
-                || inv
-                    .partitions
-                    .iter()
-                    .filter(|q| q.partuuid == esp.partuuid)
-                    .count()
-                    != 1
-            {
-                return Err(Error::new("ambiguous ESP identity"));
-            }
+            unique_partition_identity(&inv, esp)?;
             if !apple
                 && inv
                     .partitions

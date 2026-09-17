@@ -272,6 +272,46 @@ fn uuid_aliases_are_rejected_even_on_unselected_media() {
     }
 }
 #[test]
+fn newly_attached_media_cannot_alias_selected_filesystems() {
+    let (inv, req) = base(Firmware::Uefi, Table::Gpt);
+    let plan = plan_install(inv.clone(), req.clone()).unwrap();
+    let mut attached = inv.clone();
+    attached.disks.push(disk("/dev/sdd", Table::Gpt));
+    attached
+        .partitions
+        .push(partition("/dev/sdd1", "/dev/sdd", FileSystem::Ext4, "83"));
+    assert!(plan.revalidate(&attached, &[]).is_ok());
+
+    for selected in [0, 1, 3] {
+        for field in ["uuid", "partuuid"] {
+            let mut aliased = attached.clone();
+            let other = aliased.partitions.last_mut().unwrap();
+            if field == "uuid" {
+                other.uuid = inv.partitions[selected].uuid.clone();
+            } else {
+                other.partuuid = inv.partitions[selected].partuuid.clone();
+            }
+            assert!(plan_install(aliased.clone(), req.clone()).is_err());
+            assert!(
+                plan.revalidate(&aliased, &[]).is_err(),
+                "{selected}: {field}"
+            );
+            // Owned mounts do not waive global identifier uniqueness.
+            aliased.partitions[0].mounts.push("/target".into());
+            assert!(
+                plan.revalidate(&aliased, &[("/dev/sda1", "/target")])
+                    .is_err()
+            );
+        }
+    }
+    attached.partitions[0].mounts.push("/target".into());
+    assert!(
+        plan.revalidate(&attached, &[("/dev/sda1", "/target")])
+            .is_ok()
+    );
+}
+
+#[test]
 fn bios_has_a_deliberately_narrow_preservation_contract() {
     let (mut inv, req) = base(Firmware::Bios, Table::Gpt);
     inv.partitions.last_mut().unwrap().bytes = 1024 * 1024 - 1;
