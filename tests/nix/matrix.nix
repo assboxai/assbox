@@ -165,6 +165,16 @@ let
         && (a.boot != "apple-refind" || !a.efiWrites)
         && (!(builtins.elem "chatgpt-desktop" a.selectedComponents) || a.presentation == "x11")
         && (
+          !(builtins.any (id: builtins.elem id a.selectedComponents) [
+            "vscode"
+            "zed"
+            "vscode-remote-host"
+            "zed-remote-host"
+            "vscode-tunnel"
+          ])
+          || machine.config.programs.nix-ld.enable
+        )
+        && (
           a.presentation == "headless"
           || (
             machine.config.xdg.portal.enable

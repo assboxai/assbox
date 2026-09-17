@@ -45,18 +45,27 @@ in
         message = "Emacs autostart requires the graphical variant.";
       }
     ];
-    # Client-managed VS Code servers are generic Linux binaries. Enable this
-    # loader only on explicitly selected hosts; it provides ABI compatibility,
-    # not isolation or permission to run privileged code.
-    programs.nix-ld = lib.mkIf (enabled "vscode-remote-host" || enabled "vscode-tunnel") {
-      enable = true;
-      libraries = [
-        pkgs.stdenv.cc.cc
-        pkgs.zlib
-        pkgs.openssl
-        pkgs.curl
-      ];
-    };
+    # Desktop extensions and language servers can be generic GNU/Linux binaries,
+    # including on remote project hosts. Zed's musl remote server itself does not
+    # need this loader. This supplies ABI compatibility, not isolation or privilege.
+    programs.nix-ld =
+      lib.mkIf
+        (builtins.any enabled [
+          "vscode"
+          "zed"
+          "vscode-remote-host"
+          "zed-remote-host"
+          "vscode-tunnel"
+        ])
+        {
+          enable = true;
+          libraries = [
+            pkgs.stdenv.cc.cc
+            pkgs.zlib
+            pkgs.openssl
+            pkgs.curl
+          ];
+        };
     systemd.user.services = lib.mapAttrs' (
       id: executable:
       lib.nameValuePair "assbox-${id}" {

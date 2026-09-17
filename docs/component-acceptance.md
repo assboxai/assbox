@@ -33,8 +33,9 @@ proprietary consent and architectures were checked against its package recipes.
 - [VS Code Tunnels](https://code.visualstudio.com/docs/remote/tunnels) supports the
   standalone CLI. The recipe pins upstream commit `8b640eef5a6c6089c029249d48efa5c99adf7d51`
   and separately measured SHA-256 hashes for both architecture archives. Its server
-  remains client-managed code. SSH/tunnel hosts use NixOS's `nix-ld` compatibility
-  loader only when those capabilities are selected.
+  remains client-managed code. Desktop VS Code/Zed, either SSH editor host and VS Code
+  tunnel enable NixOS's `nix-ld` compatibility loader for downloaded GNU/Linux helpers.
+  This does not install project toolchains or guarantee arbitrary native extensions.
 - [Zed remote development](https://zed.dev/docs/remote-development) provisions a
   client-compatible server. Assbox does not maintain a second pinned-server mode.
 - Graphical supervision uses the foreground application, preserving its exit status.
@@ -97,7 +98,12 @@ blocker requires its adapter and regression coverage in the same reviewed change
   and checks recovery after Openbox failure, X-server failure and logout without
   manually restarting the display manager. Explicit manager stop must clean up
   the graphical session and leave it stopped. Wayland and hardware behavior also require
-  the owner-run acceptance below. This new VM gate has not yet been executed.
+  the owner-run acceptance below. It also copies the locked, unwrapped rust-analyzer
+  to the agent home with a conventional GNU/Linux interpreter and no RPATH, then
+  requires real LSP initialize/shutdown handshakes through both the login shell and
+  a user service with `NoNewPrivileges`. This tests loader/library compatibility
+  without live downloads or provider accounts; it does not claim to test Zed's
+  downloader or every upstream release. This VM gate has not yet been executed.
 - `desktop-services-vm`: real X11 and Wayland sessions with GTK file chooser portals.
   The driver operates visible open-file, open-folder, save and cancel dialogs and
   verifies their returned responses/paths, then repeats after session restart and

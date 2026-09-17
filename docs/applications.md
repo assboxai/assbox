@@ -118,9 +118,13 @@ See [research and qualification](component-acceptance.md) for evidence and remai
 
 `allowMutableCode` acknowledges a component's known downloaded helpers. It is not a
 sandbox or a machine-wide download prohibition. VS Code clients manage their server,
-extensions and language tools; Zed provisions a matching server. The selected VS Code
-host/tunnel enables NixOS's `nix-ld` loader for compatibility on that machine; it does
-not provide isolation. No pinned Zed server mode is maintained.
+extensions and language tools; Zed provisions a matching server and language tools.
+Selecting desktop VS Code or Zed, either SSH editor host, or VS Code tunnel enables
+NixOS's `nix-ld` loader for generic GNU/Linux helpers. Zed's musl remote server itself
+does not need it, but project language tools can. The loader provides compatibility,
+not isolation or a guarantee for every third-party extension. Project compilers and
+SDKs still belong in the project's development environment. No pinned Zed server
+mode is maintained.
 
 Happy bundles the Claude Agent SDK even when using another backend. Its pinned daemon
 also starts a Happy Terminal companion that can provision code. OpenClaw node session

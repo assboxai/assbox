@@ -164,3 +164,19 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertFalse(self.evaluate(selected, network=network)['failures'])
         network['tailscale']['enable'] = False
         self.assertTrue(self.evaluate(selected, network=network)['failures'])
+
+    def test_editor_helper_loader_is_available_for_each_independent_selection(self):
+        network = {'tailscale': {'enable': True}, 'ssh': {'agent': {'enable': True, 'keys': ['ssh-ed25519 fixture']}}}
+        for id in ['zed', 'vscode', 'zed-remote-host', 'vscode-remote-host', 'vscode-tunnel']:
+            with self.subTest(id=id):
+                selection = {id: {'enable': True, 'allowMutableCode': True}}
+                if id == 'vscode-tunnel':
+                    selection['vscode-cli'] = {'enable': True}
+                result = self.evaluate(selection, presentation='x11' if id in ['zed', 'vscode'] else 'headless', network=network)
+                self.assertFalse(result['failures'])
+                loader = result['programs']['nix-ld']
+                self.assertTrue(loader['enable'])
+                self.assertEqual(set(loader['libraries']),
+                                 {'/nix/store/test-' + name for name in ['cc', 'zlib', 'openssl', 'curl']})
+        for selection in [{}, {'vim': {'enable': True}}, {'vscode-cli': {'enable': True}}]:
+            self.assertNotIn('nix-ld', self.evaluate(selection)['programs'])

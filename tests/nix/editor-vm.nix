@@ -4,6 +4,19 @@
 { pkgs, module }:
 let
   arm = pkgs.stdenv.hostPlatform.isAarch64;
+  # Use a real, locked language server, but remove Nix's interpreter/RPATH fixes
+  # so the gate exercises the same loader contract as a downloaded GNU binary.
+  interpreter = if arm then "/lib/ld-linux-aarch64.so.1" else "/lib64/ld-linux-x86-64.so.2";
+  genericLanguageServer =
+    pkgs.runCommand "assbox-generic-rust-analyzer" { nativeBuildInputs = [ pkgs.patchelf ]; }
+      ''
+        mkdir -p "$out/bin"
+        cp ${pkgs.rust-analyzer-unwrapped}/bin/rust-analyzer "$out/bin/rust-analyzer"
+        chmod u+w "$out/bin/rust-analyzer"
+        patchelf --set-interpreter ${interpreter} --remove-rpath "$out/bin/rust-analyzer"
+        test "$(patchelf --print-interpreter "$out/bin/rust-analyzer")" = ${interpreter}
+        test -z "$(patchelf --print-rpath "$out/bin/rust-analyzer")"
+      '';
 in
 pkgs.testers.runNixOSTest {
   name = "assbox-editors";
@@ -37,9 +50,11 @@ pkgs.testers.runNixOSTest {
     users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
     hardware.graphics.enable = true;
+    environment.etc."assbox-test/lsp-probe.py".source = ../fixtures/lsp-probe.py;
     environment.systemPackages = [
       pkgs.xdotool
       pkgs.wmctrl
+      pkgs.python3
     ];
     virtualisation.memorySize = 6144;
     virtualisation.qemu.forceAccel = lib.mkForce (!arm);
@@ -71,6 +86,13 @@ pkgs.testers.runNixOSTest {
         return window(id)
 
     machine.wait_for_unit("user@" + uid + ".service")
+    # Copy outside the store like a downloaded helper. Neither command injects
+    # loader variables; the production login and user-manager environments own them.
+    machine.succeed("install -o agent -g users -m700 ${genericLanguageServer}/bin/rust-analyzer /home/agent/rust-analyzer")
+    probe = "timeout 60 ${pkgs.python3}/bin/python3 /etc/assbox-test/lsp-probe.py /home/agent/rust-analyzer"
+    machine.succeed("runuser -l agent -c " + shlex.quote(probe), timeout=90)
+    machine.succeed(user("systemd-run --user --wait --pipe --collect --unit=assbox-lsp-probe "
+        + "--property=NoNewPrivileges=yes " + probe), timeout=90)
     editors = ["vscode", "zed", "emacs"]
     for id in editors:
         ready(id)

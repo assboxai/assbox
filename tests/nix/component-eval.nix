@@ -122,6 +122,7 @@ in
   identities = result.config.assbox.componentPackagePaths;
   failures = map (a: a.message) (builtins.filter (a: !a.assertion) result.config.assertions);
   services = result.config.systemd;
+  programs = result.config.programs;
   packages = map toString (result.config.environment.systemPackages or [ ]);
   scripts = lib.mapAttrs (_: value: value.source.scriptText) (
     lib.filterAttrs (
