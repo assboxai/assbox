@@ -4,6 +4,7 @@
   lib,
   pkgs,
   assboxApplications,
+  assboxPackage,
   ...
 }:
 let
@@ -88,8 +89,7 @@ in
           };
           serviceConfig = common // {
             ExitType = "main";
-            EnvironmentFile = "%h/.config/assbox/opencode.env";
-            ExecStart = "${terminal} ${apps.opencode}/bin/opencode attach http://127.0.0.1:4096";
+            ExecStart = "${terminal} ${assboxPackage}/bin/assbox internal opencode attach";
             WorkingDirectory = "%h";
           };
         };
@@ -101,8 +101,7 @@ in
             ConditionPathExists = "%h/.config/assbox/opencode.env";
           };
           serviceConfig = common // {
-            EnvironmentFile = "%h/.config/assbox/opencode.env";
-            ExecStart = "${apps.opencode}/bin/opencode serve --hostname 127.0.0.1 --port 4096";
+            ExecStart = "${assboxPackage}/bin/assbox internal opencode serve";
             WorkingDirectory = "%h";
           };
         };

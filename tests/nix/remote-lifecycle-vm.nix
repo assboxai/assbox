@@ -46,6 +46,7 @@ let
       inherit config lib;
       pkgs = fixturePkgs;
       assboxApplications = applications;
+      assboxPackage = assbox;
     };
   remoteIds = [
     "claude-code-remote"

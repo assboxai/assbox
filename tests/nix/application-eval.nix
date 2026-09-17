@@ -10,6 +10,7 @@ let
   lib = import libPath;
   result = lib.evalModules {
     specialArgs = {
+      assboxPackage = "/inert/assbox";
       pkgs = lib.genAttrs [ "foot" "xterm" "chromium" ] (name: "/inert/${name}") // {
         st.overrideAttrs = _: "/inert/st";
       };

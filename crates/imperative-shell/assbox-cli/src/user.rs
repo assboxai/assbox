@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use assbox_domain::*;
 use assbox_system::{commands::Commands, files, probe};
-use std::{
-    fs,
-    io::Write,
-    os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
-    path::Path,
-    process::Command,
-};
+use std::{fs, path::Path, process::Command};
 
 fn interactive(program: &str, args: &[&str]) -> Result<()> {
     interactive_executable(&installed_program(program)?, args)
@@ -93,7 +87,7 @@ fn start_application_units(
     }
     Ok(())
 }
-fn require_selected(component: Component) -> Result<()> {
+pub(crate) fn require_selected(component: Component) -> Result<()> {
     if Commands.text("id", &["-un"])?.trim() != "agent" {
         return Err(Error::new(
             "run onboarding as the unprivileged agent user: sudo -iu agent assbox component setup ID",
@@ -139,38 +133,7 @@ pub fn setup(component: Component) -> Result<()> {
             Ok(())
         }
         Component::OpencodeServer => {
-            let dir = Path::new("/home/agent/.config/assbox");
-            files::io(fs::create_dir_all(dir))?;
-            files::io(fs::set_permissions(dir, fs::Permissions::from_mode(0o700)))?;
-            let env = dir.join("opencode.env");
-            if let Ok(meta) = fs::symlink_metadata(&env) {
-                let uid = Commands.text("id", &["-u"])?;
-                let uid = uid
-                    .trim()
-                    .parse::<u32>()
-                    .map_err(|_| Error::new("invalid user identity"))?;
-                if !meta.is_file() || meta.uid() != uid || meta.mode() & 0o077 != 0 {
-                    return Err(Error::new(
-                        "OpenCode credential file must be a private regular file owned by agent",
-                    ));
-                }
-            } else {
-                let secret: String = files::random_bytes::<32>()?
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect();
-                let mut file = files::io(
-                    fs::OpenOptions::new()
-                        .write(true)
-                        .create_new(true)
-                        .mode(0o600)
-                        .open(&env),
-                )?;
-                files::io(
-                    file.write_all(format!("OPENCODE_SERVER_PASSWORD={secret}\n").as_bytes()),
-                )?;
-                files::io(file.sync_all())?;
-            }
+            super::opencode::prepare()?;
             interactive("opencode", &["auth", "login"])?;
             start_application(
                 "assbox-opencode.service",

@@ -38,7 +38,7 @@ class ApplicationLauncherTests(unittest.TestCase):
                 service = result['services']['assbox-opencode-ui']['serviceConfig']
                 self.assertEqual(service['ExecStart'],
                     '/inert/st/bin/st -c AssboxOpenCode -f monospace:pixelsize=' + str(12 * scale) +
-                    ' -e /inert/opencode/bin/opencode attach http://127.0.0.1:4096')
+                    ' -e /inert/assbox/bin/assbox internal opencode attach')
                 self.assertIn('/inert/st', result['packages'])
                 self.assertEqual(service['Restart'], 'on-failure')
                 self.assertEqual(service['ExitType'], 'main')
@@ -75,6 +75,19 @@ class ApplicationLauncherTests(unittest.TestCase):
                 result = self.evaluate(mode, [])
                 self.assertNotIn('assbox-openclaw-ui', result['services'])
                 self.assertNotIn('/inert/chromium', result['packages'])
+
+    def test_opencode_server_and_frontend_share_the_credential_loader(self):
+        for mode in ('headless', 'x11', 'wayland'):
+            with self.subTest(mode=mode):
+                result = self.evaluate(mode, [] if mode == 'headless' else ['opencode-attach'])
+                services = result['services']
+                backend = services['assbox-opencode']['serviceConfig']
+                self.assertEqual(backend['ExecStart'], '/inert/assbox/bin/assbox internal opencode serve')
+                self.assertNotIn('EnvironmentFile', backend)
+                if mode != 'headless':
+                    frontend = services['assbox-opencode-ui']['serviceConfig']
+                    self.assertTrue(frontend['ExecStart'].endswith('/inert/assbox/bin/assbox internal opencode attach'))
+                    self.assertNotIn('EnvironmentFile', frontend)
 
     def test_real_application_driver_renders_for_both_architectures(self):
         if not self.lib:

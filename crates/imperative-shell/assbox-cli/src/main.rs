@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #![forbid(unsafe_code)]
+mod opencode;
 mod user;
 mod wizard;
 
@@ -155,6 +156,7 @@ fn run(args: &[&str]) -> Result<()> {
         ["internal", "maintenance"] => manage::maintenance(false),
         ["internal", "maintenance", "--retry"] => manage::maintenance(true),
         ["internal", "boot-check"] => manage::boot_check(),
+        ["internal", "opencode", mode] => opencode::launch(mode),
         ["internal", "hardware"] => {
             println!("{:#?}", probe::inventory(&Commands)?);
             Ok(())
@@ -186,6 +188,7 @@ mod tests {
             vec!["update", "--force-unverified"],
             vec!["install", "--yes"],
             vec!["package", "add", "--impure"],
+            vec!["internal", "opencode", "unknown"],
         ] {
             assert!(run(&args).is_err());
         }

@@ -112,6 +112,25 @@ pkgs.testers.runNixOSTest {
             machine.succeed(user(application + " --version"), timeout=120)
         if application == "opencode":
             # Local server authentication is separate from provider login.
+            # Every direct service start must refuse an interrupted or ambiguous
+            # credential, even when no setup command has validated it first.
+            for invalid in ["", "OPENCODE_SERVER_PASS", "OPENCODE_SERVER_PASSWORD=\n",
+                            'OPENCODE_SERVER_PASSWORD=""\n',
+                            "OPENCODE_SERVER_PASSWORD=secret\nOPENCODE_SERVER_PASSWORD=\n"]:
+                private_file("/home/agent/.config/assbox/opencode.env", invalid)
+                if invalid == "":
+                    # Lingering/default.target must also refuse an empty file
+                    # after reboot, without an explicit start or setup command.
+                    machine.reboot()
+                    machine.wait_for_unit("multi-user.target")
+                    machine.wait_for_unit("user@" + uid + ".service")
+                else:
+                    machine.succeed(user("systemctl --user reset-failed " + unit))
+                    machine.succeed(user("systemctl --user start " + unit))
+                machine.wait_until_succeeds(user("systemctl --user show " + unit + " -p ExecMainStatus --value | grep -x 1"))
+                assert not machine.succeed("ss -H -ltn 'sport = :4096'").strip()
+                machine.succeed(user("systemctl --user stop " + unit))
+            machine.succeed(user("systemctl --user reset-failed " + unit))
             private_file("/home/agent/.config/assbox/opencode.env", "OPENCODE_SERVER_PASSWORD=disposable-test-password\n")
             machine.succeed(user("opencode auth --help"))
         elif application == "openclaw":

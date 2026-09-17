@@ -11,6 +11,17 @@ the managed backend. It also opens the corresponding frontend if selected in
 a selected frontend waits for the next graphical login. Closing a window normally leaves it closed;
 background backend restarts do not reopen it.
 
+OpenCode setup publishes its password file atomically and preserves an existing
+valid password. Every managed server/frontend start validates
+`~/.config/assbox/opencode.env` before launching OpenCode. The file must be a private
+regular file owned by `agent`, with one `OPENCODE_SERVER_PASSWORD=...` assignment:
+a nonempty printable ASCII password without whitespace, quotes or backslashes,
+optionally followed by one newline. Custom plain passwords remain supported;
+shell syntax, quoted values, comments and additional assignments are rejected.
+If interrupted older setup left an invalid file, restore the valid private file
+or remove it and rerun `assbox component setup opencode-server` as `agent` to
+generate a new password. Invalid existing files are never silently replaced.
+
 The OpenClaw dashboard keeps its Chromium profile in
 `~/.local/share/assbox/openclaw-browser`. Browser authentication persists across
 service restarts, and ordinary Chromium windows have an independent lifecycle.
