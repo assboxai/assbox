@@ -180,7 +180,15 @@ fn build(c: &Commands) -> Result<String> {
 }
 fn commit(c: &Commands, new_system: &str, changed_files: &[&str], mode: &str) -> Result<()> {
     let old = files::text(&marker("old-system"))?;
-    pending_state()?;
+    let pending = pending_state()?;
+    let next_pending = assbox_policy::pending_after_activation(
+        new_system,
+        &probe::booted_system()?,
+        &probe::current_system()?,
+        &probe::boot_id()?,
+        pending.as_ref(),
+        mode == "boot",
+    )?;
     unchanged(&marker("original"), Path::new(CONFIG))?;
     if probe::profile_system()? != old {
         return Err(Error::new("system profile changed concurrently"));
@@ -216,9 +224,9 @@ fn commit(c: &Commands, new_system: &str, changed_files: &[&str], mode: &str) ->
     #[cfg(test)]
     crate::acceptance::checkpoint("manage-activated")?;
     guard.verify(c)?;
-    if mode == "boot" && probe::current_system()? != new_system {
-        files::atomic_write(Path::new(PENDING), new_system.as_bytes(), 0o600)?;
-    } else if probe::current_system()? == new_system && state_entry_exists(PENDING)? {
+    if let Some(record) = next_pending {
+        files::atomic_write(Path::new(PENDING), record.encode().as_bytes(), 0o600)?;
+    } else if pending.is_some() {
         files::remove_regular(Path::new(PENDING))?;
     }
     journal(Phase::Committed)?;
@@ -392,15 +400,11 @@ fn maintenance_numbers() -> Result<(u32, usize)> {
 fn state_entry_exists(path: &str) -> Result<bool> {
     files::entry_exists(Path::new(path))
 }
-fn pending_state() -> Result<Option<String>> {
+fn pending_state() -> Result<Option<PendingReboot>> {
     if !state_entry_exists(PENDING)? {
         return Ok(None);
     }
-    let system = files::text(Path::new(PENDING))?;
-    if !valid_store_system(&system) {
-        return Err(Error::new("invalid pending reboot generation"));
-    }
-    Ok(Some(system))
+    PendingReboot::parse(&files::text(Path::new(PENDING))?).map(Some)
 }
 pub fn maintenance(retry_only: bool) -> Result<()> {
     let _lock = lock()?;
@@ -467,13 +471,17 @@ fn reboot_pending_locked() -> Result<()> {
         return Ok(());
     }
     let pending = pending_state()?.ok_or_else(|| Error::new("pending state disappeared"))?;
-    if !valid_store_system(&pending) || probe::profile_system()? != pending {
+    if probe::profile_system()? != pending.system() {
         return Err(Error::new(
             "pending reboot generation no longer matches the system profile",
         ));
     }
-    let current = probe::current_system()?;
-    if current == pending {
+    if assbox_policy::reboot_completed(
+        &pending,
+        &probe::booted_system()?,
+        &probe::current_system()?,
+        &probe::boot_id()?,
+    ) {
         files::remove_regular(Path::new(PENDING))?;
         return Ok(());
     }
@@ -507,7 +515,7 @@ fn reboot_pending_locked() -> Result<()> {
     }
     thread::sleep(Duration::from_secs(grace));
     // A changed profile or critically low battery invalidates the earlier decision.
-    if probe::profile_system()? != pending {
+    if probe::profile_system()? != pending.system() {
         return Err(Error::new("profile changed during reboot grace"));
     }
     let (battery_presence, on_ac, battery_percent) = probe::power();
@@ -556,13 +564,14 @@ pub fn recover(rollback_activation: bool) -> Result<()> {
             let new = files::text(&marker("new-system"))?;
             let profile = probe::profile_system()?;
             let running = probe::current_system()?;
-            let restored_pending = assbox_policy::recovery_pending(
+            let restored = assbox_policy::recovery_target(
                 &old,
                 &new,
                 &profile,
                 &running,
-                pending.as_deref(),
+                pending.as_ref().map(PendingReboot::system),
             )?;
+            let restored_pending = PendingReboot::new(restored, probe::boot_id()?)?;
             let guard = crate::boot_guard::BootGuard::capture(
                 &Commands,
                 &marker("recovery-boot-before"),
@@ -573,11 +582,11 @@ pub fn recover(rollback_activation: bool) -> Result<()> {
             guard.verify(&Commands)?;
             Commands.activate(&old, "boot")?;
             guard.verify(&Commands)?;
-            if let Some(system) = restored_pending {
-                files::atomic_write(Path::new(PENDING), system.as_bytes(), 0o600)?;
-            } else if pending.is_some() {
-                files::remove_regular(Path::new(PENDING))?;
-            }
+            files::atomic_write(
+                Path::new(PENDING),
+                restored_pending.encode().as_bytes(),
+                0o600,
+            )?;
             println!(
                 "Previous generation is selected for the next boot. Reboot to finish recovery; mutable application data was not restored."
             );
@@ -628,7 +637,8 @@ fn restore_source(phase: Phase) -> Result<()> {
 }
 
 pub fn status() -> Result<()> {
-    println!("Running: {}", probe::current_system()?);
+    println!("Activated: {}", probe::current_system()?);
+    println!("Booted: {}", probe::booted_system()?);
     println!("Boot profile: {}", probe::profile_system()?);
     if files::require_root().is_ok() {
         if let Some(floor) = crate::release::read_floor()? {
@@ -664,20 +674,24 @@ pub fn boot_check() -> Result<()> {
         ));
     }
     let pending = pending_state()?;
-    if probe::current_system()? != probe::profile_system()? {
+    let current = probe::current_system()?;
+    let booted = probe::booted_system()?;
+    if current != probe::profile_system()? || current != booted {
         return Err(Error::new(
-            "running generation differs from the selected boot profile; inspect bootloader/rollback state",
+            "booted, activated and selected generations differ; reboot or inspect bootloader/rollback state",
         ));
     }
     Commands.run("systemctl", &["is-active", "network.target"])?;
     if let Some(system) = pending {
-        if system != probe::current_system()? {
-            return Err(Error::new("pending reboot differs from running generation"));
+        if !assbox_policy::reboot_completed(&system, &booted, &current, &probe::boot_id()?) {
+            return Err(Error::new(
+                "pending reboot has not been completed by this boot",
+            ));
         }
         files::remove_regular(Path::new(PENDING))?;
     }
     println!(
-        "Running and selected system generations agree. Application authentication and real firmware acceptance remain separate checks."
+        "Booted, activated and selected system generations agree. Application authentication and real firmware acceptance remain separate checks."
     );
     let runtime = probe::runtime(&Commands)?;
     if runtime.get(5).is_some_and(|enabled| enabled == "true") {
@@ -860,7 +874,7 @@ fn cleanup_locked() -> Result<()> {
         return Ok(());
     }
     let current = probe::current_system()?;
-    if probe::profile_system()? != current {
+    if probe::profile_system()? != current || probe::booted_system()? != current {
         return Ok(());
     }
     let (_, keep) = maintenance_numbers()?;

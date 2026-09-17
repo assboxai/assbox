@@ -97,12 +97,21 @@ staging, while automatic updates are enabled. Plain `update` therefore does not
 suppress all future automatic reboots. Manual NixOS tools do not participate in the
 Assbox lock/journal; do not run them concurrently with an Assbox operation.
 
-The post-boot service checks the running versus selected system and network target,
+The post-boot service checks the booted, activated and selected system and network target,
 then may clean old generations. It is not an authenticated application health check
 or proof of macOS bootability. There is no automatic boot-count fallback.
 An elapsed one-shot boot timer owns the automatic check: live rebuilds do not
 retry it, even after failure. After inspecting and resolving a failed check, run
 `sudo assbox internal boot-check` explicitly or reboot to check again.
+`assbox status` distinguishes the booted generation from activated userspace.
+Pending reboot records include the originating kernel boot ID: a live switch,
+including a switch back to the booted generation, cannot complete that reboot.
+Live Assbox changes retarget an outstanding reboot to the new selected generation.
+Older generation-only records remain readable but require a matching booted
+generation; subsequent writes use the boot-ID format. Standard NixOS tools do not
+retarget Assbox records, so a conflicting selected profile still requires inspection.
+Development binaries predating this format cannot consume the new records; finish
+the reboot with the current binary before returning to such a development snapshot.
 
 ## Journal and rollback
 
@@ -129,8 +138,9 @@ the selected generation. `sudo assbox rollback` similarly stages a retained earl
 generation without reverting local source. A later update may reconstruct the newer
 configuration unless its desired revision/settings are changed.
 
-Recovery preserves a pending reboot when the restored generation is not the running
-generation, including when it was already staged before the interrupted operation.
+Recovery after uncertain activation always records a reboot into the restored
+generation. Matching generation links alone cannot prove partially changed
+services have been restored, even if the old kernel is still running.
 An invalid generation path, an unrelated selected profile or an unrelated pending
 marker prevents activation recovery. Unreadable or malformed pending state also
 blocks recovery when no active transaction exists.
@@ -149,8 +159,8 @@ does not make arbitrary root-owned Nix code safe.
 ## Retention and free space
 
 Default cleanup retains the newest eight system generations plus the running
-one. It refuses to prune while a reboot/journal is pending or running and selected
-profiles disagree. Old generations get temporary GC roots before deletion, boot
+one. It refuses to prune while a reboot/journal is pending or booted, activated
+and selected profiles disagree. Old generations get temporary GC roots before deletion, boot
 entries are refreshed under the same boot guard, and only after journal retirement
 are those roots released and `nix-store --gc` run. Interruption after pruning starts
 requires inspection; recovery does not reconstruct deleted generation numbers.

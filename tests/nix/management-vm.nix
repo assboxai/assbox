@@ -7,7 +7,7 @@ let
   # Immutable observation fixture for maintenance ordering, not a real upgrade.
   maintenancePolicy = pkgs.writeText "assbox-maintenance-fixture.json" (
     builtins.toJSON {
-      components = { };
+      selectedComponents = [ ];
       presentation = "headless";
       updates = {
         enable = true;

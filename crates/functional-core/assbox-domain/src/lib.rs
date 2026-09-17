@@ -3,8 +3,10 @@
 //! Values, validated names, and explicit observations. No environment access.
 
 pub mod hardware;
+pub mod maintenance;
 pub mod release;
 pub use hardware::{Hardware, PciNetworkDevice, WirelessInterface};
+pub use maintenance::{BootId, PendingReboot};
 use std::{error::Error as StdError, fmt, str::FromStr};
 
 pub mod source;

@@ -346,6 +346,19 @@ pub fn current_system() -> Result<String> {
         .to_string_lossy()
         .into_owned())
 }
+pub fn booted_system() -> Result<String> {
+    let system = io(fs::canonicalize("/run/booted-system"))?
+        .to_string_lossy()
+        .into_owned();
+    if !assbox_domain::source::valid_store_system(&system) {
+        return Err(Error::new("invalid booted system generation"));
+    }
+    Ok(system)
+}
+pub fn boot_id() -> Result<BootId> {
+    let text = io(fs::read_to_string("/proc/sys/kernel/random/boot_id"))?;
+    BootId::parse(text.strip_suffix('\n').unwrap_or(&text))
+}
 pub fn profile_system() -> Result<String> {
     Ok(io(fs::canonicalize("/nix/var/nix/profiles/system"))?
         .to_string_lossy()

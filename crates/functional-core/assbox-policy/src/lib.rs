@@ -504,15 +504,49 @@ pub fn recovery_after_interruption(phase: Phase) -> Recovery {
     }
 }
 
+/// Only a subsequent boot of the selected generation satisfies a recorded reboot.
+/// Legacy records lack a boot ID, but still need a matching booted generation.
+pub fn reboot_completed(
+    pending: &PendingReboot,
+    booted: &str,
+    activated: &str,
+    boot_id: &BootId,
+) -> bool {
+    pending.system() == booted
+        && booted == activated
+        && pending
+            .origin_boot_id()
+            .is_none_or(|origin| origin != boot_id)
+}
+
+/// Live changes may retarget an outstanding reboot, but cannot discharge it.
+pub fn pending_after_activation(
+    target: &str,
+    booted: &str,
+    activated: &str,
+    boot_id: &BootId,
+    pending: Option<&PendingReboot>,
+    stage: bool,
+) -> Result<Option<PendingReboot>> {
+    if (stage && (target != booted || target != activated))
+        || pending.is_some_and(|p| !reboot_completed(p, booted, activated, boot_id))
+    {
+        PendingReboot::new(target, boot_id.clone()).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
 /// Recovery may undo only this transaction's profile and pending-boot changes.
-/// Return the marker needed after selecting the old generation for boot.
-pub fn recovery_pending<'a>(
+/// Always require a reboot: matching links cannot prove a partial live activation
+/// left services untouched, even when the old kernel is still running.
+pub fn recovery_target<'a>(
     old: &'a str,
     new: &str,
     profile: &str,
     running: &str,
     pending: Option<&str>,
-) -> Result<Option<&'a str>> {
+) -> Result<&'a str> {
     if ![old, new, profile, running]
         .into_iter()
         .all(assbox_domain::source::valid_store_system)
@@ -523,7 +557,7 @@ pub fn recovery_pending<'a>(
             "generation state changed outside this operation or is invalid; refusing recovery",
         ));
     }
-    Ok((old != running).then_some(old))
+    Ok(old)
 }
 
 /// A suggestion, never a persisted automatic setting. None means ask the operator.

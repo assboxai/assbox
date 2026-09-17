@@ -25,10 +25,17 @@ def running():
     return target.succeed('readlink -f /run/current-system').strip()
 
 
+def pending_system():
+    fields = target.succeed('cat ' + PENDING).splitlines()
+    assert len(fields) == 3 and fields[0] == 'assbox-pending-reboot-v1', fields
+    return fields[1]
+
+
 def boot_again():
     target.shutdown()
     target.start()
     target.wait_for_unit('multi-user.target', timeout=600)
+    target.wait_until_succeeds('test $(systemctl show assbox-boot-check.timer -p SubState --value) = elapsed')
     target.succeed('assbox internal boot-check')
     assert running() == selected()
 
@@ -130,7 +137,7 @@ for limit in [4, 8]:
     before = running()
     operation('stage')
     assert running() == before
-    assert target.succeed('cat ' + PENDING).strip() == selected()
+    assert pending_system() == selected()
     boot_again()
     assert json.loads(target.succeed('cat /run/current-system/assbox-boot-policy.json'))['policy']['generations'] == limit
 
@@ -201,12 +208,32 @@ for budget in ['not-a-number', '3']:
     desired = selected()
     assert desired != running()
     assert json.loads(target.succeed('cat /etc/nixos/assbox-release.json'))['tag'] == 'r-2'
+    old_boot = target.succeed('cat /proc/sys/kernel/random/boot_id')
+    booted = target.succeed('readlink -f /run/booted-system').strip()
+    operation('switch')
+    assert running() == desired and pending_system() == desired
+    # Repeating the same update must not discharge a live-switched generation.
+    operation('update')
+    assert selected() == desired and pending_system() == desired
+    # A further live change retargets the outstanding reboot.
+    live_local = target.succeed('cat ' + LOCAL)
+    write(target, LOCAL, live_local.rstrip()[:-1] + '\n environment.etc."acceptance-live-' + str(len(budget)) + '".text = "test";\n}\n')
+    operation('switch')
+    assert selected() != desired
+    desired = selected()
+    assert running() == desired and pending_system() == desired
+    # The documented standard NixOS switch path also cannot count as a boot.
+    target.succeed(shlex.quote(desired + '/bin/switch-to-configuration') + ' switch', timeout=600)
+    target.fail('assbox internal boot-check')
+    assert pending_system() == desired
+    assert target.succeed('cat /proc/sys/kernel/random/boot_id') == old_boot
+    assert target.succeed('readlink -f /run/booted-system').strip() == booted != desired
     write(target, STATE + '/stage-retry', budget)
     # Missing and unreadable recovery state must still take priority over reboot.
     for state_command in ['mkdir -m700 ' + TXN, 'ln -s /missing-journal ' + TXN]:
         target.succeed(state_command)
         assert 'interrupted operation' in operation('maintenance', False)
-        assert target.succeed('cat ' + PENDING).strip() == desired
+        assert pending_system() == desired
         target.succeed('rm -rf ' + TXN)
     offline = json.loads(target.succeed('cat ' + CASE + '/online.json'))
     offline['urls'] = {}
@@ -218,8 +245,10 @@ for budget in ['not-a-number', '3']:
     target.start()
     target.wait_for_unit('multi-user.target', timeout=600)
     assert target.succeed('cat /proc/sys/kernel/random/boot_id') != boot_id
+    target.wait_until_succeeds('test $(systemctl show assbox-boot-check.timer -p SubState --value) = elapsed')
     target.succeed('assbox internal boot-check')
     assert running() == desired == selected()
+    assert target.succeed('readlink -f /run/booted-system').strip() == desired
     target.fail('test -e ' + PENDING)
     assert target.succeed('wc -l < ' + CASE + '/calls.jsonl') == calls
     assert target.succeed('cat ' + STATE + '/stage-retry') == budget
