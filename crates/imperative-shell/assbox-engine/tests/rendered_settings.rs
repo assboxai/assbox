@@ -51,6 +51,8 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
         // Exercise the real renderer and managed editor, without a NixOS
         // evaluation, store writes, network or package builds. Identity mkDefault
         // suffices here: Nix itself checks attribute syntax and composition.
+        // The dummy store also keeps this runnable inside the package sandbox,
+        // where no writable local store or daemon socket is available.
         let switched = assbox_config::selection(
             &original,
             Components::default(),
@@ -72,7 +74,15 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
             let actual = Commands
                 .text(
                     "nix-instantiate",
-                    &["--eval", "--strict", "--json", "--expr", &expression],
+                    &[
+                        "--store",
+                        "dummy://",
+                        "--eval",
+                        "--strict",
+                        "--json",
+                        "--expr",
+                        &expression,
+                    ],
                 )
                 .unwrap();
             assert_eq!(
@@ -172,7 +182,15 @@ fn managed_launcher_transitions_satisfy_actual_component_assertions() {
             Commands
                 .text(
                     "nix-instantiate",
-                    &["--eval", "--strict", "--json", "--expr", &expression]
+                    &[
+                        "--store",
+                        "dummy://",
+                        "--eval",
+                        "--strict",
+                        "--json",
+                        "--expr",
+                        &expression
+                    ]
                 )
                 .unwrap()
                 .trim(),
