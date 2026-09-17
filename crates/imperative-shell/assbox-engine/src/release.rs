@@ -372,13 +372,14 @@ pub(crate) fn fetch(
             "release source or dependency lock digest differs from its authenticated manifest",
         ));
     }
-    // This fetcher unpacks the already authenticated archive, WITHOUT evaluating
-    // its flake.nix. Verify its NAR and lock bytes before any candidate evaluation.
+    // The file fetcher unpacks the authenticated archive without evaluating Nix
+    // or consulting flake registries. Verify its NAR and lock before evaluation.
     let fetched = c.capture(
         "nix",
         &[
-            "flake",
-            "prefetch",
+            "store",
+            "prefetch-file",
+            "--unpack",
             "--json",
             &format!("file://{}", files::path_text(&archive)?),
         ],

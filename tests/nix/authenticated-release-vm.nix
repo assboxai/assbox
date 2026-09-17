@@ -28,6 +28,9 @@ pkgs.testers.runNixOSTest {
       "nix-command"
       "flakes"
     ];
+    # Authenticating an explicit archive must not depend on registry availability.
+    # A real registry lookup fails even if a runner happens to have network access.
+    nix.settings.flake-registry = "file:///no-such-assbox-registry.json";
     virtualisation.memorySize = 2048;
     virtualisation.qemu.forceAccel = pkgs.lib.mkForce (!arm);
     virtualisation.additionalPaths = [

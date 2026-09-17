@@ -268,7 +268,7 @@ console.log(JSON.stringify(cases.map(([releases, tags]) => {{
         text = (ROOT / 'crates/imperative-shell/assbox-engine/src/release.rs').read_text()
         fetch = text[text.index('pub(crate) fn fetch('):]
         self.assertLess(fetch.index('require_release_selection('), fetch.index('let policy = trust()'))
-        self.assertLess(fetch.index('verify_lineage('), fetch.index('"prefetch"'))
+        self.assertLess(fetch.index('verify_lineage('), fetch.index('"prefetch-file"'))
         ancestor = text[text.index('fn verify_lineage('):text.index('pub(crate) fn fetch(')]
         self.assertLess(ancestor.index('parent_digest != previous.manifest_sha256'), ancestor.index('manifest_from_bytes('))
         cli = (ROOT / 'crates/imperative-shell/assbox-cli/src/wizard.rs').read_text()

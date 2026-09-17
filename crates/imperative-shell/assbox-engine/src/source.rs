@@ -42,6 +42,7 @@ pub(crate) fn bind(c: &Commands, release: AuthenticatedRelease) -> Result<Fetche
             "flake",
             "metadata",
             "--json",
+            "--no-use-registries",
             "--no-update-lock-file",
             "--no-write-lock-file",
             &release.manifest.pinned_url(),

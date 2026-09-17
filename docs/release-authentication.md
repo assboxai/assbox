@@ -175,11 +175,13 @@ that misses that many releases requires expert recovery instead of an unbounded
 network walk.
 
 Next the shell checks the lightweight tag's core commit, verifies the downloaded
-source and lock hashes, and uses `nix flake prefetch` to unpack into the Nix store
-without evaluating the flake. The resulting NAR and embedded lock must agree with
+source and lock hashes, and uses `nix store prefetch-file --unpack` to unpack into
+the Nix store without evaluating the flake or consulting flake registries. The
+resulting NAR and embedded lock must agree with
 the authenticated manifest/assets. Only then does source binding use Nix metadata,
 carry the locked graph into the local flake and evaluate/build with local hardware.
-No mutable branch is resolved at this point.
+Source binding disables registry lookups too; no mutable branch is resolved at
+this point.
 
 The locally generated flake has an ordinary literal immutable release-asset URL
 with a `narHash` query. It does not import dynamically computed flake inputs or use

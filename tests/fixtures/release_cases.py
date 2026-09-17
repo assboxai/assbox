@@ -39,7 +39,7 @@ def main(binary):
             info.size, info.mode, info.mtime = len(raw), 0o644, 1
             archive.addfile(info, io.BytesIO(raw))
     archive_bytes = payload.read_bytes()
-    prefetched = json.loads(run('nix', 'flake', 'prefetch', '--json', 'file://' + str(payload)))
+    prefetched = json.loads(run('nix', 'store', 'prefetch-file', '--unpack', '--json', 'file://' + str(payload)))
     issued = int(time.time()) - 30
     first = dict(schema=3, protocol=3, channel='stable', tag='r-1', coreCommit='a' * 40,
                  coreVersion='0.1.0', issuedAt=issued, expiresAt=issued + 604800,
