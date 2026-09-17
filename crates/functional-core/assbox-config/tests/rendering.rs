@@ -144,6 +144,48 @@ fn application_selection_has_no_implicit_presentation_change() {
         .is_err()
     );
 }
+
+#[test]
+fn selection_never_rewrites_custom_or_ambiguous_autostart() {
+    let original = settings(&choices()).unwrap();
+    let line = "  assbox.session.autostart = lib.mkDefault [  ];";
+    for replacement in [
+        "  assbox.session.autostart = myLaunchers;",
+        "  assbox.session.autostart = lib.mkDefault [ \"${custom}\" ];",
+        "  assbox.session.autostart = lib.mkDefault [ \"vscode\" \"vscode\" ];",
+        "  assbox.session.autostart = lib.mkDefault [ \"emacs\" ];",
+        "  assbox.session.autostart = lib.mkDefault [  \"vscode\" ];",
+    ] {
+        assert!(
+            selection(
+                &original.replace(line, replacement),
+                Components::default(),
+                Presentation::Headless,
+                false
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        selection(
+            &(original.clone() + line),
+            Components::default(),
+            Presentation::Headless,
+            false
+        )
+        .is_err()
+    );
+    // Older installer settings without a launcher line keep the module default.
+    assert!(
+        selection(
+            &original.replace(line, ""),
+            Components::default(),
+            Presentation::Headless,
+            false
+        )
+        .is_ok()
+    );
+}
 #[test]
 fn source_text_escape_is_literal_for_sensitive_metacharacters() {
     assert_eq!(nix_string("a\nb\tc\rd\\e\""), "\"a\\nb\\tc\\rd\\\\e\\\"\"");

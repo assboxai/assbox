@@ -11,7 +11,9 @@ codex,gemini-cli headless` stages that complete selection for reboot. It rejects
 missing dependencies; the installer previews dependency expansion and asks before
 adding them. Use `--accept-unfree` for proprietary packages. Additional settings,
 including mutable-helper consent and graphical launchers, use ordinary `local.nix`.
-Existing launcher overrides must be removed when removing their owning component.
+Component changes remove incompatible installer-generated launcher defaults.
+Explicit launcher overrides in `local.nix` must still be removed when removing
+their owning component or changing to headless presentation.
 When selecting Happy Remote during installation, explicitly choose its Codex/Claude
 backends; the installer includes those selected packages. Selecting an SSH editor
 host asks for its separate agent public key and enables tailnet-only access.

@@ -158,6 +158,22 @@ pub struct Choices {
     pub agent_ssh_key: Option<String>,
     pub happy_backends: Components,
 }
+
+/// Owners of the graphical launchers supported by the installer.
+pub fn installer_launcher_owner(launcher: &str) -> Result<Component> {
+    match launcher {
+        "chatgpt-desktop" => Ok(Component::ChatgptDesktop),
+        "claude-desktop" => Ok(Component::ClaudeDesktop),
+        "vscode" => Ok(Component::Vscode),
+        "zed" => Ok(Component::Zed),
+        "opencode-attach" => Ok(Component::OpencodeServer),
+        "openclaw-dashboard" => Ok(Component::OpenclawGateway),
+        _ => Err(Error::new(
+            "unknown installer graphical launcher; configure GUI Emacs explicitly in local.nix",
+        )),
+    }
+}
+
 impl Choices {
     pub fn validate(&self) -> Result<()> {
         if !(1..=3).contains(&self.scale) {
@@ -185,19 +201,7 @@ impl Choices {
         }
         let mut launchers = std::collections::BTreeSet::new();
         for launcher in &self.autostart {
-            let owner = match launcher.as_str() {
-                "chatgpt-desktop" => Component::ChatgptDesktop,
-                "claude-desktop" => Component::ClaudeDesktop,
-                "vscode" => Component::Vscode,
-                "zed" => Component::Zed,
-                "opencode-attach" => Component::OpencodeServer,
-                "openclaw-dashboard" => Component::OpenclawGateway,
-                _ => {
-                    return Err(Error::new(
-                        "unknown installer graphical launcher; configure GUI Emacs explicitly in local.nix",
-                    ));
-                }
-            };
+            let owner = installer_launcher_owner(launcher)?;
             if self.presentation == Presentation::Headless
                 || !self.components.contains(owner)
                 || !launchers.insert(launcher)

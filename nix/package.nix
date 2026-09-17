@@ -34,6 +34,7 @@ rustPlatform.buildRustPackage {
     pkgs.glib
   ];
   ASSBOX_TOOL_PATH = tools.path;
+  ASSBOX_NIX_LIB = "${pkgs.path}/lib";
   ASSBOX_SOURCE_REVISION = sourceRevision;
   ASSBOX_REPOSITORY_ID = toString releasePolicy.repositoryId;
   ASSBOX_OWNER_ID = toString releasePolicy.ownerId;

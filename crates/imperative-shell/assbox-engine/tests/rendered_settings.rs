@@ -85,3 +85,98 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
         }
     }
 }
+
+#[test]
+fn managed_launcher_transitions_satisfy_actual_component_assertions() {
+    let ids = "chatgpt-desktop,claude-desktop,vscode,zed,opencode,opencode-server,openclaw,openclaw-gateway";
+    let choices = Choices {
+        hostname: Hostname::parse("assbox-fixture").unwrap(),
+        timezone: "UTC".into(),
+        components: ids.parse().unwrap(),
+        presentation: Presentation::X11,
+        platform: Platform::Generic,
+        devices: DevicePolicy::default(),
+        scale: 1,
+        allow_unfree: true,
+        allow_mutable_code: true,
+        autostart: [
+            "chatgpt-desktop",
+            "claude-desktop",
+            "vscode",
+            "zed",
+            "opencode-attach",
+            "openclaw-dashboard",
+        ]
+        .map(str::to_owned)
+        .to_vec(),
+        admin_ssh_key: None,
+        agent_ssh_key: None,
+        happy_backends: Components::default(),
+    };
+    let original = assbox_config::settings(&choices).unwrap();
+    let lib_path = std::env::var("ASSBOX_NIX_LIB").expect("Nix module library is required");
+    let evaluator = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/nix/component-eval.nix"
+    );
+    for (selected, presentation, launchers) in [
+        (ids, Presentation::X11, choices.autostart.as_slice()),
+        (
+            "vscode,opencode,opencode-server",
+            Presentation::Wayland,
+            &["vscode".into(), "opencode-attach".into()],
+        ),
+        (
+            "openclaw,openclaw-gateway",
+            Presentation::X11,
+            &["openclaw-dashboard".into()],
+        ),
+        (
+            "opencode,opencode-server,openclaw,openclaw-gateway",
+            Presentation::Headless,
+            &[],
+        ),
+        ("none", Presentation::Headless, &[]),
+        ("none", Presentation::Wayland, &[]),
+    ] {
+        let changed =
+            assbox_config::selection(&original, selected.parse().unwrap(), presentation, false)
+                .unwrap();
+        let expected = launchers
+            .iter()
+            .map(|id| assbox_config::nix_string(id))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let expression = format!(
+            r#"
+            let
+              cfg = ({changed}) {{ lib.mkDefault = x: x; }};
+              evaluate = autostart: import {evaluator} {{
+                libPath = {lib_path};
+                selection = cfg.assbox.components;
+                inherit (cfg.assbox) presentation acceptUnfree;
+                inherit autostart;
+              }};
+            in assert cfg.assbox.session.autostart == [ {expected} ];
+               assert (evaluate cfg.assbox.session.autostart).failures == [];
+               # An explicit incompatible launcher remains an error, even after
+               # the generated defaults have been cleaned up.
+               assert cfg.assbox.presentation != "headless"
+                 || (evaluate [ "vscode" ]).failures != [];
+               true
+        "#,
+            evaluator = assbox_config::nix_string(evaluator),
+            lib_path = assbox_config::nix_string(&lib_path)
+        );
+        assert_eq!(
+            Commands
+                .text(
+                    "nix-instantiate",
+                    &["--eval", "--strict", "--json", "--expr", &expression]
+                )
+                .unwrap()
+                .trim(),
+            "true"
+        );
+    }
+}

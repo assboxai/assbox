@@ -123,14 +123,8 @@ pub fn settings(c: &Choices) -> Result<String> {
                 .join(" ")
         ));
     }
-    extras.push_str(&format!(
-        "  assbox.session.autostart = lib.mkDefault [ {} ];\n",
-        c.autostart
-            .iter()
-            .map(|id| nix_string(id))
-            .collect::<Vec<_>>()
-            .join(" ")
-    ));
+    extras.push_str(&autostart_line(&c.autostart));
+    extras.push('\n');
     Ok(format!(
         r#"# Assbox installer choices. Override in local.nix using `assbox config edit`.
 {{ lib, ... }}:
@@ -277,6 +271,41 @@ fn read_component_attributes(text: &str) -> Result<Components> {
     Ok(components)
 }
 
+fn autostart_line(launchers: &[String]) -> String {
+    format!(
+        "  assbox.session.autostart = lib.mkDefault [ {} ];",
+        launchers
+            .iter()
+            .map(|id| nix_string(id))
+            .collect::<Vec<_>>()
+            .join(" ")
+    )
+}
+
+fn read_autostart(line: &str) -> Result<Vec<String>> {
+    let invalid = || Error::new("custom graphical launcher defaults; edit local.nix instead");
+    let literal = line
+        .strip_prefix("  assbox.session.autostart = lib.mkDefault [ ")
+        .and_then(|text| text.strip_suffix(" ];"))
+        .ok_or_else(invalid)?;
+    let mut launchers = Vec::new();
+    for word in literal.split_whitespace() {
+        let id = word
+            .strip_prefix('"')
+            .and_then(|s| s.strip_suffix('"'))
+            .ok_or_else(invalid)?;
+        installer_launcher_owner(id)?;
+        if launchers.iter().any(|launcher| launcher == id) {
+            return Err(invalid());
+        }
+        launchers.push(id.to_owned());
+    }
+    if autostart_line(&launchers) != line {
+        return Err(invalid());
+    }
+    Ok(launchers)
+}
+
 pub fn selection(
     text: &str,
     components: Components,
@@ -291,6 +320,7 @@ pub fn selection(
     let mut app_count = 0;
     let mut presentation_count = 0;
     let mut consent_count = 0;
+    let mut autostart_count = 0;
     let mut result = String::new();
     for line in text.lines() {
         if line.starts_with("  assbox.components = ") {
@@ -310,6 +340,18 @@ pub fn selection(
                 "  assbox.presentation = lib.mkDefault {};\n",
                 nix_string(presentation.as_str())
             ));
+        } else if line.starts_with("  assbox.session.autostart = ") {
+            autostart_count += 1;
+            let mut launchers = Vec::new();
+            for launcher in read_autostart(line)? {
+                if presentation != Presentation::Headless
+                    && components.contains(installer_launcher_owner(&launcher)?)
+                {
+                    launchers.push(launcher);
+                }
+            }
+            result.push_str(&autostart_line(&launchers));
+            result.push('\n');
         } else if accept_unfree && line.starts_with("  assbox.acceptUnfree = ") {
             if !matches!(
                 line,
@@ -327,7 +369,11 @@ pub fn selection(
             result.push('\n');
         }
     }
-    if app_count != 1 || presentation_count != 1 || (accept_unfree && consent_count != 1) {
+    if app_count != 1
+        || presentation_count != 1
+        || (accept_unfree && consent_count != 1)
+        || autostart_count > 1
+    {
         return Err(Error::new(
             "installer settings have custom structure; edit local.nix instead",
         ));
