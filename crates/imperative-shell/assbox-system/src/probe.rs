@@ -294,7 +294,10 @@ pub fn display_edids() -> Result<Vec<Vec<u8>>> {
 }
 /// Unknown battery presence and unreadable capacities must not masquerade as a desktop.
 pub fn power() -> (BatteryPresence, Option<bool>, Option<u8>) {
-    let Ok(entries) = fs::read_dir("/sys/class/power_supply") else {
+    power_at(Path::new("/sys/class/power_supply"))
+}
+fn power_at(root: &Path) -> (BatteryPresence, Option<bool>, Option<u8>) {
+    let Ok(entries) = fs::read_dir(root) else {
         return (BatteryPresence::Unknown, None, None);
     };
     let mut presence = BatteryPresence::Absent;
@@ -307,6 +310,11 @@ pub fn power() -> (BatteryPresence, Option<bool>, Option<u8>) {
             continue;
         };
         let p = entry.path();
+        // HID batteries and device chargers do not power the host. Older host
+        // drivers may omit scope, so exclude only explicitly device-scoped supplies.
+        if fs::read_to_string(p.join("scope")).is_ok_and(|s| s.trim() == "Device") {
+            continue;
+        }
         let Ok(kind) = fs::read_to_string(p.join("type")) else {
             incomplete = true;
             continue;
@@ -375,4 +383,153 @@ pub fn runtime(c: &Commands) -> Result<Vec<String>> {
     let bytes = runtime_json()?;
     c.jq_fields(&bytes,r#"[(.selectedComponents|join(",")),.presentation,.updates.calendar,(.updates.rebootGraceSeconds|tostring),
         (.updates.minimumBatteryPercent|tostring),(.updates.enable|tostring)] | .[] | . + "\u0000""#)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    struct PowerFixture(PathBuf);
+    impl PowerFixture {
+        fn new() -> Self {
+            let root = std::env::temp_dir().join(format!(
+                "assbox-power-{}-{}",
+                std::process::id(),
+                crate::files::random_id().unwrap()
+            ));
+            fs::create_dir(&root).unwrap();
+            Self(root)
+        }
+        fn supply(&self, name: &str, fields: &[(&str, &str)]) {
+            let path = self.0.join(name);
+            fs::create_dir_all(&path).unwrap();
+            for (key, value) in fields {
+                fs::write(path.join(key), value).unwrap();
+            }
+        }
+        fn observe(&self) -> (BatteryPresence, Option<bool>, Option<u8>) {
+            power_at(&self.0)
+        }
+    }
+    impl Drop for PowerFixture {
+        fn drop(&mut self) {
+            fs::remove_dir_all(&self.0).unwrap();
+        }
+    }
+
+    #[test]
+    fn power_ignores_low_and_level_only_peripherals_on_desktops_and_laptops() {
+        for fields in [
+            vec![("capacity", "5\n")],
+            vec![("capacity_level", "Normal\n")],
+        ] {
+            let f = PowerFixture::new();
+            assert_eq!(f.observe(), (BatteryPresence::Absent, None, None));
+            f.supply(
+                "hidpp_battery_0",
+                &[
+                    ("scope", "Device\n"),
+                    ("type", "Battery\n"),
+                    ("online", "1\n"),
+                ],
+            );
+            f.supply("hidpp_battery_0", &fields);
+            assert_eq!(f.observe(), (BatteryPresence::Absent, None, None));
+            // ACPI batteries can omit scope altogether.
+            f.supply("BAT0", &[("type", "Battery\n"), ("capacity", "80\n")]);
+            f.supply("AC", &[("type", "Mains\n"), ("online", "0\n")]);
+            assert_eq!(
+                f.observe(),
+                (BatteryPresence::Present, Some(false), Some(80))
+            );
+        }
+    }
+
+    #[test]
+    fn power_keeps_system_missing_unknown_and_unreadable_scopes() {
+        for scope in [
+            None,
+            Some("System\n"),
+            Some("Unknown\n"),
+            Some("unrecognized\n"),
+        ] {
+            let f = PowerFixture::new();
+            f.supply("BAT0", &[("type", "Battery\n"), ("capacity", "5\n")]);
+            if let Some(scope) = scope {
+                f.supply("BAT0", &[("scope", scope)]);
+            }
+            assert_eq!(f.observe(), (BatteryPresence::Present, None, Some(5)));
+        }
+        let f = PowerFixture::new();
+        f.supply("BAT0", &[("type", "Battery\n"), ("capacity", "5\n")]);
+        fs::create_dir(f.0.join("BAT0/scope")).unwrap();
+        assert_eq!(f.observe(), (BatteryPresence::Present, None, Some(5)));
+    }
+
+    #[test]
+    fn power_keeps_missing_invalid_and_unreadable_host_capacity_uncertain() {
+        for capacity in [None, Some("101\n"), Some("invalid\n")] {
+            let f = PowerFixture::new();
+            f.supply("BAT0", &[("type", "Battery\n"), ("capacity", "80\n")]);
+            f.supply("BAT1", &[("type", "Battery\n"), ("scope", "System\n")]);
+            if let Some(capacity) = capacity {
+                f.supply("BAT1", &[("capacity", capacity)]);
+            }
+            assert_eq!(f.observe(), (BatteryPresence::Present, None, None));
+        }
+        let f = PowerFixture::new();
+        f.supply("BAT0", &[("type", "Battery\n")]);
+        fs::create_dir(f.0.join("BAT0/capacity")).unwrap();
+        assert_eq!(f.observe(), (BatteryPresence::Present, None, None));
+    }
+
+    #[test]
+    fn power_uses_lowest_present_host_battery_and_ignores_empty_slots() {
+        let f = PowerFixture::new();
+        f.supply("BAT0", &[("type", "Battery\n"), ("capacity", "80\n")]);
+        f.supply("BAT1", &[("type", "Battery\n"), ("capacity", "5\n")]);
+        assert_eq!(f.observe(), (BatteryPresence::Present, None, Some(5)));
+        f.supply("BAT1", &[("present", "0\n")]);
+        assert_eq!(f.observe(), (BatteryPresence::Present, None, Some(80)));
+        f.supply("BAT0", &[("present", "0\n")]);
+        assert_eq!(f.observe(), (BatteryPresence::Absent, None, None));
+    }
+
+    #[test]
+    fn power_tracks_host_ac_without_mistaking_device_chargers_for_it() {
+        let f = PowerFixture::new();
+        f.supply("BAT0", &[("type", "Battery\n"), ("capacity", "5\n")]);
+        f.supply("AC", &[("type", "Mains\n"), ("online", "0\n")]);
+        f.supply(
+            "charger",
+            &[("scope", "Device\n"), ("type", "USB\n"), ("online", "1\n")],
+        );
+        assert_eq!(
+            f.observe(),
+            (BatteryPresence::Present, Some(false), Some(5))
+        );
+        f.supply("AC", &[("online", "1\n")]);
+        assert_eq!(f.observe(), (BatteryPresence::Present, Some(true), Some(5)));
+        f.supply("AC", &[("online", "0\n")]);
+        assert_eq!(
+            f.observe(),
+            (BatteryPresence::Present, Some(false), Some(5))
+        );
+    }
+
+    #[test]
+    fn power_cannot_infer_a_desktop_from_missing_or_unreadable_supplies() {
+        let f = PowerFixture::new();
+        assert_eq!(
+            power_at(&f.0.join("missing")),
+            (BatteryPresence::Unknown, None, None)
+        );
+        f.supply("unknown", &[]);
+        assert_eq!(f.observe(), (BatteryPresence::Unknown, None, None));
+        // A known peripheral can be ignored even if its remaining attributes
+        // disappeared during a hot-unplug.
+        f.supply("unknown", &[("scope", "Device\n")]);
+        assert_eq!(f.observe(), (BatteryPresence::Absent, None, None));
+    }
 }

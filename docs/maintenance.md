@@ -46,6 +46,8 @@ Low battery or unreadable/uncertain battery power defers reboot; positively
 confirmed AC permits it. Battery-powered
 machines need a known charge at or above the configured minimum (20% by default).
 A machine positively observed to have no batteries can reboot without an AC sensor.
+Supplies explicitly marked by Linux as peripheral devices, such as mouse batteries,
+are excluded. Host supplies without a scope attribute remain part of the power check.
 Power and selected generation are checked again after the grace period. A system
 which remains power-starved may remain pending: there is no forced unsafe shutdown
 or external alerting backend.
