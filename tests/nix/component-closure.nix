@@ -6,11 +6,20 @@
 }:
 let
   cfg = machine.config.assbox;
+  # Enumerating an excluded package must not require consent to install it.
+  # Extend only the audit view so identities retain this machine's overlays and
+  # package variants. The closure below still uses the original license policy.
+  identities =
+    (machine.extendModules {
+      modules = [
+        ({ lib, ... }: { nixpkgs.config.allowUnfree = lib.mkForce true; })
+      ];
+    }).config.assbox.componentPackagePaths;
   closure = pkgs.closureInfo { rootPaths = [ machine.config.system.build.toplevel ]; };
   forbidden = pkgs.writeText "assbox-unselected-identities.json" (
     builtins.toJSON (
       pkgs.lib.mapAttrs (_: paths: map builtins.unsafeDiscardStringContext paths) (
-        pkgs.lib.filterAttrs (id: _: !(builtins.elem id cfg.selectedComponents)) cfg.componentPackagePaths
+        pkgs.lib.filterAttrs (id: _: !(builtins.elem id cfg.selectedComponents)) identities
       )
     )
   );

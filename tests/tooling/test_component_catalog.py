@@ -69,6 +69,16 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertEqual(result['services']['user']['services'], {})
         self.assertTrue(all(isinstance(paths, list) and paths for paths in result['identities'].values()))
 
+    def test_closure_identities_preserve_overlays_without_granting_install_consent(self):
+        if not self.lib:
+            self.skipTest('Nix module library unavailable; run in the development shell')
+        result = subprocess.run(
+            ['nix-instantiate', '--eval', '--strict', '--json',
+             'tests/nix/component-closure-eval.nix', '--arg', 'libPath', self.lib],
+            cwd=ROOT, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIs(json.loads(result.stdout), True)
+
     def test_external_package_license_cannot_bypass_machine_consent(self):
         selection = {'codex': {'enable': True}}
         self.assertFalse(self.evaluate(selection, accept_unfree=False)['failures'])
