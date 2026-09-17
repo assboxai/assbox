@@ -165,6 +165,24 @@ let
         && (a.boot != "apple-refind" || !a.efiWrites)
         && (!(builtins.elem "chatgpt-desktop" a.selectedComponents) || a.presentation == "x11")
         && (
+          a.presentation == "headless"
+          || (
+            machine.config.xdg.portal.enable
+            && builtins.elem pkgs.xdg-desktop-portal-gtk machine.config.xdg.portal.extraPortals
+            &&
+              machine.config.xdg.portal.config.${if a.presentation == "x11" then "openbox" else "labwc"}.default
+              == (
+                if a.presentation == "x11" then
+                  [ "gtk" ]
+                else
+                  [
+                    "wlr"
+                    "gtk"
+                  ]
+              )
+          )
+        )
+        && (
           a.presentation != "x11"
           || (
             !machine.config.services.xserver.displayManager.lightdm.greeter.enable

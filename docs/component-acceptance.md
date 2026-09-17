@@ -98,6 +98,11 @@ blocker requires its adapter and regression coverage in the same reviewed change
   manually restarting the display manager. Explicit manager stop must clean up
   the graphical session and leave it stopped. Wayland and hardware behavior also require
   the owner-run acceptance below. This new VM gate has not yet been executed.
+- `desktop-services-vm`: real X11 and Wayland sessions with GTK file chooser portals.
+  The driver operates visible open-file, open-folder, save and cancel dialogs and
+  verifies their returned responses/paths, then repeats after session restart.
+  The gate uses the same portal API as native Zed without provider credentials;
+  it has not yet been executed. It complements rather than replaces `editor-vm`.
 - `access-lan-vm` and `access-tailscale-vm`: real OpenSSH keys, privilege refusal,
   IPv4/IPv6 packets, untrusted ingress and disappearance of the admitted interface.
   The tailnet fixture simulates `tailscale0`; real overlay login remains below.
@@ -137,7 +142,8 @@ these procedures do not become an unattended daily phone-pairing requirement.
    no administrative access is granted, and client-managed helper downloads are
    disclosed. For tunnels, test login, license confirmation and revocation.
 6. **Graphical apps/editors:** launch every advertised session mode, test login or
-   normal editing, logout/relogin and reboot. Check OpenCode attach and OpenClaw
+   normal editing, including Zed Open File, Open Folder and Save As on both X11
+   and Wayland, then logout/relogin and reboot. Check OpenCode attach and OpenClaw
    dashboard separately from their backends. Test GUI Emacs only with its explicit
    variant; keep nano available for recovery.
 7. **Access and coexistence:** authenticate the actual Tailscale account from console;

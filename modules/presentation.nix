@@ -38,6 +38,9 @@ in
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
       (lib.mkIf (cfg.presentation != "headless") {
+        # Native apps such as Zed use portals for file dialogs too. Minimal
+        # window managers do not supply a desktop's implicit portal selection.
+        xdg.portal.enable = true;
         # graphical-session.target is a passive systemd target; starting it directly
         # may be refused. A session-specific owner pulls it in and keeps it needed.
         systemd.user.targets.assbox-graphical-session = {
@@ -47,6 +50,10 @@ in
         };
       })
       (lib.mkIf (cfg.presentation == "x11") {
+        xdg.portal = {
+          extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+          config.openbox.default = [ "gtk" ];
+        };
         services.xserver = {
           enable = true;
           dpi = 96 * cfg.display.scale;
@@ -101,6 +108,12 @@ in
       })
       (lib.mkIf (cfg.presentation == "wayland") {
         programs.labwc.enable = true;
+        # labwc's NixOS module installs both backends, but its wlroots config
+        # does not match our XDG_CURRENT_DESKTOP=labwc session.
+        xdg.portal.config.labwc.default = [
+          "wlr"
+          "gtk"
+        ];
         environment.sessionVariables.NIXOS_OZONE_WL = "1";
         programs.xwayland.enable = true;
         services.greetd = {

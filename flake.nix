@@ -188,6 +188,10 @@
             inherit module;
             inherit (p) pkgs;
           };
+          desktop-services-vm = import ./tests/nix/desktop-services-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
           access-lan-vm = import ./tests/nix/access-vm.nix {
             inherit module;
             inherit (p) pkgs;
