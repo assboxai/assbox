@@ -72,7 +72,10 @@ class RemoteLifecycleContracts(unittest.TestCase):
                 self.assertEqual(unit['serviceConfig']['RestartMaxDelaySec'], 300)
                 self.assertEqual(unit['serviceConfig']['KillMode'], 'control-group')
                 if id != 'cursor-worker':
-                    self.assertEqual(unit['serviceConfig']['ExitType'], 'cgroup')
+                    self.assertEqual(unit['serviceConfig']['ExitType'], 'main')
+        services = result['services']['user']['services']
+        self.assertTrue(services['assbox-zed']['serviceConfig']['ExecStart'].endswith('/libexec/zed-editor'))
+        self.assertTrue(services['assbox-vscode']['serviceConfig']['ExecStart'].endswith('/bin/assbox-vscode-gui'))
 
     def test_native_gate_is_required_and_driver_is_valid_python(self):
         self.assertIn('remote-lifecycle-vm = import ./tests/nix/remote-lifecycle-vm.nix', (ROOT / 'flake.nix').read_text())
@@ -83,3 +86,6 @@ class RemoteLifecycleContracts(unittest.TestCase):
             script = script.replace('${builtins.toJSON ' + variable + '}', '[]')
         ast.parse(textwrap.dedent(script))
         ast.parse((ROOT / 'tests/fixtures/remote_provider.py').read_text())
+        self.assertIn('editor-vm = import ./tests/nix/editor-vm.nix', (ROOT / 'flake.nix').read_text())
+        source = (ROOT / 'tests/nix/editor-vm.nix').read_text()
+        ast.parse(textwrap.dedent(source.split("testScript = ''", 1)[1].rsplit("'';", 1)[0]))

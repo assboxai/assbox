@@ -13,8 +13,15 @@ names = {
     'claude': 'claude-code-remote', 'cursor-agent': 'cursor-worker',
     'openclaw': 'openclaw-node', 'happy': 'happy-remote',
     'assbox-vscode': 'vscode-tunnel', 'claude-desktop': 'claude-desktop',
-    'code': 'vscode', 'zeditor': 'zed', 'emacs': 'emacs',
+    'assbox-vscode-gui': 'vscode', 'zed-editor': 'zed', 'emacs': 'emacs',
 }
+if Path(sys.argv[0]).name in ['code', 'zeditor']:
+    # The public CLIs hand off and exit zero. Selecting them in a main-process
+    # unit must fail the lifecycle gate, rather than accidentally model a GUI.
+    entry = ('assbox-vscode-gui' if Path(sys.argv[0]).name == 'code'
+             else '../libexec/zed-editor')
+    subprocess.Popen([str(Path(sys.argv[0]).parent / entry)])
+    sys.exit(0)
 name = names.get(Path(sys.argv[0]).name)
 if os.environ.get('ASSBOX_TEST_ONBOARD') == '1' or name is None:
     # Onboarding can log in/configure/pair without running a daemon or network call.
@@ -32,9 +39,6 @@ child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(600)'])
 temporary = state / (name + '.pids.tmp')
 temporary.write_text(json.dumps([os.getpid(), child.pid]))
 temporary.replace(state / (name + '.pids'))
-if mode == 'fork-exit':
-    # Models a GUI launcher handing off to a long-lived child.
-    sys.exit(0)
 signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
 while True:

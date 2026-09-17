@@ -37,6 +37,13 @@ proprietary consent and architectures were checked against its package recipes.
   loader only when those capabilities are selected.
 - [Zed remote development](https://zed.dev/docs/remote-development) provisions a
   client-compatible server. Assbox does not maintain a second pinned-server mode.
+- Graphical supervision uses the foreground application, preserving its exit status.
+  The pinned [Zed CLI](https://github.com/zed-industries/zed/blob/v1.3.6/crates/cli/src/main.rs)
+  detaches by default; its foreground option does not propagate the child's status.
+  Assbox uses the Nix-wrapped `libexec/zed-editor`. VS Code receives a second entry
+  point to its Electron application through the package's normal GTK/environment
+  wrapping hook; the public `code` CLI retains its ordinary handoff behavior.
+  These package paths are checked by `editor-vm` when pins change.
 
 ## Explicit unresolved capabilities
 
@@ -79,10 +86,14 @@ blocker requires its adapter and regression coverage in the same reviewed change
 - `remote-lifecycle-vm`: real production adapter modules and systemd user units with
   harmless substitute provider programs. It exercises onboarding, repeated failures
   beyond the former start limit, clean-exit recovery, explicit stop, descendant
-  cleanup, GUI launcher handoff and normal close, graphical-session teardown,
+  cleanup, foreground GUI crashes with surviving helpers and normal close, graphical-session teardown,
   structured doctor output, private diagnostic capture, changed settings and
   component removal through NixOS reconfiguration. Only restart delays are shortened;
   native execution remains required on both architectures.
+- `editor-vm`: actual packaged VS Code, Zed and GUI Emacs on X11. It requires visible
+  windows, kills only each main process, verifies recovery, closes windows normally,
+  and checks graphical logout/relogin. Wayland and hardware behavior also require
+  the owner-run acceptance below. This new VM gate has not yet been executed.
 - `access-lan-vm` and `access-tailscale-vm`: real OpenSSH keys, privilege refusal,
   IPv4/IPv6 packets, untrusted ingress and disappearance of the admitted interface.
   The tailnet fixture simulates `tailscale0`; real overlay login remains below.

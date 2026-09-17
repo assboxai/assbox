@@ -12,8 +12,10 @@ let
   launch = id: builtins.elem id cfg.session.autostart;
   gui = {
     claude-desktop = "${assboxApplications.claude-desktop.claude-desktop}/bin/claude-desktop";
-    vscode = "${pkgs.vscode}/bin/code";
-    zed = "${pkgs.zed-editor}/bin/zeditor";
+    vscode = "${import ../nix/vscode-gui.nix { inherit pkgs; }}/bin/assbox-vscode-gui";
+    # The CLI detaches; even its --foreground mode discards the child's status.
+    # This is the upstream Nix-wrapped application, including its runtime PATH.
+    zed = "${pkgs.zed-editor}/libexec/zed-editor";
     emacs = "${pkgs.emacs}/bin/emacs";
   };
 in
@@ -68,7 +70,9 @@ in
         };
         serviceConfig = {
           ExecStart = executable;
-          ExitType = "cgroup"; # GUI launchers may hand off to a child process.
+          # Each entry point stays foreground and preserves the app exit status.
+          # A crash stops leftover children before restart; normal close stays closed.
+          ExitType = "main";
           WorkingDirectory = "%h";
           Restart = "on-failure";
           RestartSec = 20;

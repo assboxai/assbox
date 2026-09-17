@@ -55,7 +55,7 @@ in
           unitConfig.ConditionUser = "agent";
           serviceConfig = common // {
             ExecStart = "${chatgpt}/bin/chatgpt";
-            ExitType = "cgroup";
+            ExitType = "main";
           };
         };
       })
@@ -75,7 +75,7 @@ in
             ConditionPathExists = "%h/.config/assbox/opencode.env";
           };
           serviceConfig = common // {
-            ExitType = "cgroup";
+            ExitType = "main";
             EnvironmentFile = "%h/.config/assbox/opencode.env";
             ExecStart = "${terminal} ${apps.opencode}/bin/opencode attach http://127.0.0.1:4096";
             WorkingDirectory = "%h";
@@ -113,7 +113,7 @@ in
             ConditionPathExists = "%h/.openclaw/openclaw.json";
           };
           serviceConfig = common // {
-            ExitType = "cgroup";
+            ExitType = "main";
             # The fixed public loopback URL has no token, password or secret fragment.
             ExecStart = "${pkgs.chromium}/bin/chromium --app=http://127.0.0.1:18789/";
             WorkingDirectory = "%h";

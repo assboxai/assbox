@@ -7,12 +7,13 @@ let
   arm = pkgs.stdenv.hostPlatform.isAarch64;
   catalog = builtins.fromJSON (builtins.readFile ../../catalog/components.json);
   fixture = pkgs.runCommand "assbox-lifecycle-provider" { } ''
-    mkdir -p "$out/bin"
-    for name in claude cursor-agent openclaw happy codex assbox-vscode claude-desktop code zeditor emacs; do
+    mkdir -p "$out/bin" "$out/libexec"
+    for name in claude cursor-agent openclaw happy codex assbox-vscode claude-desktop code zeditor emacs assbox-vscode-gui; do
       printf '#!${pkgs.python3}/bin/python3\n' > "$out/bin/$name"
       cat ${../fixtures/remote_provider.py} >> "$out/bin/$name"
       chmod +x "$out/bin/$name"
     done
+    cp "$out/bin/zeditor" "$out/libexec/zed-editor"
   '';
   package = fixture // {
     meta.license = lib.licenses.mit;
@@ -220,15 +221,23 @@ pkgs.testers.runNixOSTest {
     mode("claude-code-remote", "run")
     machine.succeed(ctl("restart " + unit("claude-code-remote")))
 
-    # GUI launchers may fork, but session ownership covers every descendant.
+    # Foreground entry points preserve crash status after wrapper exec/handoff.
+    # A surviving helper must not hide a crashed GUI or delay its restart.
     for id in gui_ids:
-        mode(id, "fork-exit")
+        mode(id, "run")
         machine.succeed(ctl("restart " + unit(id)))
         active(id)
         children = pids(id)
-        machine.wait_until_succeeds("test ! -e /proc/" + str(children[0]), timeout=60)
+        assert machine.succeed(ctl("show -p ExitType --value " + unit(id))).strip() == "main"
+        main = int(machine.succeed(ctl("show -p MainPID --value " + unit(id))).strip())
+        assert main == children[0]
+        before = starts(id)
+        machine.succeed("kill -KILL " + str(main))
+        gone(children)
+        machine.wait_until_succeeds(user("test $(wc -l < ~/lifecycle-fixture/" + id + ".starts) -gt " + str(before)), timeout=60)
         active(id)
-    owned = pids("cursor-worker") + [pids(id)[1] for id in gui_ids]
+        assert pids(id)[0] != main
+    owned = pids("cursor-worker") + [pid for id in gui_ids for pid in pids(id)]
     machine.succeed(ctl("stop assbox-test-session.target graphical-session.target"))
     gone(owned)
     for id in ["cursor-worker"] + gui_ids:
@@ -240,10 +249,11 @@ pkgs.testers.runNixOSTest {
     # Closing an editor normally must not restart it.
     for id in gui_ids:
         active(id)
-        child = pids(id)[1]
+        children = pids(id)
         count = starts(id)
-        machine.succeed("kill -TERM " + str(child))
+        machine.succeed("kill -TERM " + str(children[0]))
         inactive(id)
+        gone(children)
         time.sleep(1)
         assert starts(id) == count
 

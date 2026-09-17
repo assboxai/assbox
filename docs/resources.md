@@ -27,6 +27,10 @@ to three hundred seconds over five restart steps, without a start-count lockout.
 Remote servers restart after both successful and unsuccessful unexpected exits;
 closing a graphical editor normally leaves it closed. Explicit service stop,
 disablement and graphical-session teardown do not trigger automatic restarts.
+Managed graphical launchers use foreground application entry points. Zed's public
+CLI and VS Code's public CLI may detach and hide the application exit status, so
+the services use the wrapped application entry points instead. A main-process
+exit also stops remaining helpers; a surviving helper cannot hide a GUI crash.
 Expired credentials still require interactive login; retries do not grant access.
 Shutdown kills the whole service group after the sixty-second grace period.
 CPU, I/O and memory accounting make resource pressure visible without adding a

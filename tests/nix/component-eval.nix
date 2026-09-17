@@ -18,6 +18,7 @@ let
     meta.license.free = !(builtins.elem name unfreePackages);
     __toString = self: self.outPath;
     override = _: pkg name;
+    overrideAttrs = _: pkg name;
   };
   catalog = builtins.fromJSON (builtins.readFile ../../catalog/components.json);
   families = lib.unique (map (r: r.family) catalog);

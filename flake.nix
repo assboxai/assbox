@@ -177,6 +177,10 @@
           remote-lifecycle-vm = import ./tests/nix/remote-lifecycle-vm.nix {
             inherit (p) pkgs assbox;
           };
+          editor-vm = import ./tests/nix/editor-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
           access-lan-vm = import ./tests/nix/access-vm.nix {
             inherit module;
             inherit (p) pkgs;

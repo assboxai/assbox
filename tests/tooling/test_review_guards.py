@@ -117,7 +117,7 @@ class ReviewGuards(unittest.TestCase):
             return result, (candidate / "verification-reached").exists()
 
     def test_every_required_acceptance_name_is_a_release_prerequisite(self):
-        required = ["remote-lifecycle-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
+        required = ["remote-lifecycle-vm", "editor-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
                     "application-chatgpt-vm", "application-opencode-vm", "application-openclaw-vm"]
         required += ["application-" + family + "-vm" for family in __import__("component_families").FAMILIES if "application-" + family + "-vm" not in required]
         for absent in required:
@@ -128,7 +128,7 @@ class ReviewGuards(unittest.TestCase):
                 self.assertFalse(reached)
 
     def test_implemented_names_proceed_to_verification_not_automatic_approval(self):
-        required = ["remote-lifecycle-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
+        required = ["remote-lifecycle-vm", "editor-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
                     "application-chatgpt-vm", "application-opencode-vm", "application-openclaw-vm"]
         required += ["application-" + family + "-vm" for family in __import__("component_families").FAMILIES if "application-" + family + "-vm" not in required]
         result, reached = self.run_acceptance_presence_gate(required)

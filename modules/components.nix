@@ -46,6 +46,8 @@ let
       pkgs.callPackage ../nix/vscode-cli.nix { }
     else if row.id == "emacs" && cfg.components.emacs.variant == "gui" then
       pkgs.emacs
+    else if row.id == "vscode" then
+      import ../nix/vscode-gui.nix { inherit pkgs; }
     else if row.family == "nixpkgs" then
       pkgs.${row.package}
     else
