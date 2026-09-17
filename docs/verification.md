@@ -27,6 +27,7 @@ here and keep dated, source-specific execution reports outside the repository.
 | `application-opencode-vm` | Defined: actual locked package in headless/X11/Wayland, local authentication and lifecycle; native execution and provider tasks remain required |
 | `application-openclaw-vm` | Defined: actual locked package in headless/X11/Wayland, local gateway authentication and lifecycle; native execution and provider tasks remain required |
 | `remote-lifecycle-vm` | Defined: real remote/editor units with substitute providers, onboarding, crash/clean-exit recovery, descendant/session cleanup, diagnostics and NixOS reconfiguration; native execution remains required |
+| `editor-vm` | Defined: actual VS Code/Zed/Emacs foreground entry points, visible X11 windows, main-process crash recovery, normal close and session teardown/restart; native execution remains required |
 
 Engineering readiness requires implemented behavior and substantive verification
 gates capable of checking it. Pending execution alone is different from missing
@@ -57,6 +58,14 @@ select exactly one stage: `static` (source/tooling/model/Node tests and formatti
 system builds and VM checks). Stages stop on failure and preserve command exit codes.
 Selecting a stage never constitutes a passing full gate. Even the `rust` stage can
 be expensive on a cold cache; resource restrictions still apply.
+
+Rust integration tests feed actual rendered Wi-Fi keyfiles through libnm and
+compare SSID bytes and passphrases, including numeric/semicolon names, backslashes,
+spaces and UTF-8. This catches the keyfile reader's legacy byte-list interpretation
+and separate SSID escaping rules. See the pinned
+[NetworkManager keyfile implementation](https://github.com/NetworkManager/NetworkManager/blob/1.56.0/src/libnm-core-impl/nm-keyfile.c).
+The gate uses the locked libnm in Nix; it needs no daemon or network connection and
+does not establish successful radio/driver association on physical hardware.
 
 The verification workflow runs these stages as separate steps through
 `scripts/verify_observed.py`. It records memory/swap availability, disk space,

@@ -155,12 +155,18 @@ and hardware tests are separate again.
 The workspace declares edition 2024 and minimum Rust 1.90. Nix's committed input
 lock supplies the release toolchain; a machine-global rustup default is not the
 release specification. Every crate forbids unsafe Rust. That restriction does not
-assert that the Rust standard library, toolchain or external system tools contain
-no unsafe code.
+assert that dependency crates, the Rust standard library, the toolchain or external
+system tools contain no unsafe code.
 
-There are no crates.io dependencies: only standard-library Rust and the
-six internal crates. Structured command output is decoded through the Nix-pinned
-`jq`, not an ad-hoc JSON parser. Disk operations remain delegated to established
-system tools; Assbox is not a GPT, filesystem or firmware implementation. A future
-crate must justify its purpose, license, transitive dependencies and reproducible
-locking. Avoid recreating a complicated parser merely to keep the count at zero.
+The functional core uses the standard library and internal crates only. The system
+adapter uses two pinned crates.io dependencies: `signal-hook` for cooperative
+cancellation and `rustix` (only `std` and `termios` features) for safe terminal
+restoration and unread-password flushing. `Cargo.lock` and the architecture guard
+record their reviewed versions, features and transitive dependency graph; the
+release gate checks Cargo advisories. Their safe interfaces let Assbox keep its own
+unsafe-code prohibition without reimplementing signal handlers or termios bindings.
+
+Structured command output is decoded through the Nix-pinned `jq`, not an ad-hoc
+JSON parser. Disk operations remain delegated to established system tools; Assbox
+is not a GPT, filesystem or firmware implementation. A new dependency must justify
+its purpose, license, transitive dependencies and reproducible locking.
