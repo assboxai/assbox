@@ -116,8 +116,10 @@ pkgs.testers.runNixOSTest {
                 "gateway": {"mode": "local", "bind": "loopback", "auth": {"mode": "token", "token": "disposable-test-token"}}
             }))
         else:
+            # Desktop installation must not depend on the separate Codex CLI.
+            machine.succeed(user('test -x "$(command -v chatgpt)"'))
+            machine.fail(user("command -v codex"))
             machine.succeed(user("assbox component setup chatgpt-desktop"))
-            machine.succeed(user("codex --version"), timeout=120)
         machine.succeed(user("systemctl --user restart " + unit))
         active(unit)
 

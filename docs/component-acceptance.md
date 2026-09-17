@@ -81,7 +81,9 @@ blocker requires its adapter and regression coverage in the same reviewed change
   vendor binaries. Review known bundled SDKs and downloaded helpers separately.
 - `application-<family>-vm`: native runtime checks for every independent family.
   Existing OpenCode/OpenClaw VMs test local authentication and session lifecycle;
-  new remote units must remain dormant before interactive onboarding. None of
+  the ChatGPT-only VM checks its desktop executable and window while requiring
+  standalone Codex to remain absent. It does not depend on Codex CLI setup.
+  New remote units must remain dormant before interactive onboarding. None of
   these credential-free VMs certifies provider login or completed remote tasks.
 - `remote-lifecycle-vm`: real production adapter modules and systemd user units with
   harmless substitute provider programs. It exercises onboarding, repeated failures
