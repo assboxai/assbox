@@ -51,11 +51,21 @@ in
     };
     systemd.services.assbox-boot-check = {
       description = "Check the running Assbox generation after boot";
-      wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${binary} internal boot-check";
+      };
+    };
+    # Live activation starts active targets and their inactive dependencies again.
+    # A boot timer stays elapsed, even if the check failed, so a switch cannot
+    # rerun the check while the parent Assbox operation holds its lock.
+    systemd.timers.assbox-boot-check = {
+      enable = config.systemd.services.assbox-boot-check.enable;
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "1s";
+        RemainAfterElapse = true;
       };
     };
   };

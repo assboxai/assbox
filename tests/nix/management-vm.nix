@@ -41,7 +41,6 @@ pkgs.testers.runNixOSTest {
     assbox.presentation = "headless";
     boot.loader.systemd-boot.enable = lib.mkForce false;
     boot.loader.grub.enable = lib.mkForce false;
-    systemd.services.assbox-boot-check.enable = lib.mkForce false;
     # The test driver provides console access; production accounts remain locked.
     users.allowNoPasswordLogin = true;
     users.users.root.hashedPasswordFile = lib.mkForce null;
@@ -61,6 +60,15 @@ pkgs.testers.runNixOSTest {
 
     machine.start()
     machine.wait_for_unit("multi-user.target")
+    # This uninstalled fixture has no /etc/nixos. The real boot check fails once;
+    # starting active targets (as live activation does) must not retry it.
+    machine.wait_for_unit("assbox-boot-check.timer")
+    machine.wait_until_succeeds("test $(systemctl show assbox-boot-check.service -p ActiveState --value) = failed")
+    boot_check_id = machine.succeed("systemctl show assbox-boot-check.service -p InvocationID --value").strip()
+    assert boot_check_id
+    machine.succeed("systemctl reset-failed assbox-boot-check.service; systemctl start timers.target multi-user.target")
+    assert machine.succeed("systemctl show assbox-boot-check.timer -p SubState --value").strip() == "elapsed"
+    assert machine.succeed("systemctl show assbox-boot-check.service -p InvocationID --value").strip() == boot_check_id
     config = "/etc/nixos"
     state = "/var/lib/assbox"
     txn = state + "/transaction"

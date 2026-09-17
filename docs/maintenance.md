@@ -100,6 +100,9 @@ Assbox lock/journal; do not run them concurrently with an Assbox operation.
 The post-boot service checks the running versus selected system and network target,
 then may clean old generations. It is not an authenticated application health check
 or proof of macOS bootability. There is no automatic boot-count fallback.
+An elapsed one-shot boot timer owns the automatic check: live rebuilds do not
+retry it, even after failure. After inspecting and resolving a failed check, run
+`sudo assbox internal boot-check` explicitly or reboot to check again.
 
 ## Journal and rollback
 

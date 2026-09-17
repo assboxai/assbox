@@ -48,12 +48,18 @@ def clear_cut():
 
 initial = running()
 assert initial == selected()
+target.wait_for_unit('assbox-boot-check.timer')
+target.wait_until_succeeds('test $(systemctl show assbox-boot-check.service -p Result --value) = success; test $(systemctl show assbox-boot-check.timer -p SubState --value) = elapsed')
+boot_check_id = target.succeed('systemctl show assbox-boot-check.service -p InvocationID --value').strip()
+assert boot_check_id
 operation('add')
 target.succeed('hello | grep "Hello, world!"')
 assert running() == selected() and running() != initial
 operation('remove')
 target.fail('test -e /run/current-system/sw/bin/hello')
 assert running() == selected()
+assert target.succeed('systemctl show assbox-boot-check.service -p InvocationID --value').strip() == boot_check_id
+target.succeed('test $(systemctl show assbox-boot-check.service -p Result --value) = success; test ! -e ' + TXN)
 
 # Each crash follows a real operation reaching the named durable boundary.
 # Before activation recovery restores sources; afterwards inspection is required.
@@ -110,6 +116,14 @@ def local_extra(expression):
     assert local_base.rstrip().endswith('}')
     write(target, LOCAL, local_base.rstrip()[:-1] + expression + '\n}\n')
 
+
+# A changed service definition also must not run the automatic check on switch.
+local_extra('systemd.services.assbox-boot-check.environment.ASSBOX_ACCEPTANCE = "changed";')
+before_check = target.succeed('systemctl show assbox-boot-check.service -p InvocationID --value').strip()
+operation('switch')
+assert target.succeed('systemctl show assbox-boot-check.service -p InvocationID --value').strip() == before_check
+target.succeed('test ! -e ' + TXN)
+write(target, LOCAL, local_base)
 
 for limit in [4, 8]:
     local_extra('assbox.boot.generations = ' + str(limit) + ';')
