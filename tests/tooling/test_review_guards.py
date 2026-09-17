@@ -101,17 +101,22 @@ class ReviewGuards(unittest.TestCase):
             tools, candidate = directory / "tools", directory / "candidate"
             tools.mkdir(); candidate.mkdir(); (candidate / "scripts").mkdir()
             (candidate / "release-context.json").write_text("{}\n")
-            (candidate / "scripts/component_families.py").write_text((ROOT / "scripts/component_families.py").read_text())
+            for name in ['component_families.py', 'release.py', 'release_data.py']:
+                (candidate / 'scripts' / name).write_bytes((ROOT / 'scripts' / name).read_bytes())
+            from test_release_data import lock
+            locked = lock()
+            (candidate / 'flake.lock').write_text(json.dumps(locked))
             nix = tools / "nix"
             nix.write_text("#!/usr/bin/env bash\nset -eu\n"
                 "if [[ \"$*\" == *builtins.currentSystem* ]]; then printf x86_64-linux; "
+                "elif [[ \"$1 $2\" == 'flake metadata' ]]; then printf '%s' \"$ASSBOX_TEST_METADATA\"; "
                 "else printf '%s' \"$ASSBOX_TEST_CHECK_NAMES\"; fi\n")
             nix.chmod(0o755)
             verifier = candidate / "scripts/verify"
             verifier.write_text("#!/usr/bin/env bash\nprintf reached > verification-reached\nexit 73\n")
             verifier.chmod(0o755)
             env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"],
-                       ASSBOX_TEST_CHECK_NAMES=json.dumps(names))
+                       ASSBOX_TEST_CHECK_NAMES=json.dumps(names), ASSBOX_TEST_METADATA=json.dumps({'locks': locked}))
             result = subprocess.run(["bash", str(ROOT / "scripts/release-check"), "--candidate", str(candidate)],
                                     env=env, capture_output=True, text=True, check=False, timeout=10)
             return result, (candidate / "verification-reached").exists()

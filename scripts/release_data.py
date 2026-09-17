@@ -83,6 +83,39 @@ def validate_lock(lock: dict) -> None:
             resolve(edge, set())
 
 
+def require_same_inputs(before: dict, after: dict) -> None:
+    """Allow Nix to rename/share nodes, but never change any reachable input.
+
+    Compare pairs of resolved nodes instead of expanding shared subtrees. This
+    also terminates on recursive input graphs without discarding their edges.
+    """
+    validate_lock(before)
+    validate_lock(after)
+
+    def resolve(lock, edge):
+        if isinstance(edge, str):
+            return edge
+        node = lock["root"]
+        for part in edge:
+            node = resolve(lock, lock["nodes"][node]["inputs"][part])
+        return node
+
+    pending, seen = [(before["root"], after["root"])], set()
+    while pending:
+        pair = pending.pop()
+        if pair in seen:
+            continue
+        seen.add(pair)
+        left, right = before["nodes"][pair[0]], after["nodes"][pair[1]]
+        left_inputs, right_inputs = left.get("inputs", {}), right.get("inputs", {})
+        if ({k: v for k, v in left.items() if k != "inputs"}
+                != {k: v for k, v in right.items() if k != "inputs"}
+                or left_inputs.keys() != right_inputs.keys()):
+            raise ValueError("Nix changed a selected dependency or its input graph")
+        pending.extend((resolve(before, left_inputs[key]), resolve(after, right_inputs[key]))
+                       for key in left_inputs)
+
+
 def compose_lock(previous: dict, latest: dict, advanced: set[str]) -> dict:
     """Copy a complete pinned input subtree, not merely its top-level revision.
 

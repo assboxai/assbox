@@ -42,6 +42,12 @@ installation/recovery/authentication and vulnerability gate again. A held pin ne
 gets an exemption from a security finding. Failures in the final combination block
 publication, even when an earlier individual probe passed.
 
+Builders normalize composed locks with Nix before hashing them, checking that every
+reachable dependency and input edge retains its selected meaning. This permits
+Nix's node renaming and sharing without advancing a pin. Native verification also
+requires the source lock to equal Nix's resolved graph exactly, matching the client
+binding check; lock-update flags alone do not enforce this equality.
+
 The source tarball contains the exact tracked core bytes and executable modes,
 with only `flake.lock` replaced and `release-context.json` added. Context contains
 the core commit/version and lock digest. The publisher independently compares all

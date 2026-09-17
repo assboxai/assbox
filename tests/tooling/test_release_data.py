@@ -67,6 +67,38 @@ class ReleaseDataTests(unittest.TestCase):
             result = data.compose_lock(result, result, set(data.INPUTS))
         self.assertLess(len(data.json_bytes(result)), 10000)
 
+    def test_graph_identity_allows_renaming_sharing_and_equivalent_follows(self):
+        original = lock()
+        renamed = data.compose_lock(original, original, set())
+        data.require_same_inputs(original, renamed)
+        for node in renamed['nodes'].values():
+            if node.get('inputs', {}).get('nixpkgs') == ['nixpkgs']:
+                node['inputs']['nixpkgs'] = renamed['nodes']['root']['inputs']['nixpkgs']
+        data.require_same_inputs(original, renamed)
+
+    def test_graph_identity_rejects_dependency_and_edge_changes(self):
+        original = lock()
+        for change in ['revision', 'hash', 'original', 'added', 'removed', 'redirected']:
+            changed = copy.deepcopy(original)
+            helper = changed['nodes']['helper']
+            app = changed['nodes']['opencode-packages']
+            if change == 'revision': helper['locked']['rev'] = 'b' * 40
+            elif change == 'hash': helper['locked']['narHash'] = 'sha256-' + 'C' * 43 + '='
+            elif change == 'original': app['original']['repo'] = 'different'
+            elif change == 'added': app['inputs']['extra'] = 'helper'
+            elif change == 'removed': del app['inputs']['helper']
+            else: app['inputs']['helper'] = 'nixpkgs'
+            with self.assertRaisesRegex(ValueError, 'changed a selected dependency', msg=change):
+                data.require_same_inputs(original, changed)
+
+    def test_graph_identity_checks_edges_in_recursive_graphs(self):
+        original = lock()
+        original['nodes']['helper']['inputs'] = {'cycle': 'helper'}
+        data.require_same_inputs(original, copy.deepcopy(original))
+        changed = copy.deepcopy(original)
+        changed['nodes']['helper']['inputs']['cycle'] = 'nixpkgs'
+        with self.assertRaises(ValueError): data.require_same_inputs(original, changed)
+
     def test_invalid_graphs_fail_closed(self):
         for name in ['path', 'parent', 'dangling', 'follows-cycle', 'missing-input', 'new-input']:
             value = lock()

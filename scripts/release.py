@@ -155,6 +155,31 @@ def context(sha: str, files: dict, lock_bytes: bytes) -> dict:
     return {"coreCommit": sha, "coreVersion": version, "lockSha256": data.digest(lock_bytes)}
 
 
+def resolved_lock(tree: Path) -> dict:
+    return data.decode(run("nix", "flake", "metadata", "--json", "--no-use-registries",
+                           "--no-update-lock-file", "--no-write-lock-file",
+                           str(tree.resolve())))["locks"]
+
+
+def normalized_lock(core: dict, selected: dict) -> bytes:
+    # The composer deliberately isolates application subtrees. Nix assigns its
+    # own node names; authenticate that exact graph, after checking every pin.
+    with tempfile.TemporaryDirectory(prefix="assbox-lock-") as temp:
+        tree = Path(temp) / "source"
+        materialize({**core, "flake.lock": (0o644, data.json_bytes(selected))}, tree)
+        resolved = resolved_lock(tree)
+    data.require_same_inputs(selected, resolved)
+    return data.json_bytes(resolved)
+
+
+def check_lock(tree: Path) -> None:
+    committed = load(tree / "flake.lock")
+    data.validate_lock(committed)
+    if committed != resolved_lock(tree):
+        raise ValueError("resolved graph differs from the source lock; normalize before authenticating it")
+    print("Resolved source lock matches exactly.")
+
+
 def output(name: str, value: str) -> None:
     if "\n" in value or "\r" in value:
         raise ValueError("unsafe workflow output")
@@ -287,7 +312,7 @@ def application_probe(plan_path: Path, application: str, system: str, report: Pa
     native = run("nix", "eval", "--impure", "--raw", "--expr", "builtins.currentSystem").decode()
     if native != system:
         raise ValueError("cross-architecture reports do not count as native acceptance")
-    lock_bytes = data.json_bytes(data.compose_lock(plan["baseline"], plan["latest"], {"nixpkgs", application + "-packages"}))
+    lock_bytes = normalized_lock(core, data.compose_lock(plan["baseline"], plan["latest"], {"nixpkgs", application + "-packages"}))
     with tempfile.TemporaryDirectory(prefix="assbox-app-probe-") as temp:
         tree = Path(temp) / "source"
         materialize(data.source_files(core, lock_bytes, context(sha, core, lock_bytes)), tree)
@@ -308,7 +333,7 @@ def finalize(plan_path: Path, reports: Path, out: Path) -> None:
     if plan["coreCommit"] != sha:
         raise ValueError("candidate was resolved from a different core")
     advanced = data.select_inputs([load(p) for p in sorted(reports.rglob("probe-*.json"))], data.digest(plan_bytes))
-    lock_bytes = data.json_bytes(data.compose_lock(plan["baseline"], plan["latest"], advanced))
+    lock_bytes = normalized_lock(core, data.compose_lock(plan["baseline"], plan["latest"], advanced))
     ctx = context(sha, core, lock_bytes)
     files = data.source_files(core, lock_bytes, ctx)
     archive = data.pack_source(files)
@@ -502,6 +527,7 @@ def main() -> int:
     # develop/build invocation. Child processes get a separately scrubbed env.
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    p = commands.add_parser("check-lock"); p.add_argument("tree", type=Path)
     p = commands.add_parser("discover"); p.add_argument("out", type=Path)
     p = commands.add_parser("prepare"); p.add_argument("out", type=Path); p.add_argument("discovery", type=Path)
     p = commands.add_parser("probe"); p.add_argument("plan", type=Path); p.add_argument("application", choices=data.APPLICATIONS); p.add_argument("system", choices=data.SYSTEMS); p.add_argument("report", type=Path)
@@ -513,7 +539,8 @@ def main() -> int:
     p = commands.add_parser("promote"); p.add_argument("tag"); p.add_argument("release_id")
     args = parser.parse_args()
     try:
-        if args.command == "discover": discover(args.out)
+        if args.command == "check-lock": check_lock(args.tree)
+        elif args.command == "discover": discover(args.out)
         elif args.command == "prepare": prepare(args.out, args.discovery)
         elif args.command == "probe": application_probe(args.plan, args.application, args.system, args.report)
         elif args.command == "finalize": finalize(args.plan, args.reports, args.out)

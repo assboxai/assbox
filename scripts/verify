@@ -17,7 +17,7 @@ case "$stage" in
   static) tools=(python3 node cargo rustfmt nix nixfmt shellcheck actionlint jq systemd-analyze) ;;
   rust) tools=(cargo rustc python3) ;;
   mutations) tools=(python3 cargo rustc) ;;
-  nix) tools=(nix jq) ;;
+  nix) tools=(nix jq python3) ;;
   *) echo "Unknown verification stage: $stage" >&2; exit 2 ;;
 esac
 for tool in "${tools[@]}"; do
@@ -52,6 +52,7 @@ case "$stage" in
     python3 scripts/mutations.py
     ;;
   nix)
+    python3 scripts/release.py check-lock .
     # Separate evaluator lifetimes keep the expanded matrix from accumulating
     # every system in one process. Each check retains normal Nix build parallelism.
     system=$(nix eval --raw --impure --expr builtins.currentSystem)
