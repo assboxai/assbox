@@ -14,13 +14,28 @@ fn interactive(program: &str, args: &[&str]) -> Result<()> {
 }
 
 fn interactive_executable(program: &Path, args: &[&str]) -> Result<()> {
+    let status = interactive_command(program, args)?
+        .status()
+        .map_err(|e| Error::new(e.to_string()))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(Error::new(format!(
+            "{} exited with {status}",
+            program.display()
+        )))
+    }
+}
+
+fn interactive_command(program: &Path, args: &[&str]) -> Result<Command> {
     let uid = Commands.text("id", &["-u"])?;
     let uid = uid
         .trim()
         .parse::<u32>()
         .map_err(|_| Error::new("invalid user identity"))?;
     let runtime = format!("/run/user/{uid}");
-    let status = Command::new(program)
+    let mut command = Command::new(program);
+    command
         .args(args)
         .env(
             "PATH",
@@ -32,17 +47,51 @@ fn interactive_executable(program: &Path, args: &[&str]) -> Result<()> {
             "DBUS_SESSION_BUS_ADDRESS",
             format!("unix:path={runtime}/bus"),
         )
-        .current_dir("/home/agent")
-        .status()
-        .map_err(|e| Error::new(e.to_string()))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(Error::new(format!(
-            "{} exited with {status}",
-            program.display()
-        )))
+        .current_dir("/home/agent");
+    Ok(command)
+}
+
+fn start_application(backend: &str, launcher: &str, frontend: &str) -> Result<()> {
+    let autostart = Commands.jq_fields(
+        &probe::runtime_json()?,
+        r#"(.session.autostart // []) | .[] | . + "\u0000""#,
+    )?;
+    let frontend = autostart
+        .iter()
+        .any(|id| id == launcher)
+        .then_some(frontend);
+    let systemctl = Commands.executable("systemctl")?;
+    start_application_units(backend, frontend, |args| {
+        let status = interactive_command(&systemctl, args)?
+            .status()
+            .map_err(|e| Error::new(e.to_string()))?;
+        if status.success() {
+            Ok(true)
+        } else if args.get(1) == Some(&"is-active") && status.code() == Some(3) {
+            Ok(false)
+        } else {
+            Err(Error::new(format!(
+                "systemctl {} exited with {status}",
+                args.join(" ")
+            )))
+        }
+    })
+}
+
+/// Explicit successful setup may open a selected frontend once. Background
+/// backend restarts never call this and must not reopen a closed window.
+fn start_application_units(
+    backend: &str,
+    frontend: Option<&str>,
+    mut systemctl: impl FnMut(&[&str]) -> Result<bool>,
+) -> Result<()> {
+    systemctl(&["--user", "restart", backend])?;
+    if let Some(frontend) = frontend
+        && systemctl(&["--user", "is-active", "--quiet", "graphical-session.target"])?
+    {
+        systemctl(&["--user", "start", frontend])?;
     }
+    Ok(())
 }
 fn require_selected(component: Component) -> Result<()> {
     if Commands.text("id", &["-un"])?.trim() != "agent" {
@@ -123,9 +172,10 @@ pub fn setup(component: Component) -> Result<()> {
                 files::io(file.sync_all())?;
             }
             interactive("opencode", &["auth", "login"])?;
-            interactive(
-                "systemctl",
-                &["--user", "restart", "assbox-opencode.service"],
+            start_application(
+                "assbox-opencode.service",
+                "opencode-attach",
+                "assbox-opencode-ui.service",
             )?;
             println!(
                 "OpenCode server is configured on loopback. Its password stays in ~/.config/assbox/opencode.env."
@@ -134,9 +184,10 @@ pub fn setup(component: Component) -> Result<()> {
         }
         Component::OpenclawGateway => {
             interactive("openclaw", &["onboard", "--skip-daemon"])?;
-            interactive(
-                "systemctl",
-                &["--user", "restart", "assbox-openclaw.service"],
+            start_application(
+                "assbox-openclaw.service",
+                "openclaw-dashboard",
+                "assbox-openclaw-ui.service",
             )?;
             println!(
                 "Assbox owns the gateway service. Other agent runtimes are separate selections."
@@ -186,4 +237,52 @@ pub(crate) fn installed_program(name: &str) -> Result<std::path::PathBuf> {
         ));
     }
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn setup_opens_only_a_selected_frontend_in_an_active_session() {
+        for selected in [false, true] {
+            for active in [false, true] {
+                let mut calls = Vec::new();
+                start_application_units(
+                    "backend.service",
+                    selected.then_some("frontend.service"),
+                    |args| {
+                        calls.push(args.join(" "));
+                        Ok(args[1] != "is-active" || active)
+                    },
+                )
+                .unwrap();
+                let mut expected = vec!["--user restart backend.service"];
+                if selected {
+                    expected.push("--user is-active --quiet graphical-session.target");
+                    if active {
+                        expected.push("--user start frontend.service");
+                    }
+                }
+                assert_eq!(calls, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn setup_propagates_failures_and_stops_before_subsequent_actions() {
+        for fail_at in 1..=3 {
+            let mut calls = 0;
+            let result = start_application_units("backend", Some("frontend"), |_| {
+                calls += 1;
+                if calls == fail_at {
+                    Err(Error::new("test failure"))
+                } else {
+                    Ok(true)
+                }
+            });
+            assert!(result.is_err());
+            assert_eq!(calls, fail_at);
+        }
+    }
 }

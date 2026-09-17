@@ -130,6 +130,7 @@ in
         updates
         ;
       boot = cfg.boot;
+      session = { inherit (cfg.session) autostart; };
     };
   };
 }

@@ -8,7 +8,7 @@ let
   catalog = builtins.fromJSON (builtins.readFile ../../catalog/components.json);
   fixture = pkgs.runCommand "assbox-lifecycle-provider" { } ''
     mkdir -p "$out/bin" "$out/libexec"
-    for name in claude cursor-agent openclaw happy codex assbox-vscode claude-desktop code zeditor emacs assbox-vscode-gui; do
+    for name in claude cursor-agent openclaw opencode st chromium happy codex assbox-vscode claude-desktop code zeditor emacs assbox-vscode-gui; do
       printf '#!${pkgs.python3}/bin/python3\n' > "$out/bin/$name"
       cat ${../fixtures/remote_provider.py} >> "$out/bin/$name"
       chmod +x "$out/bin/$name"
@@ -34,6 +34,10 @@ let
     zed-editor = package;
     emacs = package;
     emacs-nox = package;
+    st = package // {
+      overrideAttrs = _: package;
+    };
+    chromium = package;
   };
   adapter =
     path:
@@ -63,6 +67,9 @@ let
       "claude-code"
       "cursor-agent"
       "openclaw"
+      "openclaw-gateway"
+      "opencode"
+      "opencode-server"
       "happy"
       "codex"
       "vscode-cli"
@@ -80,6 +87,7 @@ pkgs.testers.runNixOSTest {
       (adapter ../../modules/components.nix)
       (adapter ../../modules/remotes.nix)
       (adapter ../../modules/editors.nix)
+      (adapter ../../modules/applications.nix)
     ];
     _module.args.assboxPackage = assbox;
     assbox = {
@@ -98,7 +106,10 @@ pkgs.testers.runNixOSTest {
             cursor-worker.computerUse.enable = true;
             emacs.variant = "gui";
           };
-      session.autostart = guiIds;
+      session.autostart = guiIds ++ [
+        "opencode-attach"
+        "openclaw-dashboard"
+      ];
     };
     # A real passive graphical target with a test owner; no Xorg or GPU is needed.
     systemd.user.targets.assbox-test-session = {
@@ -109,6 +120,12 @@ pkgs.testers.runNixOSTest {
       lib.genAttrs
         (map (id: "assbox-${id}") (
           builtins.filter (id: config.assbox.components.${id}.enable) (remoteIds ++ guiIds)
+          ++ [
+            "opencode"
+            "openclaw"
+          ]
+          ++ lib.optional (builtins.elem "opencode-attach" config.assbox.session.autostart) "opencode-ui"
+          ++ lib.optional (builtins.elem "openclaw-dashboard" config.assbox.session.autostart) "openclaw-ui"
         ))
         (name: {
           # Only compress time in the fixture. Keep production restart/limit policy.
@@ -120,6 +137,7 @@ pkgs.testers.runNixOSTest {
       lib.mkForce "changed";
     specialisation.disabled.configuration.assbox.components.claude-code-remote.enable =
       lib.mkForce false;
+    specialisation.disabled.configuration.assbox.session.autostart = lib.mkForce guiIds;
     users.allowNoPasswordLogin = true;
     users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
@@ -167,6 +185,18 @@ pkgs.testers.runNixOSTest {
     gui_ids = ${builtins.toJSON guiIds}
     # Units cannot start before permission exists, even when their target is up.
     machine.succeed(ctl("start assbox-test-session.target"))
+    applications = [("opencode-server", "opencode"), ("openclaw-gateway", "openclaw")]
+    for component, backend in applications:
+        inactive(backend)
+        inactive(backend + "-ui")
+        machine.succeed(ctl("show -p ConditionResult --value " + unit(backend + "-ui")) + " | grep -x no")
+        machine.fail(user("ASSBOX_TEST_ONBOARD=1 ASSBOX_TEST_SETUP_FAIL=1 assbox component setup " + component))
+        inactive(backend)
+        inactive(backend + "-ui")
+        # Real CLI routing after first login must start the previously skipped UI.
+        machine.succeed(user("ASSBOX_TEST_ONBOARD=1 assbox component setup " + component))
+        active(backend)
+        active(backend + "-ui")
     for id in remote_ids:
         machine.succeed(ctl("start " + unit(id)))
         inactive(id)
@@ -242,10 +272,29 @@ pkgs.testers.runNixOSTest {
     gone(owned)
     for id in ["cursor-worker"] + gui_ids:
         inactive(id)
+    for component, backend in applications:
+        inactive(backend + "-ui")
+        active(backend)
+        # Onboarding without a graphical session must leave the frontend stopped.
+        machine.succeed(user("ASSBOX_TEST_ONBOARD=1 assbox component setup " + component))
+        active(backend)
+        inactive(backend + "-ui")
     for id in remote_ids:
         if id != "cursor-worker": active(id)
     machine.succeed(ctl("start assbox-test-session.target"))
     active("cursor-worker")
+    for component, backend in applications:
+        active(backend + "-ui")
+        children = pids(backend + "-ui")
+        count = starts(backend + "-ui")
+        machine.succeed("kill -TERM " + str(children[0]))
+        inactive(backend + "-ui")
+        gone(children)
+        machine.succeed(ctl("restart " + unit(backend)))
+        active(backend)
+        time.sleep(1)
+        assert starts(backend + "-ui") == count
+        inactive(backend + "-ui")
     # Closing an editor normally must not restart it.
     for id in gui_ids:
         active(id)
@@ -271,5 +320,10 @@ pkgs.testers.runNixOSTest {
     gone(children)
     machine.fail(ctl("start " + unit("claude-code-remote")))
     machine.succeed(user("test -n \"$(ls ~/.config/assbox/onboarded/claude-code-remote-*)\""))
+    for component, backend in applications:
+        # Removing a launcher must not make setup try to start its missing unit.
+        machine.succeed(user("ASSBOX_TEST_ONBOARD=1 assbox component setup " + component))
+        active(backend)
+        machine.succeed(ctl("show -p LoadState --value " + unit(backend + "-ui")) + " | grep -x not-found")
   '';
 }

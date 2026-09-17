@@ -5,6 +5,12 @@ Every optional component defaults off. Nano and tmux remain in the base. A packa
 a remote service and graphical autostart are separate choices. Nothing selects an
 extra agent implicitly, including OpenClaw and ChatGPT Desktop.
 
+Successful `assbox component setup opencode-server` or `openclaw-gateway` starts
+the managed backend. It also opens the corresponding frontend if selected in
+`assbox.session.autostart` and a graphical session is active. With no active session,
+a selected frontend waits for the next graphical login. Closing a window normally leaves it closed;
+background backend restarts do not reopen it.
+
 Run `assbox component list` to see IDs, dependencies, proprietary-package consent,
 known mutable helpers and unavailable capabilities. `assbox component set
 codex,gemini-cli headless` stages that complete selection for reboot. It rejects

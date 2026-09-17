@@ -12,6 +12,7 @@ import time
 names = {
     'claude': 'claude-code-remote', 'cursor-agent': 'cursor-worker',
     'openclaw': 'openclaw-node', 'happy': 'happy-remote',
+    'opencode': 'opencode', 'st': 'opencode-ui', 'chromium': 'openclaw-ui',
     'assbox-vscode': 'vscode-tunnel', 'claude-desktop': 'claude-desktop',
     'assbox-vscode-gui': 'vscode', 'zed-editor': 'zed', 'emacs': 'emacs',
 }
@@ -23,8 +24,20 @@ if Path(sys.argv[0]).name in ['code', 'zeditor']:
     subprocess.Popen([str(Path(sys.argv[0]).parent / entry)])
     sys.exit(0)
 name = names.get(Path(sys.argv[0]).name)
-if os.environ.get('ASSBOX_TEST_ONBOARD') == '1' or name is None:
+if Path(sys.argv[0]).name == 'openclaw' and sys.argv[1:2] == ['gateway']:
+    name = 'openclaw'
+if os.environ.get('ASSBOX_TEST_ONBOARD') == '1':
     # Onboarding can log in/configure/pair without running a daemon or network call.
+    if os.environ.get('ASSBOX_TEST_SETUP_FAIL') == '1':
+        sys.exit(1)
+    if Path(sys.argv[0]).name == 'openclaw' and sys.argv[1:2] == ['onboard']:
+        config = Path.home() / '.openclaw'
+        config.mkdir(mode=0o700, exist_ok=True)
+        credential = config / 'openclaw.json'
+        credential.write_text('{"gateway":{"auth":{"mode":"token","token":"fixture"}}}\n')
+        credential.chmod(0o600)
+    sys.exit(0)
+if name is None:
     sys.exit(0)
 state = Path.home() / 'lifecycle-fixture'
 state.mkdir(mode=0o700, exist_ok=True)
