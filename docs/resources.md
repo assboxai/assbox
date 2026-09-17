@@ -36,6 +36,12 @@ Shutdown kills the whole service group after the sixty-second grace period.
 CPU, I/O and memory accounting make resource pressure visible without adding a
 separate Assbox tuning interface.
 
+The X11 display manager also retries with five-to-sixty-second backoff and no
+start-count lockout. Greeterless autologin restores the agent session after Openbox
+or X-server failure and after logout. Explicitly stopping the display manager
+still leaves it stopped. This restores the desktop and configured launchers, not
+unsaved application state or interrupted tasks.
+
 Use `systemd-cgtop`, `zramctl`, `free -h` and
 `journalctl -k -g 'oom|Out of memory'` to inspect pressure. For application failures,
 run `sudo assbox doctor` or inspect `systemctl --user status assbox-opencode` as

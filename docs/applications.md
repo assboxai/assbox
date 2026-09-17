@@ -149,6 +149,12 @@ Session wrappers own `graphical-session.target` and clear stale display variable
 GUI units stop with that target. Headless services remain independent. Cursor's
 explicit X11 computer-use worker follows the graphical target as well.
 
+X11 uses LightDM's greeterless autologin. Logout, Openbox failure and X-server
+failure cause a fresh agent session and its selected launchers to start, with
+systemd restart backoff. The agent password stays locked; administrative login
+uses a text console or explicitly enabled admin SSH. `sudo systemctl stop
+display-manager` deliberately stops X11 and does not trigger another login.
+
 ## SSH and Tailscale
 
 ```nix

@@ -98,11 +98,50 @@ pkgs.testers.runNixOSTest {
         assert machine.succeed(ctl("show -p ActiveState --value " + unit(id))).strip() == "inactive"
         assert machine.succeed(ctl("show -p NRestarts --value " + unit(id))) == closed[id]
 
-    # A new graphical session starts the selected editors again.
-    machine.succeed("systemctl restart display-manager")
-    for id in editors:
-        ready(id)
+    # Crash only the session or X server; restarting LightDM manually would hide
+    # a stranded greeter. Normal logout must also repeat the locked-user login.
+    assert machine.succeed("getent shadow agent | cut -d: -f2").strip() == "!"
+    assert machine.succeed("systemctl show display-manager -p StartLimitIntervalUSec --value").strip() == "0"
+    assert machine.succeed("systemctl show display-manager -p RestartMaxDelayUSec --value").strip() == "1min"
+
+    def only_pid(command):
+        pids = machine.succeed(command).splitlines()
+        assert len(pids) == 1 and int(pids[0]) > 0, pids
+        return pids[0]
+
+    def manager(property):
+        return machine.succeed("systemctl show display-manager -p " + property + " --value").strip()
+
+    for failure in ["openbox-crash", "xserver-crash", "logout"]:
+        previous_manager = manager("MainPID")
+        previous_restarts = int(manager("NRestarts"))
+        previous_wm = only_pid("pgrep -u agent -x openbox")
+        previous_apps = [machine.succeed(ctl("show -p MainPID --value " + unit(id))).strip() for id in editors]
+        if failure == "openbox-crash":
+            machine.succeed("kill -KILL " + previous_wm)
+        elif failure == "xserver-crash":
+            machine.succeed("kill -KILL " + only_pid("pgrep -x 'X|Xorg'"))
+        else:
+            machine.succeed(user("openbox --exit"))
+        machine.wait_until_succeeds("test $(systemctl show display-manager -p NRestarts --value) -gt " + str(previous_restarts), timeout=180)
+        machine.wait_until_succeeds("systemctl is-active display-manager", timeout=180)
+        machine.wait_until_succeeds("pgrep -u agent -x openbox", timeout=180)
+        assert manager("MainPID") != previous_manager
+        assert only_pid("pgrep -u agent -x openbox") != previous_wm
+        for id in editors:
+            ready(id)
+        for pid in [previous_wm, *previous_apps]:
+            if pid != "0":
+                machine.succeed("test ! -e /proc/" + pid)
+        machine.succeed(ctl("is-active graphical-session.target"))
+        machine.screenshot(failure + "-recovered")
+
+    # Deliberate administrative stop must not create another login.
     machine.succeed("systemctl stop display-manager")
+    assert manager("ActiveState") == "inactive"
+    assert manager("MainPID") == "0"
+    machine.fail("pgrep -u agent -x openbox")
+    machine.fail(ctl("is-active graphical-session.target"))
     for id in editors:
         machine.wait_until_succeeds(ctl("show -p ActiveState --value " + unit(id)) + " | grep -x inactive", timeout=90)
         assert machine.succeed(ctl("show -p MainPID --value " + unit(id))).strip() == "0"

@@ -163,7 +163,17 @@ let
         && !a.passwordlessSudo
         && !(builtins.elem "wheel" a.agentGroups)
         && (a.boot != "apple-refind" || !a.efiWrites)
-        && (!(builtins.elem "chatgpt-desktop" a.selectedComponents) || a.presentation == "x11");
+        && (!(builtins.elem "chatgpt-desktop" a.selectedComponents) || a.presentation == "x11")
+        && (
+          a.presentation != "x11"
+          || (
+            !machine.config.services.xserver.displayManager.lightdm.greeter.enable
+            && machine.config.systemd.services.display-manager.startLimitIntervalSec == 0
+            && machine.config.systemd.services.display-manager.serviceConfig.Restart == "always"
+            && machine.config.systemd.services.display-manager.serviceConfig.RestartSec == 5
+            && machine.config.systemd.services.display-manager.serviceConfig.RestartMaxDelaySec == 60
+          )
+        );
       assertions = builtins.all (entry: entry.assertion) machine.config.assertions;
     in
     assert good && assertions;

@@ -50,7 +50,12 @@ in
         services.xserver = {
           enable = true;
           dpi = 96 * cfg.display.scale;
-          displayManager.lightdm.enable = true;
+          displayManager.lightdm = {
+            enable = true;
+            # LightDM otherwise returns to a password greeter after session/Xorg
+            # failure. Without a greeter it exits, letting systemd repeat autologin.
+            greeter.enable = false;
+          };
           # Custom wrapper owns the session target instead of the stock Openbox
           # launcher, which does not have Assbox's application lifecycle contract.
           windowManager.session = [
@@ -68,6 +73,17 @@ in
           autoLogin = {
             enable = true;
             user = "agent";
+          };
+        };
+        systemd.services.display-manager = {
+          # Replace the upstream three-start lockout with bounded retry backoff.
+          # An explicit systemctl stop still leaves the display manager stopped.
+          startLimitIntervalSec = lib.mkForce 0;
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = lib.mkForce 5;
+            RestartSteps = 5;
+            RestartMaxDelaySec = 60;
           };
         };
         services.xserver.displayManager.sessionCommands = ''

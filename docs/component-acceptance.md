@@ -92,7 +92,9 @@ blocker requires its adapter and regression coverage in the same reviewed change
   native execution remains required on both architectures.
 - `editor-vm`: actual packaged VS Code, Zed and GUI Emacs on X11. It requires visible
   windows, kills only each main process, verifies recovery, closes windows normally,
-  and checks graphical logout/relogin. Wayland and hardware behavior also require
+  and checks recovery after Openbox failure, X-server failure and logout without
+  manually restarting the display manager. Explicit manager stop must clean up
+  the graphical session and leave it stopped. Wayland and hardware behavior also require
   the owner-run acceptance below. This new VM gate has not yet been executed.
 - `access-lan-vm` and `access-tailscale-vm`: real OpenSSH keys, privilege refusal,
   IPv4/IPv6 packets, untrusted ingress and disappearance of the admitted interface.
