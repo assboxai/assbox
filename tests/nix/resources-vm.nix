@@ -3,8 +3,9 @@
 let
   arm = pkgs.stdenv.hostPlatform.isAarch64;
   worker = pkgs.writeText "assbox-resource-worker.nix" ''
+    { label }:
     derivation {
-      name = "assbox-resource-worker";
+      name = "assbox-resource-worker-" + label;
       system = "${pkgs.stdenv.hostPlatform.system}";
       builder = (builtins.storePath "${pkgs.bash}") + "/bin/bash";
       args = [ "-c" ((builtins.storePath "${pkgs.coreutils}") + "/bin/cat /proc/self/cgroup > $out") ];
@@ -49,9 +50,19 @@ pkgs.testers.runNixOSTest {
     assert machine.succeed("cat " + group + "/cpu.max").split()[0] == "max"
     for limit in ["memory.high", "memory.max"]:
         assert machine.succeed("cat " + group + "/" + limit).strip() == "max"
-    # Inspect an actual sandboxed build child, not just the Nix client's group.
-    output = machine.succeed("nix-build --option substituters \"\" --no-out-link ${worker}").strip()
-    assert "/assbox.slice/nix-daemon.service" in machine.succeed("cat " + output)
+    # Root's automatic store selection uses the local store. Select the daemon
+    # explicitly to inspect one of its actual sandboxed build children.
+    output = machine.succeed("nix-build --store daemon --option substituters \"\" --no-out-link --argstr label daemon ${worker}").strip()
+    worker_group = machine.succeed("cat " + output)
+    assert "/assbox.slice/nix-daemon.service" in worker_group, worker_group
+    # Root maintenance can build locally and inherits its service's slice. Use a
+    # distinct derivation so the daemon case cannot supply a cached result.
+    output = machine.succeed(
+        "systemd-run --quiet --wait --pipe --collect --unit=assbox-resource-local --property=Slice=assbox.slice "
+        "${pkgs.nix}/bin/nix-build --store local --option substituters \"\" --no-out-link --argstr label local ${worker}"
+    ).strip()
+    worker_group = machine.succeed("cat " + output)
+    assert "/assbox.slice/assbox-resource-local.service" in worker_group, worker_group
     algorithm = machine.succeed("cat /sys/block/zram0/comp_algorithm")
     assert "[zstd]" in algorithm
     memory_kib = int(machine.succeed("awk '/MemTotal/ {print $2}' /proc/meminfo"))

@@ -10,6 +10,11 @@ while allowing background builds to use idle capacity. The daemon's build childr
 inherit that placement. There are no Assbox CPU quotas, memory ceilings or build
 job caps. I/O weight effectiveness depends on the device and kernel scheduler.
 
+Root clients can use Nix's local store directly under its
+[automatic store selection](https://nix.dev/manual/nix/2.34/store/types/).
+Scheduled root maintenance still inherits the maintenance service's background
+slice. Foreground administrator builds retain their calling context.
+
 Standard NixOS zram provides demand-allocated compressed swap using zstd. Its logical
 capacity is half of RAM; it does not reserve half of RAM at boot, and it does not
 alter disk partitions. Compression helps with cold, compressible pages but cannot
