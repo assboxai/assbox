@@ -147,6 +147,12 @@ let
   configurations = lib.mapAttrs' (
     name: machine: lib.nameValuePair "${pkgs.stdenv.hostPlatform.system}-${name}" machine
   ) (localConfigurations // componentConfigurations);
+  # NixOS coerces portal backend lists to semicolon-separated strings. Export
+  # this predicate so the lightweight typed harness exercises the same gate.
+  portalBackendsMatch =
+    presentation: portals:
+    portals.${if presentation == "x11" then "openbox" else "labwc"}.default
+    == (if presentation == "x11" then "gtk" else "wlr;gtk");
   audit =
     name: machine:
     let
@@ -194,17 +200,7 @@ let
             machine.config.xdg.portal.enable
             && machine.config.services.gnome.gnome-keyring.enable
             && builtins.elem pkgs.xdg-desktop-portal-gtk machine.config.xdg.portal.extraPortals
-            &&
-              machine.config.xdg.portal.config.${if a.presentation == "x11" then "openbox" else "labwc"}.default
-              == (
-                if a.presentation == "x11" then
-                  [ "gtk" ]
-                else
-                  [
-                    "wlr"
-                    "gtk"
-                  ]
-              )
+            && portalBackendsMatch a.presentation machine.config.xdg.portal.config
           )
         )
         && (
@@ -254,7 +250,7 @@ let
   rejects = machine: !(builtins.all (entry: entry.assertion) machine.config.assertions);
 in
 {
-  inherit configurations;
+  inherit configurations portalBackendsMatch;
   checks =
     lib.mapAttrs' (
       name: machine: lib.nameValuePair "policy-${name}" (audit name machine)

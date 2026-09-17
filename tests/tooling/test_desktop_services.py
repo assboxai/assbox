@@ -17,27 +17,38 @@ class DesktopServicesTests(unittest.TestCase):
         catalog_tests.ComponentCatalogTests.setUpClass()
         cls.lib = catalog_tests.ComponentCatalogTests.lib
 
-    def evaluate(self, presentation):
+    def evaluate(self, presentation, *, portal_default=None):
         if not self.lib:
             self.skipTest('Nix module library unavailable; run in the development shell')
-        result = subprocess.run([
+        args = [
             'nix-instantiate', '--eval', '--strict', '--json',
             'tests/nix/presentation-eval.nix', '--arg', 'libPath', self.lib,
             '--argstr', 'presentation', presentation,
-        ], cwd=ROOT, capture_output=True, text=True, timeout=30)
+        ]
+        if portal_default is not None:
+            args += ['--argstr', 'portalDefault', portal_default]
+        result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
 
     def test_portal_selection_matches_the_actual_desktop(self):
-        for mode, desktop, backends in [('x11', 'openbox', ['gtk']),
-                                         ('wayland', 'labwc', ['wlr', 'gtk'])]:
+        for mode, desktop, backends in [('x11', 'openbox', 'gtk'),
+                                         ('wayland', 'labwc', 'wlr;gtk')]:
             with self.subTest(mode=mode):
                 config = self.evaluate(mode)
                 self.assertTrue(config['xdg']['portal']['enable'])
                 self.assertEqual(config['xdg']['portal']['config'][desktop]['default'], backends)
+                self.assertTrue(config['portalPolicy'])
                 if mode == 'x11':
                     self.assertIn('/inert/xdg-desktop-portal-gtk', config['xdg']['portal']['extraPortals'])
-        self.assertEqual(self.evaluate('headless')['xdg'], {})
+        headless = self.evaluate('headless')
+        self.assertEqual(headless['xdg']['portal'], {'enable': False, 'config': {}, 'extraPortals': []})
+        self.assertTrue(headless['portalPolicy'])
+
+    def test_portal_matrix_gate_rejects_incorrect_backend_selection(self):
+        for mode, backend in [('x11', 'wlr;gtk'), ('wayland', 'gtk'), ('wayland', 'gtk;wlr')]:
+            with self.subTest(mode=mode, backend=backend):
+                self.assertFalse(self.evaluate(mode, portal_default=backend)['portalPolicy'])
 
     def test_keyring_is_enabled_only_for_headed_sessions(self):
         for mode, desktop in [('x11', 'openbox'), ('wayland', 'labwc')]:
@@ -45,7 +56,7 @@ class DesktopServicesTests(unittest.TestCase):
                 config = self.evaluate(mode)
                 self.assertTrue(config['services']['gnome']['gnome-keyring']['enable'])
                 self.assertEqual(config['xdg']['portal']['config'][desktop]
-                                 ['org.freedesktop.impl.portal.Secret'], ['gnome-keyring'])
+                                 ['org.freedesktop.impl.portal.Secret'], 'gnome-keyring')
         self.assertEqual(self.evaluate('headless')['services'], {})
 
     def test_both_display_managers_recover_crashes_without_permanent_lockout(self):
