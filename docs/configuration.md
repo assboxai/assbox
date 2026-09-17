@@ -124,6 +124,17 @@ The installer recommends Wi-Fi from the active route and scale from plausible ED
 information; uncertain values are shown for human selection. These are installation
 suggestions, not an ongoing hardware-dependent configuration rewrite.
 
+Radio power switches remain administrative even while the agent owns the local
+desktop. `/dev/rfkill` is root-only; administrators use `sudo rfkill` when needed.
+The configured Wi-Fi selection is reapplied when NetworkManager starts, and
+disabled Wi-Fi radios are blocked on hotplug. Temporary administrator radio
+changes last until that policy is reapplied; change the Nix option for persistence.
+The legacy kernel radio-hotkey handler is disabled so an agent-controlled input
+device cannot bypass this boundary. This uses a standard NixOS kernel configuration
+override and requires building the configured kernel; radio hotkeys do not toggle
+radios. As with other managed device changes, this policy takes effect on reboot;
+replacing udev rules alone does not revoke descriptors opened by an earlier session.
+
 USB keyboard/mouse and Ethernet remain usable. Removable storage is not automounted
 or granted as a raw block device to the agent. An administrator may mount it
 explicitly; read-only import is preferable. Cameras/audio follow their device

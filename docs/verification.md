@@ -28,6 +28,7 @@ here and keep dated, source-specific execution reports outside the repository.
 | `application-openclaw-vm` | Defined: actual locked package in headless/X11/Wayland, local gateway authentication and lifecycle; native execution and provider tasks remain required |
 | `remote-lifecycle-vm` | Defined: real remote/editor units with substitute providers, onboarding, crash/clean-exit recovery, descendant/session cleanup, diagnostics and NixOS reconfiguration; native execution remains required |
 | `editor-vm` | Defined: actual VS Code/Zed/Emacs foreground entry points, visible X11 windows, main-process crash recovery, normal close and session teardown/restart; native execution remains required |
+| `radio-policy-vm` | Defined: X11/Wayland active-seat ACLs with Wi-Fi enabled/disabled, denied agent radio writes, disabled kernel radio-hotkey handler, root control, NetworkManager preference restoration, session restart and software-radio hotplug; native execution remains required |
 
 Engineering readiness requires implemented behavior and substantive verification
 gates capable of checking it. Pending execution alone is different from missing

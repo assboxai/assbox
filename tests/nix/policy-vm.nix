@@ -61,6 +61,7 @@ pkgs.testers.runNixOSTest {
 
     machine.start()
     machine.wait_for_unit("multi-user.target")
+    machine.wait_for_unit("NetworkManager.service")
     machine.succeed("assbox --version")
     machine.succeed("command -v just rg perl python3 bash sed awk curl")
     machine.fail("test -e /etc/justfile")

@@ -202,6 +202,10 @@
             inherit module;
             inherit (p) pkgs;
           };
+          radio-policy-vm = import ./tests/nix/radio-policy-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
           management-vm = import ./tests/nix/management-vm.nix {
             inherit module;
             inherit (p) pkgs;

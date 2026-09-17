@@ -10,6 +10,15 @@ let
 in
 {
   config = lib.mkIf cfg.enable {
+    # A seat controller can receive writable input descriptors from logind.
+    # Legacy in-kernel radio hotkeys would bypass the rfkill device permissions.
+    boot.kernelPatches = [
+      {
+        name = "assbox-administrative-radio-control";
+        patch = null;
+        structuredExtraConfig.RFKILL_INPUT = lib.mkForce lib.kernel.no;
+      }
+    ];
     hardware.bluetooth.enable = cfg.devices.bluetooth.enable;
     services.pipewire = {
       enable = cfg.devices.audio.enable;
@@ -22,6 +31,8 @@ in
     services.udev.packages = [
       (pkgs.writeTextDir "lib/udev/rules.d/72-assbox-policy.rules" (
         ''
+          # Radio switches are administrative even for the active desktop user.
+          SUBSYSTEM=="misc", KERNEL=="rfkill", TAG-="uaccess", OWNER="root", GROUP="root", MODE="0600"
           SUBSYSTEM=="block", TAG-="uaccess", OWNER="root", GROUP="disk", MODE="0660"
           SUBSYSTEM=="tty", KERNEL=="ttyUSB*", TAG-="uaccess", OWNER="root", GROUP="dialout", MODE="0660"
           SUBSYSTEM=="tty", KERNEL=="ttyACM*", TAG-="uaccess", OWNER="root", GROUP="dialout", MODE="0660"
@@ -38,16 +49,19 @@ in
       ))
     ];
     networking.networkmanager.unmanaged = lib.optional (!cfg.devices.wifi.enable) "type:wifi";
-    systemd.services.assbox-radio-policy = lib.mkIf (!cfg.devices.wifi.enable) {
-      description = "Apply the selected disabled Wi-Fi policy";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "systemd-udev-trigger.service" ];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStart = "${pkgs.util-linux}/bin/rfkill block wlan";
-      };
-    };
+    # NetworkManager restores its own saved radio preference at startup, even
+    # for unmanaged interfaces. Apply the configured selection after that restore
+    # on every daemon start, including transitions back from disabled to enabled.
+    systemd.services.NetworkManager.postStart = ''
+      ${pkgs.networkmanager}/bin/nmcli radio wifi ${if cfg.devices.wifi.enable then "on" else "off"}
+    ''
+    + lib.optionalString (!cfg.devices.wifi.enable) ''
+      # Machines without radios may not have loaded rfkill at all. Hotplug is
+      # covered by the add rule; absence must not break Ethernet startup.
+      if test -c /dev/rfkill; then
+        ${pkgs.util-linux}/bin/rfkill block wlan
+      fi
+    '';
     # New Wi-Fi radios are blocked by the udev rule; drivers remain available.
     systemd.targets.sleep.enable = cfg.power.suspend.enable;
     systemd.targets.suspend.enable = cfg.power.suspend.enable;
