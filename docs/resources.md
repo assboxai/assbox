@@ -15,6 +15,12 @@ capacity is half of RAM; it does not reserve half of RAM at boot, and it does no
 alter disk partitions. Compression helps with cold, compressible pages but cannot
 make an arbitrarily large workload fit in memory.
 
+Installed-system checks and builds drain command output concurrently. Structured
+stdout is limited to 32 MiB while reading, and failures retain only the final
+64 KiB of stderr, marked when truncated. This keeps verbose diagnostics from
+accumulating in the administrator process; it does not limit build memory or
+parallelism. The live installer separately keeps private disk-backed build logs.
+
 Existing local application services restart after failure, with delays increasing
 from five to sixty seconds. Remote servers and editor launchers back off from twenty
 to three hundred seconds over five restart steps, without a start-count lockout.

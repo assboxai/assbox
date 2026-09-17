@@ -8,4 +8,5 @@ pub mod hardware;
 pub mod probe;
 pub mod services;
 
+mod command_output;
 mod mounts;

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use assbox_domain::{Error, Result};
 use std::{
-    io::Write,
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -73,22 +72,7 @@ impl Commands {
         Ok(c)
     }
     pub fn capture(&self, name: &str, args: &[&str]) -> Result<Vec<u8>> {
-        let output = self
-            .command(name, args)?
-            .stdin(Stdio::null())
-            .output()
-            .map_err(|e| Error::new(format!("cannot execute {name}: {e}")))?;
-        if !output.status.success() {
-            return Err(Error::new(format!(
-                "{name} failed ({}): {}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-        if output.stdout.len() > 32 * 1024 * 1024 {
-            return Err(Error::new("tool output exceeds the safety limit"));
-        }
-        Ok(output.stdout)
+        crate::command_output::capture(&mut self.command(name, args)?, name, None)
     }
     /// Count archive output in constant memory without writing a temporary file.
     pub fn output_size(&self, name: &str, args: &[&str]) -> Result<u64> {
@@ -124,29 +108,7 @@ impl Commands {
             .map_err(|_| Error::new("tool output is not UTF-8"))
     }
     pub fn input(&self, name: &str, args: &[&str], input: &[u8]) -> Result<Vec<u8>> {
-        let mut child = self
-            .command(name, args)?
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| Error::new(format!("cannot execute {name}: {e}")))?;
-        // Inputs here are small (inventory JSON, password, or a hash manifest).
-        let mut stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| Error::new("child stdin unavailable"))?;
-        let write = stdin.write_all(input);
-        drop(stdin);
-        let output = child
-            .wait_with_output()
-            .map_err(|e| Error::new(e.to_string()))?;
-        write.map_err(|e| Error::new(e.to_string()))?;
-        if !output.status.success() {
-            // Deliberately omit input and stderr: this interface also handles passwords.
-            return Err(Error::new(format!("{name} failed ({})", output.status)));
-        }
-        Ok(output.stdout)
+        crate::command_output::capture(&mut self.command(name, args)?, name, Some(input))
     }
     pub fn run(&self, name: &str, args: &[&str]) -> Result<()> {
         let status = self
