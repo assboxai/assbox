@@ -65,7 +65,8 @@ pkgs.testers.runNixOSTest {
         pkgs.xdotool
         pkgs.wmctrl
       ];
-      virtualisation.memorySize = if application == "chatgpt" then 4096 else 3072;
+      # OpenClaw's ownership gate runs two independent Chromium profiles.
+      virtualisation.memorySize = if application == "opencode" then 3072 else 4096;
       virtualisation.qemu.forceAccel = pkgs.lib.mkForce (!arm);
       virtualisation.resolution = {
         x = 1280;
@@ -148,6 +149,55 @@ pkgs.testers.runNixOSTest {
         local_auth()
         if mode != "headless":
             active("graphical-session.target")
+            if application == "openclaw":
+                ui = "assbox-openclaw-ui.service"
+                ordinary = "assbox-test-browser.service"
+                profile = "/home/agent/.local/share/assbox/openclaw-browser"
+
+                def browser_property(service, name):
+                    return machine.succeed(user("systemctl --user show " + service + " -p " + name + " --value")).strip()
+
+                def browser_window(service):
+                    pid = browser_property(service, "MainPID")
+                    assert int(pid) > 0
+                    command = user("DISPLAY=:0 xdotool search --onlyvisible --pid " + pid)
+                    machine.wait_until_succeeds(command, timeout=180)
+                    return machine.succeed(command).splitlines()[0]
+
+                def ordinary_alive():
+                    active(ordinary)
+                    assert browser_property(ordinary, "MainPID") == ordinary_pid
+                    if mode == "x11":
+                        browser_window(ordinary)
+
+                def start_ordinary_browser():
+                    # No profile override: this exercises the user's ordinary
+                    # Chromium profile and its real singleton/handoff behavior.
+                    machine.wait_until_succeeds(user("systemctl --user show " + ordinary + " -p LoadState --value | grep -x not-found"), timeout=90)
+                    machine.succeed(user("systemd-run --user --unit=" + ordinary + " --collect --service-type=exec --property=KillMode=control-group chromium --no-first-run --no-default-browser-check about:blank"))
+                    active(ordinary)
+                    machine.wait_until_succeeds("test -L /home/agent/.config/chromium/SingletonLock", timeout=180)
+                    if mode == "x11":
+                        browser_window(ordinary)
+                    return browser_property(ordinary, "MainPID")
+
+                def dashboard_ready():
+                    active(ui)
+                    machine.wait_until_succeeds("test -L " + profile + "/SingletonLock", timeout=180)
+                    ordinary_alive()
+                    dashboard_pid = browser_property(ui, "MainPID")
+                    assert int(dashboard_pid) > 0 and dashboard_pid != ordinary_pid
+                    dashboard_group = browser_property(ui, "ControlGroup")
+                    ordinary_group = browser_property(ordinary, "ControlGroup")
+                    assert dashboard_group and ordinary_group and dashboard_group != ordinary_group
+                    assert machine.succeed("cat /proc/" + dashboard_pid + "/cgroup").strip() == "0::" + dashboard_group
+                    assert machine.succeed("cat /proc/" + ordinary_pid + "/cgroup").strip() == "0::" + ordinary_group
+                    if mode == "x11":
+                        browser_window(ui)
+                    return dashboard_pid
+
+                machine.succeed(user("systemctl --user stop " + ui))
+                ordinary_pid = start_ordinary_browser()
             if application != "chatgpt":
                 machine.succeed(user("systemctl --user restart assbox-" + application + "-ui.service"))
                 active("assbox-" + application + "-ui.service")
@@ -216,6 +266,48 @@ pkgs.testers.runNixOSTest {
                 machine.succeed(user("systemctl --user start " + ui))
                 active(ui)
                 frontend_pid()
+            elif application == "openclaw":
+                before = dashboard_ready()
+                assert machine.succeed("stat -c '%U:%a' " + profile).strip() == "agent:700"
+                # A stable profile retains browser state across supervised restarts.
+                machine.succeed(user("printf %s retained > " + profile + "/assbox-test-persistence"))
+                group = browser_property(ui, "ControlGroup")
+                members = machine.succeed("cat /sys/fs/cgroup" + group + "/cgroup.procs").splitlines()
+                restarts = int(browser_property(ui, "NRestarts"))
+                machine.succeed("kill -KILL " + before)
+                machine.wait_until_succeeds(user("test $(systemctl --user show " + ui + " -p NRestarts --value) -gt " + str(restarts)), timeout=180)
+                assert dashboard_ready() != before
+                for pid in members:
+                    machine.wait_until_succeeds("test ! -e /proc/" + pid, timeout=90)
+                assert machine.succeed(user("cat " + profile + "/assbox-test-persistence")) == "retained"
+
+                def dashboard_stays_closed():
+                    machine.wait_until_succeeds(user("systemctl --user show " + ui + " -p ActiveState --value | grep -x inactive"), timeout=90)
+                    count = browser_property(ui, "NRestarts")
+                    time.sleep(65)  # Longer than the production maximum restart delay.
+                    assert browser_property(ui, "ActiveState") == "inactive"
+                    assert browser_property(ui, "MainPID") == "0"
+                    assert browser_property(ui, "NRestarts") == count
+                    ordinary_alive()
+                    active(unit)
+
+                if mode == "x11":
+                    machine.succeed(user("DISPLAY=:0 wmctrl -ic " + hex(int(browser_window(ui)))))
+                    dashboard_stays_closed()
+                    machine.succeed(user("systemctl --user start " + ui))
+                    dashboard_ready()
+                before = browser_property(ui, "MainPID")
+                machine.succeed(user("systemctl --user stop " + ui))
+                dashboard_stays_closed()
+                machine.succeed("test ! -e /proc/" + before)
+                machine.succeed(user("systemctl --user start " + ui))
+                before = dashboard_ready()
+                # Also test the reverse launch order: ordinary Chromium must
+                # not hand its new window into the dashboard's managed process.
+                machine.succeed(user("systemctl --user stop " + ordinary))
+                ordinary_pid = start_ordinary_browser()
+                assert dashboard_ready() == before
+                machine.succeed(user("systemctl --user stop " + ordinary))
             machine.screenshot(application + "-" + mode)
             display = "display-manager" if mode == "x11" else "greetd"
             machine.succeed("systemctl stop " + display)

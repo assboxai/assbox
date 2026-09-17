@@ -127,7 +127,9 @@ in
           serviceConfig = common // {
             ExitType = "main";
             # The fixed public loopback URL has no token, password or secret fragment.
-            ExecStart = "${pkgs.chromium}/bin/chromium --app=http://127.0.0.1:18789/";
+            # A separate persistent profile keeps Chromium from handing the window
+            # to an ordinary browser outside this service's cgroup.
+            ExecStart = "${pkgs.chromium}/bin/chromium --user-data-dir=%h/.local/share/assbox/openclaw-browser --app=http://127.0.0.1:18789/";
             WorkingDirectory = "%h";
           };
         };

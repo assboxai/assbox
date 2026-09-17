@@ -11,6 +11,13 @@ the managed backend. It also opens the corresponding frontend if selected in
 a selected frontend waits for the next graphical login. Closing a window normally leaves it closed;
 background backend restarts do not reopen it.
 
+The OpenClaw dashboard keeps its Chromium profile in
+`~/.local/share/assbox/openclaw-browser`. Browser authentication persists across
+service restarts, and ordinary Chromium windows have an independent lifecycle.
+Existing dashboard users must authenticate once in this separate profile;
+credentials from the ordinary browser profile are not copied. Both browsers still
+run as the same agent account.
+
 Run `assbox component list` to see IDs, dependencies, proprietary-package consent,
 known mutable helpers and unavailable capabilities. `assbox component set
 codex,gemini-cli headless` stages that complete selection for reboot. It rejects

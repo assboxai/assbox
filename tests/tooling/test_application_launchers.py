@@ -2,6 +2,7 @@
 """Evaluate launcher selection; actual terminal/application behavior is a VM gate."""
 import ast
 import json
+import shlex
 import subprocess
 import unittest
 from pathlib import Path
@@ -54,6 +55,26 @@ class ApplicationLauncherTests(unittest.TestCase):
                 self.assertNotIn('assbox-opencode-ui', result['services'])
                 self.assertNotIn('/inert/st', result['packages'])
                 self.assertIn('assbox-opencode', result['services'])
+
+    def test_dashboard_owns_a_private_persistent_browser_profile(self):
+        for mode in ('x11', 'wayland'):
+            with self.subTest(mode=mode):
+                result = self.evaluate(mode, ['openclaw-dashboard', 'opencode-attach'])
+                service = result['services']['assbox-openclaw-ui']['serviceConfig']
+                args = shlex.split(service['ExecStart'])
+                self.assertEqual(args, ['/inert/chromium/bin/chromium',
+                    '--user-data-dir=%h/.local/share/assbox/openclaw-browser',
+                    '--app=http://127.0.0.1:18789/'])
+                self.assertEqual(service['UMask'], '0077')
+                self.assertEqual(service['Restart'], 'on-failure')
+                self.assertEqual(service['ExitType'], 'main')
+                self.assertEqual(service['KillMode'], 'control-group')
+                self.assertIn('/inert/chromium', result['packages'])
+        for mode in ('headless', 'x11', 'wayland'):
+            with self.subTest(unselected=mode):
+                result = self.evaluate(mode, [])
+                self.assertNotIn('assbox-openclaw-ui', result['services'])
+                self.assertNotIn('/inert/chromium', result['packages'])
 
     def test_real_application_driver_renders_for_both_architectures(self):
         if not self.lib:

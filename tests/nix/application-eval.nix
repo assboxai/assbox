@@ -23,17 +23,17 @@ let
       ../../modules/options.nix
       ../../modules/applications.nix
       {
-        options =
-          lib.genAttrs [ "systemd" "environment" ] (
-            _:
-            lib.mkOption {
-              type = lib.types.attrsOf lib.types.anything;
-              default = { };
-            }
-          )
-          // {
-            assbox.components = lib.mkOption { type = lib.types.attrsOf lib.types.anything; };
+        options = {
+          systemd.user.services = lib.mkOption {
+            type = lib.types.attrsOf lib.types.anything;
+            default = { };
           };
+          environment.systemPackages = lib.mkOption {
+            type = lib.types.listOf lib.types.anything;
+            default = [ ];
+          };
+          assbox.components = lib.mkOption { type = lib.types.attrsOf lib.types.anything; };
+        };
         config.assbox = {
           enable = true;
           inherit presentation;
@@ -41,7 +41,7 @@ let
           session.autostart = autostart;
           components = {
             opencode-server.enable = true;
-            openclaw-gateway.enable = false;
+            openclaw-gateway.enable = true;
             chatgpt-desktop.enable = false;
           };
         };

@@ -25,7 +25,7 @@ here and keep dated, source-specific execution reports outside the repository.
 | `authenticated-release-vm` | Defined: compiled pipeline with controlled external evidence, plus genuine upstream signature fixtures; complete native execution and public-release acceptance remain required |
 | `application-chatgpt-vm` | Defined: actual locked package in X11; native execution and provider-authenticated tasks remain required |
 | `application-opencode-vm` | Defined: actual locked package in headless/X11/Wayland, local authentication, frontend-child crash recovery, X11 window close and explicit stop; native execution and provider tasks remain required |
-| `application-openclaw-vm` | Defined: actual locked package in headless/X11/Wayland, local gateway authentication and lifecycle; native execution and provider tasks remain required |
+| `application-openclaw-vm` | Defined: actual locked package in headless/X11/Wayland, local gateway authentication, independent dashboard/browser processes, dashboard crash recovery, X11 window close and explicit stop; native execution and provider tasks remain required |
 | `remote-lifecycle-vm` | Defined: real remote/editor/application units with substitute providers, CLI onboarding and frontend launch, crash/clean-exit recovery, descendant/session cleanup, diagnostics and NixOS reconfiguration; native execution remains required |
 | `editor-vm` | Defined: actual VS Code/Zed/Emacs foreground entry points, visible X11 windows, main-process crash recovery, normal close and session teardown/restart; native execution remains required |
 | `radio-policy-vm` | Defined: X11/Wayland active-seat ACLs with Wi-Fi enabled/disabled, denied agent radio writes, disabled kernel radio-hotkey handler, root control, NetworkManager preference restoration, session restart and software-radio hotplug; native execution remains required |
@@ -161,6 +161,10 @@ The application VMs use the actual locked packages and real user services/sessio
 managers. They define local credential gates, loopback checks, process failure and
 restart, logout, shutdown and reboot checks. They use disposable local credentials;
 no provider account is logged in and no paid model task is claimed.
+The OpenClaw gate opens ordinary Chromium and the dashboard in both launch orders,
+checks separate service cgroups, and verifies that dashboard recovery and closure
+preserve the ordinary browser. Its profile-persistence marker checks retained local
+state, not successful provider authentication.
 
 The separate `remote-lifecycle-vm` runs the production remote, editor and application
 adapter modules with harmless substitute provider executables. It checks service
