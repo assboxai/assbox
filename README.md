@@ -49,7 +49,8 @@ all optional components default off. The base includes nano and tmux. See the
 [component guide](docs/applications.md) for the catalog, configuration and onboarding.
 
 Presentation remains headless, X11/Openbox or Wayland/labwc. Graphical autostart is
-explicit. ChatGPT Desktop currently requires X11; Linux Remote pairing is not yet
+explicit. Desktop credentials use the standard [first-use keyring setup](docs/configuration.md#machine-local-files).
+ChatGPT Desktop currently requires X11; Linux Remote pairing is not yet
 established. Antigravity Remote and Cowork Dispatch also have explicit unresolved
 integration blockers and reject enablement. Package availability is not provider
 acceptance. Other integrations have implementations and verification procedures,

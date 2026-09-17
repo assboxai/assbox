@@ -41,6 +41,15 @@ in
         # Native apps such as Zed use portals for file dialogs too. Minimal
         # window managers do not supply a desktop's implicit portal selection.
         xdg.portal.enable = true;
+        # Use the normal Secret Service and first-use GNOME prompt. Never seed,
+        # rewrite or unlock an existing collection with an Assbox-held password.
+        services.gnome.gnome-keyring.enable = true;
+        xdg.portal.config.${
+          if cfg.presentation == "x11" then "openbox" else "labwc"
+        }."org.freedesktop.impl.portal.Secret" =
+          [
+            "gnome-keyring"
+          ];
         # graphical-session.target is a passive systemd target; starting it directly
         # may be refused. A session-specific owner pulls it in and keeps it needed.
         systemd.user.targets.assbox-graphical-session = {

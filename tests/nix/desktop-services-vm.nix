@@ -29,7 +29,10 @@ pkgs.testers.runNixOSTest {
       users.users.root.hashedPasswordFile = lib.mkForce null;
       users.users.admin.hashedPasswordFile = lib.mkForce null;
       environment.etc."assbox-test/portal-probe.py".source = ../fixtures/portal-probe.py;
-      environment.systemPackages = [ python ];
+      environment.systemPackages = [
+        python
+        pkgs.libsecret
+      ];
       virtualisation.memorySize = 2048;
       virtualisation.qemu.forceAccel = lib.mkForce (!arm);
       virtualisation.resolution = {
@@ -53,6 +56,16 @@ pkgs.testers.runNixOSTest {
         def ready():
             machine.wait_for_unit("user@" + uid + ".service")
             machine.wait_until_succeeds(user("systemctl --user is-active graphical-session.target"))
+            # The passive target can become active before the compositor's
+            # terminal finishes mapping; do not let it steal the dialog focus.
+            machine.wait_for_text("agent", timeout=60)
+        def credentials():
+            # A new client process must read the same persistent default keyring.
+            # A bounded call also catches a stray unlock prompt after autologin.
+            assert machine.succeed(user("timeout 30 secret-tool lookup assbox-test desktop")).strip() == "assbox-disposable-secret"
+            assert machine.succeed("stat -c %a /home/agent").strip() == "700"
+            machine.succeed("test -d /home/agent/.local/share/keyrings")
+            machine.succeed("test -z \"$(find /home/agent/.local/share/keyrings -type f \\( ! -user agent -o -perm /077 \\) -print)\"")
         def dialogs():
             for mode in ["open", "folder", "save", "cancel"]:
                 output = "/home/agent/portal-result.json"
@@ -76,6 +89,19 @@ pkgs.testers.runNixOSTest {
                 machine.wait_until_fails(user("systemctl --user is-active assbox-portal-probe.service"))
 
         ready()
+        assert machine.succeed("getent shadow agent | cut -d: -f2").strip() == "!"
+        # Follow the real first-use creation prompt, including explicit consent
+        # to unencrypted storage. No fixture keyring file or private API is used.
+        store = "printf %s assbox-disposable-secret | secret-tool store --label='Assbox desktop test' assbox-test desktop"
+        machine.succeed(user("systemd-run --user --no-block --unit=assbox-test-store "
+            + "--property=Type=oneshot --property=RemainAfterExit=yes bash -o pipefail -c " + shlex.quote(store)))
+        machine.wait_for_text("Choose password for new keyring", timeout=60)
+        machine.send_key("ret")
+        machine.wait_for_text("Store passwords unencrypted", timeout=60)
+        machine.send_key("ret")
+        machine.wait_until_succeeds(user("systemctl --user is-active assbox-test-store.service"), timeout=60)
+        machine.succeed(user("systemctl --user stop assbox-test-store.service"))
+        credentials()
         machine.succeed(user("mkdir -p /home/agent/project; printf 'disposable fixture' > /home/agent/input.txt"))
         dialogs()
         # Portals must be relaunched with the new session's display environment.
@@ -85,7 +111,21 @@ pkgs.testers.runNixOSTest {
         machine.wait_until_fails(user("systemctl --user is-active xdg-desktop-portal-gtk.service"))
         machine.succeed("systemctl start " + manager)
         ready()
+        credentials()
         dialogs()
+        # Restart the actual D-Bus owner, then reboot: neither step may lose the
+        # credential or require the absent agent login password.
+        owner = json.loads(machine.succeed(user("busctl --user --json=short call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetConnectionUnixProcessID s org.freedesktop.secrets")))["data"][0]
+        machine.succeed("kill -TERM " + str(owner))
+        machine.wait_until_fails("test -e /proc/" + str(owner))
+        credentials()
+        machine.reboot()
+        ready()
+        credentials()
+        dialogs()
+        machine.succeed(user("secret-tool clear assbox-test desktop"))
+        status, _ = machine.execute(user("timeout 30 secret-tool lookup assbox-test desktop"))
+        assert status == 1, status
         machine.shutdown()
   '';
 }

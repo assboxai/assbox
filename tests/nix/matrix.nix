@@ -168,6 +168,7 @@ let
           a.presentation == "headless"
           || (
             machine.config.xdg.portal.enable
+            && machine.config.services.gnome.gnome-keyring.enable
             && builtins.elem pkgs.xdg-desktop-portal-gtk machine.config.xdg.portal.extraPortals
             &&
               machine.config.xdg.portal.config.${if a.presentation == "x11" then "openbox" else "labwc"}.default

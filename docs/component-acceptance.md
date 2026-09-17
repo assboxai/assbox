@@ -100,7 +100,12 @@ blocker requires its adapter and regression coverage in the same reviewed change
   the owner-run acceptance below. This new VM gate has not yet been executed.
 - `desktop-services-vm`: real X11 and Wayland sessions with GTK file chooser portals.
   The driver operates visible open-file, open-folder, save and cancel dialogs and
-  verifies their returned responses/paths, then repeats after session restart.
+  verifies their returned responses/paths, then repeats after session restart and
+  reboot. It also completes GNOME's first-use passwordless-keyring prompt, including
+  the unencrypted-storage confirmation, and verifies a disposable Secret Service
+  credential across fresh client processes, session restart, daemon restart and
+  reboot, then checks deletion and private file permissions. It retains the
+  production locked-password autologin account and uses no seeded keyring files.
   The gate uses the same portal API as native Zed without provider credentials;
   it has not yet been executed. It complements rather than replaces `editor-vm`.
 - `access-lan-vm` and `access-tailscale-vm`: real OpenSSH keys, privilege refusal,
@@ -143,7 +148,10 @@ these procedures do not become an unattended daily phone-pairing requirement.
    disclosed. For tunnels, test login, license confirmation and revocation.
 6. **Graphical apps/editors:** launch every advertised session mode, test login or
    normal editing, including Zed Open File, Open Folder and Save As on both X11
-   and Wayland, then logout/relogin and reboot. Check OpenCode attach and OpenClaw
+   and Wayland. Follow the [keyring setup](configuration.md#machine-local-files),
+   save a disposable provider credential through Zed and check its availability
+   after logout/relogin and reboot. Existing encrypted collections must keep their
+   password and prompt for manual unlock. Check OpenCode attach and OpenClaw
    dashboard separately from their backends. Test GUI Emacs only with its explicit
    variant; keep nano available for recovery.
 7. **Access and coexistence:** authenticate the actual Tailscale account from console;

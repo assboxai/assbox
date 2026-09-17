@@ -19,6 +19,23 @@ store is not a secret store. The administrator password hash is a root-only file
 `/var/lib/assbox-secrets`; Wi-Fi credentials use root-only NetworkManager keyfiles.
 Application credentials belong to the private agent home.
 
+X11 and Wayland include standard file-picker portals and GNOME Keyring for desktop
+credentials, including Zed account login and provider API keys. On the first use,
+GNOME asks you to create a keyring. For unattended access after reboot, leave both
+password fields empty and confirm **Store passwords unencrypted**. This is a
+one-time choice in the standard desktop prompt, not the administrator password.
+The keyring lives in the agent's private home with user-only file permissions;
+it is **not encrypted on disk** and is accessible to agent processes and root.
+Do not treat it as isolation between applications or protection from disk theft.
+
+Choosing a keyring password instead is supported by GNOME, but requires manual
+unlock when an application needs it after reboot. Assbox's locked agent account
+and automatic graphical login supply no password for automatic unlocking. Assbox
+never replaces an existing keyring, removes its password or stores an unlock
+password. Cancelling a prompt leaves credential-dependent operations incomplete;
+retry the application's normal login/key-saving operation when ready. Headless
+installations do not acquire these desktop services.
+
 `/var/lib/assbox/release-state` is private replay-protection state, not a parallel
 Nix configuration database. Assbox never decreases it during generation rollback.
 The CLI recognizes the installer-shaped literal input line and package-list grammar;

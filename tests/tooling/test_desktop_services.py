@@ -39,6 +39,15 @@ class DesktopServicesTests(unittest.TestCase):
                     self.assertIn('/inert/xdg-desktop-portal-gtk', config['xdg']['portal']['extraPortals'])
         self.assertEqual(self.evaluate('headless')['xdg'], {})
 
+    def test_keyring_is_enabled_only_for_headed_sessions(self):
+        for mode, desktop in [('x11', 'openbox'), ('wayland', 'labwc')]:
+            with self.subTest(mode=mode):
+                config = self.evaluate(mode)
+                self.assertTrue(config['services']['gnome']['gnome-keyring']['enable'])
+                self.assertEqual(config['xdg']['portal']['config'][desktop]
+                                 ['org.freedesktop.impl.portal.Secret'], ['gnome-keyring'])
+        self.assertEqual(self.evaluate('headless')['services'], {})
+
     def test_desktop_gate_renders_valid_driver_and_is_required(self):
         if not self.lib:
             self.skipTest('Nix module library unavailable; run in the development shell')
