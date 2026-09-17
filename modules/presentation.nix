@@ -136,6 +136,17 @@ in
             };
           };
         };
+        systemd.services.greetd = {
+          # Upstream restarts only clean exits. Recover daemon crashes as well,
+          # with the same bounded backoff and deliberate-stop behavior as X11.
+          startLimitIntervalSec = lib.mkForce 0;
+          serviceConfig = {
+            Restart = lib.mkForce "always";
+            RestartSec = lib.mkForce 5;
+            RestartSteps = 5;
+            RestartMaxDelaySec = 60;
+          };
+        };
         environment.systemPackages = [
           pkgs.foot
           pkgs.wlr-randr

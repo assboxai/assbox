@@ -33,9 +33,16 @@ let
             default = { };
           }
         );
-        config.assbox = {
-          enable = true;
-          inherit presentation;
+        config = {
+          assbox = {
+            enable = true;
+            inherit presentation;
+          };
+          # The pinned greetd module supplies this normal-priority value. Keep
+          # it here so forgetting the explicit override fails even the inert gate.
+          systemd.services = lib.mkIf (presentation == "wayland") {
+            greetd.serviceConfig.Restart = "on-success";
+          };
         };
       }
     ];

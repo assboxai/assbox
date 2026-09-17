@@ -193,6 +193,10 @@ systemd restart backoff. The agent password stays locked; administrative login
 uses a text console or explicitly enabled admin SSH. `sudo systemctl stop
 display-manager` deliberately stops X11 and does not trigger another login.
 
+Wayland uses greetd's repeating agent session. Daemon crashes, compositor failures
+and logout recover with the same bounded systemd backoff as X11, without a permanent
+start-limit lockout. `sudo systemctl stop greetd` deliberately leaves Wayland stopped.
+
 ## SSH and Tailscale
 
 ```nix

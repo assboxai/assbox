@@ -216,6 +216,16 @@ let
             && machine.config.systemd.services.display-manager.serviceConfig.RestartSec == 5
             && machine.config.systemd.services.display-manager.serviceConfig.RestartMaxDelaySec == 60
           )
+        )
+        && (
+          a.presentation != "wayland"
+          || (
+            machine.config.systemd.services.greetd.startLimitIntervalSec == 0
+            && machine.config.systemd.services.greetd.serviceConfig.Restart == "always"
+            && machine.config.systemd.services.greetd.serviceConfig.RestartSec == 5
+            && machine.config.systemd.services.greetd.serviceConfig.RestartSteps == 5
+            && machine.config.systemd.services.greetd.serviceConfig.RestartMaxDelaySec == 60
+          )
         );
       assertions = builtins.all (entry: entry.assertion) machine.config.assertions;
     in

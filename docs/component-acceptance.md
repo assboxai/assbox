@@ -116,6 +116,11 @@ blocker requires its adapter and regression coverage in the same reviewed change
   disposable loopback page whose JavaScript completes a callback, then its test
   browser must stop. HTTP/HTTPS associations and the callback are checked again
   after session restart and reboot. No browser flags or disabled sandbox are injected.
+  On Wayland it also kills greetd's actual MainPID four times, crashes labwc, and
+  requests normal logout. Each recovery must replace the compositor and a session-bound
+  fixture service, remove their old processes/children, and restore dialogs, credentials
+  and browser callbacks without manually starting greetd. An explicit stop must keep
+  the session stopped beyond the maximum restart delay. Production delays are retained.
   The gate uses the same portal API as native Zed without provider credentials;
   it has not yet been executed. It complements rather than replaces `editor-vm`.
 - `access-lan-vm` and `access-tailscale-vm`: real OpenSSH keys, privilege refusal,

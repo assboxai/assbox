@@ -48,6 +48,17 @@ class DesktopServicesTests(unittest.TestCase):
                                  ['org.freedesktop.impl.portal.Secret'], ['gnome-keyring'])
         self.assertEqual(self.evaluate('headless')['services'], {})
 
+    def test_both_display_managers_recover_crashes_without_permanent_lockout(self):
+        for mode, manager in [('x11', 'display-manager'), ('wayland', 'greetd')]:
+            with self.subTest(mode=mode):
+                unit = self.evaluate(mode)['systemd']['services'][manager]
+                self.assertEqual(unit['startLimitIntervalSec'], 0)
+                self.assertEqual(unit['serviceConfig'], {
+                    'Restart': 'always', 'RestartSec': 5,
+                    'RestartSteps': 5, 'RestartMaxDelaySec': 60,
+                })
+        self.assertEqual(self.evaluate('headless')['systemd'].get('services', {}), {})
+
     def test_desktop_gate_renders_valid_driver_and_is_required(self):
         if not self.lib:
             self.skipTest('Nix module library unavailable; run in the development shell')
@@ -56,6 +67,7 @@ class DesktopServicesTests(unittest.TestCase):
           spec = import %s/tests/nix/desktop-services-vm.nix {
             module = null;
             pkgs = { inherit lib; stdenv.hostPlatform.isAarch64 = true;
+                     labwc = "/inert/labwc";
                      python3.withPackages = _: "/inert/python";
                      testers.runNixOSTest = spec: spec; };
           };

@@ -36,6 +36,19 @@ pkgs.testers.runNixOSTest {
         python
         pkgs.libsecret
       ];
+      # A session-bound fixture with a child proves cleanup/relaunch without
+      # borrowing any application-specific crash or first-run behavior.
+      systemd.user.services.assbox-session-witness = lib.mkIf (presentation == "wayland") {
+        wantedBy = [ "graphical-session.target" ];
+        partOf = [ "graphical-session.target" ];
+        serviceConfig = {
+          ExecStart = pkgs.writeShellScript "assbox-session-witness" ''
+            ${pkgs.coreutils}/bin/sleep infinity &
+            wait
+          '';
+          KillMode = "control-group";
+        };
+      };
       virtualisation.memorySize = 3072;
       virtualisation.qemu.forceAccel = lib.mkForce (!arm);
       virtualisation.resolution = {
@@ -46,7 +59,7 @@ pkgs.testers.runNixOSTest {
     }
   );
   testScript = ''
-    import json, shlex
+    import json, shlex, time
 
     # Run one machine at a time; exercise native Wayland and X11 dialogs.
     for machine in machines:
@@ -99,6 +112,68 @@ pkgs.testers.runNixOSTest {
                 + "timeout 90 ${python}/bin/python3 /etc/assbox-test/browser-probe.py"), timeout=120)
             machine.wait_until_fails(user("systemctl --user is-active assbox-browser-probe.service"))
             machine.wait_until_fails("pgrep -u agent -x 'chromium|chrome|chrome_crashpad'", timeout=30)
+        def wayland_recovery():
+            def manager_property(name):
+                return machine.succeed("systemctl show greetd -p " + name + " --value").strip()
+            def only_pid(command):
+                machine.wait_until_succeeds(command, timeout=120)
+                pids = machine.succeed(command).splitlines()
+                assert len(pids) == 1 and int(pids[0]) > 0, pids
+                return pids[0]
+            def session_pids():
+                wm = only_pid("pgrep -u agent -x labwc")
+                machine.wait_until_succeeds(user("systemctl --user is-active assbox-session-witness"))
+                witness = machine.succeed(user("systemctl --user show assbox-session-witness -p MainPID --value")).strip()
+                assert int(witness) > 0
+                child = only_pid("pgrep -P " + witness)
+                return [wm, witness, child]
+
+            assert manager_property("Restart") == "always"
+            assert manager_property("StartLimitIntervalUSec") == "0"
+            assert manager_property("RestartUSec") == "5s"
+            assert manager_property("RestartMaxDelayUSec") == "1min"
+            # Keep production restart delays. Kill only the real manager MainPID,
+            # so graceful stop/start cannot mask missing crash recovery/cleanup.
+            for failure in ["manager-crash"] * 4 + ["compositor-crash", "logout"]:
+                previous_manager = manager_property("MainPID")
+                assert int(previous_manager) > 0
+                previous_restarts = int(manager_property("NRestarts"))
+                previous = session_pids()
+                if failure == "manager-crash":
+                    machine.succeed("kill -KILL " + previous_manager)
+                elif failure == "compositor-crash":
+                    machine.succeed("kill -KILL " + previous[0])
+                else:
+                    machine.succeed(user("systemd-run --user --wait --pipe --collect ${pkgs.labwc}/bin/labwc --exit"))
+                for pid in previous:
+                    machine.wait_until_fails("test -e /proc/" + pid, timeout=120)
+                machine.wait_until_succeeds("systemctl is-active greetd", timeout=180)
+                if failure == "manager-crash":
+                    machine.wait_until_succeeds("test $(systemctl show greetd -p NRestarts --value) -gt " + str(previous_restarts), timeout=180)
+                    assert manager_property("MainPID") != previous_manager
+                ready()
+                current = session_pids()
+                assert all(old != new for old, new in zip(previous, current))
+                credentials()
+                dialogs()
+                browser()
+            machine.screenshot("wayland-crashes-recovered")
+
+            previous = session_pids()
+            machine.succeed("systemctl stop greetd")
+            for pid in previous:
+                machine.wait_until_fails("test -e /proc/" + pid, timeout=120)
+            machine.wait_until_fails(user("systemctl --user is-active graphical-session.target"))
+            count = manager_property("NRestarts")
+            time.sleep(65)  # Past the maximum restart delay: explicit stop wins.
+            assert manager_property("ActiveState") == "inactive"
+            assert manager_property("MainPID") == "0"
+            assert manager_property("NRestarts") == count
+            machine.fail("pgrep -u agent -x labwc")
+            machine.fail(user("systemctl --user is-active assbox-session-witness"))
+            machine.succeed("systemctl start greetd")
+            ready()
+            session_pids()
 
         ready()
         assert machine.succeed("getent shadow agent | cut -d: -f2").strip() == "!"
@@ -127,6 +202,8 @@ pkgs.testers.runNixOSTest {
         credentials()
         dialogs()
         browser()
+        if machine.name == "wayland":
+            wayland_recovery()
         # Restart the actual D-Bus owner, then reboot: neither step may lose the
         # credential or require the absent agent login password.
         owner = json.loads(machine.succeed(user("busctl --user --json=short call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetConnectionUnixProcessID s org.freedesktop.secrets")))["data"][0]
