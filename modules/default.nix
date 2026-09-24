@@ -10,6 +10,7 @@
     ./platform.nix
     ./presentation.nix
     ./components.nix
+    ./controller.nix
     ./applications.nix
     ./remotes.nix
     ./editors.nix
@@ -17,5 +18,6 @@
     ./resources.nix
     ./audit.nix
     ./generation.nix
+    ./worker
   ];
 }

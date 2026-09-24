@@ -24,6 +24,7 @@ let
     efibootmgr
     mkpasswd
     iproute2
+    python3
     gptfdisk
     openssh
     nano

@@ -13,6 +13,26 @@ in
 {
   options.assbox = {
     enable = mkEnableOption "the Assbox appliance substrate";
+    controller = {
+      active = mkOption {
+        type = types.bool;
+        default = false;
+        readOnly = true;
+        internal = true;
+        description = "Evaluated thin-controller policy; not an administrator bypass toggle.";
+      };
+      profile = mkOption {
+        type = types.enum [
+          "none"
+          "generic"
+          "chatgpt-desktop"
+          "unqualified"
+        ];
+        default = "none";
+        readOnly = true;
+        description = "Controller adapter selected from component capabilities.";
+      };
+    };
     selectedComponents = mkOption {
       type = types.listOf types.str;
       readOnly = true;

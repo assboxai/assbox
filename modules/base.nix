@@ -10,7 +10,23 @@ let
   cfg = config.assbox;
 in
 {
+  options.assbox.workerBootPolicy = lib.mkOption {
+    type = lib.types.attrs;
+    internal = true;
+    default = {
+      schema = 1;
+      enabled = false;
+    };
+    description = "Immutable worker boot acceptance receipt for the running generation.";
+  };
   config = lib.mkIf cfg.enable {
+    system.systemBuilderCommands =
+      let
+        receipt = pkgs.writeText "assbox-worker-policy.json" (builtins.toJSON cfg.workerBootPolicy);
+      in
+      ''
+        ln -s ${receipt} "$out/assbox-worker-policy.json"
+      '';
     assertions = [
       {
         assertion = builtins.elem pkgs.stdenv.hostPlatform.system [
@@ -26,45 +42,52 @@ in
       package:
       builtins.elem lib.licenses.unfreeRedistributableFirmware (lib.toList (package.meta.license or [ ]));
     hardware.enableRedistributableFirmware = lib.mkDefault true;
-    environment.systemPackages = with pkgs; [
-      assboxPackage
-      just
-      bash
-      coreutils
-      findutils
-      gnugrep
-      gnused
-      gawk
-      perl
-      python3
-      curl
-      git
-      jq
-      ripgrep
-      fd
-      less
-      file
-      which
-      gnutar
-      gzip
-      xz
-      zstd
-      unzip
-      procps
-      psmisc
-      util-linux
-      iproute2
-      pciutils
-      usbutils
-      bind
-      htop
-      tmux
-      nano
-      nixfmt
-      nixos-rebuild
-      rsync
-      openssh
-    ];
+    environment.systemPackages =
+      with pkgs;
+      [
+        assboxPackage
+        bash
+        coreutils
+        findutils
+        gnugrep
+        gnused
+        gawk
+        curl
+        jq
+        ripgrep
+        fd
+        less
+        file
+        which
+        gnutar
+        gzip
+        xz
+        zstd
+        unzip
+        procps
+        psmisc
+        util-linux
+        iproute2
+        pciutils
+        usbutils
+        bind
+        htop
+        tmux
+        nano
+        nixos-rebuild
+        rsync
+        openssh
+      ]
+      ++ lib.optionals (!cfg.controller.active) (
+        with pkgs;
+        [
+          just
+          perl
+          python3
+          git
+          nixfmt
+        ]
+      );
     environment.variables.EDITOR = lib.mkDefault cfg.editor.default;
     nix.settings = {
       experimental-features = [
@@ -129,6 +152,7 @@ in
         platform
         updates
         ;
+      controller = cfg.controller;
       boot = cfg.boot;
       session = { inherit (cfg.session) autostart; };
     };
