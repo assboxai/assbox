@@ -121,10 +121,15 @@ class ReviewGuards(unittest.TestCase):
                                     env=env, capture_output=True, text=True, check=False, timeout=10)
             return result, (candidate / "verification-reached").exists()
 
-    def test_every_required_acceptance_name_is_a_release_prerequisite(self):
-        required = ["remote-lifecycle-vm", "editor-vm", "desktop-services-vm", "radio-policy-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
+    @staticmethod
+    def required_acceptance_names():
+        required = ["worker-tools", "worker-policy", "worker-artifact", "worker-boot-gate-vm", "worker-sshd-policy-vm", "worker-network-vm", "worker-lifecycle-vm", "remote-lifecycle-vm", "editor-vm", "desktop-services-vm", "radio-policy-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
                     "application-chatgpt-vm", "application-opencode-vm", "application-openclaw-vm"]
         required += ["application-" + family + "-vm" for family in __import__("component_families").FAMILIES if "application-" + family + "-vm" not in required]
+        return required
+
+    def test_every_required_acceptance_name_is_a_release_prerequisite(self):
+        required = self.required_acceptance_names()
         for absent in required:
             with self.subTest(absent=absent):
                 result, reached = self.run_acceptance_presence_gate([name for name in required if name != absent])
@@ -132,10 +137,16 @@ class ReviewGuards(unittest.TestCase):
                 self.assertIn(absent, result.stderr)
                 self.assertFalse(reached)
 
+    def test_worker_lifecycle_gate_cannot_be_omitted(self):
+        required = self.required_acceptance_names()
+        result, reached = self.run_acceptance_presence_gate(
+            [name for name in required if name != "worker-lifecycle-vm"])
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("worker-lifecycle-vm", result.stderr)
+        self.assertFalse(reached)
+
     def test_implemented_names_proceed_to_verification_not_automatic_approval(self):
-        required = ["remote-lifecycle-vm", "editor-vm", "desktop-services-vm", "radio-policy-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
-                    "application-chatgpt-vm", "application-opencode-vm", "application-openclaw-vm"]
-        required += ["application-" + family + "-vm" for family in __import__("component_families").FAMILIES if "application-" + family + "-vm" not in required]
+        required = self.required_acceptance_names()
         result, reached = self.run_acceptance_presence_gate(required)
         self.assertTrue(reached, result.stderr)
         self.assertEqual(result.returncode, 73, "the subsequent verification failure must propagate")

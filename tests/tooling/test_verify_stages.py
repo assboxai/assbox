@@ -53,6 +53,7 @@ class VerifyStagesTests(unittest.TestCase):
         self.assertEqual(all_calls, individual)
         for required in (['python3', 'scripts/architecture.py'], ['python3', 'scripts/workflow_policy.py'],
                          ['python3', '-m', 'unittest', 'discover', '-s', 'tests/tooling', '-v'],
+                         ['python3', '-m', 'unittest', 'discover', '-s', 'tests/worker', '-v'],
                          ['python3', 'scripts/model_check.py'], ['cargo', 'fmt', '--all', '--check'],
                          ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings'],
                          ['cargo', 'build', '--workspace', '--locked'],

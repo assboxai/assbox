@@ -50,12 +50,34 @@ pkgs.testers.runNixOSTest {
               "openclaw-dashboard"
           )
         ];
+        worker = lib.optionalAttrs (application == "chatgpt") {
+          enable = true;
+          components = [ "codex" ];
+          egress = "offline";
+          nameservers = [ ];
+        };
         acceptUnfree = application == "chatgpt";
         updates.enable = false;
       };
       boot.loader.systemd-boot.enable = lib.mkForce false;
       boot.loader.grub.enable = lib.mkForce false;
       systemd.services.assbox-boot-check.enable = lib.mkForce false;
+      # UI smoke only: production worker image is evaluated/built, but the
+      # controller VM does not request nested KVM. Actual worker/client routing
+      # is a separate mandatory hardware acceptance gate.
+      systemd.services.assbox-worker.enable = lib.mkIf (application == "chatgpt") (lib.mkForce false);
+      systemd.services.assbox-worker-network.enable = lib.mkIf (application == "chatgpt") (
+        lib.mkForce false
+      );
+      systemd.services.assbox-worker-provision.enable = lib.mkIf (application == "chatgpt") (
+        lib.mkForce false
+      );
+      systemd.services.assbox-worker-health.enable = lib.mkIf (application == "chatgpt") (
+        lib.mkForce false
+      );
+      systemd.timers.assbox-worker-health.enable = lib.mkIf (application == "chatgpt") (
+        lib.mkForce false
+      );
       users.allowNoPasswordLogin = true;
       users.users.root.hashedPasswordFile = lib.mkForce null;
       users.users.admin.hashedPasswordFile = lib.mkForce null;
@@ -139,7 +161,7 @@ pkgs.testers.runNixOSTest {
                 "gateway": {"mode": "local", "bind": "loopback", "auth": {"mode": "token", "token": "disposable-test-token"}}
             }))
         else:
-            # Desktop installation must not depend on the separate Codex CLI.
+            # Controller PATH must not contain the separate guest Codex CLI.
             machine.succeed(user('test -x "$(command -v chatgpt)"'))
             machine.fail(user("command -v codex"))
             machine.succeed(user("assbox component setup chatgpt-desktop"))

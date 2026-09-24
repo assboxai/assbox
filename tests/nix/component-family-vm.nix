@@ -22,7 +22,35 @@ let
   commands = map (r: r.command) (
     builtins.filter (r: r.command != "" && builtins.elem "headless" r.presentations) members
   );
+  rejectedController = import (pkgs.path + "/nixos/lib/eval-config.nix") {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      module
+      ./fixture.nix
+      {
+        assbox.presentation = "x11";
+        assbox.acceptUnfree = true;
+        assbox.components.claude-desktop = {
+          enable = true;
+          allowMutableCode = true;
+        };
+        assbox.worker = {
+          enable = true;
+          components = [ "vim" ];
+          egress = "offline";
+          nameservers = [ ];
+        };
+      }
+    ];
+  };
 in
+# This family cannot claim a controller adapter until its transport is qualified.
+# Its gate proves rejection and a minimal boot, not a successful Claude UI run.
+assert
+  !graphical
+  || builtins.any (
+    a: !a.assertion && lib.hasInfix "unqualified controller" a.message
+  ) rejectedController.config.assertions;
 pkgs.testers.runNixOSTest {
   name = "assbox-components-${family}";
   node.pkgsReadOnly = false;
@@ -31,10 +59,10 @@ pkgs.testers.runNixOSTest {
     imports = [ module ];
     assbox = {
       enable = true;
-      presentation = mode;
+      presentation = if graphical then "headless" else mode;
       acceptUnfree = true;
       components =
-        lib.genAttrs selected (_: {
+        lib.genAttrs (if graphical then [ ] else selected) (_: {
           enable = true;
           allowMutableCode = true;
         })
@@ -48,7 +76,7 @@ pkgs.testers.runNixOSTest {
             ];
           };
         };
-      session.autostart = lib.optional graphical "claude-desktop";
+      session.autostart = [ ];
       updates.enable = false;
     };
     boot.loader.systemd-boot.enable = lib.mkForce false;
@@ -66,7 +94,7 @@ pkgs.testers.runNixOSTest {
     start_all()
     machine.wait_for_unit("multi-user.target")
     configured = json.loads(machine.succeed("cat /etc/assbox/runtime.json"))["selectedComponents"]
-    assert sorted(configured) == sorted(${builtins.toJSON selected})
+    assert sorted(configured) == sorted(${builtins.toJSON (if graphical then [ ] else selected)})
     for command in ${builtins.toJSON commands}:
         flag = "--help" if command == "agy" else "--version"
         machine.succeed("su - agent -c " + shlex.quote(command + " " + flag), timeout=120)
@@ -75,9 +103,7 @@ pkgs.testers.runNixOSTest {
             machine.succeed("test -x /etc/assbox/onboarding/" + id)
             machine.fail("pgrep -u agent -f '" + {"claude-code-remote":"remote-control", "cursor-worker":"worker.*start", "happy-remote":"daemon start-sync"}[id] + "'")
     if ${if graphical then "True" else "False"}:
-        machine.wait_for_unit("display-manager.service")
-        machine.wait_until_succeeds("pgrep -u agent -f claude-desktop", timeout=180)
-        machine.screenshot("claude-desktop")
+        machine.fail("su - agent -c 'command -v claude-desktop'")
     machine.fail("su - agent -c 'sudo -n true'")
   '';
 }

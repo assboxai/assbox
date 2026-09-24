@@ -7,6 +7,12 @@ let
     "opencode"
     "openclaw"
   ];
+  controllerWorker = {
+    enable = true;
+    components = [ "codex" ];
+    egress = "offline";
+    nameservers = [ ];
+  };
   presentations = [
     "headless"
     "x11"
@@ -43,6 +49,7 @@ let
             allowMutableCode = true;
           };
           presentation = "x11";
+          worker = controllerWorker;
           acceptUnfree = true;
         };
       };
@@ -59,6 +66,7 @@ let
             allowMutableCode = true;
           };
           presentation = "x11";
+          worker = controllerWorker;
           acceptUnfree = true;
         };
       };
@@ -71,7 +79,11 @@ let
       };
     };
   catalog = builtins.fromJSON (builtins.readFile ../../catalog/components.json);
-  available = builtins.filter (r: r.blocked == "") catalog;
+  # Unqualified sensitive controllers have explicit rejection gates, not
+  # successful host fixtures. Other standalone deployment profiles remain valid.
+  available = builtins.filter (
+    r: r.blocked == "" && (!r.requiresWorker || r.controllerAllowed)
+  ) catalog;
   expand =
     ids:
     let
@@ -91,6 +103,9 @@ let
     fixture {
       assbox = {
         inherit presentation;
+        worker = lib.optionalAttrs (builtins.any (
+          id: (lib.findFirst (r: r.id == id) (throw "missing component") catalog).requiresWorker
+        ) selected) controllerWorker;
         acceptUnfree = true;
         components =
           lib.recursiveUpdate
@@ -134,14 +149,35 @@ let
       }) available
     )
     // {
+      chatgpt-multiagent = fixture {
+        assbox = {
+          presentation = "x11";
+          acceptUnfree = true;
+          components.chatgpt-desktop = {
+            enable = true;
+            allowMutableCode = true;
+          };
+          worker = controllerWorker // {
+            components = [
+              "codex"
+              "claude-code"
+              "grok"
+              "antigravity-cli"
+              "cursor-agent"
+              "opencode"
+              "gemini-cli"
+            ];
+          };
+        };
+      };
       mixed-cli = selectedFixture (map (r: r.id) (
         builtins.filter (r: r.package != "" && builtins.elem "headless" r.presentations) available
       )) "headless";
       editors-x11 = selectedFixture [ "vscode" "zed" "vim" "emacs" ] "x11";
       editor-hosts = selectedFixture [ "vscode-remote-host" "zed-remote-host" ] "headless";
-      full-x11 = selectedFixture (map (r: r.id) available) "x11";
+      full-x11 = selectedFixture (map (r: r.id) (builtins.filter (r: !r.requiresWorker) available)) "x11";
       full-wayland = selectedFixture (map (r: r.id) (
-        builtins.filter (r: builtins.elem "wayland" r.presentations) available
+        builtins.filter (r: !r.requiresWorker && builtins.elem "wayland" r.presentations) available
       )) "wayland";
     };
   configurations = lib.mapAttrs' (

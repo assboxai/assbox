@@ -185,6 +185,45 @@
             )
         // {
           workspace = p.assbox;
+          worker-policy = import ./tests/nix/worker-policy.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
+          worker-artifact = import ./tests/nix/worker-artifact.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
+          worker-boot-gate-vm = import ./tests/nix/worker-boot-gate-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
+          worker-sshd-policy-vm = import ./tests/nix/worker-sshd-policy-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
+          worker-network-vm = import ./tests/nix/worker-network-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
+          worker-lifecycle-vm = import ./tests/nix/worker-lifecycle-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
+          worker-tools =
+            p.pkgs.runCommand "assbox-worker-tools-tests"
+              {
+                nativeBuildInputs = [
+                  p.pkgs.python3
+                  p.pkgs.openssh
+                ];
+              }
+              ''
+                cp -r ${./.} source
+                chmod -R u+w source
+                cd source
+                python3 -m unittest discover -s tests/worker -v
+                touch "$out"
+              '';
           remote-lifecycle-vm = import ./tests/nix/remote-lifecycle-vm.nix {
             inherit (p) pkgs assbox;
           };
