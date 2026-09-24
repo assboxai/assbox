@@ -125,7 +125,7 @@ pub fn settings(c: &Choices) -> Result<String> {
     }
     extras.push_str(&autostart_line(&c.autostart));
     extras.push('\n');
-    Ok(format!(
+    let rendered = format!(
         r#"# Assbox installer choices. Override in local.nix using `assbox config edit`.
 {{ lib, ... }}:
 {{
@@ -159,7 +159,11 @@ pub fn settings(c: &Choices) -> Result<String> {
         c.devices.suspend,
         c.allow_unfree,
         ssh + &extras
-    ))
+    );
+    match &c.worker {
+        Some(spec) => worker::selection(&rendered, Some(spec)),
+        None => Ok(rendered),
+    }
 }
 
 pub fn storage(plan: &InstallPlan) -> String {
@@ -434,3 +438,4 @@ mod tests {
         assert!(read_packages(&(packages(&set) + "# an edit\n")).is_err());
     }
 }
+pub mod worker;

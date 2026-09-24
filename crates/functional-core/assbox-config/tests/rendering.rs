@@ -16,6 +16,7 @@ fn choices() -> Choices {
         autostart: Vec::new(),
         admin_ssh_key: None,
         agent_ssh_key: None,
+        worker: None,
         happy_backends: Components::default(),
     }
 }

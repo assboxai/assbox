@@ -15,6 +15,7 @@ fn choices() -> Choices {
         autostart: Vec::new(),
         admin_ssh_key: None,
         agent_ssh_key: None,
+        worker: None,
         happy_backends: Components::default(),
     }
 }
@@ -34,6 +35,18 @@ fn exactly_ten_application_presentation_combinations_are_valid() {
         ] {
             let mut c = choices();
             c.components = app;
+            if app.contains(Component::ChatgptDesktop) {
+                c.worker = Some(worker::WorkerSpec {
+                    components: Component::Codex.into(),
+                    mutable_components: Components::default(),
+                    memory_mib: 3072,
+                    vcpus: 2,
+                    state_gib: 32,
+                    uplinks: vec![],
+                    offline: true,
+                    guest_sudo: false,
+                });
+            }
             c.presentation = presentation;
             let expected = app != Components::from(Component::ChatgptDesktop)
                 || presentation == Presentation::X11;

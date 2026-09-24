@@ -117,6 +117,7 @@ fn install_apply() {
             autostart: Vec::new(),
             admin_ssh_key: Some(values[4].clone()),
             agent_ssh_key: None,
+            worker: None,
             happy_backends: Components::default(),
         },
     };

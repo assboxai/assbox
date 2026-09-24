@@ -15,10 +15,10 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
             "[\"codex\",\"vim\"]",
         ),
         (
-            "chatgpt-desktop,codex",
+            "chatgpt-desktop",
             Presentation::X11,
             true,
-            "[\"chatgpt-desktop\",\"codex\"]",
+            "[\"chatgpt-desktop\"]",
         ),
         (
             "codex,happy,happy-remote,zed-remote-host",
@@ -41,6 +41,18 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
             autostart: Vec::new(),
             admin_ssh_key: Some("ssh-ed25519 fixture".into()),
             agent_ssh_key: Some("ssh-ed25519 agent-fixture".into()),
+            worker: components.contains(Component::ChatgptDesktop).then(|| {
+                assbox_domain::worker::WorkerSpec {
+                    components: Component::Codex.into(),
+                    mutable_components: Components::default(),
+                    memory_mib: 3072,
+                    vcpus: 2,
+                    state_gib: 32,
+                    uplinks: vec![],
+                    offline: true,
+                    guest_sudo: false,
+                }
+            }),
             happy_backends: if components.contains(Component::HappyRemote) {
                 Component::Codex.into()
             } else {
@@ -98,7 +110,7 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
 
 #[test]
 fn managed_launcher_transitions_satisfy_actual_component_assertions() {
-    let ids = "chatgpt-desktop,claude-desktop,vscode,zed,opencode,opencode-server,openclaw,openclaw-gateway";
+    let ids = "vscode,zed,opencode,opencode-server,openclaw,openclaw-gateway";
     let choices = Choices {
         hostname: Hostname::parse("assbox-fixture").unwrap(),
         timezone: "UTC".into(),
@@ -109,18 +121,12 @@ fn managed_launcher_transitions_satisfy_actual_component_assertions() {
         scale: 1,
         allow_unfree: true,
         allow_mutable_code: true,
-        autostart: [
-            "chatgpt-desktop",
-            "claude-desktop",
-            "vscode",
-            "zed",
-            "opencode-attach",
-            "openclaw-dashboard",
-        ]
-        .map(str::to_owned)
-        .to_vec(),
+        autostart: ["vscode", "zed", "opencode-attach", "openclaw-dashboard"]
+            .map(str::to_owned)
+            .to_vec(),
         admin_ssh_key: None,
         agent_ssh_key: None,
+        worker: None,
         happy_backends: Components::default(),
     };
     let original = assbox_config::settings(&choices).unwrap();

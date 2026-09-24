@@ -286,9 +286,7 @@ impl Component {
                 "The pinned proprietary CLI documents service installation but no reviewed foreground daemon entry point."
             }
             Self::ChatgptDesktop => "",
-            Self::ChatgptRemote => {
-                "Upstream Remote documentation does not establish Linux support; Linux account pairing must be demonstrated before enabling this capability."
-            }
+            Self::ChatgptRemote => "",
             Self::ClaudeCode => "",
             Self::ClaudeCodeRemote => "",
             Self::ClaudeDesktop => "",
@@ -399,6 +397,102 @@ impl Component {
             Self::ZedRemoteHost => {
                 "The connecting client provisions its matching remote server and project/language tools."
             }
+        }
+    }
+    pub const fn controller_allowed(self) -> bool {
+        match self {
+            Self::AntigravityCli => false,
+            Self::AntigravityRemote => false,
+            Self::ChatgptDesktop => true,
+            Self::ChatgptRemote => true,
+            Self::ClaudeCode => false,
+            Self::ClaudeCodeRemote => false,
+            Self::ClaudeDesktop => false,
+            Self::Codex => false,
+            Self::CoworkDispatch => false,
+            Self::CursorAgent => false,
+            Self::CursorWorker => false,
+            Self::Emacs => false,
+            Self::GeminiCli => false,
+            Self::Grok => false,
+            Self::Happy => false,
+            Self::HappyRemote => false,
+            Self::Openclaw => false,
+            Self::OpenclawGateway => false,
+            Self::OpenclawNode => false,
+            Self::Opencode => false,
+            Self::OpencodeServer => false,
+            Self::Vim => false,
+            Self::Vscode => false,
+            Self::VscodeCli => false,
+            Self::VscodeRemoteHost => false,
+            Self::VscodeTunnel => false,
+            Self::Zed => false,
+            Self::ZedRemoteHost => false,
+        }
+    }
+    pub const fn worker_allowed(self) -> bool {
+        match self {
+            Self::AntigravityCli => true,
+            Self::AntigravityRemote => true,
+            Self::ChatgptDesktop => false,
+            Self::ChatgptRemote => false,
+            Self::ClaudeCode => true,
+            Self::ClaudeCodeRemote => true,
+            Self::ClaudeDesktop => false,
+            Self::Codex => true,
+            Self::CoworkDispatch => false,
+            Self::CursorAgent => true,
+            Self::CursorWorker => true,
+            Self::Emacs => true,
+            Self::GeminiCli => true,
+            Self::Grok => true,
+            Self::Happy => true,
+            Self::HappyRemote => true,
+            Self::Openclaw => true,
+            Self::OpenclawGateway => true,
+            Self::OpenclawNode => true,
+            Self::Opencode => true,
+            Self::OpencodeServer => true,
+            Self::Vim => true,
+            Self::Vscode => false,
+            Self::VscodeCli => true,
+            Self::VscodeRemoteHost => true,
+            Self::VscodeTunnel => true,
+            Self::Zed => false,
+            Self::ZedRemoteHost => true,
+        }
+    }
+    pub const fn requires_worker(self) -> bool {
+        match self {
+            Self::AntigravityCli => false,
+            Self::AntigravityRemote => false,
+            Self::ChatgptDesktop => true,
+            Self::ChatgptRemote => true,
+            Self::ClaudeCode => false,
+            Self::ClaudeCodeRemote => false,
+            Self::ClaudeDesktop => true,
+            Self::Codex => false,
+            Self::CoworkDispatch => true,
+            Self::CursorAgent => false,
+            Self::CursorWorker => false,
+            Self::Emacs => false,
+            Self::GeminiCli => false,
+            Self::Grok => false,
+            Self::Happy => false,
+            Self::HappyRemote => false,
+            Self::Openclaw => false,
+            Self::OpenclawGateway => false,
+            Self::OpenclawNode => false,
+            Self::Opencode => false,
+            Self::OpencodeServer => false,
+            Self::Vim => false,
+            Self::Vscode => false,
+            Self::VscodeCli => false,
+            Self::VscodeRemoteHost => false,
+            Self::VscodeTunnel => false,
+            Self::Zed => false,
+            Self::ZedRemoteHost => false,
         }
     }
 }

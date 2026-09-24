@@ -22,6 +22,7 @@ const STATE: &str = "/var/lib/assbox";
 const TXN: &str = "/var/lib/assbox/transaction";
 const PROFILE: &str = "/nix/var/nix/profiles/system";
 const PENDING: &str = "/var/lib/assbox/pending-reboot";
+const BOOT_ACCEPTED: &str = "/var/lib/assbox/boot-acceptance";
 
 fn lock() -> Result<Lock> {
     files::require_root()?;
@@ -179,6 +180,8 @@ fn build(c: &Commands) -> Result<String> {
     Ok(system.to_owned())
 }
 fn commit(c: &Commands, new_system: &str, changed_files: &[&str], mode: &str) -> Result<()> {
+    // Post-build, before source publication, profile mutation, or activation.
+    assbox_system::worker::admit_candidate(c, new_system)?;
     let old = files::text(&marker("old-system"))?;
     let pending = pending_state()?;
     let next_pending = assbox_policy::pending_after_activation(
@@ -284,6 +287,28 @@ pub fn packages() -> Result<BTreeSet<PackageName>> {
 }
 pub fn package_change(name: PackageName, add: bool) -> Result<()> {
     let _lock = lock()?;
+    if add {
+        let active = Commands.text(
+            "nix",
+            &[
+                "eval",
+                "--raw",
+                "--no-update-lock-file",
+                "--no-write-lock-file",
+                "path:/etc/nixos#nixosConfigurations.assbox.config.assbox.controller.active",
+                "--apply",
+                "v: if v then \"true\" else \"false\"",
+            ],
+        )?;
+        if active.trim() == "true" {
+            return Err(Error::new(
+                "package add is not supported on a thin controller; configure worker.extraGuestConfig instead",
+            ));
+        }
+        if active.trim() != "false" {
+            return Err(Error::new("invalid controller policy"));
+        }
+    }
     let mut names = packages()?;
     let changed = if add {
         names.insert(name)
@@ -482,6 +507,7 @@ fn reboot_pending_locked() -> Result<()> {
         &probe::current_system()?,
         &probe::boot_id()?,
     ) {
+        require_worker_health(&probe::current_system()?)?;
         files::remove_regular(Path::new(PENDING))?;
         return Ok(());
     }
@@ -666,7 +692,34 @@ pub fn status() -> Result<()> {
     }
     Ok(())
 }
+fn require_worker_health(current: &str) -> Result<()> {
+    let health = assbox_system::worker::boot_health(&Commands, current);
+    let outcome = if health.is_ok() {
+        "accepted"
+    } else {
+        "worker-health-failed"
+    };
+    files::atomic_write(
+        Path::new("/var/lib/assbox/worker-boot-status"),
+        format!(
+            "system={current}\nboot={}\noutcome={outcome}\n",
+            probe::boot_id()?.as_str()
+        )
+        .as_bytes(),
+        0o600,
+    )?;
+    health
+}
+
 pub fn boot_check() -> Result<()> {
+    boot_check_with_retry(false)
+}
+
+pub fn boot_check_retry() -> Result<()> {
+    boot_check_with_retry(true)
+}
+
+fn boot_check_with_retry(retry_only: bool) -> Result<()> {
     let _lock = lock()?;
     if state_entry_exists(TXN)? {
         return Err(Error::new(
@@ -681,13 +734,25 @@ pub fn boot_check() -> Result<()> {
             "booted, activated and selected generations differ; reboot or inspect bootloader/rollback state",
         ));
     }
-    Commands.run("systemctl", &["is-active", "network.target"])?;
-    if let Some(system) = pending {
-        if !assbox_policy::reboot_completed(&system, &booted, &current, &probe::boot_id()?) {
-            return Err(Error::new(
-                "pending reboot has not been completed by this boot",
-            ));
+    let boot_id = probe::boot_id()?;
+    // Never reuse an old success across pending intent, a reboot, a selected
+    // generation change, or an unresolved transaction. Manual checks always run.
+    if retry_only && pending.is_none() && state_entry_exists(BOOT_ACCEPTED)? {
+        let receipt = BootAcceptance::parse(&files::text(Path::new(BOOT_ACCEPTED))?)?;
+        if receipt.matches(&current, &boot_id) {
+            return assbox_system::worker::quiesce_boot_retry(&Commands, &current);
         }
+    }
+    Commands.run("systemctl", &["is-active", "network.target"])?;
+    if let Some(system) = &pending
+        && !assbox_policy::reboot_completed(system, &booted, &current, &boot_id)
+    {
+        return Err(Error::new(
+            "pending reboot has not been completed by this boot",
+        ));
+    }
+    require_worker_health(&current)?;
+    if pending.is_some() {
         files::remove_regular(Path::new(PENDING))?;
     }
     println!(
@@ -697,7 +762,11 @@ pub fn boot_check() -> Result<()> {
     if runtime.get(5).is_some_and(|enabled| enabled == "true") {
         cleanup_locked()?;
     }
-    Ok(())
+    // Publish only after all acceptance work completed. Failed or interrupted
+    // runs remain retryable; the diagnostic worker status is not this receipt.
+    let receipt = BootAcceptance::new(&current, boot_id)?;
+    files::atomic_write(Path::new(BOOT_ACCEPTED), receipt.encode().as_bytes(), 0o600)?;
+    assbox_system::worker::quiesce_boot_retry(&Commands, &current)
 }
 
 pub fn components_set(
@@ -877,6 +946,9 @@ fn cleanup_locked() -> Result<()> {
     if probe::profile_system()? != current || probe::booted_system()? != current {
         return Ok(());
     }
+    // No pending marker is not proof of worker health (for example first boot).
+    // Manual and scheduled cleanup must preserve fallback generations on failure.
+    require_worker_health(&current)?;
     let (_, keep) = maintenance_numbers()?;
     let before = generations()?;
     let obsolete =
@@ -926,4 +998,148 @@ fn cleanup_locked() -> Result<()> {
 pub fn cleanup() -> Result<()> {
     let _lock = lock()?;
     cleanup_locked()
+}
+
+/// Stage worker placement and resources atomically with the existing Assbox
+/// candidate/build/boot transaction. Never rewrite local.nix or copy credentials.
+pub fn worker_configure(
+    spec: Option<&assbox_domain::worker::WorkerSpec>,
+    accept_unfree: bool,
+    apply: bool,
+) -> Result<()> {
+    let _lock = lock()?;
+    let live = Commands.capture(
+        "nix",
+        &[
+            "eval",
+            "--json",
+            "--no-update-lock-file",
+            "--no-write-lock-file",
+            "path:/etc/nixos#nixosConfigurations.assbox.config.assbox",
+            "--apply",
+            "c: { inherit (c) acceptUnfree selectedComponents presentation; }",
+        ],
+    )?;
+    let fields = Commands.jq_fields(&live,
+        r#"[(.acceptUnfree|tostring),(.selectedComponents|join(",")),.presentation] | .[] | . + "\u0000""#)?;
+    if fields.len() != 3 || !matches!(fields[0].as_str(), "true" | "false") {
+        return Err(Error::new("invalid evaluated host component policy"));
+    }
+    let old: Components = fields[1].parse()?;
+    if spec.is_some()
+        && old
+            .iter()
+            .any(|c| c.requires_worker() && !c.controller_allowed())
+    {
+        return Err(Error::new(
+            "remove the unqualified sensitive controller before changing worker placement",
+        ));
+    }
+    // Configuration never silently removes installed controller components.
+    // The operator must remove incompatible selections in a separate explicit
+    // transaction before enabling the worker profile.
+    let host = old;
+    let presentation: Presentation = fields[2].parse()?;
+    assbox_domain::worker::validate_host_selection(host, spec)?;
+    if spec.is_some() && !packages()?.is_empty() {
+        return Err(Error::new(
+            "remove managed host packages before enabling the thin controller; worker tools are configured separately",
+        ));
+    }
+    if let Some(spec) = spec {
+        spec.validate(accept_unfree || fields[0] == "true")?;
+        assbox_policy::worker::validate_host_budget(
+            spec,
+            &assbox_system::worker::hardware(&Commands)?,
+        )?;
+    }
+    let settings = assbox_config::selection(
+        &files::text(&Path::new(CONFIG).join("assbox-settings.nix"))?,
+        host,
+        presentation,
+        accept_unfree,
+    )?;
+    let settings = assbox_config::worker::selection(&settings, spec)?;
+    println!("Host curated components: {old} -> {host}");
+    if let Some(spec) = spec {
+        println!(
+            "Worker components: {} | memory {} MiB | {} CPUs | state {} GiB",
+            spec.components, spec.memory_mib, spec.vcpus, spec.state_gib
+        );
+    } else {
+        println!(
+            "Worker disabled at next boot; no agent is moved to the host and no worker data is deleted."
+        );
+    }
+    if !apply {
+        println!("Plan only. Add --apply to build and stage this configuration for reboot.");
+        return Ok(());
+    }
+    begin()?;
+    let result = (|| {
+        files::atomic_write(
+            &marker("candidate/assbox-settings.nix"),
+            settings.as_bytes(),
+            0o644,
+        )?;
+        let candidate = reference(&marker("candidate"))?;
+        let evaluated = Commands.capture(
+            "nix",
+            &[
+                "eval",
+                "--json",
+                "--no-update-lock-file",
+                "--no-write-lock-file",
+                &format!("{candidate}#nixosConfigurations.assbox.config.assbox"),
+                "--apply",
+                assbox_config::worker::EVALUATED_SELECTION,
+            ],
+        )?;
+        let filter = if spec.is_some() {
+            r#"[(.enable|tostring),(.components|join(",")),
+             (.allowMutableCodeFor|join(",")),(.memoryMiB|tostring),(.vcpus|tostring),
+             (.stateGiB|tostring),(.uplinkInterfaces|join(",")),.egress,
+             (.allowGuestSudo|tostring),
+             (.nameservers|join(","))] | .[] | . + "\u0000""#
+        } else {
+            r#"(.enable|tostring) + "\u0000""#
+        };
+        if Commands.jq_fields(&evaluated, filter)? != assbox_config::worker::expected_fields(spec) {
+            return Err(Error::new(
+                "a local override conflicts with the requested worker settings; no changes activated",
+            ));
+        }
+        let host_evaluated = Commands.capture(
+            "nix",
+            &[
+                "eval",
+                "--json",
+                "--no-update-lock-file",
+                "--no-write-lock-file",
+                &format!("{candidate}#nixosConfigurations.assbox.config.assbox"),
+                "--apply",
+                "c: { inherit (c) selectedComponents presentation acceptUnfree; }",
+            ],
+        )?;
+        let host_fields = Commands.jq_fields(&host_evaluated,
+            r#"[(.selectedComponents|join(",")),.presentation,(.acceptUnfree|tostring)] | .[] | . + "\u0000""#)?;
+        if host_fields
+            != [
+                host.to_string(),
+                presentation.to_string(),
+                (accept_unfree || fields[0] == "true").to_string(),
+            ]
+        {
+            return Err(Error::new(
+                "a local override conflicts with requested host placement or consent",
+            ));
+        }
+        let system = build(&Commands)?;
+        commit(&Commands, &system, &["assbox-settings.nix"], "boot")?;
+        println!(
+            "Worker configuration staged for reboot. Credentials and project data were not copied or removed. Verify Desktop worker-targeted tool routing before use."
+        );
+        Ok(())
+    })();
+    result.map_err(fail_before_activation)
 }

@@ -21,12 +21,18 @@ def read_catalog():
         raise ValueError('catalog identifiers must be unique and sorted')
     exports = set()
     for row in rows:
-        if set(row) != {'id', 'package', 'family', 'command', 'dependencies', 'presentations', 'unfree', 'mutableCode', 'blocked', 'codeNotes'}:
+        if set(row) != {'id', 'package', 'family', 'command', 'dependencies', 'presentations', 'unfree', 'mutableCode', 'blocked', 'codeNotes', 'controllerAllowed', 'workerAllowed', 'requiresWorker'}:
             raise ValueError('unexpected catalog fields')
         if not re.fullmatch(r'[a-z][a-z0-9-]*', row['id']):
             raise ValueError('invalid component identifier')
         if type(row['unfree']) is not bool or type(row['mutableCode']) is not bool:
             raise ValueError('invalid consent metadata')
+        if any(type(row[field]) is not bool for field in ('controllerAllowed', 'workerAllowed', 'requiresWorker')):
+            raise ValueError('invalid placement metadata')
+        if row['workerAllowed'] and 'headless' not in row['presentations']:
+            raise ValueError('worker component must support headless execution')
+        if row['controllerAllowed'] and row['workerAllowed']:
+            raise ValueError('controller and execution packages cannot be interchangeable')
         if any(not isinstance(row[field], str) for field in ['blocked', 'codeNotes']):
             raise ValueError('invalid disclosure metadata')
         if not row['presentations'] or not set(row['presentations']) <= {'headless', 'x11', 'wayland'}:
@@ -64,7 +70,7 @@ def generate(rows):
     out += ''.join(f'    {variant(r["id"])} => "{r["id"]}",\n' for r in rows) + '});\n'
     out += 'impl Component {\n    pub const ALL: &\'static [Self] = &[\n'
     out += ''.join(f'        Self::{variant(r["id"])},\n' for r in rows) + '    ];\n'
-    for name, field, typ in [('dependencies','dependencies',"&'static [Component]"),('presentations','presentations',"&'static [Presentation]"),('unfree','unfree','bool'),('mutable_code','mutableCode','bool'),('blocked','blocked',"&'static str"),('command','command',"&'static str"),('code_notes','codeNotes',"&'static str")]:
+    for name, field, typ in [('dependencies','dependencies',"&'static [Component]"),('presentations','presentations',"&'static [Presentation]"),('unfree','unfree','bool'),('mutable_code','mutableCode','bool'),('blocked','blocked',"&'static str"),('command','command',"&'static str"),('code_notes','codeNotes',"&'static str"),('controller_allowed','controllerAllowed','bool'),('worker_allowed','workerAllowed','bool'),('requires_worker','requiresWorker','bool')]:
         out += f'    pub const fn {name}(self) -> {typ} {{\n        match self {{\n'
         for r in rows:
             v = r[field]

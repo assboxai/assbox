@@ -118,7 +118,7 @@ mod tests {
     }
     #[test]
     fn blocked_remotes_and_graphical_requirements_are_not_overridden_by_consent() {
-        for id in ["antigravity-remote", "chatgpt-remote", "cowork-dispatch"] {
+        for id in ["antigravity-remote", "cowork-dispatch"] {
             let selected: Components = id.parse().unwrap();
             assert!(
                 selected

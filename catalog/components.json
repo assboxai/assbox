@@ -13,7 +13,10 @@
     "unfree": true,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "antigravity-remote",
@@ -31,7 +34,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "The pinned proprietary CLI documents service installation but no reviewed foreground daemon entry point.",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "chatgpt-desktop",
@@ -45,7 +51,10 @@
     "unfree": true,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "May download a provider-managed Codex runtime; standalone Codex is not installed implicitly. Chromium is provided for login."
+    "codeNotes": "May download a provider-managed Codex runtime; standalone Codex is not installed implicitly. Chromium is provided for login.",
+    "controllerAllowed": true,
+    "workerAllowed": false,
+    "requiresWorker": true
   },
   {
     "id": "chatgpt-remote",
@@ -60,8 +69,11 @@
     ],
     "unfree": false,
     "mutableCode": false,
-    "blocked": "Upstream Remote documentation does not establish Linux support; Linux account pairing must be demonstrated before enabling this capability.",
-    "codeNotes": ""
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": true,
+    "workerAllowed": false,
+    "requiresWorker": true
   },
   {
     "id": "claude-code",
@@ -77,7 +89,10 @@
     "unfree": true,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "claude-code-remote",
@@ -95,7 +110,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "claude-desktop",
@@ -110,7 +128,10 @@
     "unfree": true,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "May download Claude Code and other executable helpers; includes Cowork VM helpers. Chromium is provided for login."
+    "codeNotes": "May download Claude Code and other executable helpers; includes Cowork VM helpers. Chromium is provided for login.",
+    "controllerAllowed": false,
+    "workerAllowed": false,
+    "requiresWorker": true
   },
   {
     "id": "codex",
@@ -126,7 +147,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "cowork-dispatch",
@@ -143,7 +167,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "The packaged Linux Cowork VM execution and device permissions have not been established within the unprivileged Assbox boundary.",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": false,
+    "requiresWorker": true
   },
   {
     "id": "cursor-agent",
@@ -159,7 +186,10 @@
     "unfree": true,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "cursor-worker",
@@ -177,7 +207,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "emacs",
@@ -193,7 +226,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "gemini-cli",
@@ -209,7 +245,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "grok",
@@ -225,7 +264,10 @@
     "unfree": true,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "happy",
@@ -241,7 +283,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": "Bundles Claude Agent SDK and Anthropic sandbox runtime, even with Codex; Happy Terminal may provision companion code."
+    "codeNotes": "Bundles Claude Agent SDK and Anthropic sandbox runtime, even with Codex; Happy Terminal may provision companion code.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "happy-remote",
@@ -259,7 +304,10 @@
     "unfree": false,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "Starts Happy Terminal alongside the supervisor; backend selection is not an isolation or code-exclusion boundary."
+    "codeNotes": "Starts Happy Terminal alongside the supervisor; backend selection is not an isolation or code-exclusion boundary.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "openclaw",
@@ -275,7 +323,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "openclaw-gateway",
@@ -293,7 +344,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "openclaw-node",
@@ -311,7 +365,10 @@
     "unfree": false,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "Optional session hosting executes worker artifacts provisioned and validated by the paired Gateway."
+    "codeNotes": "Optional session hosting executes worker artifacts provisioned and validated by the paired Gateway.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "opencode",
@@ -327,7 +384,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "opencode-server",
@@ -345,7 +405,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "vim",
@@ -361,7 +424,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "vscode",
@@ -376,7 +442,10 @@
     "unfree": true,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": "Includes upstream AI features; Assbox installs no extra AI extensions or standalone agents."
+    "codeNotes": "Includes upstream AI features; Assbox installs no extra AI extensions or standalone agents.",
+    "controllerAllowed": false,
+    "workerAllowed": false,
+    "requiresWorker": false
   },
   {
     "id": "vscode-cli",
@@ -392,7 +461,10 @@
     "unfree": true,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": ""
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "vscode-remote-host",
@@ -408,7 +480,10 @@
     "unfree": false,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "The connecting client provisions server, extensions and tooling. Enables a NixOS compatibility loader on this machine."
+    "codeNotes": "The connecting client provisions server, extensions and tooling. Enables a NixOS compatibility loader on this machine.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "vscode-tunnel",
@@ -426,7 +501,10 @@
     "unfree": false,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "Microsoft provisions server code after interactive account and license acceptance. Enables the NixOS compatibility loader."
+    "codeNotes": "Microsoft provisions server code after interactive account and license acceptance. Enables the NixOS compatibility loader.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "zed",
@@ -441,7 +519,10 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": "Includes upstream AI integration; Assbox installs no ACP agent implicitly."
+    "codeNotes": "Includes upstream AI integration; Assbox installs no ACP agent implicitly.",
+    "controllerAllowed": false,
+    "workerAllowed": false,
+    "requiresWorker": false
   },
   {
     "id": "zed-remote-host",
@@ -457,6 +538,9 @@
     "unfree": false,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "The connecting client provisions its matching remote server and project/language tools."
+    "codeNotes": "The connecting client provisions its matching remote server and project/language tools.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
   }
 ]

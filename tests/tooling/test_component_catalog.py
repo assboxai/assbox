@@ -23,7 +23,7 @@ class ComponentCatalogTests(unittest.TestCase):
         expected = tuple(sorted({r['family'] for r in rows} - {'nixpkgs'}))
         self.assertEqual(component_families.FAMILIES, expected)
         release_data.validate_lock(json.loads((ROOT / 'flake.lock').read_text()))
-        for id in ['chatgpt-remote', 'cowork-dispatch', 'antigravity-remote']:
+        for id in ['cowork-dispatch', 'antigravity-remote']:
             self.assertTrue(next(r for r in rows if r['id'] == id)['blocked'])
 
     def test_release_workflow_requires_each_family_on_both_architectures(self):
@@ -122,8 +122,18 @@ class ComponentCatalogTests(unittest.TestCase):
                 self.assertFalse(result['failures'])
                 self.assertEqual(result['services']['user']['services'], {})
 
+    def test_chatgpt_remote_requires_desktop_and_x11_not_an_obsolete_os_blocker(self):
+        rows = {row['id']: row for row in catalog.read_catalog()}
+        self.assertEqual(rows['chatgpt-remote']['blocked'], '')
+        self.assertEqual(rows['chatgpt-remote']['dependencies'], ['chatgpt-desktop'])
+        selected = {name: {'enable': True, 'allowMutableCode': True}
+                    for name in ('chatgpt-desktop', 'chatgpt-remote')}
+        self.assertFalse(self.evaluate(selected, presentation='x11')['failures'])
+        self.assertTrue(self.evaluate({'chatgpt-remote': {'enable': True}}, presentation='x11')['failures'])
+        self.assertTrue(self.evaluate(selected, presentation='headless')['failures'])
+
     def test_blocked_capabilities_never_silently_pass(self):
-        for id, dep in [('antigravity-remote','antigravity-cli'),('chatgpt-remote','chatgpt-desktop'),('cowork-dispatch','claude-desktop')]:
+        for id, dep in [('antigravity-remote','antigravity-cli'),('cowork-dispatch','claude-desktop')]:
             result = self.evaluate({name: {'enable': True, 'allowMutableCode': True} for name in (id,dep)}, presentation='x11')
             self.assertTrue(any(id in failure for failure in result['failures']))
 

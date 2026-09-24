@@ -128,7 +128,7 @@ pub fn setup(component: Component) -> Result<()> {
     match component {
         Component::ChatgptDesktop => {
             println!(
-                "Sign in using the ChatGPT window in the X11 session. Linux Remote pairing is not yet established."
+                "Sign in using the ChatGPT window in the X11 session, then pair Remote. For isolation, select an SSH worker project."
             );
             Ok(())
         }

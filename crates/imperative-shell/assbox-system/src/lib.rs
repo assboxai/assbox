@@ -10,3 +10,4 @@ pub mod services;
 
 mod command_output;
 mod mounts;
+pub mod worker;

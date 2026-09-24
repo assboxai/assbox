@@ -3,6 +3,7 @@
 mod opencode;
 mod user;
 mod wizard;
+mod worker;
 
 use assbox_domain::*;
 use assbox_engine::manage;
@@ -36,6 +37,18 @@ const HELP: &str = r#"Assbox — Assistant Box
   assbox component list                  List curated IDs, dependencies and blockers
   assbox component setup ID               Onboard as the unprivileged agent user
   assbox component diagnose ID            Capture private remote-service diagnostics as agent
+  assbox worker recommend               Inspect KVM, RAM, storage and candidate uplinks
+  assbox worker setup                   Interactive plan/build/stage workflow (sudo)
+  assbox worker configure IDS [OPTIONS]  Plan explicit guest agents and move curated
+                                        execution packages off the host (sudo)
+      --offline | --uplink NAME         Explicit networking; repeat --uplink as needed
+      --memory auto|MIB --cpus N --state-gib N
+      --allow-mutable-code --allow-guest-sudo --accept-unfree
+      --apply                           Build and stage for reboot; otherwise plan only
+  assbox worker disable [--apply]        Disable without controller fallback or data deletion
+  assbox worker status|doctor|check      Observe worker state; check requires sudo
+  assbox worker start|stop               Lifecycle controls (sudo)
+  assbox worker setup-ssh|login|shell    Controller-user transport/onboarding
   assbox logs                           Show the maintenance journal
 
 Changes to machine configuration require sudo from the admin account.
@@ -77,6 +90,7 @@ fn run(args: &[&str]) -> Result<()> {
             Ok(())
         }
         ["install", rest @ ..] => wizard::install(rest),
+        ["worker", rest @ ..] => worker::run(rest),
         ["status"] => manage::status(),
         ["doctor"] => {
             manage::status()?;
@@ -156,6 +170,7 @@ fn run(args: &[&str]) -> Result<()> {
         ["internal", "maintenance"] => manage::maintenance(false),
         ["internal", "maintenance", "--retry"] => manage::maintenance(true),
         ["internal", "boot-check"] => manage::boot_check(),
+        ["internal", "boot-check", "--retry"] => manage::boot_check_retry(),
         ["internal", "opencode", mode] => opencode::launch(mode),
         ["internal", "hardware"] => {
             println!("{:#?}", probe::inventory(&Commands)?);

@@ -6,7 +6,7 @@ pub mod hardware;
 pub mod maintenance;
 pub mod release;
 pub use hardware::{Hardware, PciNetworkDevice, WirelessInterface};
-pub use maintenance::{BootId, PendingReboot};
+pub use maintenance::{BootAcceptance, BootId, PendingReboot};
 use std::{error::Error as StdError, fmt, str::FromStr};
 
 pub mod source;
@@ -158,6 +158,7 @@ pub struct Choices {
     pub autostart: Vec<String>,
     pub admin_ssh_key: Option<String>,
     pub agent_ssh_key: Option<String>,
+    pub worker: Option<worker::WorkerSpec>,
     pub happy_backends: Components,
 }
 
@@ -196,6 +197,10 @@ impl Choices {
         }
         self.components
             .validate(self.presentation, self.allow_unfree)?;
+        if let Some(worker) = &self.worker {
+            worker.validate(self.allow_unfree)?;
+        }
+        worker::validate_host_selection(self.components, self.worker.as_ref())?;
         if !self.allow_mutable_code && self.components.iter().any(Component::mutable_code) {
             return Err(Error::new(
                 "selected components require explicit consent to provider/client-managed executable downloads",
@@ -471,3 +476,4 @@ mod tests {
         }
     }
 }
+pub mod worker;

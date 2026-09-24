@@ -672,6 +672,9 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     }
     #[cfg(test)]
     crate::acceptance::checkpoint("install-built")?;
+    if let Some(worker) = &plan.request().choices.worker {
+        assbox_system::worker::admit_install(&c, &root.point, &system, worker.state_gib)?;
+    }
     crate::boot_guard::verify_install_target_in_store(&c, &root.point, &system, &plan)?;
     crate::source::verify_local_lock(&c, &installed_config, &fetched.release.manifest)?;
     if let Some(e) = &esp

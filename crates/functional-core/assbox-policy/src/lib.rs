@@ -869,3 +869,4 @@ pub fn validate_component_selection(
 ) -> Result<()> {
     components.validate(presentation, accepted_unfree)
 }
+pub mod worker;

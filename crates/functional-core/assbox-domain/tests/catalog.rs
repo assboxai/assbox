@@ -17,7 +17,9 @@ import json, sys
 for row in json.load(open(sys.argv[1])):
     fields = [row['id'], ','.join(row['dependencies']), ','.join(row['presentations']),
               str(row['unfree']).lower(), str(row['mutableCode']).lower(),
-              row['blocked'], row['command'], row['codeNotes']]
+              row['blocked'], row['command'], row['codeNotes'],
+              str(row['controllerAllowed']).lower(), str(row['workerAllowed']).lower(),
+              str(row['requiresWorker']).lower()]
     for field in fields:
         assert '\0' not in field
         sys.stdout.write(field + '\0')
@@ -29,8 +31,8 @@ for row in json.load(open(sys.argv[1])):
     assert!(output.status.success(), "{:?}", output.stderr);
     let text = String::from_utf8(output.stdout).unwrap();
     let fields: Vec<_> = text.split_terminator('\0').collect();
-    assert_eq!(fields.len(), Component::ALL.len() * 8);
-    let rows: Vec<_> = fields.chunks_exact(8).collect();
+    assert_eq!(fields.len(), Component::ALL.len() * 11);
+    let rows: Vec<_> = fields.chunks_exact(11).collect();
     let names = |items: &[Component]| {
         items
             .iter()
@@ -75,6 +77,10 @@ for row in json.load(open(sys.argv[1])):
         assert_eq!(component.blocked(), row[5], "{} blocker", row[0]);
         assert_eq!(component.command(), row[6], "{} command", row[0]);
         assert_eq!(component.code_notes(), row[7], "{} disclosure", row[0]);
+
+        assert_eq!(component.controller_allowed().to_string(), row[8]);
+        assert_eq!(component.worker_allowed().to_string(), row[9]);
+        assert_eq!(component.requires_worker().to_string(), row[10]);
 
         // Resolve dependencies from the JSON, independently of Component's API.
         let mut expected = BTreeSet::new();

@@ -177,6 +177,41 @@ pub fn install(args: &[&str]) -> Result<()> {
         }
         components = expanded;
     }
+    let requested_worker = if components.iter().any(Component::requires_worker) {
+        if components
+            .iter()
+            .any(|c| c.requires_worker() && !c.controller_allowed())
+        {
+            return Err(Error::new(
+                "this sensitive desktop has no qualified Assbox controller adapter; do not combine it with controller agent execution",
+            ));
+        }
+        let controller = assbox_domain::worker::controller_components(components);
+        let mut execution = Components::default();
+        for component in components.iter().filter(|c| !c.controller_allowed()) {
+            if !component.worker_allowed() {
+                return Err(Error::new("unqualified component on the controller"));
+            }
+            execution.insert(component);
+        }
+        // The proposed dependency is displayed and explicitly accepted below.
+        if controller.contains(Component::ChatgptDesktop) {
+            execution.insert(Component::Codex);
+        }
+        println!("Proposed controller: {controller}. Proposed worker: {execution}.");
+        if !yes(
+            "Use this managed worker-only execution layout?",
+            Some(false),
+        )? {
+            return Err(Error::new(
+                "ChatGPT controller requires worker isolation; no controller fallback",
+            ));
+        }
+        components = controller;
+        Some(execution)
+    } else {
+        None
+    };
     let happy_backends = if components.contains(Component::HappyRemote) {
         let backends: Components = ask(
             "Happy backends (codex, claude-code, or both comma-separated)",
@@ -198,8 +233,15 @@ pub fn install(args: &[&str]) -> Result<()> {
     } else {
         Components::default()
     };
-    let presentation: Presentation =
-        ask("Presentation: headless / wayland / x11", Some("headless"))?.parse()?;
+    let presentation: Presentation = ask(
+        "Presentation: headless / wayland / x11",
+        Some(if requested_worker.is_some() {
+            "x11"
+        } else {
+            "headless"
+        }),
+    )?
+    .parse()?;
     let network = probe::default_network(&c).unwrap_or_default();
     let wifi = assbox_policy::suggested_wifi(&network);
     if wifi.is_none() {
@@ -240,7 +282,7 @@ pub fn install(args: &[&str]) -> Result<()> {
     let mutable = components.iter().any(|c| c.mutable_code());
     if mutable {
         println!(
-            "Selected components may download provider-controlled executable helpers into the agent home. All components share agent files and credentials."
+            "Selected desktop components may download executable helpers. Worker selection does not automatically disable a desktop application's built-in controller-local tools."
         );
     }
     let allow_mutable_code = mutable
@@ -251,6 +293,9 @@ pub fn install(args: &[&str]) -> Result<()> {
     if mutable && !allow_mutable_code {
         return Err(Error::new("mutable helper provisioning was not accepted"));
     }
+    let worker = requested_worker
+        .map(|selected| crate::worker::installation_spec(selected, allow_unfree))
+        .transpose()?;
     let autostart = if presentation == Presentation::Headless {
         Vec::new()
     } else {
@@ -292,6 +337,7 @@ pub fn install(args: &[&str]) -> Result<()> {
         autostart,
         admin_ssh_key,
         agent_ssh_key,
+        worker,
         happy_backends,
     };
     let request = InstallRequest {
@@ -301,6 +347,16 @@ pub fn install(args: &[&str]) -> Result<()> {
         choices,
     };
     let plan = assbox_policy::plan_install(inv, request)?;
+    if let Some(spec) = &plan.request().choices.worker {
+        let mut hardware = assbox_system::worker::hardware(&c)?;
+        hardware.free_gib = plan.root().bytes / (1024 * 1024 * 1024);
+        hardware.existing_state_gib = None;
+        assbox_policy::worker::validate_host_budget(spec, &hardware)?;
+        println!(
+            "Worker: {} | {} MiB | {} CPUs | persistent state {} GiB",
+            spec.components, spec.memory_mib, spec.vcpus, spec.state_gib
+        );
+    }
     println!(
         "\nPlan: {} | {} | {} | {} | {}",
         plan.request().choices.hostname.as_str(),
