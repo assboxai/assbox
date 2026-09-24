@@ -44,7 +44,7 @@ const HELP: &str = r#"Assbox — Assistant Box
       --network normal|internet|offline IPv4 egress policy (interactive selection required)
       --uplink NAME --dns IPV4          Repeat for explicit uplinks and resolvers
       --offline                        Legacy offline flag; uplink alone retains internet-only
-      --memory auto|MIB --cpus N --state-gib N
+      --memory auto|MIB --cpus N --state-gib auto|N
       --allow-mutable-code --allow-guest-sudo --accept-unfree
       --apply                           Build and stage for reboot; otherwise plan only
   assbox worker disable [--apply]        Disable without controller fallback or data deletion

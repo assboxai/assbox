@@ -17,7 +17,7 @@
     components = [ "codex" ];
     memoryMiB = 3072;
     vcpus = 2;
-    stateGiB = 32;
+    stateGiB = 128; # Example only; the CLI defaults to automatic sizing.
     # Set to actual interface names shown by `ip -brief link` / `ip route`.
     uplinkInterfaces = [ "enp3s0" ];
     allowGuestSudo = false;

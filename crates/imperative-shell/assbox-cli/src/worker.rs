@@ -16,7 +16,7 @@ struct Request {
     components: Components,
     memory: Option<u32>,
     cpus: Option<u32>,
-    state: u32,
+    state: Option<u32>,
     uplinks: Vec<String>,
     network: WorkerNetwork,
     nameservers: Vec<String>,
@@ -39,7 +39,7 @@ fn parse(args: &[&str]) -> Result<Request> {
         components: ids.parse()?,
         memory: None,
         cpus: None,
-        state: 32,
+        state: None,
         uplinks: Vec::new(),
         network: WorkerNetwork::Internet,
         nameservers: vec![],
@@ -81,7 +81,11 @@ fn parse(args: &[&str]) -> Result<Request> {
             }
             "--state-gib" => {
                 i += 1;
-                r.state = number(value(i)?)?;
+                r.state = if value(i)? == "auto" {
+                    None
+                } else {
+                    Some(number(value(i)?)?)
+                };
             }
             "--uplink" => {
                 i += 1;
@@ -135,7 +139,8 @@ fn configure(request: Request) -> Result<()> {
         vcpus: request
             .cpus
             .unwrap_or_else(|| assbox_policy::worker::recommended_cpus(&host)),
-        state_gib: request.state,
+        state_gib: request.state.or(host.existing_state_gib).unwrap_or(8),
+        auto_state: request.state.is_none() && host.existing_state_gib.is_none(),
         uplinks: request.uplinks,
         network: request.network,
         nameservers: request.nameservers,
@@ -234,7 +239,10 @@ fn setup() -> Result<()> {
     }
     let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
     let ram = ask("Worker memory in MiB", &memory.to_string())?;
-    let state = ask("Persistent state in GiB (never auto-resized)", "32")?;
+    let state = ask(
+        "Persistent state GiB: auto or capacity (existing disks retained)",
+        "auto",
+    )?;
     let unfree = ask("Allow proprietary packages machine-wide? yes/no", "no")?;
     let mutable = ask(
         "Allow provider-managed downloads for selected components? yes/no",
@@ -297,7 +305,9 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
         "Worker CPUs",
         &assbox_policy::worker::recommended_cpus(&host).to_string(),
     )?)?;
-    let state_gib = number(&ask("Persistent worker state GiB", "32")?)?;
+    let state = ask("Persistent worker state GiB: auto or capacity", "auto")?;
+    let auto_state = state == "auto";
+    let state_gib = if auto_state { 8 } else { number(&state)? };
     let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
     let mut mutable_components = Components::default();
     for c in components.iter().filter(|c| c.mutable_code()) {
@@ -316,6 +326,7 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
         memory_mib,
         vcpus,
         state_gib,
+        auto_state,
         uplinks,
         network,
         nameservers,

@@ -11,6 +11,7 @@ let
       {
         assbox.updates.enable = false;
         assbox.worker = {
+          stateGiB = 8;
           enable = true;
           components = [ "vim" ];
           egress = "offline";

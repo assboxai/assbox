@@ -102,6 +102,65 @@ print('ready' if ready else 'unavailable')
     })
 }
 
+/// Measurements only; sizing decisions belong to the pure policy layer.
+pub fn filesystem_capacity(c: &Commands, path: &Path) -> Result<(u64, u64)> {
+    let output = c.text(
+        "df",
+        &[
+            "--block-size=1",
+            "--output=size,avail",
+            files::path_text(path)?,
+        ],
+    )?;
+    let numbers: Vec<u64> = output
+        .lines()
+        .nth(1)
+        .unwrap_or("")
+        .split_whitespace()
+        .map(|s| {
+            s.parse()
+                .map_err(|_| Error::new("invalid filesystem capacity"))
+        })
+        .collect::<Result<_>>()?;
+    if numbers.len() != 2 || numbers[0] == 0 || numbers[1] > numbers[0] {
+        return Err(Error::new("cannot measure target filesystem capacity"));
+    }
+    Ok((numbers[0], numbers[1]))
+}
+
+pub fn artifact_root_bytes(c: &Commands, store_root: &Path, artifact: &str) -> Result<u64> {
+    let suffix = artifact
+        .strip_prefix("/nix/store/")
+        .ok_or_else(|| Error::new("invalid artifact store path"))?;
+    if suffix.len() < 34
+        || suffix.as_bytes()[32] != b'-'
+        || suffix.contains('/')
+        || !suffix
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"+._?=-".contains(&b))
+    {
+        return Err(Error::new("invalid artifact store path"));
+    }
+    let manifest = store_root
+        .join("nix/store")
+        .join(suffix)
+        .join("manifest.json");
+    let meta = io(fs::symlink_metadata(&manifest))?;
+    if !meta.is_file() || meta.len() > 16384 {
+        return Err(Error::new("invalid worker artifact manifest"));
+    }
+    let fields = c.jq_fields(&io(fs::read(manifest))?,
+        r#"if .schema != 1 or (.rootVirtualBytes|type) != "number" then error("invalid manifest") else (.rootVirtualBytes|tostring) + "\u0000" end"#)?;
+    let bytes = fields
+        .first()
+        .and_then(|s| s.parse::<u64>().ok())
+        .ok_or_else(|| Error::new("invalid worker root size"))?;
+    if fields.len() != 1 || !(4 * 1024 * 1024 * 1024..=2048 * 1024 * 1024 * 1024).contains(&bytes) {
+        return Err(Error::new("worker root size exceeds supported bounds"));
+    }
+    Ok(bytes)
+}
+
 /// The running generation, not mutable /etc settings or service ordering,
 /// decides whether a worker must be healthy before pending state can be cleared.
 pub fn boot_health(c: &Commands, system: &str) -> Result<()> {
@@ -246,46 +305,11 @@ pub fn admit_install(c: &Commands, root: &Path, system: &str, state_gib: u32) ->
         .join(system.trim_start_matches('/'))
         .join("assbox-worker-image");
     let target = io(fs::read_link(link))?;
-    let suffix = target
-        .strip_prefix("/nix/store")
-        .map_err(|_| Error::new("worker image is not in the target store"))?;
-    if suffix.components().count() != 1
-        || !matches!(
-            suffix.components().next(),
-            Some(std::path::Component::Normal(_))
-        )
-    {
-        return Err(Error::new("invalid worker image path"));
-    }
-    let manifest = root.join("nix/store").join(suffix).join("manifest.json");
-    let metadata = io(fs::symlink_metadata(&manifest))?;
-    if !metadata.is_file() || metadata.len() > 16384 {
-        return Err(Error::new("invalid target worker artifact manifest"));
-    }
-    let fields = c.jq_fields(
-        &io(fs::read(&manifest))?,
-        r#"
-        if .schema != 1 or (.rootVirtualBytes|type) != "number"
-        then error("invalid manifest") else (.rootVirtualBytes|tostring) + "\u0000" end"#,
-    )?;
-    let virtual_bytes = fields
-        .first()
-        .and_then(|v| v.parse::<u64>().ok())
-        .ok_or_else(|| Error::new("invalid worker disk size"))?;
-    const GIB: u64 = 1024 * 1024 * 1024;
-    if fields.len() != 1 || !(4 * GIB..=2048 * GIB).contains(&virtual_bytes) {
-        return Err(Error::new("worker disk size exceeds supported bounds"));
-    }
-    let required = virtual_bytes + (u64::from(state_gib) + 2) * GIB;
-    let available = c.text(
-        "df",
-        &["--block-size=1", "--output=avail", files::path_text(root)?],
-    )?;
-    let free = available
-        .lines()
-        .nth(1)
-        .and_then(|s| s.trim().parse::<u64>().ok())
-        .ok_or_else(|| Error::new("cannot measure target filesystem free space"))?;
+    let virtual_bytes = artifact_root_bytes(c, root, files::path_text(&target)?)?;
+    let (total, free) = filesystem_capacity(c, root)?;
+    let required = virtual_bytes
+        + u64::from(state_gib) * assbox_domain::worker::GIB
+        + assbox_domain::worker::storage_reserve(total);
     if free < required {
         return Err(Error::new(
             "target lacks space for worker state and a fully dirtied root; bootloader not activated",

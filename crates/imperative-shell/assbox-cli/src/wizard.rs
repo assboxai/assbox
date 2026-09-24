@@ -354,7 +354,14 @@ pub fn install(args: &[&str]) -> Result<()> {
         assbox_policy::worker::validate_host_budget(spec, &hardware)?;
         println!(
             "Worker: {} | {} MiB | {} CPUs | persistent state {} GiB",
-            spec.components, spec.memory_mib, spec.vcpus, spec.state_gib
+            spec.components,
+            spec.memory_mib,
+            spec.vcpus,
+            if spec.auto_state {
+                "automatic (resolved after artifact build)".to_owned()
+            } else {
+                spec.state_gib.to_string()
+            }
         );
     }
     println!(

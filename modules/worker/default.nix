@@ -204,8 +204,9 @@ in
       default = 2;
     };
     stateGiB = lib.mkOption {
-      type = lib.types.ints.between 8 2048;
-      default = 32;
+      type = lib.types.nullOr (lib.types.ints.between 8 2048);
+      default = null;
+      description = "Explicit persistent capacity. Use worker setup/configure --state-gib auto for first-time automatic sizing; existing disks are never resized.";
     };
     scratchGiB = lib.mkOption {
       type = lib.types.ints.between 4 256;
@@ -259,6 +260,10 @@ in
 
   config = lib.mkIf (config.assbox.enable && cfg.enable) {
     assertions = [
+      {
+        assertion = cfg.stateGiB != null;
+        message = "Set worker.stateGiB explicitly, or use assbox worker setup for automatic sizing. For an existing disk retain its capacity.";
+      }
       {
         assertion =
           cfg.components != [ ]

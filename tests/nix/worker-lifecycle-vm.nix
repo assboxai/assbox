@@ -47,7 +47,7 @@ pkgs.testers.runNixOSTest {
       pkgs.jq
       pkgs.nftables
     ];
-    virtualisation.diskSize = 65536;
+    virtualisation.diskSize = 262144; # Sparse backing; includes controller recovery headroom.
     virtualisation.memorySize = 2048;
     system.stateVersion = "26.05";
   };

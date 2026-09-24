@@ -35,6 +35,7 @@ let
           allowMutableCode = true;
         };
         assbox.worker = {
+          stateGiB = 8;
           enable = true;
           components = [ "vim" ];
           egress = "offline";

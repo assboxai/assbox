@@ -4,6 +4,7 @@
 {
   assbox.worker = {
     enable = true;
+    stateGiB = 64; # Choose capacity explicitly; the CLI offers automatic sizing.
     components = [ "vim" ];
     egress = "offline";
     uplinkInterfaces = [ ];

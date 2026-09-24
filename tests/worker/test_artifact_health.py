@@ -96,7 +96,7 @@ class HealthTests(unittest.TestCase):
             c=configuration();c['dataDir']=temp
             with patch.object(w,'require_user'),patch.object(w,'validate_kvm_and_memory'), \
                  patch.object(w,'artifact_manifest',return_value={'rootVirtualBytes':64*w.GIB}), \
-                 patch.object(w.shutil,'disk_usage',return_value=SimpleNamespace(free=32*w.GIB)), \
+                 patch.object(w.shutil,'disk_usage',return_value=SimpleNamespace(total=100 * w.GIB, free=32*w.GIB)), \
                  patch.object(w,'create_state_disk') as create:
                 with self.assertRaises(w.Refusal): w.prepare(c)
                 create.assert_not_called()

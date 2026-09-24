@@ -490,11 +490,11 @@ def create_state_disk(path: Path, size: int, mkfs: str) -> None:
             raise Refusal("Existing worker state size/permissions differ; never resize or format it automatically")
         return
     temporary = path.with_name(path.name + ".new")
-    # An interrupted allocation is not a valid state disk; leave it for explicit
+    # An interrupted sparse creation is not a valid state disk; leave it for explicit
     # inspection rather than guessing whether data should be discarded.
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
-        os.posix_fallocate(fd, 0, size)
+        os.ftruncate(fd, size)
         os.fsync(fd)
     finally:
         os.close(fd)
@@ -524,8 +524,10 @@ def disk_admission(c: dict[str, Any], manifest: dict[str, Any], *, owner: int) -
         state = require_regular(home, owner=owner)
         state_needed = max(0, state_needed - state.st_blocks * 512)
     reclaim = require_regular(root, owner=owner).st_blocks * 512 if root.exists() else 0
-    needed = manifest["rootVirtualBytes"] + 2 * GIB + state_needed
-    free = shutil.disk_usage(filesystem).free
+    usage = shutil.disk_usage(filesystem)
+    reserve = max(32 * GIB, usage.total // 5)
+    needed = manifest["rootVirtualBytes"] + reserve + state_needed
+    free = usage.free
     if free + reclaim < needed:
         raise Refusal("Insufficient disk space for persistent state and a fully dirtied root; no state disk was reformatted")
     return {"requiredBytes": needed, "freeBytes": free, "reclaimableRootBytes": reclaim}
@@ -582,9 +584,9 @@ def qemu_args(c: dict[str, Any]) -> list[str]:
         "-nodefaults", "-no-user-config", "-display", "none", "-serial", "null", "-monitor", "none",
         "-no-reboot", "-kernel", str(artifact / "kernel"), "-initrd", str(artifact / "initrd"),
         "-append", command_line,
-        "-drive", f"file={data}/root.qcow2,if=none,id=root,format=qcow2,cache=none",
+        "-drive", f"file={data}/root.qcow2,if=none,id=root,format=qcow2,cache=none,werror=stop,rerror=stop",
         "-device", f"virtio-blk-pci,drive=root",
-        "-drive", f"file={data}/home.raw,if=none,id=home,format=raw,cache=none",
+        "-drive", f"file={data}/home.raw,if=none,id=home,format=raw,cache=none,werror=stop,rerror=stop",
         "-device", f"virtio-blk-pci,drive=home",
         "-drive", f"file={c['seedDir']}/identity.iso,if=none,id=seed,format=raw,readonly=on",
         "-device", f"virtio-blk-pci,drive=seed",

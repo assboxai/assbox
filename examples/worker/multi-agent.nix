@@ -31,7 +31,7 @@
     ];
     memoryMiB = 6144;
     vcpus = 2;
-    stateGiB = 32;
+    stateGiB = 128; # Example only; the CLI defaults to automatic sizing.
     uplinkInterfaces = [ "enp3s0" ]; # Replace: never assume this exists.
     extraGuestConfig = { pkgs, ... }: {
       environment.systemPackages = [

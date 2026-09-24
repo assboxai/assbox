@@ -42,6 +42,7 @@ fn exactly_ten_application_presentation_combinations_are_valid() {
                     memory_mib: 3072,
                     vcpus: 2,
                     state_gib: 32,
+                    auto_state: false,
                     uplinks: vec![],
                     network: assbox_domain::worker::WorkerNetwork::Offline,
                     nameservers: vec![],

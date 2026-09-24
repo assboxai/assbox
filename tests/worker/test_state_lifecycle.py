@@ -50,7 +50,7 @@ class PreservedState(unittest.TestCase):
             "return_value": owner or self.owner}
         with patch.object(w, "require_user"), patch.object(w, "artifact_manifest", return_value=self.manifest), \
              patch.object(w.pwd, "getpwnam", **kwargs), \
-             patch.object(w.shutil, "disk_usage", return_value=SimpleNamespace(free=100 * w.GIB)), \
+             patch.object(w.shutil, "disk_usage", return_value=SimpleNamespace(total=100 * w.GIB, free=100 * w.GIB)), \
              patch.object(w, "transport_preflight"), \
              contextlib.redirect_stdout(io.StringIO()) as output:
             w.admit(self.c)

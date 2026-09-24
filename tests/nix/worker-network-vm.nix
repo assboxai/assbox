@@ -18,6 +18,7 @@ pkgs.testers.runNixOSTest {
         presentation = "headless";
         updates.enable = false;
         worker = {
+          stateGiB = 8;
           enable = true;
           components = [ "vim" ];
           interface = "eth1";

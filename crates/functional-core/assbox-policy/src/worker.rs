@@ -4,6 +4,24 @@ use assbox_domain::{
     worker::{WorkerHardware, WorkerSpec},
 };
 
+use assbox_domain::worker::{GIB, storage_reserve};
+
+/// Resolve once after building the provisional controller/image closure. Leave
+/// another GiB for the final configuration derivations. No disk is resized here.
+pub fn automatic_state_gib(total: u64, free: u64, root_virtual: u64) -> Result<u32> {
+    let capacity = free
+        .saturating_sub(root_virtual)
+        .saturating_sub(storage_reserve(total))
+        .saturating_sub(GIB)
+        / GIB;
+    if capacity < 8 {
+        return Err(Error::new(
+            "insufficient worker capacity after reserving the system overlay and controller build/recovery space",
+        ));
+    }
+    Ok(capacity.min(2048) as u32)
+}
+
 /// Budget for a trusted desktop, a bounded VMM and a single headless worker.
 /// These are planning defaults, not predictions of application performance.
 pub fn recommended_memory(host: &WorkerHardware) -> Result<u32> {
@@ -59,7 +77,7 @@ pub fn validate_host_budget(spec: &WorkerSpec, host: &WorkerHardware) -> Result<
     } else {
         u64::from(spec.state_gib)
     };
-    if new_state + 16 > host.free_gib {
+    if new_state + 32 > host.free_gib {
         return Err(Error::new(
             "insufficient free space for worker state and initial build headroom; also budget retained artifacts",
         ));
@@ -70,6 +88,27 @@ pub fn validate_host_budget(spec: &WorkerSpec, host: &WorkerHardware) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn automatic_capacity_keeps_recovery_headroom() {
+        assert_eq!(
+            automatic_state_gib(256 * GIB, 220 * GIB, 20 * GIB).unwrap(),
+            147
+        );
+        assert_eq!(
+            automatic_state_gib(100 * GIB, 90 * GIB, 10 * GIB).unwrap(),
+            47
+        );
+        assert!(automatic_state_gib(64 * GIB, 50 * GIB, 10 * GIB).is_err());
+        assert_eq!(
+            automatic_state_gib(64 * GIB, 51 * GIB, 10 * GIB).unwrap(),
+            8
+        );
+        assert_eq!(
+            automatic_state_gib(5000 * GIB, 4900 * GIB, 10 * GIB).unwrap(),
+            2048
+        );
+        assert!(automatic_state_gib(256 * GIB, 0, u64::MAX).is_err());
+    }
     use assbox_domain::Components;
     fn host() -> WorkerHardware {
         WorkerHardware {
@@ -88,6 +127,7 @@ mod tests {
             memory_mib: 3072,
             vcpus: 2,
             state_gib: 32,
+            auto_state: false,
             uplinks: vec![],
             network: assbox_domain::worker::WorkerNetwork::Offline,
             nameservers: vec![],
@@ -129,14 +169,14 @@ mod tests {
         s.vcpus = 5;
         assert!(validate_host_budget(&s, &h).is_err());
         s = spec();
-        h.free_gib = 47;
+        h.free_gib = 63;
         assert!(validate_host_budget(&s, &h).is_err());
-        h.free_gib = 48;
+        h.free_gib = 64;
         assert!(validate_host_budget(&s, &h).is_ok());
         h.existing_state_gib = Some(32);
-        h.free_gib = 16;
+        h.free_gib = 32;
         assert!(validate_host_budget(&s, &h).is_ok());
-        h.free_gib = 15;
+        h.free_gib = 31;
         assert!(validate_host_budget(&s, &h).is_err());
         h.free_gib = 80;
         h.existing_state_gib = Some(16);

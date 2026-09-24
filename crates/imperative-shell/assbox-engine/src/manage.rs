@@ -1047,6 +1047,11 @@ pub fn worker_configure(
         ));
     }
     if let Some(spec) = spec {
+        if spec.auto_state {
+            println!(
+                "Worker capacity: automatic; the construction placeholder is not the final size. Resolve after building the artifact, retaining controller recovery headroom."
+            );
+        }
         spec.validate(accept_unfree || fields[0] == "true")?;
         assbox_policy::worker::validate_host_budget(
             spec,
@@ -1064,7 +1069,14 @@ pub fn worker_configure(
     if let Some(spec) = spec {
         println!(
             "Worker components: {} | memory {} MiB | {} CPUs | state {} GiB",
-            spec.components, spec.memory_mib, spec.vcpus, spec.state_gib
+            spec.components,
+            spec.memory_mib,
+            spec.vcpus,
+            if spec.auto_state {
+                "automatic".to_owned()
+            } else {
+                spec.state_gib.to_string()
+            }
         );
     } else {
         println!(
@@ -1083,6 +1095,55 @@ pub fn worker_configure(
             0o644,
         )?;
         let candidate = reference(&marker("candidate"))?;
+        let mut resolved = spec.cloned();
+        if let Some(worker) = resolved.as_mut().filter(|s| s.auto_state) {
+            let target =
+                format!("{candidate}#nixosConfigurations.assbox.config.system.build.toplevel");
+            let sizing_system = Commands.text(
+                "nix",
+                &[
+                    "build",
+                    "--out-link",
+                    files::path_text(&marker("sizing-system"))?,
+                    "--print-out-paths",
+                    "--no-update-lock-file",
+                    "--no-write-lock-file",
+                    &target,
+                ],
+            )?;
+            if !valid_store_system(sizing_system.trim()) {
+                return Err(Error::new("invalid sizing system"));
+            }
+            let artifact = files::io(fs::read_link(
+                Path::new(sizing_system.trim()).join("assbox-worker-image"),
+            ))?;
+            let root_bytes = assbox_system::worker::artifact_root_bytes(
+                &Commands,
+                Path::new("/"),
+                files::path_text(&artifact)?,
+            )?;
+            let (total, free) = assbox_system::worker::filesystem_capacity(
+                &Commands,
+                if Path::new("/var/lib/assbox-worker-data").exists() {
+                    Path::new("/var/lib/assbox-worker-data")
+                } else {
+                    Path::new("/var/lib")
+                },
+            )?;
+            worker.state_gib = assbox_policy::worker::automatic_state_gib(total, free, root_bytes)?;
+            worker.auto_state = false;
+            let settings = assbox_config::worker::selection(&settings, Some(worker))?;
+            files::atomic_write(
+                &marker("candidate/assbox-settings.nix"),
+                settings.as_bytes(),
+                0o644,
+            )?;
+            println!(
+                "Resolved persistent worker capacity: {} GiB (sparse allocation).",
+                worker.state_gib
+            );
+        }
+        let spec = resolved.as_ref();
         let evaluated = Commands.capture(
             "nix",
             &[

@@ -3,6 +3,11 @@
 use crate::{Component, Components, Error, Presentation, Result};
 use std::{fmt, net::Ipv4Addr, str::FromStr};
 
+pub const GIB: u64 = 1024 * 1024 * 1024;
+pub fn storage_reserve(total_bytes: u64) -> u64 {
+    (32 * GIB).max(total_bytes / 5)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkerNetwork {
     Normal,
@@ -69,6 +74,8 @@ pub struct WorkerSpec {
     pub memory_mib: u32,
     pub vcpus: u32,
     pub state_gib: u32,
+    /// Transient construction request. Resolved to concrete state_gib before publication.
+    pub auto_state: bool,
     pub uplinks: Vec<String>,
     pub network: WorkerNetwork,
     pub nameservers: Vec<String>,
@@ -224,6 +231,7 @@ mod tests {
             memory_mib: 3072,
             vcpus: 2,
             state_gib: 32,
+            auto_state: false,
             uplinks: vec![],
             network: WorkerNetwork::Offline,
             nameservers: vec![],

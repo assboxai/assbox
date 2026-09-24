@@ -48,6 +48,7 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
                     memory_mib: 3072,
                     vcpus: 2,
                     state_gib: 32,
+                    auto_state: false,
                     uplinks: vec![],
                     network: assbox_domain::worker::WorkerNetwork::Offline,
                     nameservers: vec![],

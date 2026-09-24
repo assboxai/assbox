@@ -350,7 +350,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     c.run("nix", &["flake", "lock", "--no-update-lock-file", &local])?;
     crate::source::verify_local_lock(&c, &config, &fetched.release.manifest)?;
     crate::check_evaluation(&c, &local)?;
-    let configuration = configuration_snapshot(&config)?;
+    let mut configuration = configuration_snapshot(&config)?;
     let configuration_digest = configuration_digest(&c, &configuration)?;
     let mut mounts = vec![&root_probe];
     if let Some(e) = &esp_probe {
@@ -509,7 +509,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     if configuration_snapshot(&config)? != configuration {
         return Err(Error::new("configuration changed before target writes"));
     }
-    let record = install_record(
+    let mut record = install_record(
         &c,
         &plan,
         fetched.release.floor.manifest_sha256.as_str(),
@@ -607,6 +607,71 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         fs::Permissions::from_mode(0o700),
     ))?;
     let output_link = root.point.join(".assbox-built-system");
+    let image_link = root.point.join(".assbox-sizing-system");
+    let mut worker_spec = plan.request().choices.worker.clone();
+    if let Some(worker) = worker_spec.as_mut().filter(|w| w.auto_state) {
+        let image_target = format!(
+            "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
+            files::path_text(&installed_config)?
+        );
+        write_phase(&c, &root.point, &record, "building", None)?;
+        let sizing_system = cancellation::run(
+            &c,
+            "nix",
+            &[
+                "build",
+                "--store",
+                store,
+                "--extra-substituters",
+                "auto?trusted=1",
+                "--option",
+                "build-dir",
+                files::path_text(&build_dir)?,
+                "--out-link",
+                files::path_text(&image_link)?,
+                "--print-out-paths",
+                "--no-update-lock-file",
+                "--no-write-lock-file",
+                &image_target,
+            ],
+            &logs,
+        )?;
+        recheck(&plan, &c, &mounts)?;
+        if configuration_snapshot(&installed_config)? != configuration {
+            return Err(Error::new(
+                "configuration changed during worker image build",
+            ));
+        }
+        if !assbox_system::commands::valid_store_system(sizing_system.trim()) {
+            return Err(Error::new("invalid sizing system"));
+        }
+        let artifact = io(fs::read_link(
+            root.point
+                .join(sizing_system.trim().trim_start_matches('/'))
+                .join("assbox-worker-image"),
+        ))?;
+        let root_bytes = assbox_system::worker::artifact_root_bytes(
+            &c,
+            &root.point,
+            files::path_text(&artifact)?,
+        )?;
+        let (total, free) = assbox_system::worker::filesystem_capacity(&c, &root.point)?;
+        worker.state_gib = assbox_policy::worker::automatic_state_gib(total, free, root_bytes)?;
+        worker.auto_state = false;
+        let settings_path = installed_config.join("assbox-settings.nix");
+        let settings =
+            assbox_config::worker::selection(&files::text(&settings_path)?, Some(worker))?;
+        files::atomic_write(&settings_path, settings.as_bytes(), 0o644)?;
+        configuration.insert("assbox-settings.nix".to_owned(), settings.into_bytes());
+        let digest = self::configuration_digest(&c, &configuration)?;
+        record = c.input("jq", &["--arg", "configuration", &digest, "--argjson", "capacity", &worker.state_gib.to_string(),
+            ". + {requestedConfigurationSha256:.configurationSha256, configurationSha256:$configuration, resolvedWorkerStateGiB:$capacity}"], &record)?;
+        write_phase(&c, &root.point, &record, "building", None)?;
+        println!(
+            "Resolved persistent worker capacity: {} GiB (sparse allocation).",
+            worker.state_gib
+        );
+    }
     let target = format!(
         "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
         files::path_text(&installed_config)?
@@ -672,7 +737,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     }
     #[cfg(test)]
     crate::acceptance::checkpoint("install-built")?;
-    if let Some(worker) = &plan.request().choices.worker {
+    if let Some(worker) = &worker_spec {
         assbox_system::worker::admit_install(&c, &root.point, &system, worker.state_gib)?;
     }
     crate::boot_guard::verify_install_target_in_store(&c, &root.point, &system, &plan)?;
@@ -759,6 +824,15 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         return Err(Error::new("build root link changed unexpectedly"));
     }
     io(fs::remove_file(&output_link))?;
+    if files::entry_exists(&image_link)? {
+        if !io(fs::symlink_metadata(&image_link))?
+            .file_type()
+            .is_symlink()
+        {
+            return Err(Error::new("worker image GC root changed unexpectedly"));
+        }
+        io(fs::remove_file(&image_link))?;
+    }
     #[cfg(test)]
     crate::acceptance::checkpoint("install-completing")?;
     write_phase(&c, &root.point, &record, "complete", Some(&system))?;
