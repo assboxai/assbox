@@ -20,6 +20,8 @@ let
   artifact = system.config.system.build.assboxWorkerImage;
   closure = pkgs.closureInfo { rootPaths = [ artifact ]; };
 in
+assert
+  !pkgs.stdenv.hostPlatform.isAarch64 || !(builtins.elem "kvm" artifact.imageBuildRequiredFeatures);
 pkgs.runCommand "assbox-worker-artifact-check"
   {
     nativeBuildInputs = [

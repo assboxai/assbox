@@ -410,6 +410,22 @@ def transport_preflight(c: dict[str, Any], *, preserved: bool) -> None:
             key_public(path, c["tools"]["sshKeygen"], owner=owner)
 
 
+def seed_contents(root: Path, client_public: str, health_public: str, host_key: bytes) -> None:
+    # sshd reads authorized_keys as the guest user; the ISO root must
+    # be traversable. Only the guest SSH host private key is mode 0600.
+    root.mkdir(mode=0o755)
+    # mkdir's requested mode is filtered by the service's UMask=0077.
+    # Set the final mode explicitly before Rock Ridge captures it.
+    root.chmod(0o755)
+    (root / "agent.pub").write_text(client_public + "\n")
+    (root / "agent.pub").chmod(0o644)
+    (root / "assbox-health.pub").write_text("restrict " + health_public + "\n")
+    (root / "assbox-health.pub").chmod(0o644)
+    private = root / "ssh_host_ed25519_key"
+    private.write_bytes(host_key)
+    private.chmod(0o600)
+
+
 def provision(c: dict[str, Any]) -> None:
     require_user("root")
     uid = pwd.getpwnam(c["controller"])
@@ -440,16 +456,7 @@ def provision(c: dict[str, Any]) -> None:
     # It does not contain the controller's private key or any provider credential.
     with tempfile.TemporaryDirectory(prefix=".seed-", dir=identity) as d:
         root = Path(d) / "contents"
-        # sshd reads authorized_keys as the guest user; the ISO root must
-        # be traversable. Only the guest SSH host private key is mode 0600.
-        root.mkdir(mode=0o755)
-        (root / "agent.pub").write_text(client_public + "\n")
-        (root / "agent.pub").chmod(0o644)
-        (root / "assbox-health.pub").write_text("restrict " + health_public + "\n")
-        (root / "assbox-health.pub").chmod(0o644)
-        private = root / "ssh_host_ed25519_key"
-        private.write_bytes((identity / private.name).read_bytes())
-        private.chmod(0o600)
+        seed_contents(root, client_public, health_public, (identity / "ssh_host_ed25519_key").read_bytes())
         image = Path(d) / "identity.iso"
         # Rock Ridge (-R) preserves private file permissions; never use -r here.
         run([c["tools"]["xorriso"], "-as", "mkisofs", "-quiet", "-R", "-V", "ASSBOX_SEED", "-o", str(image), str(root)])

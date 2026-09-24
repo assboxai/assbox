@@ -70,6 +70,9 @@ def main():
         assert_test("Health and agent are separate identities", "assbox-worker-health" in w.health_ssh_args(c))
         assert_test("Health home is immutable/nonpersistent", ssh("getent passwd assbox-health | cut -d: -f6") == "/var/empty")
         assert_test("Health private key absent from provisioning disk", ssh("test ! -e /run/assbox-seed/health_ed25519 && printf absent") == "absent")
+        assert_test("Seed permissions survive the production umask and ISO mount",
+                    ssh("stat -c '%a' /run/assbox-seed /run/assbox-seed/agent.pub /run/assbox-seed/assbox-health.pub /run/assbox-seed/ssh_host_ed25519_key")
+                    == "755\n644\n644\n600")
         # Deliberately alter only a dedicated test file; do not rewrite real shell
         # startup files. Native health identity/ForceCommand policy is also gated.
         assert_test("Artifact command line references a guest init", "init=/nix/store/" in (Path(c["artifact"])/"cmdline").read_text())

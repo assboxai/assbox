@@ -9,7 +9,7 @@
 let
   system = guest.config.system.build.toplevel;
   buildId = builtins.hashString "sha256" (toString system);
-  disk = import (pkgs.path + "/nixos/lib/make-disk-image.nix") {
+  builtDisk = import (pkgs.path + "/nixos/lib/make-disk-image.nix") {
     inherit pkgs;
     inherit (pkgs) lib;
     config = guest.config;
@@ -32,6 +32,18 @@ let
       }
     ];
   };
+  # Pinned vmTools already invokes QEMU with accel=kvm:tcg. Its unconditional
+  # scheduler feature would nevertheless exclude ARM builders without /dev/kvm.
+  # This changes image construction only; the production worker remains KVM-only.
+  disk =
+    if pkgs.stdenv.hostPlatform.isAarch64 then
+      builtDisk.overrideAttrs (old: {
+        requiredSystemFeatures = builtins.filter (feature: feature != "kvm") (
+          old.requiredSystemFeatures or [ ]
+        );
+      })
+    else
+      builtDisk;
   commandLine = pkgs.writeText "assbox-worker-command-line" (
     pkgs.lib.concatStringsSep " " (
       [
@@ -60,6 +72,7 @@ pkgs.runCommand "assbox-worker-artifact"
     # Audit/build output only: never referenced by a host generation or runtime JSON.
     passthru = {
       inherit buildId;
+      imageBuildRequiredFeatures = disk.requiredSystemFeatures or [ ];
       auditClosure = system;
       # Evaluation-only policy evidence. This is not a runtime root or export of
       # guest executables into the host system.
