@@ -24,8 +24,7 @@ Neither a fork nor committing a machine profile upstream is required. The defaul
 `assbox` provides convenient package management, validation, updates and recovery.
 It does not replace NixOS or require a second configuration database. Direct NixOS
 module edits and normal `nixos-rebuild --flake /etc/nixos#assbox` remain supported.
-The base toolbox includes `just` as a normal package; Assbox has no Justfile or
-administrative recipes.
+Standalone profiles include `just`; the thin controller omits development conveniences from its interactive package set. Administrative builds retain private dependencies. Assbox has no Justfile or administrative recipes.
 
 ## Hardware and boot targets
 
@@ -50,12 +49,23 @@ all optional components default off. The base includes nano and tmux. See the
 
 Presentation remains headless, X11/Openbox or Wayland/labwc. Graphical autostart is
 explicit. Desktop credentials use the standard [first-use keyring setup](docs/configuration.md#machine-local-files).
-ChatGPT Desktop currently requires X11; Linux Remote pairing is not yet
-established. Antigravity Remote and Cowork Dispatch also have explicit unresolved
-integration blockers and reject enablement. Package availability is not provider
+ChatGPT Desktop currently requires X11. ChatGPT Remote is selectable with Desktop;
+its authenticated Linux workflow must pass the documented acceptance procedure.
+Antigravity Remote and Cowork Dispatch have explicit unresolved integration blockers
+and reject enablement. Package availability is not provider
 acceptance. Other integrations have implementations and verification procedures,
 with native and authenticated execution still required as documented in
 [component qualification](docs/component-acceptance.md).
+
+## Isolated execution worker
+
+The [controller/worker architecture](docs/worker/controller-model.md) requires ChatGPT Desktop to keep selected agent workloads in a managed headless QEMU/KVM guest. The outer Assbox owns the complete worker lifecycle; users do not install a nested Assbox. It uses dedicated runtime
+SSH identities, no shared host filesystems, and host-enforced network isolation.
+Every worker agent remains an explicit opt-in. Curated execution packages and unqualified controller adapters are rejected on the thin controller. The [scoped staging-repository workflow](docs/worker/git-workflow.md) is the recommended Git setup. See the [complete worker proposal](docs/worker/proposal.md),
+[operations guide](docs/worker/operations.md), [role terminology](docs/worker/terminology.md), [client-routing checks](docs/worker/client-routing.md), and [acceptance status](docs/worker/implementation-status.md).
+The code is an integration candidate, not an empirically qualified VM release.
+Desktop-local tools and the authority of guest provider tokens remain separate
+security concerns; enabling the VM alone is not an account-history guarantee.
 
 ## Installation and maintenance
 

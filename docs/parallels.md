@@ -80,6 +80,15 @@ automatic session startup, shutdown and restart. ChatGPT/X11 comes last, with ac
 Linux Remote authentication and an end-to-end task. A package evaluating on ARM is
 not evidence its graphical runtime works in this VM.
 
+The ChatGPT controller profile also requires its managed KVM worker. Check for
+usable `/dev/kvm` inside the installed Parallels guest before choosing that profile;
+this requires nested virtualization exposed to that guest. If it is unavailable,
+continue qualifying the standalone profiles and installer, and qualify ChatGPT on
+a separate KVM-capable machine. Assbox does not emulate the production worker or
+move its execution to the controller. Follow [worker acceptance](worker/acceptance.md)
+and [client routing](worker/client-routing.md) on a supported target, budgeting RAM
+and storage for both systems.
+
 Parallels Tools, shared-folder integration and automatic display resizing are not
 configured by Assbox. Record missing guest-driver/integration features as test
 results, not as evidence about bare-metal Apple Silicon support. Keep host and guest

@@ -46,11 +46,17 @@ proprietary consent and architectures were checked against its package recipes.
   wrapping hook; the public `code` CLI retains its ordinary handoff behavior.
   These package paths are checked by `editor-vm` when pins change.
 
+## ChatGPT Remote qualification
+
+ChatGPT Remote is selectable with Desktop/X11. Qualify Linux account pairing,
+guest SSH project selection, a real edit/approval cycle, restart recovery, and
+refusal to substitute controller execution. Desktop launch alone is insufficient.
+See [worker acceptance](worker/acceptance.md).
+
 ## Explicit unresolved capabilities
 
 | Capability | Evidence and required resolution |
 | --- | --- |
-| ChatGPT Remote | [Remote instructions](https://learn.chatgpt.com/docs/remote) identify Mac/Windows. Establish supported Linux account pairing and a real edit/approval cycle before removing the blocker. Desktop launch is insufficient. |
 | Cowork Dispatch | [Linux scope](https://support.claude.com/en/articles/13947068-assign-tasks-from-anywhere-in-claude-cowork) includes files/connectors/plugins, excluding computer use. Review and demonstrate the packaged VM/device-permission requirements without expanding agent administrative authority. |
 | Antigravity Remote | [Documented start](https://antigravity.google/docs/remote-control/) installs an OS service. Review the pinned binary/source's exact foreground daemon contract, state and shutdown before adding an Assbox-owned unit. Do not nest service installers. |
 

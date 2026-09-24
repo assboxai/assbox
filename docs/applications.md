@@ -1,5 +1,7 @@
 # Components, applications and remote access
 
+> **Controller deployments:** ChatGPT Desktop uses the [managed controller/worker model](worker/controller-model.md). Its coding agents, development tooling and credentials belong in the worker. Generic standalone examples below do not override the mandatory sensitive-controller placement policy. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
+
 Assbox installs any explicit selection from [the reviewed catalog](../catalog/components.json).
 Every optional component defaults off. Nano and tmux remain in the base. A package,
 a remote service and graphical autostart are separate choices. Nothing selects an
@@ -96,7 +98,7 @@ code in the agent home. Their package installation does not establish remote pai
 | `vscode`, `zed`, `vim`, `emacs` | Optional editors; Emacs defaults to terminal, with `variant = "gui"` available in headed configurations |
 | `vscode-remote-host`, `zed-remote-host` | Agent SSH development hosts without installing the desktop editor; require agent SSH and mutable-helper consent |
 | `vscode-cli`, `vscode-tunnel` | Fixed-hash standalone `assbox-vscode` CLI and separately enabled tunnel; login and server-license acceptance are interactive |
-| `claude-desktop` | Linux graphical app, optionally started by the owned graphical session |
+| `claude-desktop` | Sensitive controller adapter not qualified; controller placement rejects it. Package/module presence is not supported controller enrollment. |
 
 Grok's ambiguous `agent` alias is not exported. Use `grok`, `cursor-agent` and
 `assbox-vscode`; the desktop VS Code retains `code`. Additional executables inside
@@ -104,8 +106,6 @@ an upstream package are not a promise of separate curated integrations.
 
 The following catalog entries deliberately reject enablement:
 
-- `chatgpt-remote`: current upstream Remote instructions establish Mac/Windows,
-  but do not establish Linux pairing support.
 - `cowork-dispatch`: the packaged Linux VM execution and required device permissions
   have not been established within Assbox's unprivileged account boundary.
 - `antigravity-remote`: the pinned CLI documents installation of its own OS service;
@@ -218,3 +218,12 @@ For LAN access, set `ssh.exposure = "lan"` and explicit `ssh.lanInterfaces`; opt
 those selected interfaces. Password/root login, agent forwarding and gateway ports
 are disabled. Local forwarding is restricted to loopback destinations. No Funnel,
 exit-node/subnet routing, trusted whole interface or agent Tailscale operator is added.
+
+## Execution location
+
+`assbox.components` describes the outer system's components (controller selections in worker mode). `assbox.worker.components` describes
+the isolated guest; these selections are independent. ChatGPT Remote is selectable
+with its Desktop dependency and X11 presentation. For a controller/worker configuration,
+use [worker onboarding](worker/operations.md), then qualify the actual Desktop SSH
+project and mobile route. Selection does not itself authenticate the provider or
+disable Desktop-local execution. The guest does not inherit host component choices.

@@ -1,5 +1,7 @@
 # Architecture
 
+> **Controller deployments:** ChatGPT Desktop uses the [managed controller/worker model](worker/controller-model.md). Its coding agents, development tooling and credentials belong in the worker. Generic standalone examples below do not override the mandatory sensitive-controller placement policy. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
+
 ## Internal crates
 
 Every crate is internal (`publish = false`). The Cargo workspace has six members:

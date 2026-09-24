@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Merge into /etc/nixos/local.nix on an already installed Assbox.
+{ lib, ... }:
+{
+  assbox.presentation = "x11";
+  assbox.acceptUnfree = true;
+  assbox.components.chatgpt-desktop = {
+    enable = true;
+    allowMutableCode = true;
+  };
+  assbox.components.chatgpt-remote.enable = true;
+  assbox.session.autostart = [ "chatgpt-desktop" ];
+  # Override an installed host selection deliberately. Credentials are not moved.
+  assbox.components.codex.enable = lib.mkForce false;
+  assbox.worker = {
+    enable = true;
+    components = [ "codex" ];
+    memoryMiB = 3072;
+    vcpus = 2;
+    stateGiB = 32;
+    # Set to actual interface names shown by `ip -brief link` / `ip route`.
+    uplinkInterfaces = [ "enp3s0" ];
+    allowGuestSudo = false;
+  };
+}

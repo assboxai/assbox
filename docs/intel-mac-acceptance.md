@@ -67,7 +67,12 @@ rescue media. Follow [installation](installation.md) and keep the
 3. **Application:** select the intended profile, complete real provider onboarding,
    and run a representative authenticated task. Reboot and verify that the GUI or
    service and its credentials work again. Test any requested USB, audio, camera,
-   display-off or suspend behavior separately.
+   display-off or suspend behavior separately. For ChatGPT, verify usable `/dev/kvm`
+   in the installed Linux system and complete [worker acceptance](worker/acceptance.md)
+   and [client-routing acceptance](worker/client-routing.md). Run the authenticated
+   task in the worker SSH project. Confirm adequate RAM and disk headroom with the
+   controller and worker both active; the installer's budget is an admission floor,
+   not a measurement of acceptable performance on this MacBook.
 4. **Maintenance and resources:** run a representative workload alongside an update.
    Observe responsiveness, memory/swap, free disk space, fan behavior and temperature.
    Exercise the notification grace and reboot with real work active. Confirm the

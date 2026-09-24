@@ -1,5 +1,7 @@
 # Prepared-storage installation
 
+> **Controller deployments:** ChatGPT Desktop uses the [managed controller/worker model](worker/controller-model.md). Its coding agents, development tooling and credentials belong in the worker. Generic standalone examples below do not override the mandatory sensitive-controller placement policy. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
+
 Read the [security model](../SECURITY.md) and [verification requirements](verification.md)
 first. This document describes the installer contract, not a hardware certification.
 Never use a source-only bootstrap candidate on valuable disks.

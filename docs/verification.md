@@ -350,3 +350,12 @@ actual notification and recovery message. A plain request to GitHub that returns
 telemetry, not release signature verification; account compromise of its
 hosting provider can falsify it. Neither passing local tests nor a successful
 Wrangler dry run proves that a deployed Cron or notification service is active.
+
+## Isolated worker gates
+
+The worker adds `worker-tools`, `worker-policy`, `worker-artifact`,
+`worker-boot-gate-vm`, `worker-sshd-policy-vm`, and `worker-network-vm`
+to native checks and the release prerequisite names. Python helper checks also
+run in the static stage. These do not replace production KVM lifecycle or
+authenticated Desktop/mobile tests; see [worker acceptance](worker/acceptance.md)
+and [observed worker status](worker/implementation-status.md).

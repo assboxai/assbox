@@ -75,3 +75,13 @@ has enabled it. Do not put credentials, disk serials, private hardware profiles 
 exploitable vulnerability details in a public issue. If private reporting is not
 enabled, request a private contact path without publishing the sensitive details.
 Do not assume a guaranteed response time or send private material to an unverified contact.
+
+## Optional execution VM
+
+When `assbox.worker.enable` is selected, its guest has a distinct kernel, filesystem
+and user database. The controller `agent` account owns the Desktop session; selected
+worker components share the worker VM's `agent` account, not the controller home. QEMU runs as
+`assbox-vmm`, not root or the Desktop user. See [worker security](docs/worker/security.md)
+for the exact proposed contract, acceptance requirements and limitations. In
+particular, provider tokens inside the guest are compromised if the guest is
+compromised; Desktop-local execution is not automatically prohibited by this module.
