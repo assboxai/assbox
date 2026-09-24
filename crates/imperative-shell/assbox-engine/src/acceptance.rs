@@ -117,8 +117,10 @@ fn install_apply() {
             autostart: Vec::new(),
             admin_ssh_key: Some(values[4].clone()),
             agent_ssh_key: None,
+            ssh_access: Default::default(),
+            additional_packages: Default::default(),
             worker: None,
-            happy_backends: Components::default(),
+            happy_backends: Default::default(),
         },
     };
     let plan =

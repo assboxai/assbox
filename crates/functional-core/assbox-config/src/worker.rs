@@ -20,6 +20,7 @@ fn body(spec: &WorkerSpec) -> String {
             "    enable = lib.mkDefault true;\n",
             "    components = lib.mkDefault [ {} ];\n",
             "    allowMutableCodeFor = lib.mkDefault [ {} ];\n",
+            "    happyBackends = lib.mkDefault [ {} ];\n",
             "    memoryMiB = lib.mkDefault {};\n",
             "    vcpus = lib.mkDefault {};\n",
             "    stateGiB = lib.mkDefault {};\n",
@@ -31,6 +32,7 @@ fn body(spec: &WorkerSpec) -> String {
         ),
         strings(spec.components.iter().map(|c| c.to_string())),
         strings(spec.mutable_components.iter().map(|c| c.to_string())),
+        strings(spec.happy_backends.iter().map(|c| c.to_string())),
         spec.memory_mib,
         spec.vcpus,
         spec.state_gib,
@@ -81,6 +83,11 @@ fn validate_body(text: &str) -> Result<()> {
     let spec = WorkerSpec {
         components: parse_components("components")?,
         mutable_components: parse_components("allowMutableCodeFor")?,
+        happy_backends: if text.contains("    happyBackends =") {
+            parse_components("happyBackends")?
+        } else {
+            Components::default()
+        },
         memory_mib: number("memoryMiB")?,
         vcpus: number("vcpus")?,
         state_gib: number("stateGiB")?,
@@ -91,7 +98,10 @@ fn validate_body(text: &str) -> Result<()> {
         guest_sudo: boolean("allowGuestSudo")?,
     };
     spec.validate(true)?;
-    if body(&spec) != text {
+    let rendered = body(&spec);
+    let legacy = spec.happy_backends == Components::default()
+        && rendered.replace("    happyBackends = lib.mkDefault [  ];\n", "") == text;
+    if rendered != text && !legacy {
         return Err(invalid());
     }
     Ok(())
@@ -128,7 +138,7 @@ pub fn selection(text: &str, spec: Option<&WorkerSpec>) -> Result<String> {
 }
 
 /// Fixed JSON selector used only for post-evaluation comparison, not execution.
-pub const EVALUATED_SELECTION: &str = "c: { inherit (c.worker) enable components allowMutableCodeFor memoryMiB vcpus stateGiB uplinkInterfaces egress nameservers allowGuestSudo; }";
+pub const EVALUATED_SELECTION: &str = "c: { inherit (c.worker) enable components allowMutableCodeFor happyBackends memoryMiB vcpus stateGiB uplinkInterfaces egress nameservers allowGuestSudo; }";
 
 pub fn expected_fields(spec: Option<&WorkerSpec>) -> Vec<String> {
     let Some(s) = spec else {
@@ -138,6 +148,7 @@ pub fn expected_fields(spec: Option<&WorkerSpec>) -> Vec<String> {
         "true".to_owned(),
         s.components.to_string(),
         s.mutable_components.to_string(),
+        s.happy_backends.to_string(),
         s.memory_mib.to_string(),
         s.vcpus.to_string(),
         s.state_gib.to_string(),
@@ -156,6 +167,7 @@ mod tests {
         WorkerSpec {
             components: "vim".parse().unwrap(),
             mutable_components: Components::default(),
+            happy_backends: Default::default(),
             memory_mib: 3072,
             vcpus: 2,
             state_gib: 32,
@@ -194,6 +206,33 @@ mod tests {
         assert!(text.contains("nameservers = lib.mkDefault [ \"1.1.1.1\" \"9.9.9.9\" ];"));
         assert_eq!(expected_fields(Some(&s)).last().unwrap(), "1.1.1.1,9.9.9.9");
         assert!(text.contains("allowGuestSudo = lib.mkDefault true"));
+    }
+    #[test]
+    fn legacy_network_and_capacity_are_preserved_when_adding_backend_field() {
+        for network in ["internet", "offline"] {
+            let mut s = spec();
+            s.network = network.parse().unwrap();
+            s.nameservers = s.network.default_dns();
+            if network == "internet" {
+                s.uplinks = vec!["eth0".into()];
+            }
+            let modern = selection(BASE, Some(&s)).unwrap();
+            let legacy = modern.replace("    happyBackends = lib.mkDefault [  ];\n", "");
+            assert_eq!(selection(&legacy, Some(&s)).unwrap(), modern);
+            assert!(modern.contains("stateGiB = lib.mkDefault 32;"));
+            assert!(!modern.contains("\"normal\""));
+        }
+    }
+    #[test]
+    fn happy_backend_configuration_roundtrips() {
+        let mut s = spec();
+        s.components = "happy,happy-remote,codex,claude-code".parse().unwrap();
+        s.mutable_components = "happy-remote".parse().unwrap();
+        s.happy_backends = "codex,claude-code".parse().unwrap();
+        let rendered = selection(BASE, Some(&s)).unwrap();
+        assert_eq!(selection(&rendered, Some(&s)).unwrap(), rendered);
+        assert!(rendered.contains("happyBackends = lib.mkDefault [ \"claude-code\" \"codex\" ];"));
+        assert_eq!(expected_fields(Some(&s))[3], "claude-code,codex");
     }
     #[test]
     fn malformed_and_handwritten_settings_refuse_without_guessing() {

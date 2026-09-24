@@ -114,7 +114,7 @@ mod tests {
         for bad in ["codex,codex", "none,codex", "unknown", "${x}", "codex,"] {
             assert!(bad.parse::<Components>().is_err(), "{bad}");
         }
-        assert_eq!(Component::ALL.len(), 28);
+        assert_eq!(Component::ALL.len(), 29);
     }
     #[test]
     fn blocked_remotes_and_graphical_requirements_are_not_overridden_by_consent() {

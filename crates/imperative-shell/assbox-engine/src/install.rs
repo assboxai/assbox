@@ -318,7 +318,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         ),
         (
             "assbox-packages.nix",
-            assbox_config::packages(&Default::default()),
+            assbox_config::packages(&plan.request().choices.additional_packages),
         ),
         ("local.nix", assbox_config::LOCAL.to_owned()),
     ] {

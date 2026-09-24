@@ -158,6 +158,8 @@ pub struct Choices {
     pub autostart: Vec<String>,
     pub admin_ssh_key: Option<String>,
     pub agent_ssh_key: Option<String>,
+    pub ssh_access: access::SshAccess,
+    pub additional_packages: std::collections::BTreeSet<PackageName>,
     pub worker: Option<worker::WorkerSpec>,
     pub happy_backends: Components,
 }
@@ -169,12 +171,30 @@ pub fn installer_launcher_owner(launcher: &str) -> Result<Component> {
         "claude-desktop" => Ok(Component::ClaudeDesktop),
         "vscode" => Ok(Component::Vscode),
         "zed" => Ok(Component::Zed),
+        "chromium" => Ok(Component::Chromium),
         "opencode-attach" => Ok(Component::OpencodeServer),
         "openclaw-dashboard" => Ok(Component::OpenclawGateway),
         _ => Err(Error::new(
             "unknown installer graphical launcher; configure GUI Emacs explicitly in local.nix",
         )),
     }
+}
+
+pub fn validate_happy_backends(selected: Components, backends: Components) -> Result<()> {
+    if selected.contains(Component::HappyRemote) {
+        if backends == Components::default()
+            || backends.iter().any(|id| {
+                !matches!(id, Component::Codex | Component::ClaudeCode) || !selected.contains(id)
+            })
+        {
+            return Err(Error::new(
+                "Happy requires explicit installed Codex/Claude backends",
+            ));
+        }
+    } else if backends != Components::default() {
+        return Err(Error::new("Happy backends require selecting Happy Remote"));
+    }
+    Ok(())
 }
 
 impl Choices {
@@ -201,6 +221,13 @@ impl Choices {
             worker.validate(self.allow_unfree)?;
         }
         worker::validate_host_selection(self.components, self.worker.as_ref())?;
+        self.ssh_access
+            .validate(self.admin_ssh_key.is_some() || self.agent_ssh_key.is_some())?;
+        if self.worker.is_some() && !self.additional_packages.is_empty() {
+            return Err(Error::new(
+                "additional controller packages are not allowed; configure tools inside the worker",
+            ));
+        }
         if !self.allow_mutable_code && self.components.iter().any(Component::mutable_code) {
             return Err(Error::new(
                 "selected components require explicit consent to provider/client-managed executable downloads",
@@ -218,17 +245,7 @@ impl Choices {
                 ));
             }
         }
-        if self.components.contains(Component::HappyRemote)
-            && (self.happy_backends == Components::default()
-                || self.happy_backends.iter().any(|backend| {
-                    !matches!(backend, Component::Codex | Component::ClaudeCode)
-                        || !self.components.contains(backend)
-                }))
-        {
-            return Err(Error::new(
-                "Happy requires explicit installed Codex/Claude backends",
-            ));
-        }
+        validate_happy_backends(self.components, self.happy_backends)?;
         if (self.components.contains(Component::VscodeRemoteHost)
             || self.components.contains(Component::ZedRemoteHost))
             && self.agent_ssh_key.is_none()
@@ -476,4 +493,5 @@ mod tests {
         }
     }
 }
+pub mod access;
 pub mod worker;

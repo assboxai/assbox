@@ -76,6 +76,24 @@
     "requiresWorker": true
   },
   {
+    "id": "chromium",
+    "package": "chromium",
+    "family": "nixpkgs",
+    "command": "chromium",
+    "dependencies": [],
+    "presentations": [
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "Standalone graphical browser. Installing it does not enable remote browser or desktop automation.",
+    "controllerAllowed": false,
+    "workerAllowed": false,
+    "requiresWorker": false
+  },
+  {
     "id": "claude-code",
     "package": "claude-code",
     "family": "claude-code",

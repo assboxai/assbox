@@ -41,10 +41,13 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
             autostart: Vec::new(),
             admin_ssh_key: Some("ssh-ed25519 fixture".into()),
             agent_ssh_key: Some("ssh-ed25519 agent-fixture".into()),
+            ssh_access: Default::default(),
+            additional_packages: Default::default(),
             worker: components.contains(Component::ChatgptDesktop).then(|| {
                 assbox_domain::worker::WorkerSpec {
                     components: Component::Codex.into(),
                     mutable_components: Components::default(),
+                    happy_backends: Default::default(),
                     memory_mib: 3072,
                     vcpus: 2,
                     state_gib: 32,
@@ -128,8 +131,10 @@ fn managed_launcher_transitions_satisfy_actual_component_assertions() {
             .to_vec(),
         admin_ssh_key: None,
         agent_ssh_key: None,
+        ssh_access: Default::default(),
+        additional_packages: Default::default(),
         worker: None,
-        happy_backends: Components::default(),
+        happy_backends: Default::default(),
     };
     let original = assbox_config::settings(&choices).unwrap();
     let lib_path = std::env::var("ASSBOX_NIX_LIB").expect("Nix module library is required");

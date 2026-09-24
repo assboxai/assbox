@@ -43,6 +43,7 @@ const HELP: &str = r#"Assbox — Assistant Box
                                         execution packages off the host (sudo)
       --network normal|internet|offline IPv4 egress policy (interactive selection required)
       --uplink NAME --dns IPV4          Repeat for explicit uplinks and resolvers
+      --happy-backends IDS             Explicit Codex/Claude backends for Happy Remote
       --offline                        Legacy offline flag; uplink alone retains internet-only
       --memory auto|MIB --cpus N --state-gib auto|N
       --allow-mutable-code --allow-guest-sudo --accept-unfree

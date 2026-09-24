@@ -46,6 +46,7 @@ in
           "claude-desktop"
           "vscode"
           "zed"
+          "chromium"
           "emacs"
           "opencode-attach"
           "openclaw-dashboard"

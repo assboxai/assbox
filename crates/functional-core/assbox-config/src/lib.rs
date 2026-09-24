@@ -104,7 +104,28 @@ pub fn settings(c: &Choices) -> Result<String> {
         }
     }
     if c.admin_ssh_key.is_some() || c.agent_ssh_key.is_some() {
-        ssh.push_str("  assbox.network.tailscale.enable = lib.mkDefault true;\n");
+        if c.ssh_access.exposure == access::SshExposure::Tailscale {
+            ssh.push_str("  assbox.network.tailscale.enable = lib.mkDefault true;\n");
+        } else {
+            ssh.push_str("  assbox.network.ssh.exposure = lib.mkDefault \"lan\";\n");
+            for (name, values) in [
+                ("lanInterfaces", &c.ssh_access.interfaces),
+                ("lanSourceCidrs", &c.ssh_access.source_cidrs),
+            ] {
+                ssh.push_str(&format!(
+                    "  assbox.network.ssh.{name} = lib.mkDefault [ {} ];\n",
+                    values
+                        .iter()
+                        .map(|s| nix_string(s))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                ));
+            }
+        }
+        ssh.push_str(&format!(
+            "  environment.etc.\"assbox/connection-guide.txt\".text = {};\n",
+            nix_string(&connection_guide(c))
+        ));
     }
     let mut extras = String::new();
     for component in c.components.iter().filter(|c| c.mutable_code()) {
@@ -164,6 +185,29 @@ pub fn settings(c: &Choices) -> Result<String> {
         Some(spec) => worker::selection(&rendered, Some(spec)),
         None => Ok(rendered),
     }
+}
+
+pub fn connection_guide(c: &Choices) -> String {
+    let mut guide = String::from(
+        "After boot, read /etc/assbox/connection-guide.txt. Verify the installed address from the console with ip -brief address; live-media addresses may change.\n",
+    );
+    if c.ssh_access.exposure == access::SshExposure::Tailscale {
+        guide.push_str("Enroll Tailscale from the console with sudo tailscale up, then use the installed tailnet address.\n");
+    } else {
+        guide.push_str(&format!("SSH admits selected interfaces: {}; source CIDRs: {}. This listener policy applies to both enabled accounts.\n", c.ssh_access.interfaces.join(", "), if c.ssh_access.source_cidrs.is_empty() { "any on those interfaces".to_owned() } else { c.ssh_access.source_cidrs.join(", ") }));
+    }
+    guide.push_str("From the trusted VM/machine console, run sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub and compare its fingerprint with the SSH client's first-connection prompt. Do not disable host-key checking.\n");
+    if c.agent_ssh_key.is_some() {
+        guide.push_str(&format!("On the external controller, add to ~/.ssh/config (replace the address and private-key path):\nHost {}\n  HostName REPLACE_WITH_INSTALLED_ADDRESS\n  User agent\n  IdentityFile ~/.ssh/REPLACE_WITH_WORKLOAD_KEY\n  IdentitiesOnly yes\n  ForwardAgent no\n  ForwardX11 no\nThen verify ssh {}.\n", c.hostname.as_str(), c.hostname.as_str()));
+        if c.components.contains(Component::Codex) {
+            guide.push_str("Authenticate Codex as agent inside Assbox. Verify command -v codex in the SSH login shell. In macOS ChatGPT, add the SSH host and choose a project directory inside Assbox. The app manages its app server over SSH; do not expose an app-server port.\n");
+        }
+    }
+    if c.admin_ssh_key.is_some() {
+        guide.push_str("Administrator SSH uses User admin and its separately supplied key.\n");
+    }
+    guide.push_str("Workloads in this installation share their account's files and credentials. OS rollback does not roll back projects or provider actions. A guest GUI/browser does not automatically enable remote GUI automation.\n");
+    guide
 }
 
 pub fn storage(plan: &InstallPlan) -> String {

@@ -1158,7 +1158,7 @@ pub fn worker_configure(
         )?;
         let filter = if spec.is_some() {
             r#"[(.enable|tostring),(.components|join(",")),
-             (.allowMutableCodeFor|join(",")),(.memoryMiB|tostring),(.vcpus|tostring),
+             (.allowMutableCodeFor|join(",")),(.happyBackends|join(",")),(.memoryMiB|tostring),(.vcpus|tostring),
              (.stateGiB|tostring),(.uplinkInterfaces|join(",")),.egress,
              (.allowGuestSudo|tostring),
              (.nameservers|join(","))] | .[] | . + "\u0000""#

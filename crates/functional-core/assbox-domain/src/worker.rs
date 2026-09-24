@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Explicit worker choices and controller hardware observations. No probing or activation here.
 use crate::{Component, Components, Error, Presentation, Result};
-use std::{fmt, net::Ipv4Addr, str::FromStr};
+use core::net::Ipv4Addr;
+use std::{fmt, str::FromStr};
 
 pub const GIB: u64 = 1024 * 1024 * 1024;
 pub fn storage_reserve(total_bytes: u64) -> u64 {
@@ -71,6 +72,7 @@ impl FromStr for WorkerNetwork {
 pub struct WorkerSpec {
     pub components: Components,
     pub mutable_components: Components,
+    pub happy_backends: Components,
     pub memory_mib: u32,
     pub vcpus: u32,
     pub state_gib: u32,
@@ -124,6 +126,7 @@ impl WorkerSpec {
                 )));
             }
         }
+        crate::validate_happy_backends(self.components, self.happy_backends)?;
         if !(2048..=65536).contains(&self.memory_mib)
             || !(1..=32).contains(&self.vcpus)
             || !(8..=2048).contains(&self.state_gib)
@@ -228,6 +231,7 @@ mod tests {
         WorkerSpec {
             components: "vim".parse().unwrap(),
             mutable_components: Components::default(),
+            happy_backends: Default::default(),
             memory_mib: 3072,
             vcpus: 2,
             state_gib: 32,
@@ -286,6 +290,20 @@ mod tests {
         assert!(s.validate(true).is_err());
         s.mutable_components = s.components;
         assert!(s.validate(true).is_ok());
+    }
+    #[test]
+    fn happy_requires_explicit_selected_backends() {
+        let mut s = spec();
+        s.components = "happy,happy-remote,codex".parse().unwrap();
+        s.mutable_components = "happy-remote".parse().unwrap();
+        assert!(s.validate(true).is_err());
+        s.happy_backends = "codex".parse().unwrap();
+        assert!(s.validate(true).is_ok());
+        s.happy_backends = "claude-code".parse().unwrap();
+        assert!(s.validate(true).is_err());
+        s.components = "codex".parse().unwrap();
+        s.happy_backends = s.components;
+        assert!(s.validate(true).is_err());
     }
     #[test]
     fn resources_are_bounded() {

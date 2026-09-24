@@ -19,7 +19,7 @@ class ComponentCatalogTests(unittest.TestCase):
     def test_generated_metadata_and_release_families_match(self):
         subprocess.run([sys.executable, 'scripts/component_catalog.py', '--check'], cwd=ROOT, check=True)
         rows = catalog.read_catalog()
-        self.assertEqual(len(rows), 28)
+        self.assertEqual(len(rows), 29)
         expected = tuple(sorted({r['family'] for r in rows} - {'nixpkgs'}))
         self.assertEqual(component_families.FAMILIES, expected)
         release_data.validate_lock(json.loads((ROOT / 'flake.lock').read_text()))
@@ -68,6 +68,27 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertFalse(result['sshEnabled'])
         self.assertEqual(result['services']['user']['services'], {})
         self.assertTrue(all(isinstance(paths, list) and paths for paths in result['identities'].values()))
+
+    def test_standalone_browser_and_workload_ssh_are_independent_of_editors(self):
+        network = {'ssh': {'agent': {'enable': True, 'keys': ['ssh-ed25519 fixture']},
+                           'exposure': 'lan', 'lanInterfaces': ['enp0s5']}}
+        for presentation in ['x11', 'wayland']:
+            with self.subTest(presentation=presentation):
+                result = self.evaluate({'chromium': {'enable': True}, 'codex': {'enable': True}},
+                                       presentation=presentation, network=network, autostart=['chromium'])
+                self.assertFalse(result['failures'])
+                self.assertTrue(result['sshEnabled'])
+                self.assertEqual(result['selected'], ['chromium', 'codex'])
+                self.assertNotIn('nix-ld', result['programs'])
+                unit = result['services']['user']['services']['assbox-chromium']
+                self.assertIn('/bin/chromium ', unit['serviceConfig']['ExecStart'])
+                self.assertEqual(unit['partOf'], ['graphical-session.target'])
+        self.assertTrue(self.evaluate({'chromium': {'enable': True}})['failures'])
+        self.assertTrue(self.evaluate({}, presentation='x11', autostart=['chromium'])['failures'])
+        result = self.evaluate({'codex': {'enable': True}}, network=network)
+        self.assertFalse(result['failures'])
+        self.assertTrue(result['sshEnabled'])
+        self.assertNotIn('/nix/store/test-chromium', result['packages'])
 
     def test_closure_identities_preserve_overlays_without_granting_install_consent(self):
         if not self.lib:

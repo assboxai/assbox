@@ -37,10 +37,18 @@ in
       enable = true;
       presentation = "headless";
       acceptUnfree = workerSettings.acceptUnfree;
-      components = lib.genAttrs workerSettings.components (name: {
-        enable = true;
-        allowMutableCode = builtins.elem name workerSettings.allowMutableCodeFor;
-      });
+      components =
+        lib.genAttrs workerSettings.components (name: {
+          enable = true;
+          allowMutableCode = builtins.elem name workerSettings.allowMutableCodeFor;
+        })
+        // lib.optionalAttrs (builtins.elem "happy-remote" workerSettings.components) {
+          happy-remote = {
+            enable = true;
+            allowMutableCode = builtins.elem "happy-remote" workerSettings.allowMutableCodeFor;
+            backends = workerSettings.happyBackends;
+          };
+        };
       updates.enable = false;
       session.autostart = [ ];
     };

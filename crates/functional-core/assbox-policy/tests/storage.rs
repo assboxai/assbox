@@ -89,8 +89,10 @@ fn base(firmware: Firmware, table: Table) -> (Inventory, InstallRequest) {
                 autostart: Vec::new(),
                 admin_ssh_key: None,
                 agent_ssh_key: None,
+                ssh_access: Default::default(),
+                additional_packages: Default::default(),
                 worker: None,
-                happy_backends: Components::default(),
+                happy_backends: Default::default(),
             },
         },
     )

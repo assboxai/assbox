@@ -16,9 +16,59 @@ fn choices() -> Choices {
         autostart: Vec::new(),
         admin_ssh_key: None,
         agent_ssh_key: None,
+        ssh_access: Default::default(),
+        additional_packages: Default::default(),
         worker: None,
-        happy_backends: Components::default(),
+        happy_backends: Default::default(),
     }
+}
+
+#[test]
+fn standalone_workload_ssh_and_manual_browser_do_not_require_a_nested_worker() {
+    let mut c = choices();
+    c.components = "chromium,codex".parse().unwrap();
+    c.agent_ssh_key = Some("ssh-ed25519 workload-fixture".into());
+    c.ssh_access = access::SshAccess {
+        exposure: access::SshExposure::Lan,
+        interfaces: vec!["enp0s5".into()],
+        source_cidrs: vec!["192.168.64.1/32".into()],
+    };
+    c.additional_packages
+        .insert(PackageName::parse("htop").unwrap());
+    for presentation in [Presentation::X11, Presentation::Wayland] {
+        c.presentation = presentation;
+        c.autostart = vec!["chromium".into()];
+        let text = settings(&c).unwrap();
+        assert!(text.contains("assbox.network.ssh.agent.enable = lib.mkDefault true;"));
+        assert!(text.contains("assbox.network.ssh.admin.enable = lib.mkDefault false;"));
+        assert!(text.contains("lanInterfaces = lib.mkDefault [ \"enp0s5\" ];"));
+        assert!(text.contains("lanSourceCidrs = lib.mkDefault [ \"192.168.64.1/32\" ];"));
+        assert!(!text.contains("tailscale.enable"));
+        assert!(!text.contains("assbox.worker"));
+        assert!(!text.contains("vscode-remote-host"));
+        let guide = connection_guide(&c);
+        assert!(guide.contains("User agent\n"));
+        assert!(guide.contains("ForwardAgent no\n"));
+        assert!(guide.contains("compare its fingerprint"));
+        assert!(guide.contains("command -v codex"));
+        assert_eq!(
+            read_packages(&packages(&c.additional_packages)).unwrap(),
+            c.additional_packages
+        );
+    }
+    c.presentation = Presentation::Headless;
+    assert!(settings(&c).is_err());
+    c.components = "codex".parse().unwrap();
+    c.autostart.clear();
+    assert!(settings(&c).is_ok());
+    c.ssh_access = Default::default();
+    let text = settings(&c).unwrap();
+    assert!(text.contains("tailscale.enable = lib.mkDefault true;"));
+    assert!(connection_guide(&c).contains("sudo tailscale up"));
+    c.components = "chatgpt-desktop".parse().unwrap();
+    c.presentation = Presentation::X11;
+    c.allow_unfree = true;
+    assert!(settings(&c).is_err());
 }
 fn release() -> assbox_domain::release::ReleaseManifest {
     let fields = [

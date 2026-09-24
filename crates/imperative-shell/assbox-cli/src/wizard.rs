@@ -39,6 +39,60 @@ fn yes(label: &str, default: Option<bool>) -> Result<bool> {
         }
     }
 }
+
+fn ssh_access_prompt(enabled: bool, c: &Commands) -> Result<access::SshAccess> {
+    if !enabled {
+        return Ok(Default::default());
+    }
+    println!(
+        "SSH accepts keys only. The exposure choice applies to both enabled SSH accounts. Tailscale requires console enrollment after boot; LAN can connect directly over a Parallels private network."
+    );
+    match ask("SSH exposure: tailscale / lan", Some("tailscale"))?.as_str() {
+        "tailscale" => Ok(Default::default()),
+        "lan" => {
+            let links = c.capture("ip", &["-j", "link", "show"])?;
+            let names = c.jq_fields(
+                &links,
+                r#".[] | select(.ifname != "lo") | .ifname + "\u0000""#,
+            )?;
+            println!("Observed interfaces: {}", names.join(", "));
+            let interfaces = ask(
+                "Interfaces admitting SSH, comma-separated (confirm target names)",
+                None,
+            )?
+            .split(',')
+            .map(|s| s.trim().to_owned())
+            .collect();
+            let sources = ask(
+                "Allowed source CIDRs, comma-separated, or none for any source on those interfaces",
+                Some("none"),
+            )?;
+            let source_cidrs = if sources == "none" {
+                vec![]
+            } else {
+                sources.split(',').map(|s| s.trim().to_owned()).collect()
+            };
+            let access = access::SshAccess {
+                exposure: access::SshExposure::Lan,
+                interfaces,
+                source_cidrs,
+            };
+            access.validate(true)?;
+            Ok(access)
+        }
+        _ => Err(Error::new("choose tailscale or lan SSH exposure")),
+    }
+}
+
+fn print_connection_summary(choices: &Choices) {
+    if choices.admin_ssh_key.is_some() || choices.agent_ssh_key.is_some() {
+        println!("{}", assbox_config::connection_guide(choices));
+        if let Ok(addresses) = Commands.capture("ip", &["-j", "-4", "address", "show"])
+            && let Ok(rows) = Commands.jq_fields(&addresses, r#".[] | .ifname as $interface | .addr_info[] | select(.scope == "global") | ($interface + ": " + .local + "\u0000")"#) {
+            println!("Live environment IPv4 observations (not permanent installed addresses): {}", rows.join(", "));
+        }
+    }
+}
 pub fn install(args: &[&str]) -> Result<()> {
     let mut apply = false;
     let mut release_tag = None;
@@ -160,9 +214,23 @@ pub fn install(args: &[&str]) -> Result<()> {
     )?
     .parse()?;
     println!(
+        "Standalone: selected tools run directly here, including when another computer connects over SSH. Managed-worker: this system owns an isolated headless VM; only approved controller components stay outside it."
+    );
+    let mut managed = match ask(
+        "Arrangement: standalone / managed-worker",
+        Some("standalone"),
+    )?
+    .as_str()
+    {
+        "standalone" => false,
+        "managed-worker" => true,
+        _ => return Err(Error::new("choose standalone or managed-worker")),
+    };
+    println!(
         "Optional components: {}",
         Component::ALL
             .iter()
+            .filter(|c| c.blocked().is_empty() && (!c.requires_worker() || c.controller_allowed()))
             .map(|c| c.as_str())
             .collect::<Vec<_>>()
             .join(", ")
@@ -177,7 +245,16 @@ pub fn install(args: &[&str]) -> Result<()> {
         }
         components = expanded;
     }
-    let requested_worker = if components.iter().any(Component::requires_worker) {
+    if !managed && components.iter().any(Component::requires_worker) {
+        println!("Selected sensitive desktop components require a managed worker.");
+        if !yes("Switch to the managed-worker arrangement?", Some(false))? {
+            return Err(Error::new(
+                "select a managed worker or remove the sensitive desktop components",
+            ));
+        }
+        managed = true;
+    }
+    let requested_worker = if managed {
         if components
             .iter()
             .any(|c| c.requires_worker() && !c.controller_allowed())
@@ -203,39 +280,17 @@ pub fn install(args: &[&str]) -> Result<()> {
             "Use this managed worker-only execution layout?",
             Some(false),
         )? {
-            return Err(Error::new(
-                "ChatGPT controller requires worker isolation; no controller fallback",
-            ));
+            return Err(Error::new("managed-worker placement was not accepted"));
         }
         components = controller;
         Some(execution)
     } else {
         None
     };
-    let happy_backends = if components.contains(Component::HappyRemote) {
-        let backends: Components = ask(
-            "Happy backends (codex, claude-code, or both comma-separated)",
-            None,
-        )?
-        .parse()?;
-        if backends == Components::default()
-            || backends
-                .iter()
-                .any(|id| !matches!(id, Component::Codex | Component::ClaudeCode))
-        {
-            return Err(Error::new("select at least one supported Happy backend"));
-        }
-        for backend in backends.iter() {
-            components.insert(backend);
-        }
-        println!("Complete selection including your Happy backends: {components}");
-        backends
-    } else {
-        Components::default()
-    };
+    let happy_backends = crate::worker::happy_prompt(&mut components)?;
     let presentation: Presentation = ask(
         "Presentation: headless / wayland / x11",
-        Some(if requested_worker.is_some() {
+        Some(if components.contains(Component::ChatgptDesktop) {
             "x11"
         } else {
             "headless"
@@ -300,7 +355,7 @@ pub fn install(args: &[&str]) -> Result<()> {
         Vec::new()
     } else {
         let text = ask(
-            "Graphical autostart IDs (chatgpt-desktop, claude-desktop, vscode, zed, opencode-attach, openclaw-dashboard; or none)",
+            "Graphical autostart IDs (chatgpt-desktop, claude-desktop, vscode, zed, chromium, opencode-attach, openclaw-dashboard; or none)",
             Some("none"),
         )?;
         if text == "none" {
@@ -310,19 +365,40 @@ pub fn install(args: &[&str]) -> Result<()> {
         }
     };
     let key = ask(
-        "Optional admin SSH public key (enables Tailscale-only SSH; owner must log in from console; enter none for console-only access)",
+        "Optional administrator SSH public key, or none",
         Some("none"),
     )?;
     let admin_ssh_key = if key == "none" { None } else { Some(key) };
-    let agent_ssh_key = if components.contains(Component::VscodeRemoteHost)
-        || components.contains(Component::ZedRemoteHost)
-    {
+    let editor_ssh = components.contains(Component::VscodeRemoteHost)
+        || components.contains(Component::ZedRemoteHost);
+    let agent_ssh_key = if !managed
+        && (editor_ssh
+            || yes(
+                "Allow an external controller/editor/terminal to connect to the workload account over SSH?",
+                Some(false),
+            )?) {
         Some(ask(
-            "Agent SSH public key for remote editors (separate from admin access; enables Tailscale-only SSH and requires console login)",
+            "Workload SSH public key (unprivileged agent account; separate from administrator access)",
             None,
         )?)
     } else {
         None
+    };
+    let ssh_access = ssh_access_prompt(admin_ssh_key.is_some() || agent_ssh_key.is_some(), &c)?;
+    let additional_packages = if managed {
+        Default::default()
+    } else {
+        let text = ask(
+            "Additional nixpkgs package attributes, comma-separated, or none",
+            Some("none"),
+        )?;
+        if text == "none" {
+            Default::default()
+        } else {
+            text.split(',')
+                .map(|s| PackageName::parse(s.trim()))
+                .collect::<Result<std::collections::BTreeSet<_>>>()?
+        }
     };
     let choices = Choices {
         hostname,
@@ -337,9 +413,12 @@ pub fn install(args: &[&str]) -> Result<()> {
         autostart,
         admin_ssh_key,
         agent_ssh_key,
+        ssh_access,
+        additional_packages,
         worker,
         happy_backends,
     };
+    print_connection_summary(&choices);
     let request = InstallRequest {
         root,
         esp,

@@ -15,8 +15,10 @@ fn choices() -> Choices {
         autostart: Vec::new(),
         admin_ssh_key: None,
         agent_ssh_key: None,
+        ssh_access: Default::default(),
+        additional_packages: Default::default(),
         worker: None,
-        happy_backends: Components::default(),
+        happy_backends: Default::default(),
     }
 }
 #[test]
@@ -36,9 +38,10 @@ fn exactly_ten_application_presentation_combinations_are_valid() {
             let mut c = choices();
             c.components = app;
             if app.contains(Component::ChatgptDesktop) {
-                c.worker = Some(worker::WorkerSpec {
+                c.worker = Some(assbox_domain::worker::WorkerSpec {
                     components: Component::Codex.into(),
                     mutable_components: Components::default(),
+                    happy_backends: Default::default(),
                     memory_mib: 3072,
                     vcpus: 2,
                     state_gib: 32,

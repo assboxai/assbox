@@ -7,6 +7,7 @@ named_enum!(Component {
     AntigravityRemote => "antigravity-remote",
     ChatgptDesktop => "chatgpt-desktop",
     ChatgptRemote => "chatgpt-remote",
+    Chromium => "chromium",
     ClaudeCode => "claude-code",
     ClaudeCodeRemote => "claude-code-remote",
     ClaudeDesktop => "claude-desktop",
@@ -38,6 +39,7 @@ impl Component {
         Self::AntigravityRemote,
         Self::ChatgptDesktop,
         Self::ChatgptRemote,
+        Self::Chromium,
         Self::ClaudeCode,
         Self::ClaudeCodeRemote,
         Self::ClaudeDesktop,
@@ -69,6 +71,7 @@ impl Component {
             Self::AntigravityRemote => &[Self::AntigravityCli],
             Self::ChatgptDesktop => &[],
             Self::ChatgptRemote => &[Self::ChatgptDesktop],
+            Self::Chromium => &[],
             Self::ClaudeCode => &[],
             Self::ClaudeCodeRemote => &[Self::ClaudeCode],
             Self::ClaudeDesktop => &[],
@@ -109,6 +112,7 @@ impl Component {
             ],
             Self::ChatgptDesktop => &[Presentation::X11],
             Self::ChatgptRemote => &[Presentation::X11],
+            Self::Chromium => &[Presentation::X11, Presentation::Wayland],
             Self::ClaudeCode => &[
                 Presentation::Headless,
                 Presentation::X11,
@@ -221,6 +225,7 @@ impl Component {
             Self::AntigravityRemote => false,
             Self::ChatgptDesktop => true,
             Self::ChatgptRemote => false,
+            Self::Chromium => false,
             Self::ClaudeCode => true,
             Self::ClaudeCodeRemote => false,
             Self::ClaudeDesktop => true,
@@ -253,6 +258,7 @@ impl Component {
             Self::AntigravityRemote => false,
             Self::ChatgptDesktop => true,
             Self::ChatgptRemote => false,
+            Self::Chromium => false,
             Self::ClaudeCode => false,
             Self::ClaudeCodeRemote => false,
             Self::ClaudeDesktop => true,
@@ -287,6 +293,7 @@ impl Component {
             }
             Self::ChatgptDesktop => "",
             Self::ChatgptRemote => "",
+            Self::Chromium => "",
             Self::ClaudeCode => "",
             Self::ClaudeCodeRemote => "",
             Self::ClaudeDesktop => "",
@@ -321,6 +328,7 @@ impl Component {
             Self::AntigravityRemote => "",
             Self::ChatgptDesktop => "chatgpt",
             Self::ChatgptRemote => "",
+            Self::Chromium => "chromium",
             Self::ClaudeCode => "claude",
             Self::ClaudeCodeRemote => "",
             Self::ClaudeDesktop => "claude-desktop",
@@ -355,6 +363,9 @@ impl Component {
                 "May download a provider-managed Codex runtime; standalone Codex is not installed implicitly. Chromium is provided for login."
             }
             Self::ChatgptRemote => "",
+            Self::Chromium => {
+                "Standalone graphical browser. Installing it does not enable remote browser or desktop automation."
+            }
             Self::ClaudeCode => "",
             Self::ClaudeCodeRemote => "",
             Self::ClaudeDesktop => {
@@ -405,6 +416,7 @@ impl Component {
             Self::AntigravityRemote => false,
             Self::ChatgptDesktop => true,
             Self::ChatgptRemote => true,
+            Self::Chromium => false,
             Self::ClaudeCode => false,
             Self::ClaudeCodeRemote => false,
             Self::ClaudeDesktop => false,
@@ -437,6 +449,7 @@ impl Component {
             Self::AntigravityRemote => true,
             Self::ChatgptDesktop => false,
             Self::ChatgptRemote => false,
+            Self::Chromium => false,
             Self::ClaudeCode => true,
             Self::ClaudeCodeRemote => true,
             Self::ClaudeDesktop => false,
@@ -469,6 +482,7 @@ impl Component {
             Self::AntigravityRemote => false,
             Self::ChatgptDesktop => true,
             Self::ChatgptRemote => true,
+            Self::Chromium => false,
             Self::ClaudeCode => false,
             Self::ClaudeCodeRemote => false,
             Self::ClaudeDesktop => true,

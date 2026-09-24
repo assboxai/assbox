@@ -12,6 +12,7 @@ let
   selected = builtins.filter (row: cfg.components.${row.id}.enable) catalog;
   enabled = id: cfg.components.${id}.enable;
   needsBrowser = builtins.any enabled [
+    "chromium"
     "chatgpt-desktop"
     "claude-desktop"
     "vscode"

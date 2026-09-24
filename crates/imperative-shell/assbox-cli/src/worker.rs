@@ -14,6 +14,7 @@ use std::{
 #[derive(Debug)]
 struct Request {
     components: Components,
+    happy_backends: Components,
     memory: Option<u32>,
     cpus: Option<u32>,
     state: Option<u32>,
@@ -37,6 +38,7 @@ fn parse(args: &[&str]) -> Result<Request> {
         .ok_or_else(|| Error::new("worker configure requires explicit component IDs"))?;
     let mut r = Request {
         components: ids.parse()?,
+        happy_backends: Components::default(),
         memory: None,
         cpus: None,
         state: None,
@@ -91,6 +93,10 @@ fn parse(args: &[&str]) -> Result<Request> {
                 i += 1;
                 r.uplinks.push(value(i)?.to_owned());
             }
+            "--happy-backends" => {
+                i += 1;
+                r.happy_backends = value(i)?.parse()?;
+            }
             "--offline" => r.network = WorkerNetwork::Offline,
             "--network" => {
                 i += 1;
@@ -131,6 +137,7 @@ fn configure(request: Request) -> Result<()> {
     }
     let spec = WorkerSpec {
         components: request.components,
+        happy_backends: request.happy_backends,
         mutable_components,
         memory_mib: match request.memory {
             Some(m) => m,
@@ -227,6 +234,34 @@ fn network_prompt(observed: &[String]) -> Result<(WorkerNetwork, Vec<String>, Ve
     Ok((network, uplinks, nameservers))
 }
 
+pub(crate) fn accept_dependencies(components: Components) -> Result<Components> {
+    let expanded = components.with_dependencies();
+    if expanded != components {
+        println!("Required selection: {expanded}");
+        if ask("Include these dependencies? yes/no", "no")? != "yes" {
+            return Err(Error::new("component dependencies were not accepted"));
+        }
+    }
+    Ok(expanded)
+}
+
+pub(crate) fn happy_prompt(components: &mut Components) -> Result<Components> {
+    if !components.contains(assbox_domain::Component::HappyRemote) {
+        return Ok(Components::default());
+    }
+    let backends: Components = ask(
+        "Happy backends: codex, claude-code, or both comma-separated (required)",
+        "",
+    )?
+    .parse()?;
+    for backend in backends.iter() {
+        components.insert(backend);
+    }
+    assbox_domain::validate_happy_backends(*components, backends)?;
+    println!("Complete selection including Happy backends: {components}");
+    Ok(backends)
+}
+
 fn setup() -> Result<()> {
     files::require_root()?;
     recommend()?;
@@ -237,6 +272,8 @@ fn setup() -> Result<()> {
         println!("No worker configured.");
         return Ok(());
     }
+    let mut components = accept_dependencies(ids.parse()?)?;
+    let happy_backends = happy_prompt(&mut components)?;
     let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
     let ram = ask("Worker memory in MiB", &memory.to_string())?;
     let state = ask(
@@ -254,12 +291,15 @@ fn setup() -> Result<()> {
         }
     }
     let mut args = vec![
-        ids,
+        components.to_string(),
         "--memory".to_owned(),
         ram,
         "--state-gib".to_owned(),
         state,
     ];
+    if happy_backends != Components::default() {
+        args.extend(["--happy-backends".to_owned(), happy_backends.to_string()]);
+    }
     args.extend(["--network".to_owned(), network.to_string()]);
     for uplink in uplinks {
         args.extend(["--uplink".to_owned(), uplink]);
@@ -296,16 +336,35 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
         "Explicit worker component IDs (Codex is required for ChatGPT)",
         &selected.to_string(),
     )?;
-    let components: Components = ids.parse()?;
+    let mut components = accept_dependencies(ids.parse()?)?;
+    let happy_backends = happy_prompt(&mut components)?;
     for c in components.iter().filter(|c| !c.code_notes().is_empty()) {
         println!("{c}: {}", c.code_notes());
     }
-    let memory_mib = number(&ask("Worker memory MiB", &recommended.to_string())?)?;
-    let vcpus = number(&ask(
-        "Worker CPUs",
-        &assbox_policy::worker::recommended_cpus(&host).to_string(),
-    )?)?;
-    let state = ask("Persistent worker state GiB: auto or capacity", "auto")?;
+    let recommended_cpus = assbox_policy::worker::recommended_cpus(&host);
+    println!(
+        "Recommended resources: {recommended} MiB RAM, {recommended_cpus} CPUs, automatic persistent capacity after building the system."
+    );
+    let customize = match ask("Customize worker resources? yes/no", "no")?.as_str() {
+        "yes" => true,
+        "no" => false,
+        _ => return Err(Error::new("answer yes or no")),
+    };
+    let memory_mib = if customize {
+        number(&ask("Worker memory MiB", &recommended.to_string())?)?
+    } else {
+        recommended
+    };
+    let vcpus = if customize {
+        number(&ask("Worker CPUs", &recommended_cpus.to_string())?)?
+    } else {
+        recommended_cpus
+    };
+    let state = if customize {
+        ask("Persistent worker state GiB: auto or capacity", "auto")?
+    } else {
+        "auto".to_owned()
+    };
     let auto_state = state == "auto";
     let state_gib = if auto_state { 8 } else { number(&state)? };
     let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
@@ -322,6 +381,7 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
     }
     let spec = WorkerSpec {
         components,
+        happy_backends,
         mutable_components,
         memory_mib,
         vcpus,
