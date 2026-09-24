@@ -111,7 +111,7 @@ The worker build closure remains separately available as `system.build.assboxWor
 
 A SHA-256 build identifier derived from the worker system identity is embedded in the image, manifest and controller receipt. Readiness compares that identifier, not a retained controller path to the worker closure. Every worker service start creates a fresh qcow2 overlay over that base. Runtime modifications outside `/home`, including worker-root changes to system configuration or the Nix store, disappear on the next service start. The base image remains read-only by location and VMM permissions; the overlay is owned by the VMM.
 
-The persistent disk is a preallocated raw ext4 volume mounted at worker `/home`. It contains projects, agent state, selected provider credentials, shell configuration and ordinary caches. It is created only when absent. An existing file with unexpected size, ownership, link count or permissions is refused rather than formatted, repaired or resized. An interrupted `.new` allocation is left for an administrator to inspect.
+The persistent disk is a sparse raw ext4 volume with fixed virtual capacity mounted at worker `/home`. It contains projects, agent state, selected provider credentials, shell configuration and ordinary caches. It is created only when absent. An existing file with unexpected size, ownership, link count or permissions is refused rather than formatted, repaired or resized. An interrupted `.new` allocation is left for an administrator to inspect.
 
 This choice is intentionally more conservative than adopting arbitrary existing disks. It also makes changes to `stateGiB` administrative storage work rather than implicit destructive operations. Disk images are never automatically mounted or filesystem-repaired by the controller. A compromised worker filesystem must be treated as hostile data, including during recovery.
 
@@ -144,9 +144,15 @@ The controller creates firewall tables before bringing the TAP up. Independent i
 
 Internet mode requires explicit physical uplink interface names. It permits public IPv4 egress through those uplinks and applies NAT to the worker's exact address. Built-in destination denials cover private ranges, loopback, link-local/metadata, carrier-grade NAT/Tailscale space, documentation, benchmarking, multicast and reserved ranges. Controller public addresses remain controller-local input and are blocked. Organizations using public prefixes internally must add those prefixes to `additionalDeniedCidrs`; the default cannot infer every protected destination.
 
-`offline` mode keeps controller-initiated access but permits no forwarded internet traffic. It is useful for infrastructure testing or non-cloud tools, not normal cloud Codex use. Public resolver addresses are validated against the same deny policy. There is no controller DNS proxy, route into a tailnet, worker agent forwarding or worker access to controller port-forward management.
+`offline` mode keeps controller-initiated access but permits no forwarded internet traffic. It is useful for infrastructure testing or non-cloud tools, not normal cloud Codex use. Resolver addresses are validated against the selected policy; offline requires none. There is no controller DNS proxy, automatic tailnet enrollment, worker agent forwarding or worker access to controller port-forward management.
 
-**Internet mode is not an exfiltration filter.** A compromised worker can send its own secrets to allowed public services, including an attacker-controlled endpoint. Destination isolation blocks direct worker initiation to the controller and configured protected prefixes, not data intentionally placed in the worker. An allowed public relay, reverse proxy, VPN tunnel or hairpin route can provide indirect access to another system; the firewall does not infer the ultimate destination behind an allowed service. A strict domain allowlist or application proxy would be a different product mode with provider, package-manager, redirect, DNS and development-workflow compatibility costs. It is not partially implemented under a misleading “secure internet” label.
+`normal` mode additionally permits private IPv4 and CGNAT destinations and private
+resolvers. Direct controller input, unsolicited outside inbound, spoofed sources,
+worker IPv6 and reserved/link-local ranges remain denied. Online modes require
+explicit uplinks. Interactive setup requires an explicit policy choice; legacy
+`--uplink` commands and the Nix default retain `internet` semantics.
+
+**Online modes are not exfiltration filters.** A compromised worker can send its own secrets to allowed public services, including an attacker-controlled endpoint. Destination isolation blocks direct worker initiation to the controller and configured protected prefixes, not data intentionally placed in the worker. An allowed public relay, reverse proxy, VPN tunnel or hairpin route can provide indirect access to another system; the firewall does not infer the ultimate destination behind an allowed service. A strict domain allowlist or application proxy would be a different product mode with provider, package-manager, redirect, DNS and development-workflow compatibility costs. It is not partially implemented under a misleading “secure internet” label.
 
 ## 8. Desktop, CLI and mobile workflow
 
@@ -178,13 +184,14 @@ After removing the sensitive controller selection, `sudo assbox worker disable -
 | `memoryMiB` | `3072` | Fixed worker RAM, bounded 2048–65536 |
 | `hostReserveMiB` | `2048` | Additional physical-RAM admission reserve, bounded 1024–16384 |
 | `vcpus` | `2` | Worker CPU count, bounded 1–32 |
-| `stateGiB` | `32` | Persistent raw `/home` size; existing disks are not auto-resized |
+| `stateGiB` | `null` | Required concrete capacity in hand-written Nix; CLI resolves auto after builds; existing disks retain capacity |
 | `scratchGiB` | `8` | Extra capacity in the worker system image |
 | `interface` | `"ab-worker0"` | Dedicated controller TAP name |
 | `hostAddress` / `guestAddress` | `10.77.0.1` / `10.77.0.2` | Ordered `/30` controller pair in `10/8` |
-| `uplinkInterfaces` | `[]` | Required explicit egress devices in internet mode |
-| `egress` | `"internet"` | `internet` or `offline`; neither implies content filtering |
-| `nameservers` | `1.1.1.1`, `9.9.9.9` | Public IPv4 resolvers; can be empty offline |
+| `uplinkInterfaces` | `[]` | Required explicit egress devices in either online mode |
+| `egress` | `"internet"` | Legacy Nix default; interactive choice of `normal`, `internet`, `offline`; no content filtering |
+| `nameservers` | `1.1.1.1`, `9.9.9.9` | IPv4 permitted by policy; must be empty offline |
+| `happyBackends` | `[]` | Required explicit selected Codex/Claude backends for Happy Remote |
 | `additionalDeniedCidrs` | `[]` | Additional protected IPv4 networks |
 | `extraGuestConfig` | `{}` | Administrator-controlled worker NixOS module for toolchains/settings |
 
@@ -192,7 +199,7 @@ Unfree consent remains the existing machine-wide `assbox.acceptUnfree`; it is no
 
 The placement check permits only reviewed controller components (currently ChatGPT Desktop/Remote) on the thin controller, and rejects curated execution components and unqualified front ends. Managed controller package additions are also refused. This is not a whole-closure proof that no executable or bundled agent exists: administrative dependencies and Desktop itself still execute code.
 
-There is no automatic RAM-based change of security mode. The CLI recommends 2048 MiB at 5–under-6 GiB controller RAM, 3072 MiB at 6–under-10 GiB, 4096 MiB at 10–under-14 GiB and 8192 MiB at 14 GiB or more. These thresholds use observed physical memory, not the marketed DIMM size. The administrator explicitly opts into the VM; an override must still leave the controller reserve and VMM allowance. CPU defaults retain one observed CPU where possible and cap the recommendation at four. An existing state disk is counted as allocated, must match the requested size and is never resized automatically. On an 8 GiB machine, 3 GiB worker RAM is a trial configuration, not a measured performance guarantee. A 16 GiB machine has more room for compilation and Desktop, but still needs representative workloads tested. KVM and physical-RAM admission checks refuse insufficient setups.
+There is no automatic RAM-based change of security mode. The CLI recommends 2048 MiB at 5–under-6 GiB controller RAM, 3072 MiB at 6–under-10 GiB, 4096 MiB at 10–under-14 GiB and 8192 MiB at 14 GiB or more. These thresholds use observed physical memory, not the marketed DIMM size. The administrator explicitly opts into the VM; an override must still leave the controller reserve and VMM allowance. CPU defaults retain one observed CPU where possible and cap the recommendation at four. An existing state disk must match the requested size and is never resized automatically; its still-unallocated capacity remains part of admission budgeting. On an 8 GiB machine, 3 GiB worker RAM is a trial configuration, not a measured performance guarantee. A 16 GiB machine has more room for compilation and Desktop, but still needs representative workloads tested. KVM and physical-RAM admission checks refuse insufficient setups.
 
 ## 10. Release, update and recovery behavior
 
@@ -216,7 +223,7 @@ QEMU receives fixed RAM and vCPU parameters. Its systemd cgroup limits memory to
 
 The admission check requires physical RAM for worker RAM, the controller reserve and the overhead allowance. It is not a reservation against every other controller application. A worker memory exhaustion should fail worker work rather than justify granting controller execution. Avoid double-counted controller/worker zram pools; worker zram is disabled.
 
-The persistent home disk is preallocated. Admission reserves room for the entire virtual root disk to be dirtied, not merely its nominal extra scratch space, plus metadata headroom and new state allocation. Retained generations still accumulate complete compressed artifacts: the design removes duplicate worker-closure retention, not the cost of storing different images. Budget persistent state + writable root virtual size + retained artifacts + peak intermediate build outputs + controller reserve. A 16 GiB artifact cap and eight retained generations can still imply up to roughly 128 GiB of worker artifacts alone. The CLI free-space floor is not this full bound and is not a filesystem quota. Nix build outputs/derivations remain until normal GC; administrators enabling `keep-outputs` or extra GC roots can deliberately retain more than the runtime closure. Disk exhaustion remains an availability risk. Qualify peak build storage and retention on the intended drive; consider a dedicated quota-controlled controller filesystem for worker data as a deployment hardening option. The proposal does not quietly repartition the user's disk.
+The persistent home disk is sparse. After building the provisional system/image, CLI auto sizing assigns remaining space after the entire writable root, controller recovery reserve (max 32 GiB or 20% of filesystem size), and 1 GiB for final configuration derivations. Capacity stays within 8–2048 GiB. Admission checks unallocated home capacity plus the full root and reserve before publication and preparation; it does not reserve physical blocks. Writable QEMU drives stop on I/O errors for controlled administrator recovery. Retained generations still accumulate complete compressed artifacts: the design removes duplicate worker-closure retention, not the cost of storing different images. Budget persistent state + writable root virtual size + retained artifacts + peak intermediate build outputs + controller reserve. A 16 GiB artifact cap and eight retained generations can still imply up to roughly 128 GiB of worker artifacts alone. The CLI free-space floor is not this full bound and is not a filesystem quota. Nix build outputs/derivations remain until normal GC; administrators enabling `keep-outputs` or extra GC roots can deliberately retain more than the runtime closure. Disk exhaustion remains an availability risk. Qualify peak build storage and retention on the intended drive; consider a dedicated quota-controlled controller filesystem for worker data as a deployment hardening option. The proposal does not quietly repartition the user's disk.
 
 The VM restarts after exit. Both supported profiles use bounded QMP power-button shutdown and QEMU `-no-reboot`. Require clean filesystem shutdown under load before promotion; systemd imposes a final timeout. An explicit operator stop also stops the worker health and boot-acceptance retry timers. Disabling the Nix option is persistent; interrupted writes still require the documented recovery handling.
 

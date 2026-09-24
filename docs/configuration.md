@@ -2,6 +2,32 @@
 
 > **Controller deployments:** ChatGPT Desktop uses the [managed controller/worker model](worker/controller-model.md). Its coding agents, development tooling and credentials belong in the worker. Generic standalone examples below do not override the mandatory sensitive-controller placement policy. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
 
+## Standalone access and tools
+
+The installer can enable workload SSH independently of editor integrations. A
+manual equivalent in `local.nix` is:
+
+```nix
+assbox.network.ssh = {
+  agent = { enable = true; keys = [ "ssh-ed25519 REPLACE_WITH_PUBLIC_KEY" ]; };
+  exposure = "lan";
+  lanInterfaces = [ "enp0s5" ]; # Use the installed guest's actual interface.
+  lanSourceCidrs = [ "192.168.64.1/32" ]; # Use the actual controller address.
+};
+assbox.components.codex.enable = true;
+assbox.components.chromium.enable = true;
+assbox.presentation = "wayland";
+assbox.session.autostart = [ "chromium" ]; # Optional.
+```
+
+Alternatively keep the default `ssh.exposure = "tailscale"`, omit the LAN fields,
+and set `assbox.network.tailscale.enable = true`; enroll from the console. The
+same exposure applies to administrator SSH when enabled with its own keys.
+Neither exposure enables password login, agent forwarding, X11 forwarding from
+the generated client alias, or a public app-server port. Additional packages use
+`assbox package add` or the installer's validated package list. All standalone
+workloads share the agent account; these options do not introduce per-tool sandboxes.
+
 ## Machine-local files
 
 The installer creates `/etc/nixos` with these ordinary Nix files:

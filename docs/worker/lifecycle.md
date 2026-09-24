@@ -127,3 +127,31 @@ Complete the separate real-worker lifecycle procedure in
 state. This requires actual disable/reboot/re-enable/reboot, a surviving marker
 inside worker `/home`, stable SSH identity and no controller execution fallback.
 Unexecuted native gates are requirements, not passing results.
+
+## Sparse capacity and disk I/O failure
+
+New `home.raw` files have a chosen fixed virtual capacity and allocate backing
+blocks on demand. Automatic sizing occurs once, after system/image construction,
+and leaves the [documented reserves](operations.md#capacity-and-network-policy).
+Admission budgets unallocated capacity as well as the writable root. It does not
+prevent unrelated controller writes, later builds or an outer hypervisor from
+consuming that space. Existing files are reused only at their original validated
+size. There is no automatic grow, shrink, reformat, or repair path.
+
+QEMU is configured to **pause on writable-disk read/write errors**, including host
+space exhaustion. The process remaining alive does not mean the worker is ready:
+SSH health fails while it is paused, and boot acceptance stays pending. Do not
+repeatedly restart it or delete `home.raw`, its identity keys or the root overlay
+as a response to a disk-full message.
+
+On a disposable qualification system, record QMP status and block I/O status,
+restore real host free space without deleting worker data, then explicitly resume
+the VM through its administrator-only QMP monitor. Allow outstanding writes to
+finish and verify the nonce/project and guest filesystem before a clean shutdown.
+If it cannot be resumed safely, preserve the disk as opaque bytes and follow the
+existing controlled recovery procedure in [operations](operations.md). A forced
+stop may lose in-flight writes; an ordinary restart discards the system overlay
+but retains home state, including any damage. Never mount or repair an untrusted
+guest filesystem on the controller. No automated incident or capacity recovery is
+claimed. The native [disk-pressure gate](acceptance.md#capacity-and-disk-pressure)
+is required before relying on this behavior.

@@ -26,7 +26,7 @@ ip -4 route
 
 A controller running inside another VM needs nested virtualization that actually exposes `/dev/kvm`. The worker will not emulate a worker in software or execute on the controller instead. Native AArch64 support is conditional on its KVM and worker device acceptance tests.
 
-The default 3 GiB worker requires at least worker RAM + 2 GiB controller reserve + 1 GiB VMM allowance in the physical-RAM check. That is an admission minimum, not a responsive-workload guarantee. Persistent home consumes its allocated capacity; worker images, overlays, retained generations and builds require additional space.
+The default 3 GiB worker requires at least worker RAM + 2 GiB controller reserve + 1 GiB VMM allowance in the physical-RAM check. That is an admission minimum, not a responsive-workload guarantee. Persistent home has a fixed virtual capacity and sparse physical allocation; worker images, overlays, retained generations and builds require additional space.
 
 Worker disablement retains inert infrastructure identities as well as existing
 worker data. The accounts do not keep worker services or device privileges
@@ -45,13 +45,60 @@ The setup flow asks for explicit component IDs, networking, memory, persistent s
 For repeatable noninteractive use (replace `enp3s0` with the intended observed interface):
 
 ```sh
-sudo assbox worker configure codex --uplink enp3s0 --memory auto
-sudo assbox worker configure codex --uplink enp3s0 --memory auto --apply
+sudo assbox worker configure codex --network normal --uplink enp3s0 --memory auto
+sudo assbox worker configure codex --network normal --uplink enp3s0 --memory auto --apply
 ```
 
 The first command prints a plan only. `--apply` uses the ordinary Assbox candidate/build/boot transaction. Reboot through the normal procedure before expecting the worker tools. Incompatible curated controller selections must be explicitly removed before configuring the worker; this command does not remove them automatically. Managed additional controller packages must be removed first. Unqualified sensitive desktop adapters are refused. The specified worker IDs are not an implicit copy of the old selection. Existing repositories and credentials are untouched. This does not disable an editor's or Desktop's bundled local tools.
 
-`--offline` replaces `--uplink` for an offline worker. `--cpus N` and `--state-gib N` set resources; the state default is 32 GiB and must match an existing disk. `--allow-mutable-code` consents only to selected mutable components; `--accept-unfree` grants machine-level package consent. `--allow-guest-sudo` applies inside the VM only. Neither consent is implied by `--apply`.
+`--cpus N`, `--memory auto|N` and `--state-gib auto|N` set resources. State defaults
+to automatic sizing for a new worker and preserves an existing disk's capacity.
+`--allow-mutable-code` consents only to selected mutable components;
+`--accept-unfree` grants machine-level package consent. `--allow-guest-sudo` applies
+inside the VM only. Neither consent is implied by `--apply`. Happy Remote also
+requires `--happy-backends codex`, `claude-code`, or both, with those components
+explicitly included in the requested IDs.
+
+### Capacity and network policy
+
+New worker capacity is computed after building the provisional controller/image
+closure. From available filesystem space, reserve the full writable root size,
+**the larger of 32 GiB or 20% of filesystem capacity** for controller builds and
+recovery, and another GiB for final configuration derivations. The remaining whole
+GiB become `/home` capacity, within the existing 8–2048 GiB supported bounds.
+Insufficient capacity is refused. The final system is built and admitted before
+publication/bootloader activation. The extra provisional toplevel is never booted;
+its worker artifact and packages are reused by the final build.
+
+`home.raw` is sparse: it grows physically as the guest writes, up to its fixed
+virtual capacity. This is not ongoing automatic resizing, a quota or a space
+reservation. Admission still budgets its unallocated capacity and the full root
+overlay. Other controller writes, retained builds, and the outer hypervisor disk
+can exhaust storage later. Existing state is never resized or reformatted by
+`auto`; an explicit different size is refused. Hand-written Nix requires a concrete
+`stateGiB`, rather than observing live disk space during evaluation.
+
+The interactive installer/setup requires a network choice without silently
+selecting one:
+
+| Policy | Direct outbound IPv4 | DNS |
+| --- | --- | --- |
+| `normal` | Internet and LAN through explicit uplinks | Public or reachable private resolvers |
+| `internet` | Public destinations; protected ranges denied | Public resolvers |
+| `offline` | No external forwarding; controller-initiated SSH remains | Empty resolver list |
+
+Online policies require explicit uplink interfaces. `--dns ADDRESS` can be repeated;
+public defaults are `1.1.1.1` and `9.9.9.9`. Normal permits private Git/services/DNS,
+but all policies still block unsolicited traffic into controller services, inbound
+connections from outside, spoofed worker addresses and worker IPv6. Link-local,
+metadata and other reserved ranges remain denied. Resolver addresses on the worker
+link are refused. None of these policies prevents exfiltration through allowed
+services, and indirect access through an external relay is not ruled out.
+
+Compatibility is deliberate: old `--uplink NAME` commands without `--network`
+continue to mean `internet`; `--offline` remains an alias for `--network offline`.
+Existing generated Nix policies and capacities are not broadened or resized by an
+update. For a fresh normal network, use `--network normal --uplink NAME` explicitly.
 
 The worker uses q35 on x86_64 and virt on AArch64. KVM and placement restrictions are mandatory; no experimental machine or isolation-bypass switch is exposed.
 
@@ -81,7 +128,8 @@ A typical selection is:
     components = [ "codex" ];
     memoryMiB = 3072;
     vcpus = 2;
-    stateGiB = 32;
+    stateGiB = 128; # Example only; choose a capacity that leaves recovery space.
+    egress = "normal"; # Deliberate internet + LAN access.
     uplinkInterfaces = [ "enp3s0" ]; # Replace with the appliance's real device.
   };
 }
@@ -247,7 +295,7 @@ A normal OS rebuild with the same `/home` is not this recovery procedure. There 
 
 ## Troubleshooting without weakening the boundary
 
-A missing KVM device, disabled firmware virtualization or unavailable nested virtualization requires fixing the deployment target, not switching to controller execution. A route-overlap error requires choosing an unused `/30`. A DNS/egress failure requires reviewing permitted public resolvers and actual uplinks, not adding the TAP to a globally trusted firewall list. A host-key mismatch requires investigating identity lifecycle, not `StrictHostKeyChecking=no`.
+A missing KVM device, disabled firmware virtualization or unavailable nested virtualization requires fixing the deployment target, not switching to controller execution. A route-overlap error requires choosing an unused `/30`. A DNS/egress failure requires reviewing resolvers permitted by the chosen network policy and actual uplinks, not adding the TAP to a globally trusted firewall list. A host-key mismatch requires investigating identity lifecycle, not `StrictHostKeyChecking=no`.
 
 A correct infrastructure health result with failed Desktop tasks may indicate worker login-shell PATH, provider auth, app-server version, account permissions or application routing. None is diagnosed by dumping the controller keyring. A keyring prompt after reboot may be expected when a password is set; changing password-backend flags does not prove unattended unlock. Read [acceptance](acceptance.md) and keep the failure classified accurately.
 

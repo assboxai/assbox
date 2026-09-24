@@ -27,6 +27,50 @@ The same flow applies to every supported machine. It produces an ordinary
 `/etc/nixos` configuration ready for normal NixOS administration; a copied Git
 checkout and a second setup wizard are not required.
 
+## Arrangement and access choices
+
+Choose **standalone** for agents running directly in Assbox, including a Parallels
+VM controlled by macOS ChatGPT over SSH. Choose **managed-worker** for one
+Assbox-owned headless KVM guest. The wizard shows and confirms controller/worker
+placement. Selecting ChatGPT Desktop requires that arrangement and explicitly
+selected worker Codex; declining the switch refuses the combination. Other
+managed-worker selections can have no graphical controller at all.
+
+Components and presentation remain independent. Select `codex,chromium` with
+X11/Openbox or Wayland/labwc for a standalone coding machine with a manual browser.
+Select `chromium` in autostart only if it should open automatically. Headless
+Chromium selection is refused. Additional standalone tools use ordinary nixpkgs
+attributes, such as `htop,python3Packages.requests`, and populate the existing
+`assbox-packages.nix` file. They are not permitted on a thin controller.
+
+Happy Remote requires selecting Codex and/or Claude Code backends explicitly,
+including when Happy runs in a managed worker. The wizard adds accepted backend
+components to the selection before checking licenses and download consent. Backend
+choice does not isolate Happy's bundled code or create separate credentials.
+
+A managed worker presents recommended RAM/CPU and **automatic persistent disk
+capacity** as a group; customize only when needed. Automatic sizing builds the
+provisional system/image first, measures the target disk, reserves controller
+recovery space and the full writable root, then builds and publishes the concrete
+configuration. The provisional system is never activated. The displayed plan
+therefore cannot promise an exact capacity before the build. The durable target
+installation record preserves the requested and final configuration digests.
+See [storage and network choices](worker/operations.md#capacity-and-network-policy).
+
+Workload SSH uses the unprivileged `agent` account and does not require VS Code or
+Zed. Administrator SSH uses `admin`. Both share one listener/exposure policy:
+Tailscale requires enrollment from the installed console; LAN requires explicit
+interfaces and offers optional source CIDRs. With no source restrictions, all
+sources reaching those interfaces can attempt key authentication. The wizard shows
+live-media addresses as observations, not permanent installed addresses.
+
+After boot, `/etc/assbox/connection-guide.txt` records the installation choices,
+host-key verification procedure, SSH alias template and remote Codex setup.
+Verify the installed address and host fingerprint at the trusted console before
+connecting. The guide reflects installation-time choices; update it alongside
+later manual access changes. See the [Parallels walkthrough](parallels.md) for
+macOS control and its distinct qualification gates.
+
 ## Supported shapes
 
 The native executable and running kernel must agree: `x86_64` or `aarch64`.
@@ -93,9 +137,11 @@ An unversioned development binary, unprovisioned trust IDs, unsynchronized clock
 expired release cannot apply.
 
 The wizard is plan-only without `--apply`. It requests prepared partitions,
-hostname/timezone, profile, components, presentation, explicit autostart, device policy and an optional
-admin SSH public key. Supplying a key enables key-only SSH; choosing console-only
-disables sshd and its firewall port by default. Multicast discovery is separately
+hostname/timezone, profile, arrangement, components, presentation, explicit autostart
+and device policy. Standalone installations can add validated nixpkgs package
+attributes and independently enable workload SSH. Administrator and workload
+public keys are separate choices. Supplying either enables key-only SSH with
+explicit Tailscale or LAN exposure; supplying neither leaves sshd disabled. Multicast discovery is separately
 configurable and defaults off. An exact whole-disk confirmation is required before
 proceeding. Credentials are obtained separately, never inserted in Nix source or
 command arguments.

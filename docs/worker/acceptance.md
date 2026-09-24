@@ -74,7 +74,7 @@ nix build --no-link --no-update-lock-file --no-write-lock-file ".#checks.$system
 
 The policy check evaluates the real controller/worker modules with an offline `vim` worker. It checks normal assertions and rejection of incompatible controller placement or missing internet uplinks. Check the resolved worker component selection and ensure `codex`, other optional agents and remote editor downloads are absent unless selected.
 
-The network gate uses the production controller nftables rules with a separate attacker VM, rather than pretending an ordinary NixOS test-driver worker is the production worker. It proves that a deliberately reachable controller listener is denied from the worker link, while a trusted outside peer can reach it; a live IPv6 listener is also denied. It checks private-network denial, a simulated public destination, allowed controller-initiated traffic, source-address spoofing refusal and atomic firewall reload.
+The network gate uses the production controller nftables rules with a separate attacker VM, rather than pretending an ordinary NixOS test-driver worker is the production worker. It proves that a deliberately reachable controller listener is denied from the worker link, while a trusted outside peer can reach it; a live IPv6 listener is also denied. It switches the actual production configuration between internet, normal and offline. It checks private-network denial/permission, public and private DNS resolution, a simulated public destination, allowed controller-initiated traffic, outside-inbound denial, source-address spoofing refusal and atomic firewall reload.
 
 The test's `8.8.8.8` address belongs to its isolated fixture; it is not a probe against an actual external DNS operator. Test-driver filesystem sharing is not evidence for the production worker's no-share contract. That is why the actual runtime gate below is separate.
 
@@ -243,3 +243,31 @@ Record exact release, nixpkgs/agent package pins, client versions, hardware, res
 | Mobile Remote reconnects without changing execution location | Tested task, approval, restart and network-loss evidence |
 
 The worker-targeted session's routing regression test is a **security go/no-go**, not a documentation checkbox. The expected outcome is worker execution or unavailable capability, not controller tool inheritance. Package-placement tests cannot substitute for it. A successful attempt to reach controller account/session state through an intended client tool invalidates the protective claim even when QEMU never escapes.
+
+## Capacity and disk pressure
+
+Pure policy tests cover reserve arithmetic, small-disk refusal and the capacity
+ceiling. The helper tests create actual sparse files, preserve existing data,
+refuse interrupted allocation and check QEMU I/O-stop configuration. These are
+not evidence of native ext4/QEMU disk-full recovery.
+
+Run the following on a disposable native-KVM controller with independently backed
+up test state. Record observations; every row is pending for this tranche.
+
+| Case | Required result |
+| --- | --- |
+| Fresh auto installation | Build provisional system/image, measure the installed target filesystem, resolve a concrete 8–2048 GiB state size using the documented reserves, activate only the final system |
+| Auto on existing installation | Existing disk size and nonce unchanged after configuring `auto`, including disable/re-enable; explicit different size refuses before publication |
+| Smaller prepared disk | Insufficient space after provisional build refuses before bootloader activation; durable record identifies incomplete installation and preserves requested/final digests when resolved |
+| Later build consumes headroom | Final admission refuses publication if resolved state/root/reserve no longer fits; no disk reformat or automatic smaller capacity |
+| Sparse first boot | `stat` virtual bytes match selected capacity, allocated blocks are substantially smaller, ext4 mounts and remains writable; a real restart preserves a nonce and SSH identities |
+| Interrupted provisioning | An interrupted `.new` file causes bounded refusal on retry; it is neither adopted nor silently deleted |
+| Host disk full under guest writes | Use a separate bounded disposable filesystem for worker data, fill that filesystem while writing a guest nonce, observe QMP `io-error`/paused state and failed health; controller remains reachable and data is not recreated |
+| Controlled recovery | Free the disposable filler, explicitly resume through private QMP, verify completed writes and nonce, then clean shutdown/restart; if recovery fails, preserve opaque disks and test the documented isolated recovery path |
+
+Keep host/guest root, boot backup and personal data off the deliberately filled
+test filesystem. Stop normal health/retry timers during fault injection and restore
+their original state afterward; do not interrupt a maintenance transaction. Filling
+a real controller root or macOS host disk is not an acceptable substitute fixture.
+Repeat native behavior on each advertised runtime architecture. A provisioned
+sparse file or a source assertion about `werror=stop` alone does not pass these rows.

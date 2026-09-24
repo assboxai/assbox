@@ -46,7 +46,7 @@ Explicit launcher overrides in `local.nix` must still be removed when removing
 their owning component or changing to headless presentation.
 When selecting Happy Remote during installation, explicitly choose its Codex/Claude
 backends; the installer includes those selected packages. Selecting an SSH editor
-host asks for its separate agent public key and enables tailnet-only access.
+host asks for its separate agent public key and an explicit Tailscale/LAN exposure choice.
 
 ## Selection examples
 
@@ -97,6 +97,7 @@ code in the agent home. Their package installation does not establish remote pai
 | `happy-remote` | Foreground Happy supervisor; explicit nonempty `backends = [ "codex" "claude-code" ]` names installed runtimes, not a security allowlist |
 | `vscode`, `zed`, `vim`, `emacs` | Optional editors; Emacs defaults to terminal, with `variant = "gui"` available in headed configurations |
 | `vscode-remote-host`, `zed-remote-host` | Agent SSH development hosts without installing the desktop editor; require agent SSH and mutable-helper consent |
+| `chromium` | Standalone manual browser for X11/Wayland, with optional explicit autostart; no remote automation integration |
 | `vscode-cli`, `vscode-tunnel` | Fixed-hash standalone `assbox-vscode` CLI and separately enabled tunnel; login and server-license acceptance are interactive |
 | `claude-desktop` | Sensitive controller adapter not qualified; controller placement rejects it. Package/module presence is not supported controller enrollment. |
 
@@ -175,7 +176,7 @@ conflict-free shared checkout, or automatic restoration of mutable tasks is prom
 ## Graphical session ownership
 
 Use `assbox.session.autostart` with `chatgpt-desktop`, `claude-desktop`, `vscode`,
-`zed`, graphical `emacs`, `opencode-attach` or `openclaw-dashboard`. Each launcher
+`zed`, `chromium`, graphical `emacs`, `opencode-attach` or `openclaw-dashboard`. Each launcher
 requires its owning component. Both X11/Openbox and Wayland/labwc include a terminal.
 Session wrappers own `graphical-session.target` and clear stale display variables;
 GUI units stop with that target. Headless services remain independent. Cursor's
@@ -197,7 +198,24 @@ Wayland uses greetd's repeating agent session. Daemon crashes, compositor failur
 and logout recover with the same bounded systemd backoff as X11, without a permanent
 start-limit lockout. `sudo systemctl stop greetd` deliberately leaves Wayland stopped.
 
+Select `chromium` independently for a manual browser on standalone X11/Wayland.
+It does not require an IDE, remote service or full desktop environment. The
+existing Openbox/labwc session provides the terminal. This component is not an
+approved thin-controller addition or a managed headless worker component. Browser
+presence does not configure ChatGPT guest browser/desktop automation.
+
+For Happy in a managed worker, select `happy,happy-remote,codex` (or explicitly add
+`claude-code`), set `assbox.worker.happyBackends` to those selected backends, and
+acknowledge `happy-remote` mutable code. `assbox worker setup` asks these questions;
+noninteractive configuration uses `--happy-backends codex` and
+`--allow-mutable-code`. A backend option without Happy Remote is refused.
+
 ## SSH and Tailscale
+
+Workload SSH is independently selectable in the installer; no editor component is
+required for an external terminal or macOS ChatGPT controller. See
+[Parallels](parallels.md#standalone-assbox-with-macos-chatgpt) and the generated
+`/etc/assbox/connection-guide.txt`. The example below adds an editor only when wanted.
 
 ```nix
 assbox.network = {

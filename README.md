@@ -57,6 +57,23 @@ acceptance. Other integrations have implementations and verification procedures,
 with native and authenticated execution still required as documented in
 [component qualification](docs/component-acceptance.md).
 
+## Installation arrangements
+
+Choose an arrangement before selecting components:
+
+- **Standalone:** selected tools run directly in Assbox, on bare metal or inside
+  a VM. Workload SSH can serve an external controller without selecting an editor.
+  A [Parallels guest controlled from macOS ChatGPT](docs/parallels.md#standalone-assbox-with-macos-chatgpt)
+  uses this arrangement; Parallels supplies its VM boundary.
+- **Managed worker:** Assbox owns one headless KVM guest and keeps execution tools
+  there. This is available without a desktop controller and is required when
+  ChatGPT Desktop is installed inside Assbox.
+
+Standalone presentation can be headless, X11/Openbox or Wayland/labwc. Select
+`chromium` for a manual browser, its optional autostart, and additional packages
+without installing a full desktop environment. Remote SSH does not automatically
+provide browser or desktop automation.
+
 ## Isolated execution worker
 
 The [controller/worker architecture](docs/worker/controller-model.md) requires ChatGPT Desktop to keep selected agent workloads in a managed headless QEMU/KVM guest. The outer Assbox owns the complete worker lifecycle; users do not install a nested Assbox. It uses dedicated runtime

@@ -20,7 +20,7 @@ This tree uses **direct QEMU/KVM and the existing pinned nixpkgs**. It does not 
 | Storage admission | Actual built manifest and current storage checked before candidate publication, on the installation target before bootloader activation, and again before VM preparation; malformed or ambiguous existing state refused |
 | Maintenance acceptance | Worker health enforced before acceptance, pending-state removal and cleanup; generation/boot-ID receipt; failed acceptance retries; retry timer stops after success while routine health remains periodic |
 | Transport | Fixed launcher, non-root VMM, constrained service, no configured controller filesystem or credential-socket shares, pinned SSH identities and standard SSH/Git/rsync access |
-| Networking | Direct controller/protected-prefix denial through controller-enforced TAP policy, explicit Internet uplinks or offline mode; Internet access is not an exfiltration barrier |
+| Networking | Explicit normal/internet/offline choice, matching DNS, controller and unsolicited-inbound denial in every mode; permitted egress is not an exfiltration barrier |
 | Release audit | Separate vulnerability scanning of image-contained worker closures, including configured worker-enabled release targets |
 | Native gates | Module/worker assertions, artifact closure, effective worker `sshd -T` policy, boot-state behavior, networking, disabled-state activation/reboot and actual-KVM acceptance procedures |
 | Git onboarding | Recommended fine-grained PAT limited to selected agent/staging repositories, independently reviewed CI, and human promotion from a separate trusted workstation or service |
@@ -28,7 +28,7 @@ This tree uses **direct QEMU/KVM and the existing pinned nixpkgs**. It does not 
 
 The source includes the Rust management and installer integration, not merely Nix examples. However, presence of these code paths is not evidence that they compile, build or execute successfully on the target. A controller's final SSH-project selection in Desktop remains a documented one-time user step; Assbox does not edit undocumented application databases.
 
-No automatic `worker reset`, `backup`, `copy`, `git-login` or `enable` command is supplied. External-worker, standalone headless appliance and multiple-worker product modes are future qualified integrations, not implemented deployment selectors. Use [operations](operations.md) for the actual command interfaces.
+No automatic `worker reset`, `backup`, `copy`, `git-login` or `enable` command is supplied. Standalone Assbox is now an explicit installer arrangement with independent workload SSH, optional manual Chromium/X11/Wayland and additional tools. The Parallels guide covers an external macOS ChatGPT controller without nested KVM. Assbox does not manage that external controller, guest GUI automation, or multiple workers. Use [operations](operations.md) for the actual command interfaces.
 
 ## Routing contract and terminology
 
@@ -66,6 +66,33 @@ environment and was skipped, not passed. OpenSSH parsed the literal SSH template
 and rejected accumulated extra keys, certificates and automatic forwards without
 opening a connection. This is separate from Nix evaluation and the effective
 server-policy VM gate; no compiled Rust or booted-VM result is claimed here.
+
+## Standalone and resource tranche — September 24, 2026
+
+The installer now distinguishes standalone and managed-worker arrangements before
+component selection. Workload SSH is independent of editors, with separate admin
+keys and explicit Tailscale/LAN policy plus an installed connection guide. Chromium
+can be selected and optionally autostarted on standalone X11/Wayland. Additional
+standalone packages use the existing managed package file. Happy worker backend
+selection is rendered, validated and passed to the guest.
+
+Managed workers require an interactive network choice; legacy internet/offline
+configurations retain their meaning. New sparse home capacity resolves after a
+provisional system build against measured free space and controller/root reserves;
+existing disks retain their size. QEMU pauses on writable-disk I/O errors. Seed
+ISO modes are explicit despite the production umask. ARM image construction may
+use the pinned builder's TCG fallback; production workers remain KVM-only.
+
+This tranche's lightweight results: 100 pure Rust tests across domain, policy and
+configuration passed; worker helpers ran 151 tests, 150 passed and one root-only
+privilege-drop case skipped. The real seed ISO permissions were also inspected
+with xorriso. Generated catalog, architecture, workflow policy and formatting
+checks passed. These results do not compile the imperative shell or evaluate Nix.
+The extended browser/SSH/Happy module gates, actual standalone Chromium launcher
+checks in both desktop VMs, and three-policy DNS/packet VM gate are implemented
+but deferred. [Parallels acceptance](../parallels.md) and
+[worker capacity/recovery acceptance](acceptance.md#capacity-and-disk-pressure)
+remain required on disposable targets.
 
 ## Deferred qualification
 

@@ -23,10 +23,10 @@ Worker state is untrusted whether returned over SSH, copied as a Git patch, disp
 | --- | --- | --- |
 | Controller Desktop login and private history cache | Separate worker kernel; no controller-home/display/keyring mounts; VMM not Desktop user | Desktop-local execution, controller compromise, client vulnerabilities, provider credential authority |
 | Controller administrator access | No worker-controller login key or sudo grant; no forwarded SSH agent | Trusted admin errors, controller vulnerabilities, social engineering |
-| Controller network services and protected prefixes (direct traffic) | Dedicated TAP; independent controller input/forward drops; no LAN bridge | Controller networking attack surface; public organizational prefixes require explicit denial |
+| Controller network services and selected denied prefixes (direct traffic) | Dedicated TAP; independent controller input/forward drops; no LAN bridge | Normal explicitly permits LAN; public organizational prefixes require explicit denial |
 | VM management | Controller-private QMP socket; no libvirt/Docker/management sockets in worker | VMM/controller compromise |
 | Worker provider and repository credentials | Explicit login and limited intentional provisioning | Assumed stolen after worker compromise; permitted internet can exfiltrate them |
-| Controller availability | VM RAM/CPU/task ceilings; bounded probes; preallocated home volume | Storage growth, I/O pressure, kernel/hypervisor bugs, excessive controller builds |
+| Controller availability | VM RAM/CPU/task ceilings; bounded probes; finite sparse home capacity with admission headroom | Storage growth, I/O pressure, kernel/hypervisor bugs, excessive controller builds |
 | Worker project durability | Persistent `/home`; refusal to reformat unexpected existing disks | Worker corruption/ransomware, interrupted writes, stale profiles, insufficient backups |
 
 ## Invariants to qualify
@@ -92,7 +92,19 @@ Full-disk encryption is a separate physical-security decision. Unattended reboot
 
 The `internet` policy is a direct controller/protected-prefix containment policy, not a data-loss-prevention policy. Public DNS, HTTPS, package registries, repository services and attacker-controlled public destinations are potentially usable channels. An attacker may also exploit allowed service features to relay traffic. Do not describe public egress as “no exfiltration” merely because private network ranges are denied.
 
-List organizational public networks in `additionalDeniedCidrs`. Private enterprise DNS and private Git services are intentionally not reachable through the default policy. Supporting them requires a separately reviewed narrowly routed exception; this proposal has no generic `allow all LAN` convenience setting. The worker has no reason to join the controller's Tailscale identity just to support Desktop SSH on the same appliance.
+The explicit `normal` policy additionally permits private IPv4 LAN and CGNAT
+destinations, including private DNS/Git. It does not open controller services:
+controller-local input drops apply independently, including its LAN/public
+addresses. It also keeps the worker source check, outside-inbound denial, IPv6
+denial, reserved/link-local/metadata denial and explicit uplinks. `offline` permits
+no external forwarding. The interactive flow forces a choice; legacy CLI/Nix
+internet policies remain unchanged. See [operations](operations.md#capacity-and-network-policy).
+
+Use `additionalDeniedCidrs` for organizational prefixes that should remain
+unreachable. Normal mode intentionally makes more services reachable, including
+services on other LAN hosts. It is not a LAN-isolation claim. The worker does not
+inherit the controller's Tailscale identity. None of these controls prevents
+indirect access through an allowed external proxy or compromised service.
 
 Controller-initiated SSH still carries worker-originated responses. Automatic fetching of remote URLs, local command interpolation from worker strings and indiscriminate controller-side file opening can reintroduce execution paths. Treat patches and terminals as untrusted inputs, disable agent/X11 forwarding and do not add arbitrary user-controlled `ProxyCommand` shortcuts to the managed transport.
 

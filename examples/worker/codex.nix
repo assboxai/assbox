@@ -19,6 +19,7 @@
     vcpus = 2;
     stateGiB = 128; # Example only; the CLI defaults to automatic sizing.
     # Set to actual interface names shown by `ip -brief link` / `ip route`.
+    egress = "normal"; # Explicit internet + LAN access; choose internet for public-only.
     uplinkInterfaces = [ "enp3s0" ];
     allowGuestSudo = false;
   };

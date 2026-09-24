@@ -53,7 +53,7 @@ The [client-routing acceptance procedure](client-routing.md) verifies that expec
 
 The VM lifecycle, artifact format, persistent state, resource admission, private network, SSH transport, health identity, boot acceptance, rollback integration and placement metadata do not depend on ChatGPT. They can support other remotely executed agents, builds of untrusted projects, isolated dependency installation and remote editor backends.
 
-What is adapter-specific is the controller's remote protocol, app-server expectations, authentication flow, project selection, remote permissions and ability to disable local capabilities. The first adapter uses Desktop's SSH projects and worker Codex authentication. The general design can accommodate external SSH workers, standalone headless appliances or multiple workers later; those deployment modes are not selectable or lifecycle-managed in this implementation.
+What is adapter-specific is the controller's remote protocol, app-server expectations, authentication flow, project selection, remote permissions and ability to disable local capabilities. The first adapter uses Desktop's SSH projects and worker Codex authentication. Standalone Assbox is also selectable, headless or with a manual graphical session, and can serve an external SSH controller. For example, macOS ChatGPT can use a standalone Parallels guest without nested KVM. The external controller owns its own lifecycle; Assbox does not manage macOS or enforce its application routing. Managed external workers and multiple Assbox-owned workers remain deferred.
 
 Do not create a universal “put any component anywhere” matrix. A new controller capability requires evidence and negative tests, not simply `controllerAllowed = true`.
 
@@ -67,7 +67,7 @@ Optional delegation skills and orchestration conveniences are deferred. Selected
 
 ## Installation and daily use
 
-The outer installer separates the proposed controller and worker selections, displays both, requires affirmative acceptance, and asks for resources, explicit uplinks and relevant package consent. It proposes worker Codex when ChatGPT is selected, but acceptance remains explicit. The installer neither collects a PAT nor starts provider login.
+The outer installer first offers standalone or managed-worker arrangements, then separates and confirms controller/worker selections when applicable. It groups recommended resources, resolves automatic sparse home capacity after building, and requires an explicit normal/internet/offline network choice, uplinks and relevant package consent. It proposes worker Codex when ChatGPT is selected, but acceptance remains explicit. The installer neither collects a PAT nor starts provider login.
 
 An existing installation can use `sudo assbox worker setup` or `configure` once its selected Assbox source exports these options. Changes build and stage through the normal management transaction. Existing incompatible controller packages must be removed deliberately; credentials and repositories are never silently migrated. A release imposing the sensitive-controller policy can refuse an incompatible candidate build; it must not silently activate an unisolated fallback. Plan migration before deploying that policy to unattended existing installations.
 
@@ -101,7 +101,7 @@ Native GitHub forks are not interchangeable with independent staging repositorie
 
 ## Scope and release decision
 
-The architecture is chosen; the native result is not presumed. Source includes management, installer integration, placement enforcement, health separation, admission, optional skill and verification gates. It does not include polished external-worker/multiworker UX, provider-account automation, an automatic reset command or a verified universal Desktop sandbox.
+The architecture is chosen; the native result is not presumed. Source includes management, installer integration, placement enforcement, health separation, admission, optional skill and verification gates. It includes independent standalone workload SSH and a macOS/Parallels setup guide. It does not manage an external controller, multiple workers, provider accounts, automatic reset, or a universal Desktop sandbox.
 
 A release must pass Rust, Nix, artifact closure, effective SSH policy, real KVM, data lifecycle and the mobile/SSH routing regression tests. No controller adapter is runtime-qualified merely by being implemented or marked eligible in the catalog. Until then it is an implementation candidate, not an unattended-production recommendation. Follow [acceptance](acceptance.md) and [implementation status](implementation-status.md).
 

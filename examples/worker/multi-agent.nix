@@ -32,6 +32,7 @@
     memoryMiB = 6144;
     vcpus = 2;
     stateGiB = 128; # Example only; the CLI defaults to automatic sizing.
+    egress = "normal"; # Explicit internet + LAN access; choose internet for public-only.
     uplinkInterfaces = [ "enp3s0" ]; # Replace: never assume this exists.
     extraGuestConfig = { pkgs, ... }: {
       environment.systemPackages = [
