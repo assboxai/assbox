@@ -24,6 +24,11 @@ pkgs.testers.runNixOSTest {
         # separate agent application or from the test's systemPackages.
         components.zed.enable = true;
       };
+      specialisation.standalone-browser.configuration.assbox = {
+        components.zed.enable = lib.mkForce false;
+        components.chromium.enable = true;
+        session.autostart = [ "chromium" ];
+      };
       boot.loader.systemd-boot.enable = lib.mkForce false;
       boot.loader.grub.enable = lib.mkForce false;
       systemd.services.assbox-boot-check.enable = lib.mkForce false;
@@ -218,6 +223,27 @@ pkgs.testers.runNixOSTest {
         machine.succeed(user("secret-tool clear assbox-test desktop"))
         status, _ = machine.execute(user("timeout 30 secret-tool lookup assbox-test desktop"))
         assert status == 1, status
+        # The same actual session must support a browser without an IDE or an
+        # inner worker. Reuse this VM rather than adding another large build.
+        original = machine.succeed("readlink -f /run/current-system").strip()
+        machine.succeed("systemctl stop " + manager)
+        machine.succeed(original + "/specialisation/standalone-browser/bin/switch-to-configuration test", timeout=240)
+        machine.succeed("systemctl start " + manager)
+        machine.wait_until_succeeds(user("systemctl --user is-active graphical-session.target"))
+        machine.wait_until_succeeds(user("systemctl --user is-active assbox-chromium.service"))
+        machine.succeed("test ! -e /etc/assbox/worker-runtime.json")
+        browser_pid = machine.succeed(user("systemctl --user show assbox-chromium -p MainPID --value")).strip()
+        assert int(browser_pid) > 0
+        # Existing autostart browser handles the URL and executes the callback.
+        machine.succeed(user("systemd-run --user --wait --pipe --collect --unit=assbox-browser-probe "
+            + "timeout 90 ${python}/bin/python3 /etc/assbox-test/browser-probe.py"), timeout=120)
+        machine.succeed("systemctl stop " + manager)
+        machine.wait_until_fails("test -e /proc/" + browser_pid)
+        machine.wait_until_fails(user("systemctl --user is-active assbox-chromium.service"))
+        machine.succeed("systemctl start " + manager)
+        machine.wait_until_succeeds(user("systemctl --user is-active assbox-chromium.service"))
+        new_pid = machine.succeed(user("systemctl --user show assbox-chromium -p MainPID --value")).strip()
+        assert int(new_pid) > 0 and new_pid != browser_pid
         machine.shutdown()
   '';
 }

@@ -108,6 +108,7 @@ pkgs.testers.runNixOSTest {
       environment.systemPackages = [
         pkgs.curl
         pkgs.python3
+        pkgs.bind.dnsutils
       ];
       systemd.services.listener = {
         wantedBy = [ "multi-user.target" ];
@@ -139,6 +140,13 @@ pkgs.testers.runNixOSTest {
         wantedBy = [ "multi-user.target" ];
         serviceConfig.ExecStart = "${pkgs.python3}/bin/python3 -m http.server 18081 --bind 0.0.0.0 --directory /run";
       };
+      services.dnsmasq = {
+        enable = true;
+        settings = {
+          no-resolv = true;
+          address = "/worker-fixture.test/8.8.8.8";
+        };
+      };
       system.stateVersion = "26.05";
     };
   };
@@ -148,6 +156,7 @@ pkgs.testers.runNixOSTest {
         machine.wait_for_unit("multi-user.target")
         machine.wait_for_unit("listener.service")
     host.wait_for_unit("nftables.service")
+    outside.wait_for_unit("dnsmasq.service")
     original = host.succeed("readlink -f /run/current-system").strip()
     host.wait_for_unit("listener6.service")
     host.wait_until_succeeds("curl --noproxy '*' -g -fsS --max-time 3 http://[::1]:18083/ >/dev/null")
@@ -156,6 +165,10 @@ pkgs.testers.runNixOSTest {
     host.succeed("ip route replace default via 192.168.55.2 dev eth2")
     public = "curl --noproxy '*' --interface 10.77.0.2 -fsS --max-time 4 http://8.8.8.8:18081/ >/dev/null"
     attacker.wait_until_succeeds(public)
+    public_dns = "dig +tries=1 +time=2 +short @8.8.8.8 worker-fixture.test A"
+    private_dns = "dig +tries=1 +time=2 +short @192.168.55.2 worker-fixture.test A"
+    assert attacker.succeed(public_dns).strip() == "8.8.8.8"
+    attacker.fail(private_dns)
     # Default host firewall permits this port; the independent worker drop wins.
     attacker.fail("curl --noproxy '*' -fsS --max-time 3 http://10.77.0.1:18080/")
     attacker.fail("curl --noproxy '*' -fsS --max-time 3 http://192.168.55.2:18081/")
@@ -173,6 +186,8 @@ pkgs.testers.runNixOSTest {
     # Exercise all policies from evaluated production configurations.
     host.succeed(f"{original}/specialisation/normal/bin/switch-to-configuration test")
     attacker.succeed(public)
+    assert attacker.succeed(public_dns).strip() == "8.8.8.8"
+    assert attacker.succeed(private_dns).strip() == "8.8.8.8"
     attacker.succeed("curl --noproxy '*' -fsS --max-time 4 http://192.168.55.2:18081/ >/dev/null")
     attacker.fail("curl --noproxy '*' -fsS --max-time 3 http://10.77.0.1:18080/")
     outside.succeed("ip route replace 10.77.0.0/30 via 192.168.55.1")
@@ -180,6 +195,8 @@ pkgs.testers.runNixOSTest {
     attacker.fail("curl --noproxy '*' --interface 10.77.0.6 -fsS --max-time 3 http://8.8.8.8:18081/")
     host.succeed(f"{original}/specialisation/offline/bin/switch-to-configuration test")
     attacker.fail(public)
+    attacker.fail(public_dns)
+    attacker.fail(private_dns)
     attacker.fail("curl --noproxy '*' -fsS --max-time 3 http://192.168.55.2:18081/")
     host.succeed("curl --noproxy '*' -fsS --max-time 4 http://10.77.0.2:18082/ >/dev/null")
   '';
