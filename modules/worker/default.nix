@@ -79,7 +79,20 @@ let
     "240.0.0.0/4"
   ];
   uplinks = lib.concatMapStringsSep ", " (n: ''"${n}"'') cfg.uplinkInterfaces;
-  publicEgress = cfg.egress == "internet";
+  publicEgress = cfg.egress != "offline";
+  deniedRanges =
+    if cfg.egress == "normal" then
+      builtins.filter (
+        range:
+        !(builtins.elem range [
+          "10.0.0.0/8"
+          "100.64.0.0/10"
+          "172.16.0.0/12"
+          "192.168.0.0/16"
+        ])
+      ) privateRanges
+    else
+      privateRanges;
   sshText = ''
     Host assbox-worker
       HostName ${cfg.guestAddress}
@@ -217,11 +230,12 @@ in
     };
     egress = lib.mkOption {
       type = lib.types.enum [
+        "normal"
         "internet"
         "offline"
       ];
       default = "internet";
-      description = "Internet permits public IPv4, not exfiltration prevention. Offline keeps controller-initiated SSH.";
+      description = "Normal permits outbound IPv4 internet and LAN. Internet denies protected prefixes. Offline keeps controller-initiated SSH. These policies do not prevent exfiltration.";
     };
     nameservers = lib.mkOption {
       type = lib.types.listOf ipv4Type;
@@ -229,7 +243,7 @@ in
         "1.1.1.1"
         "9.9.9.9"
       ];
-      description = "Worker DNS; use permitted public IPv4 resolvers, not the controller resolver.";
+      description = "Worker IPv4 DNS permitted by the egress policy; never the controller resolver.";
     };
     additionalDeniedCidrs = lib.mkOption {
       type = lib.types.listOf (lib.types.strMatching "[0-9]{1,3}(\\.[0-9]{1,3}){3}/[0-9]{1,2}");
@@ -260,6 +274,10 @@ in
         message = "Worker internet egress requires explicit uplinkInterfaces.";
       }
       {
+        assertion = publicEgress || (cfg.uplinkInterfaces == [ ] && cfg.nameservers == [ ]);
+        message = "Offline workers must not select uplinks or DNS resolvers.";
+      }
+      {
         assertion = !(builtins.elem cfg.interface cfg.uplinkInterfaces);
         message = "Worker TAP cannot be an uplink.";
       }
@@ -286,7 +304,7 @@ in
       content = ''
         set denied4 {
           type ipv4_addr; flags interval; auto-merge;
-          elements = { ${lib.concatStringsSep ", " (privateRanges ++ cfg.additionalDeniedCidrs)} }
+          elements = { ${lib.concatStringsSep ", " (deniedRanges ++ cfg.additionalDeniedCidrs)} }
         }
         chain input {
           type filter hook input priority -10; policy accept;

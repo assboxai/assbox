@@ -82,6 +82,19 @@ class ConfigurationTests(unittest.TestCase):
         c = configuration(); c.update(egress="offline", uplinkInterfaces=[], nameservers=[])
         w.validate_config(c)
 
+    def test_normal_allows_lan_dns_but_not_controller_or_special_addresses(self):
+        c = configuration(); c['egress'] = 'normal'
+        for resolver in ('192.168.1.1', '10.1.2.3', '100.100.100.100', '172.16.0.1'):
+            c['nameservers'] = [resolver]
+            w.validate_config(c)
+        for resolver in ('10.77.0.1', '10.77.0.2', '127.0.0.1', '169.254.169.254', '224.0.0.1'):
+            c['nameservers'] = [resolver]
+            with self.assertRaises(w.Refusal): w.validate_config(c)
+
+    def test_offline_rejects_residual_network_settings(self):
+        c = configuration(); c['egress'] = 'offline'
+        with self.assertRaises(w.Refusal): w.validate_config(c)
+
     def test_rejects_unknown_egress(self):
         c = configuration(); c["egress"] = "anything"
         with self.assertRaises(w.Refusal): w.validate_config(c)

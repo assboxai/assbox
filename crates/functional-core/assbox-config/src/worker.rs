@@ -35,12 +35,8 @@ fn body(spec: &WorkerSpec) -> String {
         spec.vcpus,
         spec.state_gib,
         strings(spec.uplinks.clone()),
-        nix_string(if spec.offline { "offline" } else { "internet" }),
-        if spec.offline {
-            ""
-        } else {
-            "\"1.1.1.1\" \"9.9.9.9\""
-        },
+        nix_string(spec.network.as_str()),
+        strings(spec.nameservers.clone()),
         spec.guest_sudo
     )
 }
@@ -89,7 +85,8 @@ fn validate_body(text: &str) -> Result<()> {
         vcpus: number("vcpus")?,
         state_gib: number("stateGiB")?,
         uplinks: parse_list(&field("uplinkInterfaces")?)?,
-        offline: field("egress")? == "\"offline\"",
+        network: field("egress")?.trim_matches('"').parse()?,
+        nameservers: parse_list(&field("nameservers")?)?,
         guest_sudo: boolean("allowGuestSudo")?,
     };
     spec.validate(true)?;
@@ -144,17 +141,9 @@ pub fn expected_fields(spec: Option<&WorkerSpec>) -> Vec<String> {
         s.vcpus.to_string(),
         s.state_gib.to_string(),
         s.uplinks.join(","),
-        if s.offline {
-            "offline".to_owned()
-        } else {
-            "internet".to_owned()
-        },
+        s.network.to_string(),
         s.guest_sudo.to_string(),
-        if s.offline {
-            String::new()
-        } else {
-            "1.1.1.1,9.9.9.9".to_owned()
-        },
+        s.nameservers.join(","),
     ]
 }
 
@@ -170,7 +159,8 @@ mod tests {
             vcpus: 2,
             state_gib: 32,
             uplinks: vec![],
-            offline: true,
+            network: assbox_domain::worker::WorkerNetwork::Offline,
+            nameservers: vec![],
             guest_sudo: false,
         }
     }
@@ -193,7 +183,8 @@ mod tests {
         let mut s = spec();
         s.components = "vscode-remote-host".parse().unwrap();
         s.mutable_components = s.components;
-        s.offline = false;
+        s.network = "internet".parse().unwrap();
+        s.nameservers = s.network.default_dns();
         s.uplinks = vec!["eth0".into(), "wlan0".into()];
         s.guest_sudo = true;
         let text = selection(BASE, Some(&s)).unwrap();

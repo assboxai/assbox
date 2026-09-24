@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! User-facing worker planning and activation. No implicit agent selection.
-use assbox_domain::{Components, Error, Result, worker::WorkerSpec};
+use assbox_domain::{
+    Components, Error, Result,
+    worker::{WorkerNetwork, WorkerSpec},
+};
 use assbox_engine::manage;
 use assbox_system::{commands::Commands, files, worker as system};
 use std::{
@@ -15,7 +18,8 @@ struct Request {
     cpus: Option<u32>,
     state: u32,
     uplinks: Vec<String>,
-    offline: bool,
+    network: WorkerNetwork,
+    nameservers: Vec<String>,
     mutable: bool,
     sudo: bool,
     unfree: bool,
@@ -37,7 +41,8 @@ fn parse(args: &[&str]) -> Result<Request> {
         cpus: None,
         state: 32,
         uplinks: Vec::new(),
-        offline: false,
+        network: WorkerNetwork::Internet,
+        nameservers: vec![],
         mutable: false,
         sudo: false,
         unfree: false,
@@ -52,7 +57,7 @@ fn parse(args: &[&str]) -> Result<Request> {
     let mut i = 0;
     while i < options.len() {
         let key = options[i];
-        if key != "--uplink" && !seen.insert(key) {
+        if !matches!(key, "--uplink" | "--dns") && !seen.insert(key) {
             return Err(Error::new("duplicate worker option"));
         }
         let value = |offset: usize| {
@@ -82,7 +87,15 @@ fn parse(args: &[&str]) -> Result<Request> {
                 i += 1;
                 r.uplinks.push(value(i)?.to_owned());
             }
-            "--offline" => r.offline = true,
+            "--offline" => r.network = WorkerNetwork::Offline,
+            "--network" => {
+                i += 1;
+                r.network = value(i)?.parse()?;
+            }
+            "--dns" => {
+                i += 1;
+                r.nameservers.push(value(i)?.to_owned());
+            }
             "--allow-mutable-code" => r.mutable = true,
             "--allow-guest-sudo" => r.sudo = true,
             "--accept-unfree" => r.unfree = true,
@@ -91,7 +104,13 @@ fn parse(args: &[&str]) -> Result<Request> {
         }
         i += 1;
     }
-    if r.offline != r.uplinks.is_empty() {
+    if seen.contains("--offline") && seen.contains("--network") {
+        return Err(Error::new("--offline and --network cannot be combined"));
+    }
+    if r.nameservers.is_empty() {
+        r.nameservers = r.network.default_dns();
+    }
+    if (r.network == WorkerNetwork::Offline) != r.uplinks.is_empty() {
         return Err(Error::new("choose --offline or explicit --uplink NAME"));
     }
     Ok(r)
@@ -118,7 +137,8 @@ fn configure(request: Request) -> Result<()> {
             .unwrap_or_else(|| assbox_policy::worker::recommended_cpus(&host)),
         state_gib: request.state,
         uplinks: request.uplinks,
-        offline: request.offline,
+        network: request.network,
+        nameservers: request.nameservers,
         guest_sudo: request.sudo,
     };
     manage::worker_configure(Some(&spec), request.unfree, request.apply)
@@ -170,6 +190,38 @@ fn ask(label: &str, default: &str) -> Result<String> {
         text.to_owned()
     })
 }
+fn network_prompt(observed: &[String]) -> Result<(WorkerNetwork, Vec<String>, Vec<String>)> {
+    println!(
+        "Worker IPv4 networking: normal = internet and LAN; internet = public destinations only; offline = no external access. Controller services and unsolicited inbound traffic remain blocked."
+    );
+    let network: WorkerNetwork =
+        ask("Choose normal / internet / offline (required)", "")?.parse()?;
+    if network == WorkerNetwork::Offline {
+        return Ok((network, vec![], vec![]));
+    }
+    println!(
+        "Observed uplinks: {}. Confirm interface names for the installed system.",
+        observed.join(",")
+    );
+    let suggested = if observed.len() == 1 {
+        observed[0].as_str()
+    } else {
+        ""
+    };
+    let uplinks = ask("Worker uplinks, comma-separated", suggested)?
+        .split(',')
+        .map(str::to_owned)
+        .collect();
+    let nameservers = ask(
+        "Worker IPv4 DNS resolvers, comma-separated",
+        "1.1.1.1,9.9.9.9",
+    )?
+    .split(',')
+    .map(str::to_owned)
+    .collect();
+    Ok((network, uplinks, nameservers))
+}
+
 fn setup() -> Result<()> {
     files::require_root()?;
     recommend()?;
@@ -180,12 +232,7 @@ fn setup() -> Result<()> {
         println!("No worker configured.");
         return Ok(());
     }
-    let network_default = if host.uplinks.len() == 1 {
-        host.uplinks[0].as_str()
-    } else {
-        "offline"
-    };
-    let network = ask("Uplink interface, or offline", network_default)?;
+    let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
     let ram = ask("Worker memory in MiB", &memory.to_string())?;
     let state = ask("Persistent state in GiB (never auto-resized)", "32")?;
     let unfree = ask("Allow proprietary packages machine-wide? yes/no", "no")?;
@@ -205,10 +252,12 @@ fn setup() -> Result<()> {
         "--state-gib".to_owned(),
         state,
     ];
-    if network == "offline" {
-        args.push("--offline".to_owned());
-    } else {
-        args.extend(["--uplink".to_owned(), network]);
+    args.extend(["--network".to_owned(), network.to_string()]);
+    for uplink in uplinks {
+        args.extend(["--uplink".to_owned(), uplink]);
+    }
+    for resolver in nameservers {
+        args.extend(["--dns".to_owned(), resolver]);
     }
     if unfree == "yes" {
         args.push("--accept-unfree".to_owned());
@@ -249,12 +298,7 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
         &assbox_policy::worker::recommended_cpus(&host).to_string(),
     )?)?;
     let state_gib = number(&ask("Persistent worker state GiB", "32")?)?;
-    println!(
-        "Observed uplinks: {}. Review the target machine's interface names.",
-        host.uplinks.join(", ")
-    );
-    let network = ask("Worker uplinks, comma-separated, or offline", "offline")?;
-    let offline = network == "offline";
+    let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
     let mut mutable_components = Components::default();
     for c in components.iter().filter(|c| c.mutable_code()) {
         if ask(
@@ -272,12 +316,9 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
         memory_mib,
         vcpus,
         state_gib,
-        uplinks: if offline {
-            Vec::new()
-        } else {
-            network.split(',').map(str::to_owned).collect()
-        },
-        offline,
+        uplinks,
+        network,
+        nameservers,
         guest_sudo: false,
     };
     spec.validate(accept_unfree)?;
@@ -309,6 +350,30 @@ pub fn run(args: &[&str]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn old_network_flags_keep_their_meaning() {
+        assert_eq!(
+            parse(&["codex", "--uplink", "eth0"]).unwrap().network,
+            WorkerNetwork::Internet
+        );
+        assert_eq!(
+            parse(&["codex", "--offline"]).unwrap().network,
+            WorkerNetwork::Offline
+        );
+        let normal = parse(&[
+            "codex",
+            "--network",
+            "normal",
+            "--uplink",
+            "eth0",
+            "--dns",
+            "192.168.1.1",
+        ])
+        .unwrap();
+        assert_eq!(normal.network, WorkerNetwork::Normal);
+        assert_eq!(normal.nameservers, ["192.168.1.1"]);
+        assert!(parse(&["codex", "--offline", "--network", "normal"]).is_err());
+    }
     #[test]
     fn options_are_explicit_and_plan_is_default() {
         let r = parse(&["codex", "--offline", "--memory", "auto"]).unwrap();

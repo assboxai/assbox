@@ -60,6 +60,12 @@ pkgs.testers.runNixOSTest {
         }
       ];
       networking.defaultGateway = "192.168.55.2";
+      specialisation.normal.configuration.assbox.worker.egress = lib.mkForce "normal";
+      specialisation.offline.configuration.assbox.worker = {
+        egress = lib.mkForce "offline";
+        uplinkInterfaces = lib.mkForce [ ];
+        nameservers = lib.mkForce [ ];
+      };
       # Even a host service deliberately opened by an unrelated module stays
       # inaccessible to unsolicited worker traffic because the drop is independent.
       networking.firewall.allowedTCPPorts = [
@@ -141,6 +147,7 @@ pkgs.testers.runNixOSTest {
         machine.wait_for_unit("multi-user.target")
         machine.wait_for_unit("listener.service")
     host.wait_for_unit("nftables.service")
+    original = host.succeed("readlink -f /run/current-system").strip()
     host.wait_for_unit("listener6.service")
     host.wait_until_succeeds("curl --noproxy '*' -g -fsS --max-time 3 http://[::1]:18083/ >/dev/null")
     outside.wait_until_succeeds("curl --noproxy '*' -fsS --max-time 3 http://192.168.55.1:18080/ >/dev/null")
@@ -162,5 +169,17 @@ pkgs.testers.runNixOSTest {
     host.succeed("systemctl reload nftables")
     attacker.succeed(public)
     attacker.fail("curl --noproxy '*' -fsS --max-time 3 http://10.77.0.1:18080/")
+    # Exercise all policies from evaluated production configurations.
+    host.succeed(f"{original}/specialisation/normal/bin/switch-to-configuration test")
+    attacker.succeed(public)
+    attacker.succeed("curl --noproxy '*' -fsS --max-time 4 http://192.168.55.2:18081/ >/dev/null")
+    attacker.fail("curl --noproxy '*' -fsS --max-time 3 http://10.77.0.1:18080/")
+    outside.succeed("ip route replace 10.77.0.0/30 via 192.168.55.1")
+    outside.fail("curl --noproxy '*' -fsS --max-time 3 http://10.77.0.2:18082/")
+    attacker.fail("curl --noproxy '*' --interface 10.77.0.6 -fsS --max-time 3 http://8.8.8.8:18081/")
+    host.succeed(f"{original}/specialisation/offline/bin/switch-to-configuration test")
+    attacker.fail(public)
+    attacker.fail("curl --noproxy '*' -fsS --max-time 3 http://192.168.55.2:18081/")
+    host.succeed("curl --noproxy '*' -fsS --max-time 4 http://10.77.0.2:18082/ >/dev/null")
   '';
 }

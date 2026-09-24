@@ -179,22 +179,26 @@ def validate_config(c: dict[str, Any]) -> None:
         raise Refusal("Invalid interface name")
     if c["interface"] in c["uplinkInterfaces"]:
         raise Refusal("The worker TAP cannot also be an uplink")
-    if c["egress"] not in ("internet", "offline"):
+    if c["egress"] not in ("normal", "internet", "offline"):
         raise Refusal("Invalid egress policy")
-    if c["egress"] == "internet" and not c["uplinkInterfaces"]:
+    if c["egress"] != "offline" and not c["uplinkInterfaces"]:
         raise Refusal("Internet mode requires explicitly selected uplinks")
+    if c["egress"] == "offline" and (c["uplinkInterfaces"] or c["nameservers"]):
+        raise Refusal("Offline mode must not select uplinks or resolvers")
     host = ipaddress.IPv4Address(c["hostAddress"])
     guest = ipaddress.IPv4Address(c["guestAddress"])
     network = ipaddress.IPv4Network(f"{host}/30", strict=False)
     if list(network.hosts()) != [host, guest] or not network.subnet_of(ipaddress.ip_network("10.0.0.0/8")):
         raise Refusal("Use the controller and worker addresses, in that order, in a dedicated 10/8 /30 subnet")
     extras = [ipaddress.IPv4Network(n, strict=True) for n in c["additionalDeniedCidrs"]]
+    lan = {ipaddress.ip_network(n) for n in ("10.0.0.0/8", "100.64.0.0/10", "172.16.0.0/12", "192.168.0.0/16")}
+    denied = tuple(n for n in DENIED if c["egress"] != "normal" or n not in lan)
     for resolver in c["nameservers"]:
         ip = ipaddress.IPv4Address(resolver)
-        if any(ip in prefix for prefix in (*DENIED, *extras)):
+        if ip in network or any(ip in prefix for prefix in (*denied, *extras)):
             raise Refusal("DNS resolver is blocked by the guest egress policy")
-    if c["egress"] == "internet" and not c["nameservers"]:
-        raise Refusal("Internet mode requires at least one public resolver")
+    if c["egress"] != "offline" and not c["nameservers"]:
+        raise Refusal("Online mode requires at least one permitted resolver")
     for path in c["tools"].values():
         if not str(path).startswith("/nix/store/") or "\n" in path:
             raise Refusal("Tools must resolve from the immutable Nix tool closure")

@@ -1,6 +1,66 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Explicit worker choices and controller hardware observations. No probing or activation here.
 use crate::{Component, Components, Error, Presentation, Result};
+use std::{fmt, net::Ipv4Addr, str::FromStr};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkerNetwork {
+    Normal,
+    Internet,
+    Offline,
+}
+
+impl WorkerNetwork {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Internet => "internet",
+            Self::Offline => "offline",
+        }
+    }
+    pub fn default_dns(self) -> Vec<String> {
+        if self == Self::Offline {
+            vec![]
+        } else {
+            vec!["1.1.1.1".into(), "9.9.9.9".into()]
+        }
+    }
+    pub fn allows_dns(self, text: &str) -> bool {
+        let Ok(ip) = text.parse::<Ipv4Addr>() else {
+            return false;
+        };
+        let [a, b, c, _] = ip.octets();
+        if self == Self::Offline
+            || a == 0
+            || a == 127
+            || a >= 224
+            || (a == 169 && b == 254)
+            || (a == 192 && b == 0 && (c == 0 || c == 2))
+            || (a == 198 && (b == 18 || b == 19 || (b == 51 && c == 100)))
+            || (a == 203 && b == 0 && c == 113)
+            || (u32::from(ip) & !3 == u32::from(Ipv4Addr::new(10, 77, 0, 0)))
+        {
+            return false;
+        }
+        self == Self::Normal || !(ip.is_private() || (a == 100 && (64..=127).contains(&b)))
+    }
+}
+impl fmt::Display for WorkerNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+impl FromStr for WorkerNetwork {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "normal" => Ok(Self::Normal),
+            "internet" => Ok(Self::Internet),
+            "offline" => Ok(Self::Offline),
+            _ => Err(Error::new("choose normal, internet, or offline networking")),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkerSpec {
@@ -10,7 +70,8 @@ pub struct WorkerSpec {
     pub vcpus: u32,
     pub state_gib: u32,
     pub uplinks: Vec<String>,
-    pub offline: bool,
+    pub network: WorkerNetwork,
+    pub nameservers: Vec<String>,
     pub guest_sudo: bool,
 }
 
@@ -62,7 +123,7 @@ impl WorkerSpec {
         {
             return Err(Error::new("worker resources exceed supported bounds"));
         }
-        if self.offline != self.uplinks.is_empty()
+        if (self.network == WorkerNetwork::Offline) != self.uplinks.is_empty()
             || self
                 .uplinks
                 .iter()
@@ -75,6 +136,13 @@ impl WorkerSpec {
         {
             return Err(Error::new(
                 "choose --offline or distinct explicit --uplink interfaces",
+            ));
+        }
+        if (self.network == WorkerNetwork::Offline) != self.nameservers.is_empty()
+            || self.nameservers.iter().any(|s| !self.network.allows_dns(s))
+        {
+            return Err(Error::new(
+                "DNS resolvers must be IPv4 addresses permitted by the worker network policy",
             ));
         }
         Ok(())
@@ -129,6 +197,26 @@ pub fn validate_host_selection(host: Components, worker: Option<&WorkerSpec>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn network_dns_authority_is_explicit() {
+        for ip in ["10.1.2.3", "192.168.1.1", "172.16.0.1", "100.100.100.100"] {
+            assert!(WorkerNetwork::Normal.allows_dns(ip));
+            assert!(!WorkerNetwork::Internet.allows_dns(ip));
+        }
+        for ip in [
+            "10.77.0.1",
+            "10.77.0.2",
+            "127.0.0.1",
+            "169.254.169.254",
+            "224.0.0.1",
+            "::1",
+            "1.2.3.999",
+        ] {
+            assert!(!WorkerNetwork::Normal.allows_dns(ip));
+        }
+        assert!(WorkerNetwork::Internet.allows_dns("1.1.1.1"));
+        assert!(!WorkerNetwork::Offline.allows_dns("1.1.1.1"));
+    }
     fn spec() -> WorkerSpec {
         WorkerSpec {
             components: "vim".parse().unwrap(),
@@ -137,7 +225,8 @@ mod tests {
             vcpus: 2,
             state_gib: 32,
             uplinks: vec![],
-            offline: true,
+            network: WorkerNetwork::Offline,
+            nameservers: vec![],
             guest_sudo: false,
         }
     }
@@ -222,13 +311,16 @@ mod tests {
         assert!(valid_interface("enp0s1"));
         assert!(valid_interface("veth_a-b"));
         let mut s = spec();
-        s.offline = false;
+        s.network = "internet".parse().unwrap();
+        s.nameservers = s.network.default_dns();
         assert!(s.validate(false).is_err());
         s.uplinks = vec!["eth0".into()];
         assert!(s.validate(false).is_ok());
-        s.offline = true;
+        s.network = "offline".parse().unwrap();
+        s.nameservers.clear();
         assert!(s.validate(false).is_err());
-        s.offline = false;
+        s.network = "internet".parse().unwrap();
+        s.nameservers = s.network.default_dns();
         for uplinks in [
             vec!["ab-worker0".into()],
             vec!["bad;".into()],

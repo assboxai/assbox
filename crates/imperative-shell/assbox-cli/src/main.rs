@@ -41,7 +41,9 @@ const HELP: &str = r#"Assbox — Assistant Box
   assbox worker setup                   Interactive plan/build/stage workflow (sudo)
   assbox worker configure IDS [OPTIONS]  Plan explicit guest agents and move curated
                                         execution packages off the host (sudo)
-      --offline | --uplink NAME         Explicit networking; repeat --uplink as needed
+      --network normal|internet|offline IPv4 egress policy (interactive selection required)
+      --uplink NAME --dns IPV4          Repeat for explicit uplinks and resolvers
+      --offline                        Legacy offline flag; uplink alone retains internet-only
       --memory auto|MIB --cpus N --state-gib N
       --allow-mutable-code --allow-guest-sudo --accept-unfree
       --apply                           Build and stage for reboot; otherwise plan only

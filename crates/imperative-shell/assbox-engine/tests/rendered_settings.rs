@@ -49,7 +49,8 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
                     vcpus: 2,
                     state_gib: 32,
                     uplinks: vec![],
-                    offline: true,
+                    network: assbox_domain::worker::WorkerNetwork::Offline,
+                    nameservers: vec![],
                     guest_sudo: false,
                 }
             }),
