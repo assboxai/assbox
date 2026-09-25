@@ -123,6 +123,7 @@ let
 in
 {
   selected = result.config.assbox.selectedComponents;
+  runtimeDependencies = result.config.assbox.componentRuntimeDependencies;
   sshEnabled = result.config.services.openssh.enable;
   identities = result.config.assbox.componentPackagePaths;
   failures = map (a: a.message) (builtins.filter (a: !a.assertion) result.config.assertions);

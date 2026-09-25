@@ -67,6 +67,12 @@ in
     readOnly = true;
     description = "Known curated package identities for closure verification; never installed implicitly.";
   };
+  options.assbox.componentRuntimeDependencies = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    internal = true;
+    readOnly = true;
+    description = "Curated runtimes installed as dependencies of selected features, for closure verification.";
+  };
   options.assbox.components = lib.listToAttrs (
     map (
       row:
@@ -81,6 +87,11 @@ in
     ) catalog
   );
   config = lib.mkIf cfg.enable {
+    # OpenClaw's autostart browser is installed by applications.nix. Account
+    # login browsers use the same predicate as systemPackages below.
+    assbox.componentRuntimeDependencies = lib.optional (
+      needsBrowser || builtins.elem "openclaw-dashboard" cfg.session.autostart
+    ) "chromium";
     assbox.componentPackagePaths = lib.listToAttrs (
       map (
         row:

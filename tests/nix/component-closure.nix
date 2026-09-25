@@ -19,7 +19,9 @@ let
   forbidden = pkgs.writeText "assbox-unselected-identities.json" (
     builtins.toJSON (
       pkgs.lib.mapAttrs (_: paths: map builtins.unsafeDiscardStringContext paths) (
-        pkgs.lib.filterAttrs (id: _: !(builtins.elem id cfg.selectedComponents)) identities
+        pkgs.lib.filterAttrs (
+          id: _: !(builtins.elem id (cfg.selectedComponents ++ cfg.componentRuntimeDependencies))
+        ) identities
       )
     )
   );

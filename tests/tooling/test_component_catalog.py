@@ -65,6 +65,7 @@ class ComponentCatalogTests(unittest.TestCase):
         result = self.evaluate({})
         self.assertEqual(result['selected'], [])
         self.assertEqual(result['packages'], [])
+        self.assertEqual(result['runtimeDependencies'], [])
         self.assertFalse(result['sshEnabled'])
         self.assertEqual(result['services']['user']['services'], {})
         self.assertTrue(all(isinstance(paths, list) and paths for paths in result['identities'].values()))
@@ -219,6 +220,7 @@ class ComponentCatalogTests(unittest.TestCase):
                 self.assertFalse(result['failures'])
                 self.assertEqual(result['selected'], [id])
                 self.assertIn('/nix/store/test-chromium', result['packages'])
+                self.assertEqual(result['runtimeDependencies'], ['chromium'])
                 self.assertIn('/nix/store/test-xdg-utils', result['packages'])
                 self.assertEqual(result['xdg']['mime']['defaultApplications'], {
                     'x-scheme-handler/http': 'chromium-browser.desktop',
@@ -227,4 +229,12 @@ class ComponentCatalogTests(unittest.TestCase):
         for id in [None, 'vim', 'emacs', 'opencode', 'zed-remote-host', 'vscode-remote-host', 'vscode-cli']:
             result = self.evaluate({id: {'enable': True}} if id else {}, presentation='x11')
             self.assertNotIn('/nix/store/test-chromium', result['packages'])
+            self.assertEqual(result['runtimeDependencies'], [])
             self.assertEqual(result['xdg']['mime'].get('defaultApplications', {}), {})
+
+    def test_openclaw_browser_dependency_requires_dashboard_autostart(self):
+        selected = {id: {'enable': True} for id in ['openclaw', 'openclaw-gateway']}
+        for autostart in ([], ['openclaw-dashboard']):
+            result = self.evaluate(selected, presentation='x11', autostart=autostart)
+            self.assertFalse(result['failures'])
+            self.assertEqual(result['runtimeDependencies'], ['chromium'] if autostart else [])
