@@ -608,43 +608,55 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     ))?;
     let output_link = root.point.join(".assbox-built-system");
     let image_link = root.point.join(".assbox-sizing-system");
+    let target = format!(
+        "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
+        files::path_text(&installed_config)?
+    );
+    // Both the provisional sizing build and the final build use the same
+    // cancellation, retry and revalidation path. The snapshot changes only
+    // after sizing resolves, never while retrying a particular build.
+    let build_system = |output_link: &Path, configuration: &BTreeMap<String, Vec<u8>>| {
+        build_with_retry(
+            || {
+                recheck(&plan, &c, &mounts)?;
+                crate::release::check_freshness(&c, &fetched.release.manifest)?;
+                if &configuration_snapshot(&installed_config)? != configuration {
+                    return Err(Error::new(
+                        "installation configuration changed; retry refused",
+                    ));
+                }
+                Ok(())
+            },
+            || {
+                cancellation::run(
+                    &c,
+                    "nix",
+                    &[
+                        "build",
+                        "--store",
+                        store,
+                        "--extra-substituters",
+                        "auto?trusted=1",
+                        "--option",
+                        "build-dir",
+                        files::path_text(&build_dir)?,
+                        "--out-link",
+                        files::path_text(output_link)?,
+                        "--print-out-paths",
+                        "--no-update-lock-file",
+                        "--no-write-lock-file",
+                        &target,
+                    ],
+                    &logs,
+                )
+            },
+            cancellation::retry_build,
+        )
+    };
     let mut worker_spec = plan.request().choices.worker.clone();
     if let Some(worker) = worker_spec.as_mut().filter(|w| w.auto_state) {
-        let image_target = format!(
-            "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
-            files::path_text(&installed_config)?
-        );
         write_phase(&c, &root.point, &record, "building", None)?;
-        let sizing_system = cancellation::run(
-            &c,
-            "nix",
-            &[
-                "build",
-                "--store",
-                store,
-                "--extra-substituters",
-                "auto?trusted=1",
-                "--option",
-                "build-dir",
-                files::path_text(&build_dir)?,
-                "--out-link",
-                files::path_text(&image_link)?,
-                "--print-out-paths",
-                "--no-update-lock-file",
-                "--no-write-lock-file",
-                &image_target,
-            ],
-            &logs,
-        )?;
-        recheck(&plan, &c, &mounts)?;
-        if configuration_snapshot(&installed_config)? != configuration {
-            return Err(Error::new(
-                "configuration changed during worker image build",
-            ));
-        }
-        if !assbox_system::commands::valid_store_system(sizing_system.trim()) {
-            return Err(Error::new("invalid sizing system"));
-        }
+        let sizing_system = build_system(&image_link, &configuration)?;
         let artifact = io(fs::read_link(
             root.point
                 .join(sizing_system.trim().trim_start_matches('/'))
@@ -672,62 +684,10 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             worker.state_gib
         );
     }
-    let target = format!(
-        "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
-        files::path_text(&installed_config)?
-    );
     write_phase(&c, &root.point, &record, "building", None)?;
     #[cfg(test)]
     crate::acceptance::checkpoint("install-building")?;
-    let system = loop {
-        recheck(&plan, &c, &mounts)?;
-        crate::release::check_freshness(&c, &fetched.release.manifest)?;
-        if configuration_snapshot(&installed_config)? != configuration {
-            return Err(Error::new(
-                "installation configuration changed; retry refused",
-            ));
-        }
-        let attempt = cancellation::run(
-            &c,
-            "nix",
-            &[
-                "build",
-                "--store",
-                store,
-                "--extra-substituters",
-                "auto?trusted=1",
-                "--option",
-                "build-dir",
-                files::path_text(&build_dir)?,
-                "--out-link",
-                files::path_text(&output_link)?,
-                "--print-out-paths",
-                "--no-update-lock-file",
-                "--no-write-lock-file",
-                &target,
-            ],
-            &logs,
-        );
-        match attempt {
-            Ok(output) => {
-                let system = output.trim();
-                if !assbox_system::commands::valid_store_system(system) {
-                    return Err(Error::new(
-                        "build did not return one immutable NixOS system",
-                    ));
-                }
-                break system.to_owned();
-            }
-            Err(error) => {
-                eprintln!(
-                    "{error}. Linux root is incomplete; bootloader activation has not started."
-                );
-                if !cancellation::retry_build()? {
-                    return Err(error);
-                }
-            }
-        }
-    };
+    let system = build_system(&output_link, &configuration)?;
     recheck(&plan, &c, &mounts)?;
     crate::release::check_freshness(&c, &fetched.release.manifest)?;
     if configuration_snapshot(&installed_config)? != configuration {
@@ -849,6 +809,39 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+/// Each retry uses unchanged build arguments and a fresh validation of the
+/// release, target mounts and captured configuration. Effects remain injectable
+/// so failure/cancellation ordering can be checked without touching a disk.
+fn build_with_retry(
+    mut validate: impl FnMut() -> Result<()>,
+    mut build: impl FnMut() -> Result<String>,
+    mut retry: impl FnMut() -> Result<bool>,
+) -> Result<String> {
+    loop {
+        validate()?;
+        match build() {
+            Ok(output) => {
+                validate()?;
+                let system = output.trim();
+                if !assbox_domain::source::valid_store_system(system) {
+                    return Err(Error::new(
+                        "build did not return one immutable NixOS system",
+                    ));
+                }
+                return Ok(system.to_owned());
+            }
+            Err(error) => {
+                eprintln!(
+                    "{error}. Linux root is incomplete; bootloader activation has not started."
+                );
+                if !retry()? {
+                    return Err(error);
+                }
+            }
+        }
+    }
+}
+
 fn configuration_snapshot(directory: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
     files::trusted_dir(directory)?;
     let mut result = BTreeMap::new();
@@ -919,6 +912,130 @@ fn write_phase(
         record,
     )?;
     files::atomic_write(&root.join(".assbox-install.json"), &bytes, 0o600)
+}
+
+#[cfg(test)]
+mod build_retry_tests {
+    use super::build_with_retry;
+    use assbox_domain::Error;
+    use std::cell::{Cell, RefCell};
+
+    const SYSTEM: &str = "/nix/store/00000000000000000000000000000000-nixos-system-assbox-1";
+
+    #[test]
+    fn transient_failure_retries_only_after_consent_and_revalidation() {
+        let events = RefCell::new(Vec::new());
+        let attempts = Cell::new(0);
+        let system = build_with_retry(
+            || {
+                events.borrow_mut().push("validate");
+                Ok(())
+            },
+            || {
+                events.borrow_mut().push("build");
+                attempts.set(attempts.get() + 1);
+                if attempts.get() == 1 {
+                    Err(Error::new("temporary download failure"))
+                } else {
+                    Ok(format!("{SYSTEM}\n"))
+                }
+            },
+            || {
+                events.borrow_mut().push("retry");
+                Ok(true)
+            },
+        )
+        .unwrap();
+        assert_eq!(system, SYSTEM);
+        assert_eq!(
+            *events.borrow(),
+            [
+                "validate", "build", "retry", "validate", "build", "validate"
+            ]
+        );
+    }
+
+    #[test]
+    fn changed_state_refuses_before_first_build_retry_or_acceptance() {
+        for fail_at in 1..=3 {
+            let checks = Cell::new(0);
+            let attempts = Cell::new(0);
+            let error = build_with_retry(
+                || {
+                    checks.set(checks.get() + 1);
+                    if checks.get() == fail_at {
+                        Err(Error::new("changed configuration, release or mounts"))
+                    } else {
+                        Ok(())
+                    }
+                },
+                || {
+                    attempts.set(attempts.get() + 1);
+                    if attempts.get() == 1 {
+                        Err(Error::new("temporary download failure"))
+                    } else {
+                        Ok(SYSTEM.to_owned())
+                    }
+                },
+                || Ok(true),
+            )
+            .unwrap_err();
+            assert!(error.to_string().starts_with("changed configuration"));
+            assert_eq!(attempts.get(), fail_at - 1);
+        }
+    }
+
+    #[test]
+    fn decline_or_cancellation_never_starts_another_build() {
+        for cancelled in [false, true] {
+            let attempts = Cell::new(0);
+            let error = build_with_retry(
+                || Ok(()),
+                || {
+                    attempts.set(attempts.get() + 1);
+                    Err(Error::new("build failure"))
+                },
+                || {
+                    if cancelled {
+                        Err(Error::new("cancelled"))
+                    } else {
+                        Ok(false)
+                    }
+                },
+            )
+            .unwrap_err();
+            assert_eq!(attempts.get(), 1);
+            assert_eq!(
+                error.to_string(),
+                if cancelled {
+                    "cancelled"
+                } else {
+                    "build failure"
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_success_output_is_not_accepted_or_retried() {
+        for output in [
+            String::new(),
+            "/tmp/system".to_owned(),
+            format!("{SYSTEM}\n{SYSTEM}"),
+        ] {
+            let result = build_with_retry(
+                || Ok(()),
+                || Ok(output.clone()),
+                || panic!("invalid output must not prompt for a retry"),
+            );
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("one immutable NixOS system")
+            );
+        }
+    }
 }
 
 #[cfg(test)]

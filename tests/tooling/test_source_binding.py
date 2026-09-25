@@ -75,7 +75,7 @@ class SourceBindingTests(unittest.TestCase):
         self.assertLess(install.index("    validate_ssh_keys("), install.index("let _lock = Lock::acquire"))
         for step in ["crate::source::resolve", "crate::check_evaluation", "external backup read-back failed", "installation write intent read-back failed"]:
             self.assertLess(install.index(step), boundary)
-        after = install[boundary:]
+        after = install[boundary:install.index("\nfn build_with_retry(")]
         build = after.index('"build"')
         validate = after.index("verify_install_target_in_store")
         activate = after.index('"nixos-install"')
@@ -90,7 +90,10 @@ class SourceBindingTests(unittest.TestCase):
         self.assertRegex(after, r'"--system",\s*&system')
         self.assertNotIn('"--flake"', after)
         self.assertIn("configuration_snapshot(&installed_config)? != configuration", after)
-        self.assertIn("cancellation::retry_build()", after)
+        self.assertIn("cancellation::retry_build,", after)
+        self.assertIn("build_system(&image_link, &configuration)?", after)
+        self.assertIn("build_system(&output_link, &configuration)?", after)
+        self.assertEqual(after.count('"build"'), 1)
         source = (ROOT / "crates/imperative-shell/assbox-engine/src/source.rs").read_text()
         self.assertEqual(source.count('"metadata"'), 1)
         self.assertIn('"--no-update-lock-file"', source)

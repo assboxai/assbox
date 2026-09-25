@@ -8,6 +8,7 @@ installed-machine management operations.
 
 A build error prints private log paths under the mounted target's
 `var/log/assbox-install` and offers an explicit retry on an interactive terminal.
+This applies to both the provisional automatic-sizing build and the final system build.
 Check the log and available space, or restore networking, without editing the
 captured configuration or changing mounts/devices. Answer `y` only to repeat that
 exact build. A changed/expired release, changed configuration or changed storage
