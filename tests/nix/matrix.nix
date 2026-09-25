@@ -9,6 +9,7 @@ let
   ];
   controllerWorker = {
     enable = true;
+    stateGiB = 8;
     components = [ "codex" ];
     egress = "offline";
     nameservers = [ ];

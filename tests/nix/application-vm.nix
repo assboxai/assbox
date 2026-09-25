@@ -52,6 +52,7 @@ pkgs.testers.runNixOSTest {
         ];
         worker = lib.optionalAttrs (application == "chatgpt") {
           enable = true;
+          stateGiB = 8;
           components = [ "codex" ];
           egress = "offline";
           nameservers = [ ];

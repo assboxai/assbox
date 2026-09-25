@@ -22,6 +22,7 @@ let
       ];
     };
   good = evaluate { };
+  missingCapacity = evaluate ({ lib, ... }: { assbox.worker.stateGiB = lib.mkForce null; });
   disabled = evaluate ({ lib, ... }: { assbox.worker.enable = lib.mkForce false; });
   noAssbox = evaluate (
     { lib, ... }: {
@@ -68,7 +69,7 @@ let
       ];
     }
   );
-  badNetwork = evaluate { assbox.worker.egress = "internet"; };
+  badNetwork = evaluate ({ lib, ... }: { assbox.worker.egress = lib.mkForce "internet"; });
   happy = evaluate (
     { lib, ... }: {
       assbox.worker.components = lib.mkForce [
@@ -101,6 +102,9 @@ let
       good.config.environment.etc."assbox/worker-health-ssh-config".text;
 in
 assert failed good == [ ];
+assert builtins.any (item: pkgs.lib.hasInfix "Set worker.stateGiB explicitly" item.message) (
+  failed missingCapacity
+);
 assert failed disabled == [ ];
 assert !(noAssbox.config.users.users ? assbox-vmm);
 assert !(noAssbox.config.users.users ? assbox-health-probe);
