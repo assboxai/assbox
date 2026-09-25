@@ -109,6 +109,17 @@ mod tests {
         );
         assert!(automatic_state_gib(256 * GIB, 0, u64::MAX).is_err());
     }
+    #[test]
+    fn automatic_capacity_allows_controller_growth_before_admission_floor() {
+        use assbox_domain::worker::STORAGE_ADMISSION_RESERVE;
+        for (total, free, root) in [(256, 220, 20), (100, 90, 10), (64, 51, 10)] {
+            let capacity = automatic_state_gib(total * GIB, free * GIB, root * GIB).unwrap();
+            let required = u64::from(capacity) * GIB + root * GIB + STORAGE_ADMISSION_RESERVE;
+            // New controller generations may consume 24 GiB without resizing
+            // the worker or spending the separate 8 GiB admission floor.
+            assert!(free * GIB - 24 * GIB >= required);
+        }
+    }
     use assbox_domain::Components;
     fn host() -> WorkerHardware {
         WorkerHardware {

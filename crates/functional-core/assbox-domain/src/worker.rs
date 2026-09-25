@@ -5,6 +5,11 @@ use core::net::Ipv4Addr;
 use std::{fmt, str::FromStr};
 
 pub const GIB: u64 = 1024 * 1024 * 1024;
+/// Minimum free space after budgeting the worker's full writable capacity.
+/// Automatic sizing leaves a larger, consumable controller growth budget.
+pub const STORAGE_ADMISSION_RESERVE: u64 = 8 * GIB;
+/// Initial sizing budget, including the admission floor. The remainder can be
+/// consumed by later controller generations without shrinking the worker.
 pub fn storage_reserve(total_bytes: u64) -> u64 {
     (32 * GIB).max(total_bytes / 5)
 }

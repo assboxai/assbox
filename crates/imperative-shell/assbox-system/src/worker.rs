@@ -306,10 +306,10 @@ pub fn admit_install(c: &Commands, root: &Path, system: &str, state_gib: u32) ->
         .join("assbox-worker-image");
     let target = io(fs::read_link(link))?;
     let virtual_bytes = artifact_root_bytes(c, root, files::path_text(&target)?)?;
-    let (total, free) = filesystem_capacity(c, root)?;
+    let (_, free) = filesystem_capacity(c, root)?;
     let required = virtual_bytes
         + u64::from(state_gib) * assbox_domain::worker::GIB
-        + assbox_domain::worker::storage_reserve(total);
+        + assbox_domain::worker::STORAGE_ADMISSION_RESERVE;
     if free < required {
         return Err(Error::new(
             "target lacks space for worker state and a fully dirtied root; bootloader not activated",

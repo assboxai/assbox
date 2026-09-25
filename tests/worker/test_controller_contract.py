@@ -57,12 +57,12 @@ class Admission(unittest.TestCase):
 
     def test_actual_image_not_initial_16gib_estimate_controls_acceptance(self):
         with self.assertRaises(w.Refusal): self.admit(8*w.GIB+16*w.GIB)
-        result=self.admit(60*w.GIB)
-        self.assertEqual(result['requiredBytes'],60*w.GIB)
+        result=self.admit(36*w.GIB)
+        self.assertEqual(result['requiredBytes'],36*w.GIB)
         self.assertFalse(Path(self.c['dataDir']).exists())
 
     def test_missing_space_refuses_without_creating_state(self):
-        with self.assertRaises(w.Refusal): self.admit(60*w.GIB-1)
+        with self.assertRaises(w.Refusal): self.admit(36*w.GIB-1)
         self.assertEqual(list(Path(self.temp.name).iterdir()), [])
 
     def test_sparse_home_still_requires_allocation_headroom(self):
@@ -70,8 +70,32 @@ class Admission(unittest.TestCase):
         home=data/'home.raw'
         with home.open('wb') as f: f.truncate(8*w.GIB)
         home.chmod(0o600)
-        with self.assertRaises(w.Refusal): self.admit(52*w.GIB)
-        self.assertEqual(self.admit(60*w.GIB)['requiredBytes'],60*w.GIB)
+        with self.assertRaises(w.Refusal): self.admit(28*w.GIB)
+        self.assertEqual(self.admit(36*w.GIB)['requiredBytes'],36*w.GIB)
+
+    def test_auto_sized_state_survives_controller_growth_and_restart(self):
+        # Rust's automatic_state_gib(256 GiB, 220 GiB, 20 GiB) yields 147 GiB.
+        # Exercise that capacity with the real admission helper, before and
+        # after creating the sparse disk that subsequent starts must preserve.
+        self.c['stateGiB'] = 147
+        for preserved in (False, True):
+            if preserved:
+                data = Path(self.c['dataDir']); data.mkdir(mode=0o700)
+                home = data / 'home.raw'
+                with home.open('wb') as f: f.truncate(147*w.GIB)
+                home.chmod(0o600)
+            for growth in (0, 2, 24, 40):
+                with self.subTest(preserved=preserved, controller_growth_gib=growth), \
+                     patch.object(w.shutil, 'disk_usage', return_value=SimpleNamespace(
+                         total=256*w.GIB, free=(220-growth)*w.GIB)):
+                    result = w.disk_admission(self.c, self.manifest, owner=os.geteuid())
+                    self.assertEqual(result['requiredBytes'], 175*w.GIB)
+            # Consumable growth headroom is finite: do not overcommit the
+            # worker or spend the last 8 GiB once the budget is exhausted.
+            with patch.object(w.shutil, 'disk_usage', return_value=SimpleNamespace(
+                    total=256*w.GIB, free=175*w.GIB-1)):
+                with self.assertRaises(w.Refusal):
+                    w.disk_admission(self.c, self.manifest, owner=os.geteuid())
 
     def test_wrong_size_or_interrupted_home_is_not_repaired(self):
         data=Path(self.c['dataDir']);data.mkdir(mode=0o700)

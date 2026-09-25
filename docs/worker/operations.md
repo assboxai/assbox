@@ -73,8 +73,10 @@ its worker artifact and packages are reused by the final build.
 `home.raw` is sparse: it grows physically as the guest writes, up to its fixed
 virtual capacity. This is not ongoing automatic resizing, a quota or a space
 reservation. Admission still budgets its unallocated capacity and the full root
-overlay. Other controller writes, retained builds, and the outer hypervisor disk
-can exhaust storage later. Existing state is never resized or reformatted by
+overlay, plus a fixed 8 GiB emergency floor. The larger sizing reserve is usable
+for subsequent controller generations and other growth; admission does not require
+it to remain untouched. Other controller writes, retained builds, and the outer
+hypervisor disk can exhaust storage later. Existing state is never resized or reformatted by
 `auto`; an explicit different size is refused. Hand-written Nix requires a concrete
 `stateGiB`, rather than observing live disk space during evaluation.
 

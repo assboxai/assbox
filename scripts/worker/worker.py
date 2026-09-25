@@ -525,7 +525,9 @@ def disk_admission(c: dict[str, Any], manifest: dict[str, Any], *, owner: int) -
         state_needed = max(0, state_needed - state.st_blocks * 512)
     reclaim = require_regular(root, owner=owner).st_blocks * 512 if root.exists() else 0
     usage = shutil.disk_usage(filesystem)
-    reserve = max(32 * GIB, usage.total // 5)
+    # Sizing leaves max(32 GiB, 20%) for controller growth. It is consumable:
+    # keep only this emergency floor at admission, including on later boots.
+    reserve = 8 * GIB
     needed = manifest["rootVirtualBytes"] + reserve + state_needed
     free = usage.free
     if free + reclaim < needed:
