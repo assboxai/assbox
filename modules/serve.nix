@@ -14,7 +14,7 @@ let
   policy = pkgs.writeText "assbox-serve.json" (
     builtins.toJSON {
       inherit mappings;
-      tailscale = "${pkgs.tailscale}/bin/tailscale";
+      tailscale = if cfg.network.tailscale.enable then "${pkgs.tailscale}/bin/tailscale" else null;
     }
   );
 in
@@ -82,7 +82,7 @@ in
         fi
       '';
     };
-    systemd.services.assbox-serve = {
+    systemd.services.assbox-serve = lib.mkIf cfg.network.tailscale.enable {
       description = "Reconcile explicitly approved private dashboard paths";
       after = [ "tailscaled.service" ];
       serviceConfig = {
@@ -93,7 +93,7 @@ in
         SuccessExitStatus = [ 78 ];
       };
     };
-    systemd.timers.assbox-serve = {
+    systemd.timers.assbox-serve = lib.mkIf cfg.network.tailscale.enable {
       wantedBy = [ "timers.target" ];
       timerConfig = {
         OnBootSec = "30s";

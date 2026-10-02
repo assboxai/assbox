@@ -153,6 +153,12 @@ managed worker. Selecting offline removes its configured uplinks and DNS. Enabli
 egress afterward requires explicit worker network configuration; reconfiguration
 does not guess interfaces or silently replace an incompatible resolver.
 
+Deselecting Tailscale removes its Serve control binary reference and reconciler
+service/timer. Withdraw any Assbox-owned dashboard exposure while Tailscale is
+still enabled before removing it. An unresolved ownership journal makes the
+activation withdrawal fail explicitly; the helper never discards it merely
+because its control backend is absent.
+
 The native kiosk screen reads each selected app's current installed gate as
 verified, pending, unavailable, ineffective or stale. It starts no login or
 observer probe. A changed requested policy cannot reuse a receipt for another

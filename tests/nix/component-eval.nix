@@ -10,6 +10,7 @@
   packageRevision ? "",
   substrate ? false,
   instance ? { },
+  poisonTailscale ? false,
 }:
 let
   lib = import libPath;
@@ -66,6 +67,8 @@ let
       "tailscale"
     ] pkg
     // {
+      tailscale =
+        if poisonTailscale then throw "deselected Tailscale package was forced" else pkg "tailscale";
       callPackage = _: _: pkg "vscode-cli";
       runCommand =
         name: _: _:
@@ -226,6 +229,7 @@ in
     controller = result.config.assbox.controller;
     native = builtins.fromJSON result.config.environment.etc."assbox/native-policy.json".text;
     services = builtins.fromJSON result.config.environment.etc."assbox/service-control.json".text;
+    serve = builtins.fromJSON result.config.environment.etc."assbox/serve.json".source.scriptText;
     state = builtins.fromJSON result.config.environment.etc."assbox/state.json".text;
     nft = result.config.networking.nftables.tables or { };
     computerUse =

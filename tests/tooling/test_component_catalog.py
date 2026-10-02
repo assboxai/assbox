@@ -45,7 +45,7 @@ class ComponentCatalogTests(unittest.TestCase):
 
     def evaluate(self, selected, *, presentation='headless', network=None, autostart=None,
                  accept_unfree=True, unfree_packages=None, package_revision='',
-                 substrate=False, instance=None):
+                 substrate=False, instance=None, poison_tailscale=False):
         if not self.lib:
             self.skipTest('Nix module library unavailable; run in the development shell')
         def nix_json(value):
@@ -58,7 +58,8 @@ class ComponentCatalogTests(unittest.TestCase):
                 '--arg', 'unfreePackages', nix_json(unfree_packages or []),
                 '--argstr', 'packageRevision', package_revision,
                 '--arg', 'substrate', 'true' if substrate else 'false',
-                '--arg', 'instance', nix_json(instance or {})]
+                '--arg', 'instance', nix_json(instance or {}),
+                '--arg', 'poisonTailscale', 'true' if poison_tailscale else 'false']
         result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
@@ -72,6 +73,15 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertEqual(facts['services']['units'],{'happier-daemon':['assbox-happier-daemon.service']})
         self.assertIn('.happier',facts['state']['paths'])
         self.assertEqual(result['services']['user']['services']['assbox-happier-daemon']['serviceConfig']['MemoryMax'],'4096M')
+
+    def test_deselected_tailscale_is_not_retained_by_serve(self):
+        network={'ssh':{'agent':{'enable':True,'keys':['ssh-ed25519 fixture']},
+                        'exposure':'lan','lanInterfaces':['enp0s5']}}
+        result=self.evaluate({'codex':{'enable':True}},network=network,substrate=True,poison_tailscale=True)
+        self.assertFalse(result['failures'])
+        self.assertIsNone(result['substrate']['serve']['tailscale'])
+        self.assertNotIn('assbox-serve',result['services'].get('timers',{}))
+        self.assertNotIn('assbox-serve',result['services'].get('services',{}))
 
     def test_native_none_is_staged_without_a_worker_or_execution_firewall(self):
         result=self.evaluate({'chatgpt-desktop':{'enable':True,'allowMutableCode':True}},

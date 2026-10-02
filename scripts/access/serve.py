@@ -8,6 +8,8 @@ STATE = Path('/var/lib/assbox-serve')
 class Refusal(Exception): pass
 
 def command(binary, *args):
+    if not isinstance(binary,str) or not binary:
+        raise Refusal('Withdraw owned exposure while Tailscale is enabled before deselecting it')
     result = subprocess.run([binary, *args], stdin=subprocess.DEVNULL, capture_output=True, timeout=15)
     if result.returncode or len(result.stdout) > 1024*1024:
         raise Refusal('Tailscale control is unavailable; owned exposure was not changed')
