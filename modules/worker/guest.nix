@@ -18,6 +18,10 @@ in
 {
   imports = [
     ../options.nix
+    ../computer-use.nix
+    ../resources.nix
+    ../state.nix
+    ../service-control.nix
     ../components.nix
     ../applications.nix
     ../remotes.nix
@@ -37,20 +41,18 @@ in
       enable = true;
       presentation = "headless";
       acceptUnfree = workerSettings.acceptUnfree;
-      components =
-        lib.genAttrs workerSettings.components (name: {
-          enable = true;
-          allowMutableCode = builtins.elem name workerSettings.allowMutableCodeFor;
-        })
-        // lib.optionalAttrs (builtins.elem "happy-remote" workerSettings.components) {
-          happy-remote = {
-            enable = true;
-            allowMutableCode = builtins.elem "happy-remote" workerSettings.allowMutableCodeFor;
-            backends = workerSettings.happyBackends;
-          };
-        };
+      components = lib.genAttrs workerSettings.components (name: {
+        enable = true;
+        allowMutableCode = builtins.elem name workerSettings.allowMutableCodeFor;
+      });
       updates.enable = false;
       session.autostart = [ ];
+      computerUse.mode = workerSettings.computerUseMode;
+      state.directory = lib.mkDefault "/home/.assbox-state-backups";
+      controller = {
+        active = false;
+        profile = "none";
+      };
     };
     assertions = [
       {

@@ -9,6 +9,8 @@
     allowMutableCode = true;
   };
   assbox.components.chatgpt-remote.enable = true;
+  assbox.kiosk.localExecution = "managed-worker";
+  # Desktop stays inactive until an exact native-policy contract is qualified.
   assbox.session.autostart = [ "chatgpt-desktop" ];
   # Override an installed host selection deliberately. Credentials are not moved.
   assbox.components.codex.enable = lib.mkForce false;

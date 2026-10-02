@@ -126,11 +126,11 @@ class PlacementContracts(unittest.TestCase):
             for key in ('controllerAllowed','workerAllowed','requiresWorker'):
                 self.assertIs(type(row[key]),bool)
         by_id={r['id']:r for r in rows}
-        for id in ('codex','claude-code','grok','antigravity-cli','cursor-agent','opencode','gemini-cli'):
+        for id in ('codex','claude-code','grok','antigravity-cli','cursor-agent','opencode','pi','omp'):
             self.assertTrue(by_id[id]['workerAllowed']);self.assertFalse(by_id[id]['controllerAllowed'])
-        self.assertTrue(by_id['chatgpt-desktop']['requiresWorker'])
-        self.assertTrue(by_id['claude-desktop']['requiresWorker'])
-        self.assertFalse(by_id['claude-desktop']['controllerAllowed'])
+        self.assertFalse(by_id['chatgpt-desktop']['requiresWorker'])
+        self.assertFalse(by_id['claude-desktop']['requiresWorker'])
+        self.assertTrue(by_id['claude-desktop']['controllerAllowed'])
 
     def test_rust_capabilities_match_catalog(self):
         source=(ROOT/'crates/functional-core/assbox-domain/src/component_ids.rs').read_text()

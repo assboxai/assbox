@@ -149,5 +149,5 @@ class CanonicalKeyValidation(unittest.TestCase):
         public = w.key_public(self.key, 'ssh-keygen', owner=os.geteuid())
         self.assertTrue(public.startswith('ssh-ed25519 '))
         self.key.write_text('corrupt key')
-        with self.assertRaises(w.subprocess.CalledProcessError):
+        with self.assertRaises(w.Refusal):
             w.key_public(self.key, 'ssh-keygen', owner=os.geteuid())

@@ -8,6 +8,8 @@ are called by root-owned systemd units, not exposed through sudo or polkit grant
 from __future__ import annotations
 
 import argparse
+import base64
+import struct
 import fcntl
 import hashlib
 import ipaddress
@@ -347,16 +349,64 @@ def atomic_write(path: Path, data: bytes, mode: int = 0o600, *, group: int | Non
         tmp.unlink(missing_ok=True)
 
 
+def canonical_ed25519_public(public: str) -> str:
+    words = public.split()
+    if len(words) < 2 or words[0] != 'ssh-ed25519' or len(public) > 4096:
+        raise Refusal("Unexpected SSH public key format")
+    try:
+        blob = base64.b64decode(words[1], validate=True)
+    except ValueError as error:
+        raise Refusal("Invalid SSH key encoding") from error
+    if len(blob) != 51 or blob[:19] != b'\x00\x00\x00\x0bssh-ed25519\x00\x00\x00\x20':
+        raise Refusal("SSH key must encode exactly one 32-byte Ed25519 public key")
+    return 'ssh-ed25519 ' + base64.b64encode(blob).decode()
+
+
+def key_identity(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
+            info.st_nlink, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
 def key_public(path: Path, keygen: str, *, owner: int) -> str:
     info = require_regular(path, owner=owner)
-    if stat.S_IMODE(info.st_mode) != 0o600:
-        raise Refusal("SSH private key must have mode 0600")
-    public = run([keygen, "-y", "-f", str(path)], capture=True).strip()
-    if not re.fullmatch(r"ssh-ed25519 [A-Za-z0-9+/=]+(?: [^\r\n]*)?", public):
-        raise Refusal("Unexpected SSH public key format")
-    # OpenSSH may retain the private key comment in -y output. Only the
-    # algorithm and blob belong in derived authorized_keys/known_hosts.
-    return " ".join(public.split(" ", 2)[:2])
+    if stat.S_IMODE(info.st_mode) != 0o600 or info.st_gid != pwd.getpwuid(owner).pw_gid or not 1 <= info.st_size <= 16384:
+        raise Refusal("SSH private key must be a bounded single-owner 0600 file with its owner's primary group")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    with os.fdopen(fd, 'rb') as stream:
+        if key_identity(os.fstat(stream.fileno())) != key_identity(info):
+            raise Refusal("SSH private key changed while opening it")
+        data = stream.read(16385)
+    lines = data.splitlines()
+    if len(lines) < 3 or lines[0] != b'-----BEGIN OPENSSH PRIVATE KEY-----' or lines[-1] != b'-----END OPENSSH PRIVATE KEY-----':
+        raise Refusal("Expected OpenSSH private key format")
+    try:
+        raw = base64.b64decode(b''.join(lines[1:-1]), validate=True)
+    except ValueError as error:
+        raise Refusal("Malformed SSH private key encoding") from error
+    if not raw.startswith(b'openssh-key-v1\x00'):
+        raise Refusal("Unsupported SSH private key version")
+    offset = 15
+    def field():
+        nonlocal offset
+        if offset + 4 > len(raw): raise Refusal("Truncated SSH private key")
+        size = struct.unpack('>I', raw[offset:offset+4])[0]; offset += 4
+        if size > 16384 or offset + size > len(raw): raise Refusal("Excessive SSH private key field")
+        value = raw[offset:offset+size]; offset += size
+        return value
+    if field() != b'none' or field() != b'none' or field() != b'':
+        raise Refusal("Worker identity must be unencrypted and noninteractive")
+    if raw[offset:offset+4] != b'\x00\x00\x00\x01': raise Refusal("Worker identity must contain exactly one key")
+    offset += 4
+    expected = canonical_ed25519_public('ssh-ed25519 ' + base64.b64encode(field()).decode())
+    # Parse a private copy, never reopen a mutable execution-owned pathname in
+    # the privileged parser. No retained key is repaired or regenerated.
+    with tempfile.TemporaryDirectory(prefix='assbox-key-') as directory:
+        copy = Path(directory) / 'identity'
+        copy.write_bytes(data); copy.chmod(0o600)
+        parsed = bounded_capture([keygen, '-y', '-P', '', '-f', str(copy)], timeout=5, limit=4096).strip()
+    if canonical_ed25519_public(parsed) != expected or key_identity(require_regular(path, owner=owner)) != key_identity(info):
+        raise Refusal("SSH private identity does not match its encoded public key or changed during validation")
+    return expected
 
 
 def ensure_key(path: Path, keygen: str, *, owner: int = 0, group: int | None = None) -> str:

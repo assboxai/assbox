@@ -9,6 +9,8 @@
     allowMutableCode = true;
   };
   assbox.components.chatgpt-remote.enable = true;
+  assbox.kiosk.localExecution = "managed-worker";
+  # Desktop stays inactive until an exact native-policy contract is qualified.
   assbox.session.autostart = [ "chatgpt-desktop" ];
   # Clear these entries only when migrating a managed host selection.
   assbox.components.codex.enable = lib.mkForce false;
@@ -17,7 +19,8 @@
   assbox.components.antigravity-cli.enable = lib.mkForce false;
   assbox.components.cursor-agent.enable = lib.mkForce false;
   assbox.components.opencode.enable = lib.mkForce false;
-  assbox.components.gemini-cli.enable = lib.mkForce false;
+  assbox.components.pi.enable = lib.mkForce false;
+  assbox.components.omp.enable = lib.mkForce false;
   assbox.worker = {
     enable = true;
     components = [
@@ -27,7 +30,8 @@
       "antigravity-cli"
       "cursor-agent"
       "opencode"
-      "gemini-cli"
+      "pi"
+      "omp"
     ];
     memoryMiB = 6144;
     vcpus = 2;

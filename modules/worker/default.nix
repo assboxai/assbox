@@ -22,7 +22,6 @@ let
     inherit (cfg)
       components
       allowMutableCodeFor
-      happyBackends
       allowGuestSudo
       hostAddress
       guestAddress
@@ -30,6 +29,7 @@ let
       ;
     inherit (config.assbox) acceptUnfree;
     timeZone = config.time.timeZone;
+    computerUseMode = cfg.computerUseMode;
   };
   guest = import (pkgs.path + "/nixos/lib/eval-config.nix") {
     system = pkgs.stdenv.hostPlatform.system;
@@ -186,15 +186,13 @@ in
       default = [ ];
       description = "Per-component acknowledgement of worker client/provider-managed downloads.";
     };
-    happyBackends = lib.mkOption {
-      type = lib.types.listOf (
-        lib.types.enum [
-          "codex"
-          "claude-code"
-        ]
-      );
-      default = [ ];
-      description = "Explicit Happy Remote backends; each must be a selected worker component.";
+    computerUseMode = lib.mkOption {
+      type = lib.types.enum [
+        "none"
+        "browser"
+        "virtual-desktop"
+      ];
+      default = "none";
     };
     allowGuestSudo = lib.mkEnableOption "passwordless sudo inside the worker VM only";
     maxArtifactMiB = lib.mkOption {
@@ -284,16 +282,6 @@ in
       {
         assertion = builtins.all (name: builtins.elem name cfg.components) cfg.allowMutableCodeFor;
         message = "Mutable-code consent must refer to a selected worker component.";
-      }
-      {
-        assertion =
-          if builtins.elem "happy-remote" cfg.components then
-            cfg.happyBackends != [ ]
-            && builtins.all (name: builtins.elem name cfg.components) cfg.happyBackends
-            && builtins.length cfg.happyBackends == builtins.length (lib.unique cfg.happyBackends)
-          else
-            cfg.happyBackends == [ ];
-        message = "Happy worker backends must explicitly name selected Codex/Claude components, and require Happy Remote.";
       }
       {
         assertion = !publicEgress || cfg.uplinkInterfaces != [ ];
