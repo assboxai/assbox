@@ -116,7 +116,97 @@
     "remote": "https://github.com/buu700/assbox-dev.git",
     "branch": "master",
     "status": "pushed",
-    "verifiedThroughCommit": "b50b42878fbdbb741177ba9ce8cddead8b86ab13",
-    "verifiedAt": "2026-10-02T08:16:39.767264+00:00"
-  }
+    "verifiedThroughCommit": "f5e90cd4e37d416f0e8b94713ed648b7ae238c3c",
+    "verifiedAt": "2026-10-02T13:37:39.162537+00:00"
+  },
+  "followups": [
+    {
+      "recordedAt": "2026-10-02T13:37:39.162537+00:00",
+      "testedCommit": "f5e90cd4e37d416f0e8b94713ed648b7ae238c3c",
+      "scope": "Continued source scope audit, with cached deterministic checks only.",
+      "changes": [
+        {
+          "commit": "59bb99a",
+          "work": [
+            "W16",
+            "W19"
+          ],
+          "result": "Desktop closure opt-in; bounded manual user scopes, native GUI memory limits, foreground private bus and cleanup."
+        },
+        {
+          "commit": "d47a9b6",
+          "work": [
+            "W06"
+          ],
+          "result": "Bounded settings diff preview; unchanged context omitted and sensitive changes redacted."
+        },
+        {
+          "commit": "b7ec572",
+          "work": [
+            "W06",
+            "W07"
+          ],
+          "result": "Purpose-flow egress reaches the managed worker and is checked against effective configuration."
+        },
+        {
+          "commit": "563ed8c",
+          "work": [
+            "W20"
+          ],
+          "result": "Preset/catalog tables and dated Linux evidence generated from reviewed data with drift checks."
+        },
+        {
+          "commit": "f5e90cd",
+          "work": [
+            "W06",
+            "W14"
+          ],
+          "result": "Read-only per-app native policy states, route/authority summaries and nested Back choices."
+        }
+      ],
+      "checks": [
+        {
+          "name": "Deterministic Rust core",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-domain -p assbox-policy -p assbox-config --all-targets --offline -j 1",
+          "status": "passed"
+        },
+        {
+          "name": "Workspace Clippy",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+          "status": "passed"
+        },
+        {
+          "name": "Inert component/substrate fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+          "status": "passed",
+          "passed": 21
+        },
+        {
+          "name": "Display lease protocol fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_computer_use.py",
+          "status": "passed",
+          "passed": 4
+        },
+        {
+          "name": "Native policy fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_native_policy.py",
+          "status": "passed",
+          "passed": 7
+        },
+        {
+          "name": "Documentation navigation and generated artifacts",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+          "status": "passed",
+          "passed": 2
+        },
+        {
+          "name": "Focused static checks",
+          "status": "passed",
+          "scope": "Rust formatting, changed Nix formatting, ShellCheck scripts/verify, architecture graph, preset and product-documentation drift, git diff --check."
+        }
+      ],
+      "notRun": "All previously listed runtime, build, account, hardware and release qualification remains deferred.",
+      "remainingAudit": "Requirement-level source audit continues, including purpose-flow terminal transcripts, provider-private browser integration and external SSH qualification fixture coverage."
+    }
+  ]
 }
