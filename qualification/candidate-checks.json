@@ -115,7 +115,8 @@
   "publication": {
     "remote": "https://github.com/buu700/assbox-dev.git",
     "branch": "master",
-    "status": "blocked_by_authentication",
-    "observed": "HTTPS push rejected with 403; connected GitHub app repository read unavailable; SSH has no accepted key."
+    "status": "pushed",
+    "verifiedThroughCommit": "b50b42878fbdbb741177ba9ce8cddead8b86ab13",
+    "verifiedAt": "2026-10-02T08:16:39.767264+00:00"
   }
 }
