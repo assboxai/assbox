@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class RemoteOnboardingTests(RemoteScriptFixture, unittest.TestCase):
     def test_each_adapter_requires_explicit_permission_after_interactive_setup(self):
-        for id in ['claude-code-remote', 'cursor-worker', 'openclaw-node', 'happy-remote', 'vscode-tunnel']:
+        for id in ['claude-code-remote', 'cursor-worker', 'openclaw-node', 'happier-daemon', 'vscode-tunnel']:
             with self.subTest(id=id):
                 script = self.script(id, 'onboarding')
                 result = subprocess.run(['bash', str(script)], input='no\n', text=True,
@@ -38,7 +38,7 @@ class RemoteLifecycleContracts(unittest.TestCase):
         catalog_tests.ComponentCatalogTests.setUpClass()
         cls.evaluator = catalog_tests.ComponentCatalogTests()
 
-    def test_permission_changes_with_settings_but_survives_package_updates(self):
+    def test_permission_changes_with_settings_and_runtime_contract(self):
         selection = {'claude-code': {'enable': True}, 'claude-code-remote': {'enable': True}}
         first = self.evaluator.evaluate(selection)
         updated = self.evaluator.evaluate(selection, package_revision='updated')
@@ -46,7 +46,7 @@ class RemoteLifecycleContracts(unittest.TestCase):
         first_unit = first['services']['user']['services'][name]
         updated_unit = updated['services']['user']['services'][name]
         self.assertNotEqual(first_unit['serviceConfig']['ExecStart'], updated_unit['serviceConfig']['ExecStart'])
-        self.assertEqual(first_unit['unitConfig']['ConditionPathExists'], updated_unit['unitConfig']['ConditionPathExists'])
+        self.assertNotEqual(first_unit['unitConfig']['ConditionPathExists'], updated_unit['unitConfig']['ConditionPathExists'])
         selection['claude-code-remote']['workingDirectory'] = '/home/agent/another-project'
         changed = self.evaluator.evaluate(selection)['services']['user']['services'][name]
         self.assertNotEqual(first_unit['unitConfig']['ConditionPathExists'], changed['unitConfig']['ConditionPathExists'])
@@ -58,16 +58,16 @@ class RemoteLifecycleContracts(unittest.TestCase):
 
     def test_gui_close_and_remote_exit_have_distinct_restart_contracts(self):
         selection = {id: {'enable': True, 'allowMutableCode': True} for id in
-                     ['claude-desktop', 'vscode', 'zed', 'emacs', 'cursor-agent', 'cursor-worker']}
+                     ['vscode', 'zed', 'emacs', 'cursor-agent', 'cursor-worker']}
         selection['emacs']['variant'] = 'gui'
-        selection['cursor-worker']['computerUse'] = {'enable': True}
-        result = self.evaluator.evaluate(selection, presentation='x11', autostart=['claude-desktop', 'vscode', 'zed', 'emacs'])
-        for id in ['claude-desktop', 'vscode', 'zed', 'emacs', 'cursor-worker']:
+        selection['cursor-worker']['computerUse'] = {'enable': False}
+        result = self.evaluator.evaluate(selection, presentation='x11', autostart=['vscode', 'zed', 'emacs'])
+        for id in ['vscode', 'zed', 'emacs', 'cursor-worker']:
             with self.subTest(id=id):
                 unit = result['services']['user']['services']['assbox-' + id]
-                self.assertEqual(unit['partOf'], ['graphical-session.target'])
+                self.assertEqual(unit['partOf'], [] if id=='cursor-worker' else ['graphical-session.target'])
                 self.assertEqual(unit['unitConfig']['StartLimitIntervalSec'], 0)
-                self.assertEqual(unit['serviceConfig']['Restart'], 'always' if id == 'cursor-worker' else 'on-failure')
+                self.assertEqual(unit['serviceConfig']['Restart'], 'on-failure')
                 self.assertEqual(unit['serviceConfig']['RestartSec'], 20)
                 self.assertEqual(unit['serviceConfig']['RestartMaxDelaySec'], 300)
                 self.assertEqual(unit['serviceConfig']['KillMode'], 'control-group')

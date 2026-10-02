@@ -40,9 +40,35 @@ let
       assboxApplications.${row.family}.${row.package};
   packageFor =
     row:
-    if row.id == "chatgpt-desktop" then
-      assboxApplications.chatgpt.chatgpt.override {
-        commandLineArgs = "--ozone-platform=x11 --password-store=basic --force-device-scale-factor=${toString cfg.display.scale}";
+    if
+      enabled row.id
+      && builtins.elem row.id [
+        "chatgpt-desktop"
+        "claude-desktop"
+      ]
+    then
+      import ../nix/native-client.nix {
+        inherit pkgs;
+        raw = rawPackage row;
+        id = row.id;
+        command = row.command;
+        runtime = cfg.nativePolicy.runtime;
+      }
+    else if
+      enabled row.id
+      && builtins.elem row.id [
+        "happier"
+        "hermes"
+        "pi"
+        "omp"
+        "openclaw"
+        "antigravity-cli"
+      ]
+    then
+      import ../nix/managed-cli.nix {
+        inherit pkgs;
+        raw = rawPackage row;
+        command = row.command;
       }
     else if row.id == "grok" then
       pkgs.runCommand "assbox-grok-command" { } ''
@@ -158,7 +184,7 @@ in
       ];
     # ChatGPT's X11 wrapper is provided by applications.nix.
     environment.systemPackages =
-      map packageFor (builtins.filter (row: row.package != "" && row.id != "chatgpt-desktop") selected)
+      map packageFor (builtins.filter (row: row.package != "") selected)
       ++ lib.optionals needsBrowser [
         pkgs.chromium
         pkgs.xdg-utils

@@ -11,7 +11,7 @@ import time
 
 names = {
     'claude': 'claude-code-remote', 'cursor-agent': 'cursor-worker',
-    'openclaw': 'openclaw-node', 'happy': 'happy-remote',
+    'openclaw': 'openclaw-node', 'happier': 'happier-daemon',
     'opencode': 'opencode', 'st': 'opencode-ui', 'chromium': 'openclaw-ui',
     'assbox-vscode': 'vscode-tunnel', 'claude-desktop': 'claude-desktop',
     'assbox-vscode-gui': 'vscode', 'zed-editor': 'zed', 'emacs': 'emacs',

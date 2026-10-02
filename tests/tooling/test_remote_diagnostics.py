@@ -22,10 +22,9 @@ class RemoteScriptFixture:
         evaluator = catalog_tests.ComponentCatalogTests()
         selection = {id: {'enable': True, 'allowMutableCode': True} for id in
                      ['claude-code', 'claude-code-remote', 'cursor-agent', 'cursor-worker',
-                      'openclaw', 'openclaw-node', 'happy', 'happy-remote', 'codex',
+                      'openclaw', 'openclaw-node', 'happier', 'happier-daemon', 'codex',
                       'vscode-cli', 'vscode-tunnel']}
-        selection['happy-remote']['backends'] = ['codex']
-        selection['cursor-worker']['computerUse'] = {'enable': True}
+        selection['cursor-worker']['computerUse'] = {'enable': False}
         cls.scripts = evaluator.evaluate(selection, presentation='x11')['scripts']
 
     def setUp(self):
@@ -74,7 +73,7 @@ else:
     else: sys.exit(88)
 ''')
         stub.chmod(0o755)
-        for name in ['id', 'systemctl', 'systemd-run', 'claude', 'cursor-agent', 'openclaw', 'happy', 'assbox-vscode']:
+        for name in ['id', 'systemctl', 'systemd-run', 'claude', 'cursor-agent', 'openclaw', 'happier', 'assbox-vscode']:
             (self.bin / name).symlink_to(stub)
         self.env = os.environ | {'CALLS': str(self.calls), 'STATE': str(self.state),
                                  'XDG_RUNTIME_DIR': str(self.runtime)}
@@ -85,7 +84,7 @@ else:
         text = text.replace('export PATH=/run/current-system/sw/bin:/run/wrappers/bin',
                             'export PATH=' + shlex.quote(os.environ['PATH']))
         for package, command in [('claude-code', 'claude'), ('cursor-agent', 'cursor-agent'),
-                                 ('openclaw', 'openclaw'), ('happy-coder', 'happy'), ('vscode-cli', 'assbox-vscode')]:
+                                 ('openclaw', 'openclaw'), ('happier', 'happier'), ('vscode-cli', 'assbox-vscode')]:
             text = text.replace(f'/nix/store/test-{package}/bin/{command}', str(self.bin / command))
         for name in ['id', 'systemctl', 'systemd-run']:
             package = 'coreutils' if name == 'id' else 'systemd'
@@ -108,7 +107,7 @@ else:
 
 class RemoteDiagnosticsTests(RemoteScriptFixture, unittest.TestCase):
     def test_each_adapter_captures_privately_and_restores_after_failure(self):
-        for id in ['claude-code-remote', 'cursor-worker', 'openclaw-node', 'happy-remote', 'vscode-tunnel']:
+        for id in ['claude-code-remote', 'cursor-worker', 'openclaw-node', 'happier-daemon', 'vscode-tunnel']:
             with self.subTest(id=id):
                 result = self.run_capture(id)
                 self.assertEqual(result.returncode, 0, result.stderr)
@@ -131,10 +130,10 @@ class RemoteDiagnosticsTests(RemoteScriptFixture, unittest.TestCase):
         self.assertEqual(log.stat().st_size, 1048576)
         self.assertFalse(any(call[0] == 'systemctl' and 'start' in call for call in self.recorded()))
 
-    def test_graphical_teardown_prevents_service_restoration(self):
+    def test_physical_session_teardown_does_not_stop_a_headless_provider(self):
         result = self.run_capture('cursor-worker', 'session-ended')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(any(call[0] == 'systemctl' and 'start' in call for call in self.recorded()))
+        self.assertTrue(any(call[0] == 'systemctl' and 'start' in call for call in self.recorded()))
 
     def test_existing_operation_lock_prevents_any_service_changes(self):
         with (self.runtime / 'assbox-claude-code-remote.lock').open('w') as lock:

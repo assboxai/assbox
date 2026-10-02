@@ -42,31 +42,36 @@ let
       "${x11Terminal}/bin/st -c AssboxOpenCode -f monospace:pixelsize=${
         toString (12 * cfg.display.scale)
       } -e";
-  chatgpt = apps.chatgpt.override {
-    commandLineArgs = "--ozone-platform=x11 --password-store=basic --force-device-scale-factor=${toString cfg.display.scale}";
-  };
+
 in
 {
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
+      {
+        systemd.user.services =
+          lib.genAttrs
+            (builtins.filter (id: enabled id) [
+              "chatgpt-desktop"
+              "claude-desktop"
+            ])
+            (id: {
+              description = "Assbox qualified native ${id}";
+              wantedBy = lib.optional (launch id) "graphical-session.target";
+              partOf = [ "graphical-session.target" ];
+              after = [ "graphical-session.target" ];
+              unitConfig = {
+                ConditionUser = "agent";
+                ConditionPathExists = "!%h/.config/assbox/disabled/${id}";
+              };
+              serviceConfig = common // {
+                Restart = "no";
+                ExecStart = "${cfg.nativePolicy.runtime}/bin/assbox-native-policy launch ${id}";
+              };
+            });
+      }
+
       (lib.mkIf (launch "openclaw-dashboard") {
         environment.systemPackages = [ pkgs.chromium ];
-      })
-      (lib.mkIf (enabled "chatgpt-desktop") {
-        environment.systemPackages = [
-          chatgpt
-        ];
-        systemd.user.services.assbox-chatgpt = lib.mkIf (launch "chatgpt-desktop") {
-          description = "ChatGPT Linux graphical application";
-          wantedBy = [ "graphical-session.target" ];
-          partOf = [ "graphical-session.target" ];
-          after = [ "graphical-session.target" ];
-          unitConfig.ConditionUser = "agent";
-          serviceConfig = common // {
-            ExecStart = "${chatgpt}/bin/chatgpt";
-            ExitType = "main";
-          };
-        };
       })
       (lib.mkIf (enabled "opencode-server") {
         environment.systemPackages = [
@@ -85,7 +90,10 @@ in
           wants = [ "assbox-opencode.service" ];
           unitConfig = {
             ConditionUser = "agent";
-            ConditionPathExists = "%h/.config/assbox/opencode.env";
+            ConditionPathExists = [
+              "%h/.config/assbox/opencode.env"
+              "!%h/.config/assbox/disabled/opencode-server"
+            ];
           };
           serviceConfig = common // {
             ExitType = "main";
@@ -98,7 +106,10 @@ in
           wantedBy = [ "default.target" ];
           unitConfig = {
             ConditionUser = "agent";
-            ConditionPathExists = "%h/.config/assbox/opencode.env";
+            ConditionPathExists = [
+              "%h/.config/assbox/opencode.env"
+              "!%h/.config/assbox/disabled/opencode-server"
+            ];
           };
           serviceConfig = common // {
             ExecStart = "${assboxPackage}/bin/assbox internal opencode serve";
@@ -121,7 +132,10 @@ in
           wants = [ "assbox-openclaw.service" ];
           unitConfig = {
             ConditionUser = "agent";
-            ConditionPathExists = "%h/.openclaw/openclaw.json";
+            ConditionPathExists = [
+              "%h/.openclaw/openclaw.json"
+              "!%h/.config/assbox/disabled/openclaw-gateway"
+            ];
           };
           serviceConfig = common // {
             ExitType = "main";
@@ -137,7 +151,10 @@ in
           wantedBy = [ "default.target" ];
           unitConfig = {
             ConditionUser = "agent";
-            ConditionPathExists = "%h/.openclaw/openclaw.json";
+            ConditionPathExists = [
+              "%h/.openclaw/openclaw.json"
+              "!%h/.config/assbox/disabled/openclaw-gateway"
+            ];
           };
           serviceConfig = common // {
             # OpenClaw exits successfully when handing a requested restart to

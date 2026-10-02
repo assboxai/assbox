@@ -10,14 +10,19 @@ let
   cfg = config.assbox;
   enabled = id: cfg.components.${id}.enable;
   ids = [
+    "codex-relay"
     "claude-code-remote"
     "cursor-worker"
     "openclaw-node"
-    "happy-remote"
+    "happier-daemon"
+    "hermes-gateway"
+    "hermes-dashboard"
+    "antigravity-remote"
     "vscode-tunnel"
   ];
   cli = pkgs.callPackage ../nix/vscode-cli.nix { };
   command = {
+    codex-relay = cfg.components.codex-relay.foregroundCommand;
     claude-code-remote = [
       "${assboxApplications.claude-code.claude-code}/bin/claude"
       "remote-control"
@@ -32,8 +37,6 @@ let
     ]
     ++ lib.optionals cfg.components.cursor-worker.computerUse.enable [
       "--computer-use"
-      "--display"
-      cfg.components.cursor-worker.computerUse.display
     ]
     ++ [ "start" ];
     openclaw-node = [
@@ -46,11 +49,27 @@ let
       (toString cfg.components.openclaw-node.gatewayPort)
     ]
     ++ lib.optional cfg.components.openclaw-node.tls "--tls";
-    happy-remote = [
-      "${assboxApplications.happy.happy-coder}/bin/happy"
+    happier-daemon = [
+      "${assboxApplications.happier.happier}/bin/happier"
       "daemon"
       "start-sync"
+      "--takeover"
     ];
+    hermes-gateway = [
+      "${assboxApplications.hermes.hermes-agent}/bin/hermes"
+      "gateway"
+    ];
+    hermes-dashboard = [
+      "${assboxApplications.hermes.hermes-agent}/bin/hermes"
+      "dashboard"
+      "--host"
+      "127.0.0.1"
+      "--port"
+      (toString cfg.components.hermes-dashboard.port)
+      "--no-open"
+      "--isolated"
+    ];
+    antigravity-remote = cfg.components.antigravity-remote.foregroundCommand;
     vscode-tunnel = [
       "${cli}/bin/assbox-vscode"
       "tunnel"
@@ -60,6 +79,10 @@ let
     ];
   };
   setupCommands = {
+    codex-relay = ''
+      test ${lib.escapeShellArg (builtins.toJSON command.codex-relay)} != "[]" || { echo "Direct Codex relay is experimental; configure and qualify its pinned foreground contract first." >&2; exit 78; }
+      ${assboxApplications.codex.codex}/bin/codex login --device-auth
+    '';
     claude-code-remote = ''
       echo 'Sign in with /login and accept trust for this project; exit Claude when finished.'
       ${assboxApplications.claude-code.claude-code}/bin/claude
@@ -74,22 +97,128 @@ let
       echo 'Start the node interactively to approve its device on the Gateway; stop with Ctrl-C when finished.'
       ${lib.escapeShellArgs command.openclaw-node} || test "$?" -eq 130
     '';
-    happy-remote = ''
-      echo 'Happy includes the Claude SDK and a companion terminal process; configure only your selected backends in the client.'
-      echo 'Stop any manually started Happy daemon before transferring supervision to Assbox.'
-      ${assboxApplications.happy.happy-coder}/bin/happy auth login
+    happier-daemon = ''
+      ${assboxApplications.happier.happier}/bin/happier auth login --no-open --method web
+      ${assboxApplications.happier.happier}/bin/happier daemon stop
+      echo "Happier pairing complete; provider authentication remains independent."
+    '';
+    hermes-gateway = "${assboxApplications.hermes.hermes-agent}/bin/hermes setup";
+    hermes-dashboard = ''
+      ${assboxApplications.hermes.hermes-agent}/bin/hermes setup
+      echo "Configure native dashboard password/OIDC before using recommended private HTTPS."
+      ${assboxApplications.hermes.hermes-agent}/bin/hermes dashboard register
+    '';
+    antigravity-remote = ''
+      test ${lib.escapeShellArg (builtins.toJSON command.antigravity-remote)} != "[]" || { echo "Configure a reviewed pinned foreground runtime; do not run the upstream service installer." >&2; exit 78; }
+      ${assboxApplications.antigravity.antigravity-cli}/bin/agy
     '';
     vscode-tunnel = ''
       echo 'The tunnel runs Microsoft client-managed server code. Starting it accepts the VS Code server license.'
       ${cli}/bin/assbox-vscode tunnel user login
     '';
   };
-  graphical = id: id == "cursor-worker" && cfg.components.cursor-worker.computerUse.enable;
+  graphical = _: false;
+  environmentFor =
+    id:
+    (lib.optionalAttrs (id == "happier-daemon") {
+      HAPPIER_HOME_DIR = cfg.components.happier-daemon.home;
+      HAPPIER_SERVER_URL = cfg.components.happier-daemon.serverUrl;
+      HAPPIER_WEBAPP_URL = cfg.components.happier-daemon.webappUrl;
+      HAPPIER_ENCRYPTION_REQUIREMENT = "require_e2ee";
+      HAPPIER_DAEMON_STARTUP_SOURCE = "background-service";
+      HAPPIER_DAEMON_SERVICE_LABEL = "assbox-happier-daemon.service";
+      HAPPIER_DAEMON_SERVICE_TARGET_MODE = "default-following";
+      HAPPIER_NO_BROWSER_OPEN = "1";
+    })
+    // (lib.optionalAttrs (id == "happier-daemon") (
+      lib.listToAttrs (
+        lib.concatMap
+          (
+            entry:
+            lib.optional (enabled entry.id) (
+              lib.nameValuePair entry.env "${
+                assboxApplications.${entry.family}.${entry.package}
+              }/bin/${entry.command}"
+            )
+          )
+          [
+            {
+              id = "codex";
+              env = "HAPPIER_CODEX_PATH";
+              family = "codex";
+              package = "codex";
+              command = "codex";
+            }
+            {
+              id = "claude-code";
+              env = "HAPPIER_CLAUDE_PATH";
+              family = "claude-code";
+              package = "claude-code";
+              command = "claude";
+            }
+            {
+              id = "cursor-agent";
+              env = "HAPPIER_CURSOR_PATH";
+              family = "cursor";
+              package = "cursor-agent";
+              command = "cursor-agent";
+            }
+            {
+              id = "grok";
+              env = "HAPPIER_GROK_PATH";
+              family = "grok";
+              package = "grok";
+              command = "grok";
+            }
+            {
+              id = "opencode";
+              env = "HAPPIER_OPENCODE_PATH";
+              family = "opencode";
+              package = "opencode";
+              command = "opencode";
+            }
+            {
+              id = "antigravity-cli";
+              env = "HAPPIER_ANTIGRAVITY_PATH";
+              family = "antigravity";
+              package = "antigravity-cli";
+              command = "agy";
+            }
+          ]
+      )
+    ))
+    // (lib.optionalAttrs
+      (builtins.elem id [
+        "hermes-gateway"
+        "hermes-dashboard"
+      ])
+      {
+        HERMES_HOME = cfg.components.hermes-gateway.home;
+        HERMES_DISABLE_LAZY_INSTALLS = "1";
+      }
+    )
+    // (lib.optionalAttrs (
+      id == "hermes-dashboard" && cfg.components.hermes-dashboard.accessProfile == "authenticated"
+    ) { HERMES_DASHBOARD_PUBLIC_URL = cfg.components.hermes-dashboard.publicUrl; });
+  available =
+    id:
+    !(builtins.elem id [
+      "antigravity-remote"
+      "codex-relay"
+    ])
+    || command.${id} != [ ];
   marker =
     id:
     ".config/assbox/onboarded/${id}-${
       builtins.substring 0 20 (
-        builtins.hashString "sha256" (builtins.toJSON { settings = cfg.components.${id}; })
+        builtins.hashString "sha256" (
+          builtins.toJSON {
+            settings = cfg.components.${id};
+            argv = command.${id};
+            environment = environmentFor id;
+            computerUse = cfg.computerUse.mode;
+          }
+        )
       )
     }";
   onboard =
@@ -100,9 +229,12 @@ let
       umask 077
       export HOME=/home/agent
       export PATH=/run/current-system/sw/bin:/run/wrappers/bin
+      ${lib.concatMapStringsSep "\n" (
+        key: "export ${key}=${lib.escapeShellArg (environmentFor id).${key}}"
+      ) (builtins.attrNames (environmentFor id))}
       exec 9>"$XDG_RUNTIME_DIR/assbox-${id}.lock"
       ${pkgs.util-linux}/bin/flock -n 9 || { echo 'Onboarding or diagnostics already owns this service.' >&2; exit 1; }
-      ${pkgs.systemd}/bin/systemctl --user stop assbox-${id}.service
+      ${lib.optionalString (available id) "${pkgs.systemd}/bin/systemctl --user stop assbox-${id}.service"}
       mkdir -p ${lib.escapeShellArg cfg.components.${id}.workingDirectory}
       cd ${lib.escapeShellArg cfg.components.${id}.workingDirectory}
       ( exec 9>&-; ${setupCommands.${id}} )
@@ -110,6 +242,7 @@ let
       read -r answer
       test "$answer" = yes
       mkdir -p "$HOME/.config/assbox/onboarded"
+      rm -f "$HOME/.config/assbox/disabled/${id}"
       touch "$HOME/${marker id}"
       ${pkgs.systemd}/bin/systemctl --user reset-failed assbox-${id}.service || true
       ${pkgs.systemd}/bin/systemctl --user restart assbox-${id}.service
@@ -167,11 +300,15 @@ in
       }))
       {
         cursor-worker.computerUse = {
-          enable = lib.mkEnableOption "Cursor access to the existing Assbox X11 display";
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = cfg.computerUse.mode == "virtual-desktop";
+            description = "Cursor access to its private provider-managed desktop.";
+          };
           display = lib.mkOption {
             type = lib.types.strMatching ":[0-9]+(\\.[0-9]+)?";
-            default = ":0";
-            description = "Explicit X11 display; no virtual-desktop fallback.";
+            default = ":90";
+            description = "Private execution display; the physical controller display is forbidden.";
           };
         };
         openclaw-node = {
@@ -192,16 +329,54 @@ in
           };
           sessionHosting.enable = lib.mkEnableOption "execution of Gateway-provisioned OpenClaw worker artifacts";
         };
-        happy-remote.backends = lib.mkOption {
-          type = lib.types.listOf (
-            lib.types.enum [
-              "claude-code"
-              "codex"
-            ]
-          );
-          default = [ ];
-          description = "Explicitly installed backends for Happy; this is dependency disclosure, not a security allowlist.";
+        happier-daemon = {
+          serverUrl = lib.mkOption {
+            type = lib.types.strMatching "https://[a-zA-Z0-9._:/-]+";
+            default = "https://api.happier.dev";
+          };
+          webappUrl = lib.mkOption {
+            type = lib.types.strMatching "https://[a-zA-Z0-9._:/-]+";
+            default = "https://app.happier.dev";
+          };
+          home = lib.mkOption {
+            type = lib.types.strMatching "/home/agent/[a-zA-Z0-9_./-]+";
+            default = "/home/agent/.happier";
+          };
         };
+        hermes-gateway.home = lib.mkOption {
+          type = lib.types.strMatching "/home/agent/[a-zA-Z0-9_./-]+";
+          default = "/home/agent/.hermes";
+        };
+        hermes-dashboard = {
+          port = lib.mkOption {
+            type = lib.types.port;
+            default = 9119;
+          };
+          publicUrl = lib.mkOption {
+            type = lib.types.str;
+            default = "";
+            description = "Exact non-loopback HTTPS URL, required for native dashboard auth behind a proxy.";
+          };
+          accessProfile = lib.mkOption {
+            type = lib.types.enum [
+              "authenticated"
+              "tunnel-only"
+            ];
+            default = "authenticated";
+          };
+          consentTunnelOnly = lib.mkEnableOption "explicit Advanced tunnel-only access without native app auth";
+        };
+        codex-relay.foregroundCommand = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ ];
+          description = "Advanced exact pinned Codex relay foreground argv; empty stages an unavailable experiment.";
+        };
+        antigravity-remote.foregroundCommand = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ ];
+          description = "Reviewed immutable foreground argv from the selected vendor service contract, not agy remote-control start.";
+        };
+
       };
   config = lib.mkIf cfg.enable {
     assertions = [
@@ -209,8 +384,11 @@ in
         assertion =
           !enabled "cursor-worker"
           || !cfg.components.cursor-worker.computerUse.enable
-          || cfg.presentation == "x11";
-        message = "Cursor computer use requires the existing X11 session.";
+          || (
+            cfg.computerUse.mode == "virtual-desktop"
+            && cfg.components.cursor-worker.computerUse.display != ":0"
+          );
+        message = "Cursor computer use requires the explicitly selected private virtual desktop.";
       }
       {
         assertion =
@@ -225,14 +403,30 @@ in
       }
       {
         assertion =
-          !enabled "happy-remote"
+          !enabled "hermes-dashboard"
           || (
-            cfg.components.happy-remote.backends != [ ]
-            && builtins.all enabled cfg.components.happy-remote.backends
+            if cfg.components.hermes-dashboard.accessProfile == "authenticated" then
+              builtins.match "https://[a-zA-Z0-9._-]+(:[0-9]+)?(/.*)?" cfg.components.hermes-dashboard.publicUrl
+              != null
+              && !(lib.hasInfix "localhost" cfg.components.hermes-dashboard.publicUrl)
+            else
+              cfg.components.hermes-dashboard.consentTunnelOnly
           );
-        message = "Happy requires an explicit nonempty installed backend selection.";
+        message = "Hermes recommended dashboard requires a non-loopback HTTPS public URL; tunnel-only requires explicit consent.";
+      }
+      {
+        assertion =
+          !enabled "antigravity-remote"
+          || command.antigravity-remote == [ ]
+          || lib.hasPrefix "/nix/store/" (builtins.head command.antigravity-remote);
+        message = "Antigravity foreground contract must use pinned Nix runtime code.";
       }
     ]
+    ++ map (id: {
+      assertion =
+        !enabled id || command.${id} == [ ] || lib.hasPrefix "/nix/store/" (builtins.head command.${id});
+      message = "${id} requires an immutable pinned foreground executable.";
+    }) [ "codex-relay" ]
     ++ map (id: {
       assertion =
         !enabled id || !(builtins.elem ".." (lib.splitString "/" cfg.components.${id}.workingDirectory));
@@ -270,14 +464,51 @@ in
           after = lib.optional (graphical id) "graphical-session.target";
           unitConfig = {
             ConditionUser = "agent";
-            ConditionPathExists = "%h/${marker id}";
+            ConditionPathExists = [
+              "%h/${marker id}"
+              "!%h/.config/assbox/disabled/${id}"
+            ];
             StartLimitIntervalSec = 0; # Backoff limits retries without permanently stranding the unit.
           };
+          environment = environmentFor id;
           serviceConfig = {
-            ExecStart = lib.escapeShellArgs command.${id};
+            ExecStart = lib.escapeShellArgs (
+              (lib.optionals
+                (
+                  cfg.computerUse.mode == "virtual-desktop"
+                  && builtins.elem id [
+                    "cursor-worker"
+                    "hermes-gateway"
+                  ]
+                )
+                [
+                  "${cfg.computerUse.runtime}/bin/assbox-computer-use"
+                  (if id == "cursor-worker" then "provider" else "display")
+                  "--"
+                ]
+              )
+              ++ command.${id}
+            );
+            UnsetEnvironment = [
+              "DISPLAY"
+              "WAYLAND_DISPLAY"
+              "XAUTHORITY"
+              "DBUS_SESSION_BUS_ADDRESS"
+              "AT_SPI_BUS_ADDRESS"
+              "SSH_AUTH_SOCK"
+            ];
+            MemoryMax = lib.mkIf (
+              cfg.computerUse.mode == "virtual-desktop"
+            ) "${toString cfg.computerUse.memoryMaxMiB}M";
             WorkingDirectory = cfg.components.${id}.workingDirectory;
             Environment = "PATH=/run/current-system/sw/bin:/run/wrappers/bin";
-            Restart = "always"; # A supervised server should also recover from a clean unexpected exit.
+            RestartPreventExitStatus = [
+              64
+              65
+              77
+              78
+            ];
+            Restart = "on-failure"; # Clean intentional exits and permanent refusals stay stopped.
             RestartSec = 20;
             RestartSteps = 5;
             RestartMaxDelaySec = 300;
@@ -290,7 +521,7 @@ in
             StandardError = "null";
           };
         }
-      ) (builtins.filter enabled ids)
+      ) (builtins.filter (id: enabled id && available id) ids)
     );
   };
 }
