@@ -148,6 +148,7 @@ in
     environment.etc."assbox/runtime.json".text = builtins.toJSON {
       inherit (cfg)
         selectedComponents
+        instance
         presentation
         platform
         updates
