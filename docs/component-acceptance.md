@@ -25,26 +25,8 @@ proprietary consent and architectures were checked against its package recipes.
   `node run` is the foreground host, distinct from daemon installation and the private
   worker command. [Session hosting](https://docs.openclaw.ai/nodes/session-hosting)
   is separately enabled and receives executable artifacts from the paired Gateway.
-- [Happy's pinned CLI](https://github.com/slopus/happy/blob/04a9761a5bdb0e2685ad4da712d3654fd7c395f2/packages/happy-cli/src/index.ts)
-  dispatches `daemon start-sync` to the foreground supervisor. The pinned
-  [daemon implementation](https://github.com/slopus/happy/blob/04a9761a5bdb0e2685ad4da712d3654fd7c395f2/packages/happy-cli/src/daemon/run.ts)
-  also starts a Happy Terminal companion. The package bundles Claude Agent SDK;
-  backend selection must not be described as a vendor-code purity guarantee.
-- [VS Code Tunnels](https://code.visualstudio.com/docs/remote/tunnels) supports the
-  standalone CLI. The recipe pins upstream commit `8b640eef5a6c6089c029249d48efa5c99adf7d51`
-  and separately measured SHA-256 hashes for both architecture archives. Its server
-  remains client-managed code. Desktop VS Code/Zed, either SSH editor host and VS Code
-  tunnel enable NixOS's `nix-ld` compatibility loader for downloaded GNU/Linux helpers.
-  This does not install project toolchains or guarantee arbitrary native extensions.
-- [Zed remote development](https://zed.dev/docs/remote-development) provisions a
-  client-compatible server. Assbox does not maintain a second pinned-server mode.
-- Graphical supervision uses the foreground application, preserving its exit status.
-  The pinned [Zed CLI](https://github.com/zed-industries/zed/blob/v1.3.6/crates/cli/src/main.rs)
-  detaches by default; its foreground option does not propagate the child's status.
-  Assbox uses the Nix-wrapped `libexec/zed-editor`. VS Code receives a second entry
-  point to its Electron application through the package's normal GTK/environment
-  wrapping hook; the public `code` CLI retains its ordinary handoff behavior.
-  These package paths are checked by `editor-vm` when pins change.
+- Happier uses the pinned foreground-service contract and `scripts/providers/happier_contract.py` dry-run/path oracle. Real pairing and session qualification remain separate.
+
 
 ## ChatGPT Remote qualification
 
@@ -71,7 +53,7 @@ blocker requires its adapter and regression coverage in the same reviewed change
 - Rust tests: parsing, canonical rendering, explicit dependency expansion,
   proprietary consent, blocked capabilities and presentation constraints.
   The real generated installer settings and edited selections are parsed/evaluated
-  by Nix with consent, both SSH roles and Happy backends present.
+  by Nix with consent, both SSH roles and the frozen instance/worker selections present.
 - `tests/tooling/test_component_catalog.py`: real Nix module merging with inert
   package values; absence of implicit packages/services, onboarding gating, GUI
   lifetime, explicit mutable-code consent and access dependencies. No system build.
@@ -159,9 +141,10 @@ these procedures do not become an unattended daily phone-pairing requirement.
    workers are unavailable. Explicitly enable it and execute a delegated task;
    record artifact provenance, exercise invalid-artifact rejection and pairing
    revocation. Confirm Gateway/node roles coexist without duplicate listeners.
-4. **Happy:** test Codex and Claude backends separately and together, pairing and
-   device removal, terminal/remote handoff, companion provisioning, relay outage,
-   shutdown and reboot. Inspect SDK/helper inventory and private state permissions.
+4. **Happier:** test independently selected coding CLIs, pairing and device
+   removal, terminal/remote handoff, relay outage, shutdown and reboot. Verify the
+   pinned dry-run service contract, one Nix supervisor, managed executable paths
+   and scoped state. Do not use vendor service installation as configuration.
 5. **VS Code SSH/tunnel and Zed SSH:** connect as `agent`; open a project, use a
    terminal, language server, edit/test and reconnect. Test both supported CPU
    architectures with matching clients. Confirm no host desktop editor is required,
@@ -177,7 +160,7 @@ these procedures do not become an unattended daily phone-pairing requirement.
    variant; keep nano available for recovery.
 7. **Access and coexistence:** authenticate the actual Tailscale account from console;
    test LAN denial, overlay-only SSH and tailnet disappearance. Test both SSH roles
-   and wrong-key rejection. Run Gemini/Antigravity and multiple frontends together;
+   and wrong-key rejection. Run Pi/OMP/Antigravity and multiple frontends together;
    check that auth/config files are not overwritten. Exercise distinct worktrees
    where available; do not expect independent agents to coordinate one checkout.
 8. **Disable/update/recovery:** remove a selected service, stage and reboot, verify

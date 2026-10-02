@@ -11,47 +11,16 @@ let
   catalog = builtins.fromJSON (builtins.readFile ../../catalog/components.json);
   members = builtins.filter (row: row.family == family && row.blocked == "") catalog;
   ids = map (r: r.id) members;
-  selected =
-    ids
-    ++ lib.optionals (family == "happy") [
-      "codex"
-      "claude-code"
-    ];
-  graphical = family == "claude-desktop";
+  selected = ids;
+  graphical = builtins.elem family [
+    "chatgpt"
+    "claude-desktop"
+  ];
   mode = if graphical then "x11" else "headless";
   commands = map (r: r.command) (
     builtins.filter (r: r.command != "" && builtins.elem "headless" r.presentations) members
   );
-  rejectedController = import (pkgs.path + "/nixos/lib/eval-config.nix") {
-    system = pkgs.stdenv.hostPlatform.system;
-    modules = [
-      module
-      ./fixture.nix
-      {
-        assbox.presentation = "x11";
-        assbox.acceptUnfree = true;
-        assbox.components.claude-desktop = {
-          enable = true;
-          allowMutableCode = true;
-        };
-        assbox.worker = {
-          stateGiB = 8;
-          enable = true;
-          components = [ "vim" ];
-          egress = "offline";
-          nameservers = [ ];
-        };
-      }
-    ];
-  };
 in
-# This family cannot claim a controller adapter until its transport is qualified.
-# Its gate proves rejection and a minimal boot, not a successful Claude UI run.
-assert
-  !graphical
-  || builtins.any (
-    a: !a.assertion && lib.hasInfix "unqualified controller" a.message
-  ) rejectedController.config.assertions;
 pkgs.testers.runNixOSTest {
   name = "assbox-components-${family}";
   node.pkgsReadOnly = false;
@@ -60,22 +29,15 @@ pkgs.testers.runNixOSTest {
     imports = [ module ];
     assbox = {
       enable = true;
-      presentation = if graphical then "headless" else mode;
+      presentation = mode;
       acceptUnfree = true;
       components =
-        lib.genAttrs (if graphical then [ ] else selected) (_: {
+        lib.genAttrs selected (_: {
           enable = true;
           allowMutableCode = true;
         })
-        // lib.optionalAttrs (family == "happy") {
-          happy-remote = {
-            enable = true;
-            allowMutableCode = true;
-            backends = [
-              "codex"
-              "claude-code"
-            ];
-          };
+        // {
+          hermes-dashboard.publicUrl = "https://assbox-ci.example.ts.net/";
         };
       session.autostart = [ ];
       updates.enable = false;
@@ -95,16 +57,19 @@ pkgs.testers.runNixOSTest {
     start_all()
     machine.wait_for_unit("multi-user.target")
     configured = json.loads(machine.succeed("cat /etc/assbox/runtime.json"))["selectedComponents"]
-    assert sorted(configured) == sorted(${builtins.toJSON (if graphical then [ ] else selected)})
+    assert sorted(configured) == sorted(${builtins.toJSON selected})
     for command in ${builtins.toJSON commands}:
         flag = "--help" if command == "agy" else "--version"
         machine.succeed("su - agent -c " + shlex.quote(command + " " + flag), timeout=120)
     for id in ${builtins.toJSON ids}:
-        if id in ["claude-code-remote", "cursor-worker", "happy-remote"]:
+        if id in ["claude-code-remote", "cursor-worker", "happier-daemon"]:
             machine.succeed("test -x /etc/assbox/onboarding/" + id)
-            machine.fail("pgrep -u agent -f '" + {"claude-code-remote":"remote-control", "cursor-worker":"worker.*start", "happy-remote":"daemon start-sync"}[id] + "'")
+            machine.fail("pgrep -u agent -f '" + {"claude-code-remote":"remote-control", "cursor-worker":"worker.*start", "happier-daemon":"daemon start-sync"}[id] + "'")
     if ${if graphical then "True" else "False"}:
-        machine.fail("su - agent -c 'command -v claude-desktop'")
+        machine.fail("su - agent -c 'assbox-native-policy check " + ("chatgpt-desktop" if "chatgpt-desktop" in configured else "claude-desktop") + "'")
+    ${lib.optionalString (family == "happier") ''
+      machine.succeed("runuser -u agent -- ${pkgs.python3}/bin/python3 ${../../scripts/providers/happier_contract.py} /run/current-system/sw/bin/happier", timeout=60)
+    ''}
     machine.fail("su - agent -c 'sudo -n true'")
   '';
 }

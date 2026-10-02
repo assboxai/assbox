@@ -115,11 +115,8 @@ let
               allowMutableCode = true;
             }))
             {
-              happy-remote.backends = lib.optionals (builtins.elem "happy-remote" selected) [
-                "codex"
-                "claude-code"
-              ];
               openclaw-node.tls = false;
+              hermes-dashboard.publicUrl = "https://assbox-ci.example.ts.net/";
             };
         network =
           lib.optionalAttrs
@@ -140,13 +137,7 @@ let
     lib.listToAttrs (
       map (row: {
         name = "component-${row.id}";
-        value = selectedFixture (
-          [ row.id ]
-          ++ lib.optionals (row.id == "happy-remote") [
-            "codex"
-            "claude-code"
-          ]
-        ) (builtins.head row.presentations);
+        value = selectedFixture ([ row.id ]) (builtins.head row.presentations);
       }) available
     )
     // {
@@ -166,7 +157,8 @@ let
               "antigravity-cli"
               "cursor-agent"
               "opencode"
-              "gemini-cli"
+              "pi"
+              "omp"
             ];
           };
         };
@@ -176,9 +168,28 @@ let
       )) "headless";
       editors-x11 = selectedFixture [ "vscode" "zed" "vim" "emacs" ] "x11";
       editor-hosts = selectedFixture [ "vscode-remote-host" "zed-remote-host" ] "headless";
-      full-x11 = selectedFixture (map (r: r.id) (builtins.filter (r: !r.requiresWorker) available)) "x11";
+      full-x11 = selectedFixture (map (r: r.id) (
+        builtins.filter (
+          r:
+          !r.requiresWorker
+          && !(builtins.elem r.id [
+            "chatgpt-desktop"
+            "claude-desktop"
+            "chatgpt-remote"
+          ])
+        ) available
+      )) "x11";
       full-wayland = selectedFixture (map (r: r.id) (
-        builtins.filter (r: !r.requiresWorker && builtins.elem "wayland" r.presentations) available
+        builtins.filter (
+          r:
+          !r.requiresWorker
+          && !(builtins.elem r.id [
+            "chatgpt-desktop"
+            "claude-desktop"
+            "chatgpt-remote"
+          ])
+          && builtins.elem "wayland" r.presentations
+        ) available
       )) "wayland";
     };
   configurations = lib.mapAttrs' (

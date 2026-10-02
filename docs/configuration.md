@@ -1,6 +1,6 @@
 # Local configuration and packages
 
-> **Controller deployments:** ChatGPT Desktop uses the [managed controller/worker model](worker/controller-model.md). Its coding agents, development tooling and credentials belong in the worker. Generic standalone examples below do not override the mandatory sensitive-controller placement policy. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
+> **Native controller deployments:** Native None requests no local execution and remains inactive until exact policy qualification. Protected local Code uses the [managed worker](worker/controller-model.md); its coding agents, development tooling and credentials belong there. Generic standalone examples below do not override sensitive-controller placement. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
 
 ## Standalone access and tools
 

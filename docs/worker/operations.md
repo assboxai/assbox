@@ -7,7 +7,7 @@ running the SSH server and agents; mobile client = phone/tablet controlling
 Desktop. The normal user manages only the outer Assbox installation. See
 [terminology](terminology.md).
 
-The [controller/worker policy](controller-model.md) is mandatory for ChatGPT Desktop. First installation proposes and confirms the worker in the outer wizard. The procedures below cover explicit administration of the same controller-owned subsystem, not installing a second OS manually. [Scoped Git onboarding](git-workflow.md) is the recommended repository workflow.
+The [controller/worker policy](controller-model.md) applies when protected local Code or an explicit worker is selected. Native None can be staged without a worker but still requires exact native-policy qualification. First installation proposes and confirms protected execution resources in the outer wizard. The procedures below cover explicit administration of the same controller-owned subsystem, not installing a second OS manually. [Scoped Git onboarding](git-workflow.md) is the recommended repository workflow.
 
 
 Read the [security contract](security.md). Use a disposable test appliance first. The NixOS module and actual KVM image have not been runtime-qualified by the artifact's Python test run.
@@ -49,15 +49,10 @@ sudo assbox worker configure codex --network normal --uplink enp3s0 --memory aut
 sudo assbox worker configure codex --network normal --uplink enp3s0 --memory auto --apply
 ```
 
-The first command prints a plan only. `--apply` uses the ordinary Assbox candidate/build/boot transaction. Reboot through the normal procedure before expecting the worker tools. Incompatible curated controller selections must be explicitly removed before configuring the worker; this command does not remove them automatically. Managed additional controller packages must be removed first. Unqualified sensitive desktop adapters are refused. The specified worker IDs are not an implicit copy of the old selection. Existing repositories and credentials are untouched. This does not disable an editor's or Desktop's bundled local tools.
+The first command prints a plan only. `--apply` uses the ordinary Assbox candidate/build/boot transaction. Reboot through the normal procedure before expecting the worker tools. Incompatible curated controller selections must be explicitly removed before configuring the worker; this command does not remove them automatically. Managed additional controller packages must be removed first. Unqualified sensitive desktop applications stay staged and cannot launch through their managed entry points. The specified worker IDs are not an implicit copy of the old selection. Existing repositories and credentials are untouched. This does not disable an editor's or Desktop's bundled local tools.
 
-`--cpus N`, `--memory auto|N` and `--state-gib auto|N` set resources. State defaults
-to automatic sizing for a new worker and preserves an existing disk's capacity.
-`--allow-mutable-code` consents only to selected mutable components;
-`--accept-unfree` grants machine-level package consent. `--allow-guest-sudo` applies
-inside the VM only. Neither consent is implied by `--apply`. Happy Remote also
-requires `--happy-backends codex`, `claude-code`, or both, with those components
-explicitly included in the requested IDs.
+Happier uses `happier,happier-daemon` with independently selected coding CLIs. There is no backend-list option. Consent to client-managed helpers is scoped to the selected components; pairing and provider authentication remain separate.
+
 
 ### Capacity and network policy
 
@@ -104,7 +99,7 @@ update. For a fresh normal network, use `--network normal --uplink NAME` explici
 
 The worker uses q35 on x86_64 and virt on AArch64. KVM and placement restrictions are mandatory; no experimental machine or isolation-bypass switch is exposed.
 
-The CLI writes only its bounded managed block in `assbox-settings.nix` and the standard controller component selection. It refuses ambiguous edits and checks the evaluated candidate for conflicting local placement/resource/consent overrides. Keep handwritten Nix in `local.nix`. A ChatGPT controller cannot disable its mandatory worker while retaining Desktop. To retire the whole controller, first remove sensitive controller selections through the normal configuration transaction, then use `sudo assbox worker disable --apply`. No controller execution fallback is enabled and no worker state is deleted.
+The CLI writes only its bounded managed block in `assbox-settings.nix` and the standard controller component selection. It refuses ambiguous edits and checks the evaluated candidate for conflicting local placement/resource/consent overrides. Keep handwritten Nix in `local.nix`. Protected local Code cannot retain its requested mode while its worker is disabled. First change the native policy to None or remove the sensitive selections through an explicit configuration transaction, then use `sudo assbox worker disable --apply`. Native None remains independently gated. No controller execution fallback is enabled and no worker state is deleted.
 
 ## Configure through `local.nix`
 
@@ -246,7 +241,7 @@ If nftables is deliberately stopped, the dependent worker/TAP services stop as w
 
 ## Automatic boot acceptance recovery
 
-The ordinary `assbox-boot-check.timer` remains a one-shot boot trigger. With mandatory worker policy enabled, `assbox-worker-boot-retry.timer` invokes `assbox internal boot-check --retry` after approximately three minutes and then five minutes after the preceding run ends. It also works when unattended updates are disabled. The engine uses the same nonblocking operation lock, generation agreement, pending-reboot checks and bounded health gate as an explicit boot check. A transient lock collision or unready worker remains unaccepted and is retried; the retry service itself has no dependency that starts the worker.
+The ordinary `assbox-boot-check.timer` remains a one-shot boot trigger. With worker boot acceptance enabled, `assbox-worker-boot-retry.timer` invokes `assbox internal boot-check --retry` after approximately three minutes and then five minutes after the preceding run ends. It also works when unattended updates are disabled. The engine uses the same nonblocking operation lock, generation agreement, pending-reboot checks and bounded health gate as an explicit boot check. A transient lock collision or unready worker remains unaccepted and is retried; the retry service itself has no dependency that starts the worker.
 
 Only after a successful full boot acceptance does the engine write `/var/lib/assbox/boot-acceptance` atomically with mode 0600. It binds success to the exact system generation and kernel boot ID. A retry may avoid repeating health/cleanup only while that record matches, no pending intent exists, and no unresolved transaction or generation disagreement is present. Ordinary health, manual boot checks and cleanup do not use this shortcut. The record is a historical acceptance result, not current service health, worker attestation, or provider authentication.
 
@@ -305,7 +300,7 @@ Sources: [S1] and [S2] in [sources](sources.md).
 
 ## Explicit multi-agent selection
 
-[`multi-agent.nix`](../../examples/worker/multi-agent.nix) selects Codex, Claude Code, Grok, Antigravity CLI, Cursor Agent, OpenCode and Gemini CLI inside the same worker. It is an example for a user who deliberately wants those tools, not the default. Each provider requires its own appropriate login and may have independent billing/limits. Assbox does not automatically authenticate sub-agents or forward the primary agent's credentials.
+[`multi-agent.nix`](../../examples/worker/multi-agent.nix) selects Codex, Claude Code, Grok, Antigravity CLI, Cursor Agent, OpenCode, Pi and OMP inside the same worker. It is an example for a user who deliberately wants those tools, not the default. Each provider requires its own appropriate login and may have independent billing/limits. Assbox does not automatically authenticate sub-agents or forward the primary agent's credentials.
 
 Optional delegation skills and orchestration conveniences are deferred. Selected worker CLIs remain independently usable; they share one compromise domain.
 

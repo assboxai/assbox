@@ -7,7 +7,7 @@ bare-metal boot chain and hardware drivers are outside the guest's scope.
 
 ## Standalone Assbox with macOS ChatGPT
 
-Choose the **standalone** arrangement. Assbox runs the selected coding tools
+Choose **Coder → Codex external Desktop SSH**. Assbox runs the selected coding tools
 inside the Parallels VM; macOS ChatGPT remains the external controller. No
 Assbox-managed inner worker or nested KVM is needed. The same standalone
 installation also works with ordinary SSH terminals and SSH-aware editors.
@@ -16,8 +16,8 @@ installation also works with ordinary SSH terminals and SSH-aware editors.
    Use an expanding virtual disk with enough maximum capacity for tools, projects,
    retained systems and builds. The host file grows with guest writes; virtual
    capacity is not pre-reserved macOS free space. Monitor both host and guest.
-2. In the Assbox wizard choose `generic`, `standalone`, and explicitly selected
-   tools such as `codex`. For a manual graphical session, also select `chromium`
+2. In the Assbox wizard choose the generic platform, Coder and Codex external
+   Desktop SSH. The minimal selection is `codex`; other tools are explicit. For a manual graphical session, also select `chromium`
    and X11/Openbox or Wayland/labwc, optionally autostarting `chromium`. Use the
    additional-package prompt for tools such as `htop`. Headless is equally valid.
 3. Enable workload SSH, supplying the macOS workload public key for `agent`.
@@ -46,9 +46,7 @@ enforce the macOS application's local tools or account policy.
 The Parallels VM boundary is the relevant local boundary. Disable host directory,
 clipboard, device and credential sharing that the workload does not need; Assbox
 cannot enforce host hypervisor preferences. Parallels shared networking provides
-connectivity, not a promise that macOS or LAN services are unreachable. Assbox's
-SSH input policy restricts guest ingress; it is not the managed worker's outbound
-TAP policy. All selected guest agents share the `agent` account and its secrets.
+connectivity, not a promise that macOS or LAN services are unreachable. Assbox's SSH policy restricts ingress. The standalone execution UID also defaults to internet-only egress, including protected LAN, overlay, local-broker and metadata restrictions; qualify NAT and IPv6 on the actual VM. All selected guest agents share the `agent` account and its secrets.
 Guest OS rollback does not undo projects, host changes, Git pushes or provider
 actions. Manage the host, guest, virtual disk capacity and backups separately.
 
@@ -133,11 +131,11 @@ automatic session startup, shutdown and restart. ChatGPT/X11 comes last, with ac
 Linux Remote authentication and an end-to-end task. A package evaluating on ARM is
 not evidence its graphical runtime works in this VM.
 
-The ChatGPT controller profile also requires its managed KVM worker. Check for
-usable `/dev/kvm` inside the installed Parallels guest before choosing that profile;
-this requires nested virtualization exposed to that guest. If it is unavailable,
-continue qualifying the standalone profiles and installer, and qualify ChatGPT on
-a separate KVM-capable machine. Assbox does not emulate the production worker or
+Protected local Code requires a managed KVM worker. Check for usable `/dev/kvm`
+inside the Parallels guest before choosing that mode; this requires nested
+virtualization exposed to the guest. Native None can be staged without a worker
+but requires its own exact no-local-execution qualification. The external Mac
+Desktop SSH route uses a standalone guest and requires no inner worker. Assbox does not emulate the production worker or
 move its execution to the controller. Follow [worker acceptance](worker/acceptance.md)
 and [client routing](worker/client-routing.md) on a supported target, budgeting RAM
 and storage for both systems.

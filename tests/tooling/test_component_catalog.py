@@ -19,12 +19,11 @@ class ComponentCatalogTests(unittest.TestCase):
     def test_generated_metadata_and_release_families_match(self):
         subprocess.run([sys.executable, 'scripts/component_catalog.py', '--check'], cwd=ROOT, check=True)
         rows = catalog.read_catalog()
-        self.assertEqual(len(rows), 29)
+        self.assertEqual(len(rows), 33)
         expected = tuple(sorted({r['family'] for r in rows} - {'nixpkgs'}))
         self.assertEqual(component_families.FAMILIES, expected)
         release_data.validate_lock(json.loads((ROOT / 'flake.lock').read_text()))
-        for id in ['cowork-dispatch', 'antigravity-remote']:
-            self.assertTrue(next(r for r in rows if r['id'] == id)['blocked'])
+        self.assertFalse({'happy','happy-remote','gemini-cli','cowork-dispatch'} & {r['id'] for r in rows})
 
     def test_release_workflow_requires_each_family_on_both_architectures(self):
         document = yaml.safe_load((ROOT / '.github/workflows/release.yml').read_text())
@@ -45,7 +44,8 @@ class ComponentCatalogTests(unittest.TestCase):
         cls.lib = path
 
     def evaluate(self, selected, *, presentation='headless', network=None, autostart=None,
-                 accept_unfree=True, unfree_packages=None, package_revision=''):
+                 accept_unfree=True, unfree_packages=None, package_revision='',
+                 substrate=False, instance=None):
         if not self.lib:
             self.skipTest('Nix module library unavailable; run in the development shell')
         def nix_json(value):
@@ -56,10 +56,39 @@ class ComponentCatalogTests(unittest.TestCase):
                 '--arg', 'autostart', nix_json(autostart or []),
                 '--arg', 'acceptUnfree', nix_json(accept_unfree),
                 '--arg', 'unfreePackages', nix_json(unfree_packages or []),
-                '--argstr', 'packageRevision', package_revision]
+                '--argstr', 'packageRevision', package_revision,
+                '--arg', 'substrate', 'true' if substrate else 'false',
+                '--arg', 'instance', nix_json(instance or {})]
         result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
+
+    def test_standalone_substrate_scopes_services_resources_and_state(self):
+        result=self.evaluate({'happier':{'enable':True},'happier-daemon':{'enable':True}},substrate=True)
+        self.assertFalse(result['failures'])
+        facts=result['substrate']
+        self.assertFalse(facts['controller']['active'])
+        self.assertIn('assbox-execution',facts['nft'])
+        self.assertEqual(facts['services']['units'],{'happier-daemon':['assbox-happier-daemon.service']})
+        self.assertIn('.happier',facts['state']['paths'])
+        self.assertEqual(result['services']['user']['services']['assbox-happier-daemon']['serviceConfig']['MemoryMax'],'4096M')
+
+    def test_native_none_is_staged_without_a_worker_or_execution_firewall(self):
+        result=self.evaluate({'chatgpt-desktop':{'enable':True,'allowMutableCode':True}},
+                             presentation='x11',substrate=True)
+        self.assertFalse(result['failures'])
+        facts=result['substrate']
+        self.assertTrue(facts['controller']['active'])
+        self.assertEqual(facts['native']['apps']['chatgpt-desktop']['mode'],'none')
+        self.assertIsNone(facts['native']['apps']['chatgpt-desktop']['contract'])
+        self.assertEqual(facts['nft'],{})
+
+    def test_substrate_rejects_controller_execution_and_overlapping_restore_paths(self):
+        result=self.evaluate({'chatgpt-desktop':{'enable':True,'allowMutableCode':True},'codex':{'enable':True}},
+                             presentation='x11',substrate=True)
+        self.assertTrue(any('sensitive controller' in f for f in result['failures']))
+        result=self.evaluate({},substrate=True,instance={'state':{'additionalPaths':['.config']}})
+        self.assertTrue(any('must not overlap' in f for f in result['failures']))
 
     def test_empty_selection_has_no_packages_or_remote_units(self):
         result = self.evaluate({})
@@ -126,9 +155,9 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertFalse(result['failures'])
         unit = result['services']['user']['services']['assbox-cursor-worker']
         self.assertIn('/bin/cursor-agent', unit['serviceConfig']['ExecStart'])
-        self.assertIn('onboarded/cursor-worker-', unit['unitConfig']['ConditionPathExists'])
+        self.assertTrue(any('onboarded/cursor-worker-' in p for p in unit['unitConfig']['ConditionPathExists']))
         self.assertEqual(unit['unitConfig']['StartLimitIntervalSec'], 0)
-        self.assertEqual(unit['serviceConfig']['Restart'], 'always')
+        self.assertEqual(unit['serviceConfig']['Restart'], 'on-failure')
         self.assertEqual(unit['serviceConfig']['RestartSteps'], 5)
         self.assertEqual(unit['serviceConfig']['RestartMaxDelaySec'], 300)
         self.assertEqual(unit['serviceConfig']['StandardOutput'], 'null')
@@ -154,40 +183,36 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertTrue(self.evaluate({'chatgpt-remote': {'enable': True}}, presentation='x11')['failures'])
         self.assertTrue(self.evaluate(selected, presentation='headless')['failures'])
 
-    def test_blocked_capabilities_never_silently_pass(self):
-        for id, dep in [('antigravity-remote','antigravity-cli'),('cowork-dispatch','claude-desktop')]:
-            result = self.evaluate({name: {'enable': True, 'allowMutableCode': True} for name in (id,dep)}, presentation='x11')
-            self.assertTrue(any(id in failure for failure in result['failures']))
-
-    def test_autostart_and_display_do_not_install_missing_components(self):
-        self.assertTrue(self.evaluate({}, autostart=['vscode'], presentation='x11')['failures'])
-        selection = {'cursor-agent': {'enable': True}, 'cursor-worker': {'enable': True, 'computerUse': {'enable': True}}}
-        self.assertTrue(self.evaluate(selection)['failures'])
-        result = self.evaluate(selection, presentation='x11')
+    def test_experimental_service_is_staged_until_an_immutable_runtime_is_selected(self):
+        result = self.evaluate({'antigravity-cli': {'enable': True, 'allowMutableCode': True}, 'antigravity-remote': {'enable': True, 'allowMutableCode': True}})
         self.assertFalse(result['failures'])
-        unit = result['services']['user']['services']['assbox-cursor-worker']
-        self.assertEqual(unit['partOf'], ['graphical-session.target'])
-        self.assertIn('--display :0', unit['serviceConfig']['ExecStart'])
-        self.assertNotIn('tigervnc', str(result['packages']))
+        self.assertNotIn('assbox-antigravity-remote',result['services']['user']['services'])
+        self.assertIn('assbox/onboarding/antigravity-remote', result['scripts'])
+
+    def test_computer_use_cannot_inherit_a_physical_display(self):
+        selected = {'cursor-worker': {'enable': True, 'computerUse': {'enable': True}}, 'cursor-agent': {'enable': True}}
+        result = self.evaluate(selected,presentation='x11')
+        self.assertTrue(any('private virtual desktop' in failure for failure in result['failures']))
+        unit=result['services']['user']['services']['assbox-cursor-worker']
+        self.assertIn('DISPLAY',unit['serviceConfig']['UnsetEnvironment'])
+        self.assertNotIn('--display :0',unit['serviceConfig']['ExecStart'])
 
     def test_remote_recipes_merge_common_and_specific_options(self):
         cases = {
             'claude-code-remote': ['claude-code'],
             'openclaw-node': ['openclaw'],
-            'happy-remote': ['happy', 'codex', 'claude-code'],
+            'happier-daemon': ['happier'],
             'vscode-tunnel': ['vscode-cli'],
         }
         for id, dependencies in cases.items():
             with self.subTest(id=id):
                 selection = {key: {'enable': True, 'allowMutableCode': True} for key in [id, *dependencies]}
-                if id == 'happy-remote':
-                    selection[id]['backends'] = ['codex', 'claude-code']
                 result = self.evaluate(selection)
                 self.assertFalse(result['failures'])
                 unit = result['services']['user']['services']['assbox-' + id]
                 self.assertEqual(unit['serviceConfig']['WorkingDirectory'], '/home/agent/projects')
                 self.assertEqual(unit['unitConfig']['ConditionUser'], 'agent')
-                self.assertIn('onboarded/' + id, unit['unitConfig']['ConditionPathExists'])
+                self.assertTrue(any('onboarded/' + id in p for p in unit['unitConfig']['ConditionPathExists']))
 
     def test_editor_hosts_require_agent_access_and_consent(self):
         selected = {'zed-remote-host': {'enable': True, 'allowMutableCode': True}}

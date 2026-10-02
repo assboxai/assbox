@@ -140,8 +140,8 @@ Test abrupt controller power interruption during initial provisioning, image sta
 ## Disable / re-enable with a real worker
 
 Use disposable state and a worker-only/headless controller profile for this
-lifecycle test; ChatGPT itself must not be left selected without its mandatory
-worker. Remove sensitive controller selections through a valid transaction,
+lifecycle test; protected local Code must not remain requested without its
+worker. Native None is a separate, independently gated selection. Remove sensitive controller selections through a valid transaction,
 not by bypassing placement validation. See [lifecycle](lifecycle.md).
 
 1. Configure and boot a worker with known resource settings. Write a unique

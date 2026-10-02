@@ -8,10 +8,13 @@
   acceptUnfree ? true,
   unfreePackages ? [ ],
   packageRevision ? "",
+  substrate ? false,
+  instance ? { },
 }:
 let
   lib = import libPath;
   pkg = name: {
+    type = "derivation";
     outPath = "/nix/store/test-${name}${
       lib.optionalString (packageRevision != "") "-${packageRevision}"
     }";
@@ -50,75 +53,158 @@ let
       "curl"
       "systemd"
       "coreutils"
+      "makeWrapper"
       "util-linux"
+      "python3"
+      "qemu"
+      "virtiofsd"
+      "tigervnc"
+      "openbox"
+      "nftables"
+      "pam"
+      "gnutar"
+      "tailscale"
     ] pkg
     // {
       callPackage = _: _: pkg "vscode-cli";
       runCommand =
         name: _: _:
         pkg name;
+      writeShellScriptBin = name: _: pkg name;
       writeShellScript = name: text: (pkg name) // { scriptText = text; };
+      writeText = name: text: (pkg name) // { scriptText = text; };
       stdenv.cc.cc = pkg "cc";
+      stdenv.hostPlatform = {
+        system = "x86_64-linux";
+        isx86_64 = true;
+      };
+      OVMF.fd = pkg "firmware";
+      xorg = lib.genAttrs [ "xorgserver" "xauth" ] pkg;
+      xfce = lib.genAttrs [ "xfce4-session" "xfwm4" "xfce4-panel" "xfdesktop" ] pkg;
     };
   result = lib.evalModules {
     specialArgs = {
       inherit pkgs;
       assboxApplications = apps;
     };
-    modules = [
-      ../../modules/options.nix
-      ../../modules/components.nix
-      ../../modules/remotes.nix
-      ../../modules/editors.nix
-      ../../modules/access.nix
-      ({ lib, ... }: {
-        options = {
-          assertions = lib.mkOption {
-            type = lib.types.listOf lib.types.unspecified;
-            default = [ ];
-          };
-          environment.systemPackages = lib.mkOption {
-            type = lib.types.listOf lib.types.unspecified;
-            default = [ ];
-          };
-          environment.etc = lib.mkOption {
-            type = lib.types.attrsOf lib.types.anything;
-            default = { };
-          };
-          systemd = lib.mkOption {
-            type = lib.types.attrsOf lib.types.anything;
-            default = { };
-          };
-          programs = lib.mkOption {
-            type = lib.types.attrsOf lib.types.anything;
-            default = { };
-          };
-          xdg = lib.mkOption {
-            type = lib.types.attrsOf lib.types.anything;
-            default = { };
-          };
-          services = lib.mkOption {
-            type = lib.types.attrsOf lib.types.anything;
-            default = { };
-          };
-          users = lib.mkOption {
-            type = lib.types.attrsOf lib.types.anything;
-            default = { };
-          };
-          networking = lib.mkOption {
-            type = lib.types.attrsOf lib.types.anything;
-            default = { };
-          };
-        };
-        config.assbox = {
-          enable = true;
-          inherit acceptUnfree;
-          components = selection;
-          inherit network presentation;
-          session.autostart = autostart;
-        };
-      })
-    ];
+    modules =
+      lib.optionals substrate [
+        ../../modules/instances.nix
+        ../../modules/network-policy.nix
+        ../../modules/controller.nix
+        ../../modules/kiosk-web.nix
+        ../../modules/computer-use.nix
+        ../../modules/serve.nix
+        ../../modules/service-control.nix
+        ../../modules/resources.nix
+        ../../modules/state.nix
+      ]
+      ++ [
+        ../../modules/options.nix
+        ../../modules/components.nix
+        ../../modules/remotes.nix
+        ../../modules/editors.nix
+        ../../modules/access.nix
+        ({ lib, ... }: {
+          options =
+            lib.recursiveUpdate
+              (lib.optionalAttrs (!substrate) {
+                assbox.nativePolicy.runtime = lib.mkOption {
+                  type = lib.types.unspecified;
+                  default = pkg "native-policy";
+                };
+                assbox.computerUse = lib.mkOption {
+                  type = lib.types.attrs;
+                  default = {
+                    mode = "none";
+                    runtime = pkg "computer-use";
+                    memoryMaxMiB = 4096;
+                  };
+                };
+              })
+              {
+                assbox.worker = lib.mkOption {
+                  type = lib.types.attrs;
+                  default = {
+                    enable = false;
+                    components = [ ];
+                  };
+                };
+                environment.variables = lib.mkOption {
+                  type = lib.types.attrs;
+                  default = { };
+                };
+                nix = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                security = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                system = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                zramSwap = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                assertions = lib.mkOption {
+                  type = lib.types.listOf lib.types.unspecified;
+                  default = [ ];
+                };
+                environment.systemPackages = lib.mkOption {
+                  type = lib.types.listOf lib.types.unspecified;
+                  default = [ ];
+                };
+                environment.etc = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                systemd = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                programs = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                xdg = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                services = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                users = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+                networking = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.anything;
+                  default = { };
+                };
+              };
+          config.assbox = lib.recursiveUpdate (
+            {
+              enable = true;
+              inherit acceptUnfree;
+              components = selection;
+              inherit network presentation;
+              session.autostart = autostart;
+            }
+            // lib.optionalAttrs (!substrate) {
+              controller = {
+                active = false;
+                profile = "none";
+              };
+            }
+          ) instance;
+          config.users.users.agent.uid = 1000;
+        })
+      ];
   };
 in
 {
@@ -136,4 +222,11 @@ in
       name: _: lib.hasPrefix "assbox/onboarding/" name || lib.hasPrefix "assbox/diagnostics/" name
     ) result.config.environment.etc
   );
+  substrate = lib.optionalAttrs substrate {
+    controller = result.config.assbox.controller;
+    native = builtins.fromJSON result.config.environment.etc."assbox/native-policy.json".text;
+    services = builtins.fromJSON result.config.environment.etc."assbox/service-control.json".text;
+    state = builtins.fromJSON result.config.environment.etc."assbox/state.json".text;
+    nft = result.config.networking.nftables.tables or { };
+  };
 }

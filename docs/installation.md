@@ -1,6 +1,6 @@
 # Prepared-storage installation
 
-> **Controller deployments:** ChatGPT Desktop uses the [managed controller/worker model](worker/controller-model.md). Its coding agents, development tooling and credentials belong in the worker. Generic standalone examples below do not override the mandatory sensitive-controller placement policy. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
+> **Instance selection:** The wizard starts with Assistant, Coder, Kiosk or Custom. Native Kiosk with None requests no local execution and stays inactive until each app is qualified. Protected Code explicitly uses the [managed worker](worker/controller-model.md). External Mac Desktop SSH uses a standalone VM; no inner worker is required.
 
 Read the [security model](../SECURITY.md) and [verification requirements](verification.md)
 first. This document describes the installer contract, not a hardware certification.
@@ -29,12 +29,8 @@ checkout and a second setup wizard are not required.
 
 ## Arrangement and access choices
 
-Choose **standalone** for agents running directly in Assbox, including a Parallels
-VM controlled by macOS ChatGPT over SSH. Choose **managed-worker** for one
-Assbox-owned headless KVM guest. The wizard shows and confirms controller/worker
-placement. Selecting ChatGPT Desktop requires that arrangement and explicitly
-selected worker Codex; declining the switch refuses the combination. Other
-managed-worker selections can have no graphical controller at all.
+The purpose-first wizard resolves explicit host and worker selections. Native None requests no local execution and stays staged until exact policy qualification. Protected Code explicitly selects a worker and its required coding tools. External Desktop SSH uses a standalone instance.
+
 
 Components and presentation remain independent. Select `codex,chromium` with
 X11/Openbox or Wayland/labwc for a standalone coding machine with a manual browser.
@@ -43,10 +39,8 @@ Chromium selection is refused. Additional standalone tools use ordinary nixpkgs
 attributes, such as `htop,python3Packages.requests`, and populate the existing
 `assbox-packages.nix` file. They are not permitted on a thin controller.
 
-Happy Remote requires selecting Codex and/or Claude Code backends explicitly,
-including when Happy runs in a managed worker. The wizard adds accepted backend
-components to the selection before checking licenses and download consent. Backend
-choice does not isolate Happy's bundled code or create separate credentials.
+Happier pairing and each provider login are separate owner steps after installation. Agent selections do not create a backend security allowlist or import other accounts.
+
 
 A managed worker presents recommended RAM/CPU and **automatic persistent disk
 capacity** as a group; customize only when needed. Automatic sizing builds the

@@ -44,6 +44,7 @@ let
             opencode-server.enable = true;
             openclaw-gateway.enable = true;
             chatgpt-desktop.enable = false;
+            claude-desktop.enable = false;
           };
         };
       }

@@ -43,6 +43,7 @@ let
     }
   );
   missingCodex = evaluate {
+    assbox.kiosk.localExecution = "managed-worker";
     assbox.acceptUnfree = true;
     assbox.presentation = "x11";
     assbox.components.chatgpt-desktop = {
@@ -65,31 +66,25 @@ let
         "antigravity-cli"
         "cursor-agent"
         "opencode"
-        "gemini-cli"
+        "pi"
+        "omp"
       ];
     }
   );
   badNetwork = evaluate ({ lib, ... }: { assbox.worker.egress = lib.mkForce "internet"; });
-  happy = evaluate (
+  happier = evaluate (
     { lib, ... }: {
       assbox.worker.components = lib.mkForce [
-        "happy"
-        "happy-remote"
+        "happier"
+        "happier-daemon"
         "codex"
       ];
-      assbox.worker.happyBackends = [ "codex" ];
-      assbox.worker.allowMutableCodeFor = [ "happy-remote" ];
-    }
-  );
-  missingHappyBackend = evaluate (
-    { lib, ... }: {
-      assbox.worker.components = lib.mkForce [
-        "happy"
-        "happy-remote"
+      assbox.worker.allowMutableCodeFor = [
+        "happier"
+        "happier-daemon"
       ];
     }
   );
-  orphanHappyBackend = evaluate { assbox.worker.happyBackends = [ "codex" ]; };
   failed = system: builtins.filter (item: !item.assertion) system.config.assertions;
   unit = good.config.systemd.services.assbox-worker;
   image = good.config.system.build.assboxWorkerImage;
@@ -141,16 +136,14 @@ assert
     rule: pkgs.lib.hasPrefix "d /var/lib/assbox-worker-data " rule
   ) good.config.systemd.tmpfiles.rules);
 assert failed multiAgent == [ ];
-assert failed happy == [ ];
+assert failed happier == [ ];
 assert builtins.all (
   item: item.assertion
-) happy.config.system.build.assboxWorkerImage.guestPolicy.assertions;
-assert failed missingHappyBackend != [ ];
-assert failed orphanHappyBackend != [ ];
+) happier.config.system.build.assboxWorkerImage.guestPolicy.assertions;
 assert builtins.all (
   item: item.assertion
 ) multiAgent.config.system.build.assboxWorkerImage.guestPolicy.assertions;
-assert failed missingWorker != [ ];
+assert failed missingWorker == [ ];
 assert failed missingCodex != [ ];
 assert good.config.users.users.assbox-health-probe.isSystemUser;
 assert good.config.users.users.assbox-health-probe.home == "/var/empty";

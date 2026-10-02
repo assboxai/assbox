@@ -60,3 +60,24 @@ run `sudo assbox doctor` or inspect `systemctl --user status assbox-opencode` as
 for managed remote adapters. `systemctl show nix-daemon -p ControlGroup`
 shows the build daemon's placement. Account for active builds and agents together
 when diagnosing memory exhaustion.
+
+## Execution capabilities and mutable state
+
+`assbox.computerUse.mode` is `none`, `browser`, or `virtual-desktop`. Private desktop resources add Xvfb/Xauthority, window-manager/session tools and bounded service memory only when selected. The provider owns its computer-use implementation. A missing helper does not authorize a package-manager bootstrap. `assbox.computerUse.providerRuntime` can hold an independently pinned required helper. Manual display-wrapper invocations are explicit; GUI support remains subject to the dated evidence and actual release qualification.
+
+`assbox.resources.agentMemoryMaxMiB` bounds each managed agent service and its children; it defaults to 4096 MiB and is not a reservation. `agentCPUWeight` controls contention. Background Nix builds retain their existing lower-weight slice and zram behavior. Budget application homes, provider helpers, projects, retained generations, build transients and state checkpoints independently. Actual CPU/architecture and peak-resource qualification is still required.
+
+OS rollback does not roll back SQLite databases, memory, skills, schedules, repositories or credentials. As owner, close direct CLI sessions, then use:
+
+```sh
+sudo assbox state backup
+sudo assbox state list
+sudo assbox state restore SNAPSHOT_NAME
+sudo assbox state restore SNAPSHOT_NAME --apply
+```
+
+Backup stops and later restores only the previously active managed services. Checkpoints are root-private 0700/0600 archives and may contain credentials; protect or encrypt the storage. They remain bound to this machine and explicit selected application paths. Repositories are not included by default. Configure `assbox.state.directory` on owner-controlled storage, `additionalPaths` for intentional extra data, archive size/free-space reserve and retention. Snapshot links/devices need manual export; automatic restore refuses them. Do not use this feature to migrate accounts, copy a HOME across machines or replace canonical worker identities.
+
+A restore preview shows the source generation and integrity metadata. `--apply` stops the execution user and requires no remaining execution processes, so keep an independent administrator connection. It preserves previous state and an explicit recovery journal and leaves execution stopped for review. It does not infer provider schema compatibility or start migrated credentials. `backupBeforeUpdate` is an explicit opt-in for scheduled update checkpoints. Worker application state is checkpointed inside its own guest; the existing host worker-disk admission and identity rules remain authoritative.
+
+Guest checkpoints and their local checkpoint identity live in root-private `/home/.assbox-state-backups`, so the disposable worker root does not erase them. Guest root administration is disabled by default; invoke the state helper only through explicitly authorized guest administration or declare a reviewed guest maintenance job. Otherwise export scoped application data through the normal SSH workflow. Copying the entire backup directory, including its identity record, is not a supported cross-instance import.

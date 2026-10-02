@@ -82,6 +82,25 @@ When `assbox.worker.enable` is selected, its guest has a distinct kernel, filesy
 and user database. The controller `agent` account owns the Desktop session; selected
 worker components share the worker VM's `agent` account, not the controller home. QEMU runs as
 `assbox-vmm`, not root or the Desktop user. See [worker security](docs/worker/security.md)
-for the exact proposed contract, acceptance requirements and limitations. In
+for the implemented contract, acceptance requirements and limitations. In
 particular, provider tokens inside the guest are compromised if the guest is
 compromised; Desktop-local execution is not automatically prohibited by this module.
+
+## Native activation and standalone execution
+
+Native selection alone does not authorize local execution. Managed launchers require
+a fresh, root-owned observation of an immutable qualified contract for the exact
+client, platform and account scope. Codex Local, Work Local, Work Cloud local access,
+browser/computer use and local helpers are independently denied under the strict
+kiosk policy. Adding a worker does not relax those controls. No qualified native
+probe ships in this candidate; clients remain staged until one is supplied.
+
+Standalone execution defaults to public-internet egress with execution-UID IPv4/IPv6
+LAN, private and overlay denial. Explicit normal/offline modes and scoped exceptions
+are separate choices. Root owns enforcement and Tailscale control; private dashboard
+publication requires explicit mappings and application authentication. Networking,
+native-policy effectiveness and provider behavior still require runtime qualification.
+
+Mutable-state checkpoints are root-private and may contain provider credentials.
+Restore is explicit, checks local identity/integrity, preserves prior data and a durable
+recovery journal, and leaves execution stopped. OS rollback alone never restores data.

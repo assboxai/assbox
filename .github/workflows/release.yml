@@ -73,19 +73,25 @@ jobs:
           application: cursor
         - system: x86_64-linux
           runner: ubuntu-24.04
-          application: gemini-cli
-        - system: x86_64-linux
-          runner: ubuntu-24.04
           application: grok
-        - system: x86_64-linux
-          runner: ubuntu-24.04
-          application: happy
         - system: x86_64-linux
           runner: ubuntu-24.04
           application: openclaw
         - system: x86_64-linux
           runner: ubuntu-24.04
           application: opencode
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: happier
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: hermes
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: pi
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: omp
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
           application: antigravity
@@ -106,19 +112,25 @@ jobs:
           application: cursor
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
-          application: gemini-cli
-        - system: aarch64-linux
-          runner: ubuntu-24.04-arm
           application: grok
-        - system: aarch64-linux
-          runner: ubuntu-24.04-arm
-          application: happy
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
           application: openclaw
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
           application: opencode
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: happier
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: hermes
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: pi
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: omp
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 360
     steps:

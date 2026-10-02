@@ -4,7 +4,7 @@
 
 **Architecture: accepted controller/worker model. Source: integrated implementation candidate. Native and end-to-end qualification: outstanding.**
 
-The normal ChatGPT configuration is a trusted, thin Linux controller with one controller-managed headless KVM worker. The outer Assbox configuration generates and manages the worker; the user does not install or administer a second Assbox. A sensitive controller requires a worker, and supported component selection cannot place coding-agent CLIs on that controller. Ordinary non-sensitive standalone profiles remain available.
+Protected local Code uses a trusted, thin Linux controller with one managed headless KVM worker. The outer Assbox configuration generates and manages the worker; the user does not install a second Assbox. Native None can be staged without a worker and requires exact no-local-execution verification. Sensitive controller selection cannot place coding-agent CLIs on that controller. Standalone execution remains the normal default.
 
 This tree uses **direct QEMU/KVM and the existing pinned nixpkgs**. It does not add microvm.nix or require a new flake input.
 
@@ -12,7 +12,7 @@ This tree uses **direct QEMU/KVM and the existing pinned nixpkgs**. It does not 
 | --- | --- |
 | Product architecture | Catalog placement capabilities, Rust and Nix validation, derived controller profile, controller/worker installer selection, managed-package rejection and no silent controller-execution fallback |
 | Managed worker | Image generation, private network, runtime SSH identities, persistent home disk, disposable root overlay, service lifecycle, authentication and shell helpers |
-| Optional agents | Independent worker selection of Codex, Claude Code, Grok, Antigravity CLI, Cursor Agent, OpenCode and Gemini CLI; one shared filesystem and credential trust domain |
+| Optional agents | Independent worker selection of Codex, Claude Code, Grok, Antigravity CLI, Cursor Agent, OpenCode, Pi and OMP; one shared filesystem and credential trust domain |
 | Artifact retention | Self-contained packed system/kernel/initrd/boot manifest, size limits, native runtime-reference gate and separate build-only worker audit closure |
 | Health isolation | Root validates local policy; network-facing SSH runs as the dedicated unprivileged controller `assbox-health-probe` account with cleared supplementary groups/environment; separate immutable worker health identity |
 | Disabled-state ownership | Locked non-login infrastructure identities retained while Assbox is enabled; no worker resources or VMM `kvm` membership while disabled; admission before reactivation can verify existing ownership |
@@ -44,55 +44,15 @@ regression observations, not evidence that upstream documentation assigns
 controller tools to a remote project. No adapter is runtime-qualified by this
 source package.
 
-## Integration and validation — September 24, 2026
+## Candidate checks — October 2, 2026
 
-The implementation was integrated onto Assbox commit `24ee515`, preserving the
-existing dependency lock and previous fixes. The source ZIP predates several
-fixes discussed in its accompanying PDF. Its historical test totals are not
-results for this repository revision.
-
-This tranche removes the experimental microvm path, optional delegation skill,
-and placement/type-policy switches. Supported workers use q35 on x86_64 or virt
-on AArch64 with mandatory KVM. It adds strict persistent-state and canonical-key
-continuity checks, corrects the health-key test path, handles OpenSSH key comments,
-and checks effective SSH policy before publishing the managed alias and in doctor.
-Existing installations must explicitly remove incompatible controller selections.
-
-Lightweight integration checks passed: 144 worker tests, 16 documentation/catalog/
-release-gate source-contract tests, Rust and Nix formatting, generated metadata,
-architecture and workflow policy, and shell syntax. The worker suite discovered
-145 tests; its remaining privilege-drop case requires a root disposable test
-environment and was skipped, not passed. OpenSSH parsed the literal SSH templates
-and rejected accumulated extra keys, certificates and automatic forwards without
-opening a connection. This is separate from Nix evaluation and the effective
-server-policy VM gate; no compiled Rust or booted-VM result is claimed here.
-
-## Standalone and resource tranche — September 24, 2026
-
-The installer now distinguishes standalone and managed-worker arrangements before
-component selection. Workload SSH is independent of editors, with separate admin
-keys and explicit Tailscale/LAN policy plus an installed connection guide. Chromium
-can be selected and optionally autostarted on standalone X11/Wayland. Additional
-standalone packages use the existing managed package file. Happy worker backend
-selection is rendered, validated and passed to the guest.
-
-Managed workers require an interactive network choice; legacy internet/offline
-configurations retain their meaning. New sparse home capacity resolves after a
-provisional system build against measured free space and controller/root reserves;
-existing disks retain their size. QEMU pauses on writable-disk I/O errors. Seed
-ISO modes are explicit despite the production umask. ARM image construction may
-use the pinned builder's TCG fallback; production workers remain KVM-only.
-
-This tranche's lightweight results: 100 pure Rust tests across domain, policy and
-configuration passed; worker helpers ran 151 tests, 150 passed and one root-only
-privilege-drop case skipped. The real seed ISO permissions were also inspected
-with xorriso. Generated catalog, architecture, workflow policy and formatting
-checks passed. These results do not compile the imperative shell or evaluate Nix.
-The extended browser/SSH/Happy module gates, actual standalone Chromium launcher
-checks in both desktop VMs, and three-policy DNS/packet VM gate are implemented
-but deferred. [Parallels acceptance](../parallels.md) and
-[worker capacity/recovery acceptance](acceptance.md#capacity-and-disk-pressure)
-remain required on disposable targets.
+The current product tranche uses the purpose-first wizard, eight curated coding
+CLIs, independent provider service contracts and strict native activation gates.
+See [candidate status](../implementation-status.md) and the complete
+[qualification ledger](../../qualification/README.md). Earlier baseline test totals
+are not acceptance results for this source. The small Rust core, bounded identity
+and native-policy fixtures, cached module tests and static checks are distinct
+from package builds, runtime networking and authenticated Desktop routing.
 
 ## Deferred qualification
 
@@ -100,7 +60,7 @@ Heavy checks are deliberately deferred while other work runs on the development
 machine. No Actions runs, production activation or provider logins are part of
 this integration. Do not interpret deferred checks as absent requirements.
 
-- Full static suite, Rust compilation/tests/Clippy, mutation checks and refreshed coverage.
+- Full static suite, release-closure compilation/tests, mutation checks and refreshed coverage.
 - Nix evaluation, system and image builds, artifact closure and separate worker vulnerability scans.
 - Native worker policy, SSH-server, networking, boot-acceptance and lifecycle VMs.
 - Real KVM worker boot, persistent home, shutdown under load, disable/re-enable,

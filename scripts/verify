@@ -28,6 +28,7 @@ echo "Verification stage: $stage"
 case "$stage" in
   static)
     python3 scripts/component_catalog.py --check
+    python3 scripts/preset_catalog.py --check
     python3 scripts/architecture.py
     python3 -m unittest discover -s tests/worker -v
     python3 scripts/workflow_policy.py

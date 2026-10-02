@@ -8,7 +8,7 @@ let
   catalog = builtins.fromJSON (builtins.readFile ../../catalog/components.json);
   fixture = pkgs.runCommand "assbox-lifecycle-provider" { } ''
     mkdir -p "$out/bin" "$out/libexec"
-    for name in claude cursor-agent openclaw opencode st chromium happy codex assbox-vscode claude-desktop code zeditor emacs assbox-vscode-gui; do
+    for name in claude cursor-agent openclaw opencode st chromium happier hermes agy codex assbox-vscode claude-desktop code zeditor emacs assbox-vscode-gui; do
       printf '#!${pkgs.python3}/bin/python3\n' > "$out/bin/$name"
       cat ${../fixtures/remote_provider.py} >> "$out/bin/$name"
       chmod +x "$out/bin/$name"
@@ -52,11 +52,10 @@ let
     "claude-code-remote"
     "cursor-worker"
     "openclaw-node"
-    "happy-remote"
+    "happier-daemon"
     "vscode-tunnel"
   ];
   guiIds = [
-    "claude-desktop"
     "vscode"
     "zed"
     "emacs"
@@ -71,7 +70,7 @@ let
       "openclaw-gateway"
       "opencode"
       "opencode-server"
-      "happy"
+      "happier"
       "codex"
       "vscode-cli"
     ];
@@ -85,6 +84,16 @@ pkgs.testers.runNixOSTest {
       ../../modules/options.nix
       ../../modules/base.nix
       ../../modules/access.nix
+      ({ lib, ... }: {
+        options.assbox.computerUse = lib.mkOption {
+          type = lib.types.attrs;
+          default = {
+            mode = "none";
+            runtime = fixture;
+            memoryMaxMiB = 4096;
+          };
+        };
+      })
       (adapter ../../modules/components.nix)
       (adapter ../../modules/remotes.nix)
       (adapter ../../modules/editors.nix)
@@ -103,8 +112,7 @@ pkgs.testers.runNixOSTest {
             allowMutableCode = true;
           }))
           {
-            happy-remote.backends = [ "codex" ];
-            cursor-worker.computerUse.enable = true;
+            cursor-worker.computerUse.enable = false;
             emacs.variant = "gui";
           };
       session.autostart = guiIds ++ [
@@ -268,10 +276,10 @@ pkgs.testers.runNixOSTest {
         machine.wait_until_succeeds(user("test $(wc -l < ~/lifecycle-fixture/" + id + ".starts) -gt " + str(before)), timeout=60)
         active(id)
         assert pids(id)[0] != main
-    owned = pids("cursor-worker") + [pid for id in gui_ids for pid in pids(id)]
+    owned = [pid for id in gui_ids for pid in pids(id)]
     machine.succeed(ctl("stop assbox-test-session.target graphical-session.target"))
     gone(owned)
-    for id in ["cursor-worker"] + gui_ids:
+    for id in gui_ids:
         inactive(id)
     for component, backend in applications:
         inactive(backend + "-ui")

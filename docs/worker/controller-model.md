@@ -14,7 +14,7 @@ mapping and stable configuration names.
 
 ## The product contract
 
-Assbox manages a trusted controller and an untrusted execution environment. The first implemented controller adapter is ChatGPT Desktop on a Linux Assbox controller, connected over a private SSH link to one automatically generated KVM worker. The mobile client continues to use Desktop Remote. Linux Remote availability is the deployment premise; actual routing and permissions must be qualified on the installed client.
+Assbox manages a trusted controller and an untrusted execution environment. Protected Code uses a native Linux controller connected over a private SSH link to one generated KVM worker. ChatGPT and Claude routes require independent native qualification. A None kiosk can be staged without a worker and still requires the exact native gate. The mobile client continues to use Desktop Remote. Linux Remote availability is the deployment premise; actual routing and permissions must be qualified on the installed client.
 
 The user installs and administers **one Assbox**. The outer configuration builds, provisions, starts, updates, checks and replaces the headless worker. There is no worker installer, nested desktop, separate update subscription, second editable Assbox configuration, or user-managed QEMU command. The worker is a separate NixOS evaluation owned by the controller release, not an independently enrolled Assbox controller.
 
@@ -41,7 +41,7 @@ The controller is not a development workstation. Project files, Git credentials,
 
 The catalog records three placement capabilities for every component: `controllerAllowed`, `workerAllowed`, and `requiresWorker`. Rust validation and Nix evaluation use these capabilities. They do not attempt to infer security from an application's name.
 
-A sensitive controller requires a worker. A thin-controller configuration rejects curated execution components on the controller, requires explicit worker Codex selection for ChatGPT Desktop. Managed controller `package add` is also refused; durable custom toolchains are declared through `assbox.worker.extraGuestConfig`. Unprivileged controller users are not admitted to the controller Nix daemon. Administrative builds still use the privileged management path.
+A sensitive controller rejects curated execution components on the controller. Protected ChatGPT Code requires worker Codex; protected Claude Code requires worker Claude Code. Native None can be staged without a worker but is inactive until exact policy verification. Managed controller `package add` is also refused; durable custom toolchains are declared through `assbox.worker.extraGuestConfig`. Unprivileged controller users are not admitted to the controller Nix daemon. Administrative builds still use the privileged management path.
 
 Only `chatgpt-desktop` and its `chatgpt-remote` integration are currently approved controller selections. Sensitive clients without a qualified adapter, including the catalog's Claude Desktop/Cowork integration, are rejected rather than represented as safe. IDE front ends, external controllers and additional transports can be qualified later. Their potential is not a claim that their local extension/tool execution is isolated today. Ordinary deployments without a sensitive controller and without a worker can continue using the standalone component model.
 
@@ -59,7 +59,7 @@ Do not create a universal “put any component anywhere” matrix. A new control
 
 ## One shared worker, explicit agents
 
-Codex can orchestrate selected subordinate CLIs in the same worker. `claude-code`, `grok`, `antigravity-cli`, `cursor-agent`, `opencode` and `gemini-cli` are independently selectable. Selecting one does not install or authenticate the others. Service/remote components have their own dependency, license and mutable-code requirements; installing a plain CLI does not silently enable its daemon or mobile relay.
+Codex can orchestrate selected subordinate CLIs in the same worker. `claude-code`, `grok`, `antigravity-cli`, `cursor-agent`, `opencode` `pi` and `omp` are independently selectable. Selecting one does not install or authenticate the others. Service/remote components have their own dependency, license and mutable-code requirements; installing a plain CLI does not silently enable its daemon or mobile relay.
 
 Every program in this worker can potentially affect the same files and credentials. Assume a successful worker compromise exposes the Codex credential, Git PAT and every other provider credential present there. A separate process, prompt, worktree, branch or agent brand does not create a security boundary. Multiple workers would be a separate feature, not an implied property of sub-agents.
 
@@ -67,7 +67,7 @@ Optional delegation skills and orchestration conveniences are deferred. Selected
 
 ## Installation and daily use
 
-The outer installer first offers standalone or managed-worker arrangements, then separates and confirms controller/worker selections when applicable. It groups recommended resources, resolves automatic sparse home capacity after building, and requires an explicit normal/internet/offline network choice, uplinks and relevant package consent. It proposes worker Codex when ChatGPT is selected, but acceptance remains explicit. The installer neither collects a PAT nor starts provider login.
+The outer installer starts with purpose and application. Protected native Code is an explicit worker choice. Custom can place execution tools in a managed worker, with explicit resources and components. Neither selection nor successful SSH authorizes native controller-local execution.
 
 An existing installation can use `sudo assbox worker setup` or `configure` once its selected Assbox source exports these options. Changes build and stage through the normal management transaction. Existing incompatible controller packages must be removed deliberately; credentials and repositories are never silently migrated. A release imposing the sensitive-controller policy can refuse an incompatible candidate build; it must not silently activate an unisolated fallback. Plan migration before deploying that policy to unattended existing installations.
 
