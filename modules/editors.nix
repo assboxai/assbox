@@ -3,7 +3,6 @@
   config,
   lib,
   pkgs,
-  assboxApplications,
   ...
 }:
 let
@@ -12,7 +11,6 @@ let
   launch = id: builtins.elem id cfg.session.autostart;
   gui = {
     chromium = "${pkgs.chromium}/bin/chromium --no-default-browser-check";
-    claude-desktop = "${assboxApplications.claude-desktop.claude-desktop}/bin/claude-desktop";
     vscode = "${import ../nix/vscode-gui.nix { inherit pkgs; }}/bin/assbox-vscode-gui";
     # The CLI detaches; even its --foreground mode discards the child's status.
     # This is the upstream Nix-wrapped application, including its runtime PATH.

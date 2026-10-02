@@ -125,6 +125,17 @@ class ComponentCatalogTests(unittest.TestCase):
             self.assertIn('assbox-native-policy launch '+app,
                           result['services']['user']['services'][app]['serviceConfig']['ExecStart'])
 
+    def test_native_autostart_has_only_guarded_launchers(self):
+        apps=['chatgpt-desktop','claude-desktop']
+        result=self.evaluate({app:{'enable':True,'allowMutableCode':True} for app in apps},
+                             presentation='x11',autostart=apps,substrate=True)
+        self.assertFalse(result['failures'])
+        self.assertEqual(set(result['services']['user']['services']),set(apps))
+        for app in apps:
+            unit=result['services']['user']['services'][app]
+            self.assertEqual(unit['wantedBy'],['graphical-session.target'])
+            self.assertIn('assbox-native-policy launch '+app,unit['serviceConfig']['ExecStart'])
+
     def test_computer_use_desktop_closure_requires_explicit_selection(self):
         disabled=self.evaluate({},substrate=True)
         self.assertIsNone(disabled['substrate']['computerUse'])
