@@ -142,7 +142,8 @@ class PlacementContracts(unittest.TestCase):
 
     def test_controller_has_no_supported_placement_override(self):
         source=(ROOT/'modules/controller.nix').read_text()
-        self.assertIn('!sensitive || cfg.worker.enable',source)
+        self.assertIn('cfg.kiosk.localExecution != "managed-worker" || cfg.worker.enable',source)
+        self.assertIn('absence leaves the selected client inactive',source)
         self.assertIn('row.controllerAllowed',source)
         self.assertNotIn('enforcePlacement',source)
         source=(ROOT/'modules/worker/default.nix').read_text()
