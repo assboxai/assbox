@@ -9,8 +9,17 @@ let
   cfg = config.assbox.computerUse;
   active = config.assbox.enable && cfg.mode != "none";
   desktop = cfg.mode == "virtual-desktop";
-  launcher = pkgs.writeShellScriptBin "assbox-computer-use" ''
+  runtime = pkgs.writeShellScriptBin "assbox-computer-use-runtime" ''
     exec ${pkgs.python3}/bin/python3 ${../scripts/computer-use/desktop.py} "$@"
+  '';
+  # Interactive invocations need the same bounds as supervised providers. Keep
+  # the internal entry point in the provider unit's existing control group.
+  launcher = pkgs.writeShellScriptBin "assbox-computer-use" ''
+    exec ${pkgs.systemd}/bin/systemd-run --user --scope --quiet --collect \
+      --property=MemoryMax=${toString cfg.memoryMaxMiB}M \
+      --property=CPUWeight=${toString config.assbox.resources.agentCPUWeight} \
+      --property=CPUAccounting=yes --property=MemoryAccounting=yes \
+      ${runtime}/bin/assbox-computer-use-runtime "$@"
   '';
 in
 {
@@ -40,7 +49,7 @@ in
     };
   };
   config = lib.mkIf config.assbox.enable {
-    assbox.computerUse.runtime = launcher;
+    assbox.computerUse.runtime = runtime;
     assertions = [
       {
         assertion = !active || !config.assbox.controller.active;
@@ -68,11 +77,26 @@ in
         pkgs.ffmpeg
         pkgs.openbox
       ];
-    environment.etc."assbox/computer-use-tools.json".text = builtins.toJSON {
-      xvfb = "${pkgs.xorg.xorgserver}/bin/Xvfb";
-      xauth = "${pkgs.xorg.xauth}/bin/xauth";
-      dbus = "${pkgs.dbus}/bin/dbus-daemon";
-      wm = "${pkgs.openbox}/bin/openbox";
+    # References in /etc also enter the system closure. CLI-only and browser
+    # instances must not acquire a desktop stack through this manifest.
+    environment.etc."assbox/computer-use-tools.json" = lib.mkIf active {
+      text = builtins.toJSON (
+        {
+          modes = [
+            "browser"
+          ]
+          ++ lib.optionals desktop [
+            "provider"
+            "display"
+          ];
+        }
+        // lib.optionalAttrs desktop {
+          xvfb = "${pkgs.xorg.xorgserver}/bin/Xvfb";
+          xauth = "${pkgs.xorg.xauth}/bin/xauth";
+          dbus = "${pkgs.dbus}/bin/dbus-daemon";
+          wm = "${pkgs.openbox}/bin/openbox";
+        }
+      );
     };
     environment.variables = lib.optionalAttrs active { HERMES_DISABLE_LAZY_INSTALLS = "1"; };
   };

@@ -228,5 +228,10 @@ in
     services = builtins.fromJSON result.config.environment.etc."assbox/service-control.json".text;
     state = builtins.fromJSON result.config.environment.etc."assbox/state.json".text;
     nft = result.config.networking.nftables.tables or { };
+    computerUse =
+      if result.config.environment.etc ? "assbox/computer-use-tools.json" then
+        builtins.fromJSON result.config.environment.etc."assbox/computer-use-tools.json".text
+      else
+        null;
   };
 }

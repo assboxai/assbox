@@ -82,6 +82,18 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertEqual(facts['native']['apps']['chatgpt-desktop']['mode'],'none')
         self.assertIsNone(facts['native']['apps']['chatgpt-desktop']['contract'])
         self.assertEqual(facts['nft'],{})
+        self.assertEqual(result['services']['user']['services']['chatgpt-desktop']['serviceConfig']['MemoryMax'],'4096M')
+
+    def test_computer_use_desktop_closure_requires_explicit_selection(self):
+        disabled=self.evaluate({},substrate=True)
+        self.assertIsNone(disabled['substrate']['computerUse'])
+        self.assertNotIn('/nix/store/test-chromium',disabled['packages'])
+        browser=self.evaluate({},substrate=True,instance={'computerUse':{'mode':'browser'}})
+        self.assertEqual(browser['substrate']['computerUse'],{'modes':['browser']})
+        self.assertNotIn('/nix/store/test-xorgserver',browser['packages'])
+        desktop=self.evaluate({},substrate=True,instance={'computerUse':{'mode':'virtual-desktop'}})
+        self.assertIn('display',desktop['substrate']['computerUse']['modes'])
+        self.assertIn('/nix/store/test-xorgserver',desktop['packages'])
 
     def test_substrate_rejects_controller_execution_and_overlapping_restore_paths(self):
         result=self.evaluate({'chatgpt-desktop':{'enable':True,'allowMutableCode':True},'codex':{'enable':True}},

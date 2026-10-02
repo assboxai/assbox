@@ -3,6 +3,8 @@
 let
   cfg = config.assbox;
   ids = [
+    "chatgpt-desktop"
+    "claude-desktop"
     "happier-daemon"
     "hermes-gateway"
     "hermes-dashboard"
@@ -17,7 +19,14 @@ let
   ];
   unitFor =
     id:
-    if id == "openclaw-gateway" then
+    if
+      builtins.elem id [
+        "chatgpt-desktop"
+        "claude-desktop"
+      ]
+    then
+      id
+    else if id == "openclaw-gateway" then
       "assbox-openclaw"
     else if id == "opencode-server" then
       "assbox-opencode"

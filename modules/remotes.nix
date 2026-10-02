@@ -482,7 +482,7 @@ in
                   ]
                 )
                 [
-                  "${cfg.computerUse.runtime}/bin/assbox-computer-use"
+                  "${cfg.computerUse.runtime}/bin/assbox-computer-use-runtime"
                   (if id == "cursor-worker" then "provider" else "display")
                   "--"
                 ]

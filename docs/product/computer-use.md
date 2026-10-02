@@ -12,6 +12,8 @@ Prefer upstream-supported X11/TigerVNC/XFCE managed headless sessions for Cursor
 
 Scrub inherited physical display and session environment. Use private X authorization/D-Bus/browser state, handle stale locks and occupied RFB ports safely, and tear down owned resources. Default to one active computer-use desktop; qualify upstream parallel sessions before raising limits. Installing a dependency once does not make unlimited live instances cost-free.
 
+The CLI-only mode omits the computer-use manifest and desktop closure. Browser mode does not install the display stack or permit the display entry point. For a manual qualified upstream command, use `assbox-computer-use browser -- COMMAND` or `assbox-computer-use display -- COMMAND` as the execution user. The wrapper runs in a user scope bounded by `assbox.computerUse.memoryMaxMiB`; managed provider units keep their own supervised control group. Both paths use the same single-session lease. The display bus remains a tracked foreground process, with bounded startup and process-group cleanup on failure or cancellation. Browser profile and tool-loop integration remain provider-specific qualification requirements.
+
 A separate display under one UID is not isolation from other same-UID processes. Autonomous tools must remain outside the protected kiosk controller domain. Do not supply physical `:0`, sensitive browser profiles, keyring sockets or accessibility context as a default fallback.
 
 Human viewing is optional, private and authenticated. Distinguish view-only and control when upstream supports them; do not imply a view-only guarantee the protocol cannot enforce. No public raw VNC/X11/CDP listeners.
