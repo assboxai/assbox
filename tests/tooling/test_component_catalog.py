@@ -290,6 +290,20 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertFalse(separate['failures'])
         self.assertIn('assbox-codex-relay',separate['services']['user']['services'])
 
+    def test_hermes_public_origin_rejects_loopback_and_ambiguous_hosts(self):
+        good=['https://assbox.example.ts.net/','https://10.0.0.2:8443/dashboard','https://host.example./']
+        bad=['https://localhost/','https://LOCALHOST/','https://host.localhost./','https://127.0.0.2/',
+             'https://127.1/','https://2130706433/','https://0x7f.0.0.1/','https://0x7f.0x0.0x0.0x1/',
+             'https://0.0.0.0/','https://0127.0.0.1/','https://999.0.0.1/','https:///','https://-bad.example/',
+             'https://good..example/','https://host.example:0/','https://host.example:65536/',
+             'https://host.example:443:4/','https://host.example:0443/','https://user@host.example/',
+             'http://host.example/','https://host.example/#fragment']
+        for url in good+bad:
+            with self.subTest(url=url):
+                result=self.evaluate({'hermes':{'enable':True},'hermes-dashboard':{'enable':True,'publicUrl':url}})
+                rejected=any('non-loopback HTTPS' in f for f in result['failures'])
+                self.assertEqual(rejected,url in bad)
+
     def test_computer_use_cannot_inherit_a_physical_display(self):
         selected = {'cursor-worker': {'enable': True, 'computerUse': {'enable': True}}, 'cursor-agent': {'enable': True}}
         result = self.evaluate(selected,presentation='x11')

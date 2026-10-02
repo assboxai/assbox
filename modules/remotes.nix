@@ -207,6 +207,32 @@ let
       "codex-relay"
     ])
     || command.${id} != [ ];
+  publicHttpsUrl =
+    url:
+    let
+      match = builtins.match "https://([a-zA-Z0-9.-]+)(:([0-9]+))?(/[a-zA-Z0-9._:/-]*)?" url;
+      host = if match == null then "" else lib.removeSuffix "." (lib.toLower (builtins.elemAt match 0));
+      port = if match == null then null else builtins.elemAt match 2;
+      parts = lib.splitString "." host;
+      numeric = builtins.all (p: builtins.match "[0-9]+" p != null) parts;
+    in
+    match != null
+    && (port == null || (builtins.match "[1-9][0-9]{0,4}" port != null && lib.toInt port <= 65535))
+    && builtins.length parts >= 2
+    && host != "localhost"
+    && !(lib.hasSuffix ".localhost" host)
+    && builtins.all (p: builtins.match "[a-z0-9]([a-z0-9-]*[a-z0-9])?" p != null) parts
+    && (
+      if numeric then
+        builtins.length parts == 4
+        && !(builtins.elem (builtins.head parts) [
+          "0"
+          "127"
+        ])
+        && builtins.all (p: builtins.match "(0|[1-9][0-9]{0,2})" p != null && lib.toInt p <= 255) parts
+      else
+        builtins.match "[a-z].*" (lib.last parts) != null
+    );
   marker =
     id:
     ".config/assbox/onboarded/${id}-${
@@ -406,9 +432,7 @@ in
           !enabled "hermes-dashboard"
           || (
             if cfg.components.hermes-dashboard.accessProfile == "authenticated" then
-              builtins.match "https://[a-zA-Z0-9._-]+(:[0-9]+)?(/.*)?" cfg.components.hermes-dashboard.publicUrl
-              != null
-              && !(lib.hasInfix "localhost" cfg.components.hermes-dashboard.publicUrl)
+              publicHttpsUrl cfg.components.hermes-dashboard.publicUrl
             else
               cfg.components.hermes-dashboard.consentTunnelOnly
           );
