@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-02T08:11:03.540831+00:00",
+  "testedCommit": "8d14c2a28cbe3a6881d68bbf379d2690f058ae95",
+  "baselineCommit": "3ca0032cf026c9883a60fa03425a1c9bf2ef4b76",
+  "baselineFilesMatched": 244,
+  "lockSha256": "cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86",
+  "profile": "lightweight candidate checks; full testing deferred at owner request",
+  "checks": [
+    {
+      "name": "Rust workspace compile",
+      "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo check --workspace --all-targets --offline -j 1",
+      "status": "passed",
+      "scope": "Compilation only; temporary check tool path is not the release tool closure."
+    },
+    {
+      "name": "Rust Clippy",
+      "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+      "status": "passed"
+    },
+    {
+      "name": "Deterministic Rust core",
+      "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-domain -p assbox-policy -p assbox-config --all-targets --offline -j 1",
+      "status": "passed",
+      "passed": 101
+    },
+    {
+      "name": "Cached component/substrate module fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+      "status": "passed",
+      "passed": 20,
+      "scope": "Inert package values and cached module library; no NixOS system or kernel evaluation."
+    },
+    {
+      "name": "Application launcher fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_application_launchers.py",
+      "status": "passed",
+      "passed": 6
+    },
+    {
+      "name": "Remote lifecycle/diagnostic fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p 'test_remote_*.py'",
+      "status": "passed",
+      "passed": 9
+    },
+    {
+      "name": "Native policy fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_native_policy.py",
+      "status": "passed",
+      "passed": 6,
+      "scope": "Synthetic contract and bounded observer fixtures; not native or account enforcement evidence."
+    },
+    {
+      "name": "Canonical identity continuity fixtures",
+      "command": "python3 -m unittest discover -s tests/worker -p test_identity_continuity.py",
+      "status": "passed",
+      "passed": 9
+    },
+    {
+      "name": "Controller contract fixtures",
+      "command": "python3 -m unittest discover -s tests/worker -p test_controller_contract.py",
+      "status": "passed_with_skip",
+      "passed": 19,
+      "skipped": 1,
+      "scope": "The privilege-drop case was skipped because this is not a root disposable test environment."
+    },
+    {
+      "name": "Architecture/product surface fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_contracts.py",
+      "status": "passed",
+      "passed": 13
+    },
+    {
+      "name": "Documentation navigation",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+      "status": "passed",
+      "passed": 1
+    },
+    {
+      "name": "Source syntax",
+      "status": "passed",
+      "pythonFiles": 69,
+      "nixFiles": 74,
+      "scope": "Python AST parsing and nix-instantiate --parse only."
+    },
+    {
+      "name": "Formatting and static guards",
+      "status": "passed",
+      "scope": "cargo fmt, nixfmt, ShellCheck, actionlint, architecture.py, workflow_policy.py, generated component/preset metadata, git diff --check."
+    },
+    {
+      "name": "Exact resolved source lock",
+      "command": "python3 scripts/release.py check-lock .",
+      "status": "passed",
+      "scope": "Offline graph normalization preserved all baseline held-input identities."
+    }
+  ],
+  "notRun": [
+    "Nix package/system/image builds",
+    "full release tool-closure and static/coverage/mutation/security gates",
+    "booted VM and hardware tests",
+    "native account/build policy qualification",
+    "authenticated provider tasks and pairing",
+    "real IPv4/IPv6/NAT/overlay/loopback enforcement",
+    "Serve enrollment/authentication/exposure lifecycle",
+    "real desktop resource cleanup",
+    "state schema/update/restore/power-loss qualification",
+    "production activation or publication"
+  ],
+  "releaseQualification": {
+    "requirements": 116,
+    "status": "not_run",
+    "ledger": "acceptance.json"
+  },
+  "publication": {
+    "remote": "https://github.com/buu700/assbox-dev.git",
+    "branch": "master",
+    "status": "blocked_by_authentication",
+    "observed": "HTTPS push rejected with 403; connected GitHub app repository read unavailable; SSH has no accepted key."
+  }
+}
