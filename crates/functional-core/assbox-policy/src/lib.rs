@@ -4,6 +4,7 @@
 
 pub mod efi;
 pub mod hardware;
+pub mod instances;
 pub mod release;
 use assbox_domain::*;
 

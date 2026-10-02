@@ -9,9 +9,11 @@
     claude-desktop-packages.url = "github:numtide/llm-agents.nix";
     codex-packages.url = "github:numtide/llm-agents.nix";
     cursor-packages.url = "github:numtide/llm-agents.nix";
-    gemini-cli-packages.url = "github:numtide/llm-agents.nix";
+    happier-packages.url = "github:numtide/llm-agents.nix";
+    hermes-packages.url = "github:numtide/llm-agents.nix";
+    pi-packages.url = "github:numtide/llm-agents.nix";
+    omp-packages.url = "github:numtide/llm-agents.nix";
     grok-packages.url = "github:numtide/llm-agents.nix";
-    happy-packages.url = "github:numtide/llm-agents.nix";
     openclaw-packages.url = "github:numtide/llm-agents.nix";
     opencode-packages.url = "github:numtide/llm-agents.nix";
   };
@@ -25,9 +27,11 @@
       claude-desktop-packages,
       codex-packages,
       cursor-packages,
-      gemini-cli-packages,
+      happier-packages,
+      hermes-packages,
+      pi-packages,
+      omp-packages,
       grok-packages,
-      happy-packages,
       openclaw-packages,
       opencode-packages,
       ...
@@ -57,9 +61,32 @@
           claude-desktop = claude-desktop-packages.packages.${pkgs.stdenv.hostPlatform.system};
           codex = codex-packages.packages.${pkgs.stdenv.hostPlatform.system};
           cursor = cursor-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          gemini-cli = gemini-cli-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          happier =
+            let
+              recipes = happier-packages.packages.${pkgs.stdenv.hostPlatform.system};
+              artifact = builtins.fromJSON (builtins.readFile ./nix/happier-source.json);
+            in
+            recipes
+            // {
+              happier =
+                if recipes ? happier then
+                  recipes.happier
+                else
+                  # The reviewed recipe snapshot has no Happier package. Never
+                  # report a newer unrelated recipe revision as an app update.
+                  assert happier-packages.rev == artifact.reviewedPackageRecipeRevision;
+                  pkgs.callPackage ./nix/happier.nix { };
+            };
+          hermes = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
+            hermes-agent = pkgs.callPackage ./nix/hermes.nix {
+              raw = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent;
+            };
+          };
+          pi = pi-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
+            pi = pi-packages.packages.${pkgs.stdenv.hostPlatform.system}.pi.override { useBun = false; };
+          };
+          omp = omp-packages.packages.${pkgs.stdenv.hostPlatform.system};
           grok = grok-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          happy = happy-packages.packages.${pkgs.stdenv.hostPlatform.system};
           openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system};
           opencode = opencode-packages.packages.${pkgs.stdenv.hostPlatform.system};
 
@@ -171,9 +198,11 @@
               "claude-desktop"
               "codex"
               "cursor"
-              "gemini-cli"
+              "happier"
+              "hermes"
+              "pi"
+              "omp"
               "grok"
-              "happy"
             ])
             (
               name:
@@ -273,9 +302,7 @@
                 claude-desktop-packages
                 codex-packages
                 cursor-packages
-                gemini-cli-packages
                 grok-packages
-                happy-packages
                 openclaw-packages
                 opencode-packages
                 ;
@@ -293,9 +320,7 @@
                 claude-desktop-packages
                 codex-packages
                 cursor-packages
-                gemini-cli-packages
                 grok-packages
-                happy-packages
                 openclaw-packages
                 opencode-packages
                 ;

@@ -12,6 +12,9 @@ impl Components {
     pub fn insert(&mut self, component: Component) {
         self.0 |= 1 << component as u32;
     }
+    pub fn remove(&mut self, component: Component) {
+        self.0 &= !(1 << component as u32);
+    }
     pub fn iter(self) -> impl Iterator<Item = Component> {
         Component::ALL
             .iter()
@@ -105,8 +108,8 @@ mod tests {
     }
     #[test]
     fn canonical_roundtrip_and_invalid_inputs() {
-        let selected: Components = "vim,codex,gemini-cli".parse().unwrap();
-        assert_eq!(selected.to_string(), "codex,gemini-cli,vim");
+        let selected: Components = "vim,codex,pi,omp".parse().unwrap();
+        assert_eq!(selected.to_string(), "codex,omp,pi,vim");
         assert_eq!(
             selected.to_string().parse::<Components>().unwrap(),
             selected
@@ -114,18 +117,12 @@ mod tests {
         for bad in ["codex,codex", "none,codex", "unknown", "${x}", "codex,"] {
             assert!(bad.parse::<Components>().is_err(), "{bad}");
         }
-        assert_eq!(Component::ALL.len(), 29);
+        assert_eq!(Component::ALL.len(), 33);
     }
     #[test]
     fn blocked_remotes_and_graphical_requirements_are_not_overridden_by_consent() {
-        for id in ["antigravity-remote", "cowork-dispatch"] {
-            let selected: Components = id.parse().unwrap();
-            assert!(
-                selected
-                    .with_dependencies()
-                    .validate(Presentation::X11, true)
-                    .is_err()
-            );
+        for id in ["happy", "happy-remote", "gemini-cli", "cowork-dispatch"] {
+            assert!(id.parse::<Components>().is_err());
         }
         let chatgpt: Components = "codex,chatgpt-desktop".parse().unwrap();
         assert!(chatgpt.validate(Presentation::Headless, true).is_err());

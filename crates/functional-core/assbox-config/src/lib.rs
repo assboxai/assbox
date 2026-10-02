@@ -4,6 +4,7 @@
 use assbox_domain::*;
 use assbox_policy::InstallPlan;
 use std::collections::BTreeSet;
+pub mod instances;
 pub mod storage_summary;
 
 pub fn nix_string(s: &str) -> String {
@@ -134,16 +135,6 @@ pub fn settings(c: &Choices) -> Result<String> {
             c.allow_mutable_code
         ));
     }
-    if c.components.contains(Component::HappyRemote) {
-        extras.push_str(&format!(
-            "  assbox.components.happy-remote.backends = lib.mkDefault [ {} ];\n",
-            c.happy_backends
-                .iter()
-                .map(|id| nix_string(id.as_str()))
-                .collect::<Vec<_>>()
-                .join(" ")
-        ));
-    }
     extras.push_str(&autostart_line(&c.autostart));
     extras.push('\n');
     let rendered = format!(
@@ -181,6 +172,9 @@ pub fn settings(c: &Choices) -> Result<String> {
         c.allow_unfree,
         ssh + &extras
     );
+    let mut instance = c.instance.clone();
+    instance.execution_in_worker = c.worker.is_some();
+    let rendered = instances::selection(&rendered, &instance)?;
     match &c.worker {
         Some(spec) => worker::selection(&rendered, Some(spec)),
         None => Ok(rendered),

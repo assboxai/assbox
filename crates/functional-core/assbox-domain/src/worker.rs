@@ -77,7 +77,7 @@ impl FromStr for WorkerNetwork {
 pub struct WorkerSpec {
     pub components: Components,
     pub mutable_components: Components,
-    pub happy_backends: Components,
+
     pub memory_mib: u32,
     pub vcpus: u32,
     pub state_gib: u32,
@@ -131,7 +131,6 @@ impl WorkerSpec {
                 )));
             }
         }
-        crate::validate_happy_backends(self.components, self.happy_backends)?;
         if !(2048..=65536).contains(&self.memory_mib)
             || !(1..=32).contains(&self.vcpus)
             || !(8..=2048).contains(&self.state_gib)
@@ -188,22 +187,11 @@ pub fn controller_components(selected: Components) -> Components {
 /// Product placement is separate from provider permissions or Desktop tooling.
 /// A privileged administrator can change Nix; no supported controller-execution bypass.
 pub fn validate_host_selection(host: Components, worker: Option<&WorkerSpec>) -> Result<()> {
-    let sensitive = host.iter().any(Component::requires_worker);
-    if sensitive && worker.is_none() {
-        return Err(Error::new(
-            "sensitive controller components require a managed worker; no local-execution fallback",
-        ));
-    }
+    let sensitive =
+        host.contains(Component::ChatgptDesktop) || host.contains(Component::ClaudeDesktop);
     if (sensitive || worker.is_some()) && host.iter().any(|c| !c.controller_allowed()) {
         return Err(Error::new(
-            "component is not approved for the thin controller; select it in the worker or use a separate standalone deployment",
-        ));
-    }
-    if host.contains(Component::ChatgptDesktop)
-        && !worker.is_some_and(|w| w.components.contains(Component::Codex))
-    {
-        return Err(Error::new(
-            "the ChatGPT controller requires explicitly selected Codex inside the worker",
+            "execution components cannot share the native controller; select them in the worker or use standalone",
         ));
     }
     Ok(())
@@ -236,7 +224,7 @@ mod tests {
         WorkerSpec {
             components: "vim".parse().unwrap(),
             mutable_components: Components::default(),
-            happy_backends: Default::default(),
+
             memory_mib: 3072,
             vcpus: 2,
             state_gib: 32,
@@ -266,13 +254,12 @@ mod tests {
     #[test]
     fn controller_placement_is_mandatory() {
         let host: Components = "chatgpt-desktop,chatgpt-remote".parse().unwrap();
-        assert!(validate_host_selection(host, None).is_err());
-        assert!(validate_host_selection(host, Some(&spec())).is_err());
+        assert!(validate_host_selection(host, None).is_ok());
+        assert!(validate_host_selection(host, Some(&spec())).is_ok());
         let mut worker = spec();
-        worker.components =
-            "codex,claude-code,grok,antigravity-cli,cursor-agent,opencode,gemini-cli"
-                .parse()
-                .unwrap();
+        worker.components = "codex,claude-code,grok,antigravity-cli,cursor-agent,opencode,pi,omp"
+            .parse()
+            .unwrap();
         assert!(worker.validate(true).is_ok());
         assert!(validate_host_selection(host, Some(&worker)).is_ok());
         assert!(
@@ -282,7 +269,7 @@ mod tests {
             )
             .is_err()
         );
-        assert!(validate_host_selection("claude-desktop".parse().unwrap(), Some(&worker)).is_err());
+        assert!(validate_host_selection("claude-desktop".parse().unwrap(), Some(&worker)).is_ok());
         assert!(validate_host_selection("opencode".parse().unwrap(), None).is_ok());
     }
     #[test]
@@ -295,20 +282,6 @@ mod tests {
         assert!(s.validate(true).is_err());
         s.mutable_components = s.components;
         assert!(s.validate(true).is_ok());
-    }
-    #[test]
-    fn happy_requires_explicit_selected_backends() {
-        let mut s = spec();
-        s.components = "happy,happy-remote,codex".parse().unwrap();
-        s.mutable_components = "happy-remote".parse().unwrap();
-        assert!(s.validate(true).is_err());
-        s.happy_backends = "codex".parse().unwrap();
-        assert!(s.validate(true).is_ok());
-        s.happy_backends = "claude-code".parse().unwrap();
-        assert!(s.validate(true).is_err());
-        s.components = "codex".parse().unwrap();
-        s.happy_backends = s.components;
-        assert!(s.validate(true).is_err());
     }
     #[test]
     fn resources_are_bounded() {

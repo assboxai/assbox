@@ -4,6 +4,7 @@ use assbox_domain::*;
 use std::collections::BTreeSet;
 fn choices() -> Choices {
     Choices {
+        instance: Default::default(),
         hostname: Hostname::parse("assbox-local").unwrap(),
         timezone: "UTC".into(),
         components: Components::default(),
@@ -19,7 +20,6 @@ fn choices() -> Choices {
         ssh_access: Default::default(),
         additional_packages: Default::default(),
         worker: None,
-        happy_backends: Default::default(),
     }
 }
 
@@ -43,8 +43,8 @@ fn standalone_workload_ssh_and_manual_browser_do_not_require_a_nested_worker() {
         assert!(text.contains("assbox.network.ssh.admin.enable = lib.mkDefault false;"));
         assert!(text.contains("lanInterfaces = lib.mkDefault [ \"enp0s5\" ];"));
         assert!(text.contains("lanSourceCidrs = lib.mkDefault [ \"192.168.64.1/32\" ];"));
-        assert!(!text.contains("tailscale.enable"));
-        assert!(!text.contains("assbox.worker"));
+        assert!(text.contains("tailscale.enable = lib.mkDefault false"));
+        assert!(!text.contains("assbox.worker ="));
         assert!(!text.contains("vscode-remote-host"));
         let guide = connection_guide(&c);
         assert!(guide.contains("User agent\n"));
@@ -62,6 +62,7 @@ fn standalone_workload_ssh_and_manual_browser_do_not_require_a_nested_worker() {
     c.autostart.clear();
     assert!(settings(&c).is_ok());
     c.ssh_access = Default::default();
+    c.instance.tailscale = true;
     let text = settings(&c).unwrap();
     assert!(text.contains("tailscale.enable = lib.mkDefault true;"));
     assert!(connection_guide(&c).contains("sudo tailscale up"));

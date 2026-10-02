@@ -33,8 +33,8 @@
     ],
     "unfree": false,
     "mutableCode": false,
-    "blocked": "The pinned proprietary CLI documents service installation but no reviewed foreground daemon entry point.",
-    "codeNotes": "",
+    "blocked": "",
+    "codeNotes": "Remote runtime is supplied by a pinned, reviewed foreground service contract; setup remains unavailable without that contract.",
     "controllerAllowed": false,
     "workerAllowed": true,
     "requiresWorker": false
@@ -51,10 +51,10 @@
     "unfree": true,
     "mutableCode": true,
     "blocked": "",
-    "codeNotes": "May download a provider-managed Codex runtime; standalone Codex is not installed implicitly. Chromium is provided for login.",
+    "codeNotes": "Native activation requires an applicable local-execution policy contract. Client-managed helpers require separate consent; Work and Codex are independently gated.",
     "controllerAllowed": true,
     "workerAllowed": false,
-    "requiresWorker": true
+    "requiresWorker": false
   },
   {
     "id": "chatgpt-remote",
@@ -73,7 +73,7 @@
     "codeNotes": "",
     "controllerAllowed": true,
     "workerAllowed": false,
-    "requiresWorker": true
+    "requiresWorker": false
   },
   {
     "id": "chromium",
@@ -89,7 +89,7 @@
     "mutableCode": false,
     "blocked": "",
     "codeNotes": "Standalone graphical browser. Installing it does not enable remote browser or desktop automation.",
-    "controllerAllowed": false,
+    "controllerAllowed": true,
     "workerAllowed": false,
     "requiresWorker": false
   },
@@ -147,9 +147,9 @@
     "mutableCode": true,
     "blocked": "",
     "codeNotes": "May download Claude Code and other executable helpers; includes Cowork VM helpers. Chromium is provided for login.",
-    "controllerAllowed": false,
+    "controllerAllowed": true,
     "workerAllowed": false,
-    "requiresWorker": true
+    "requiresWorker": false
   },
   {
     "id": "codex",
@@ -171,24 +171,25 @@
     "requiresWorker": false
   },
   {
-    "id": "cowork-dispatch",
+    "id": "codex-relay",
     "package": "",
-    "family": "claude-desktop",
+    "family": "codex",
     "command": "",
     "dependencies": [
-      "claude-desktop"
+      "codex"
     ],
     "presentations": [
+      "headless",
       "x11",
       "wayland"
     ],
     "unfree": false,
     "mutableCode": false,
-    "blocked": "The packaged Linux Cowork VM execution and device permissions have not been established within the unprivileged Assbox boundary.",
-    "codeNotes": "",
+    "blocked": "",
+    "codeNotes": "Advanced experimental direct Codex relay. Requires a reviewed pinned foreground command and independent account/client qualification. It is not enabled by Codex over SSH presets.",
     "controllerAllowed": false,
-    "workerAllowed": false,
-    "requiresWorker": true
+    "workerAllowed": true,
+    "requiresWorker": false
   },
   {
     "id": "cursor-agent",
@@ -250,25 +251,6 @@
     "requiresWorker": false
   },
   {
-    "id": "gemini-cli",
-    "package": "gemini-cli",
-    "family": "gemini-cli",
-    "command": "gemini",
-    "dependencies": [],
-    "presentations": [
-      "headless",
-      "x11",
-      "wayland"
-    ],
-    "unfree": false,
-    "mutableCode": false,
-    "blocked": "",
-    "codeNotes": "",
-    "controllerAllowed": false,
-    "workerAllowed": true,
-    "requiresWorker": false
-  },
-  {
     "id": "grok",
     "package": "grok",
     "family": "grok",
@@ -288,10 +270,10 @@
     "requiresWorker": false
   },
   {
-    "id": "happy",
-    "package": "happy-coder",
-    "family": "happy",
-    "command": "happy",
+    "id": "happier",
+    "package": "happier",
+    "family": "happier",
+    "command": "happier",
     "dependencies": [],
     "presentations": [
       "headless",
@@ -301,18 +283,18 @@
     "unfree": false,
     "mutableCode": false,
     "blocked": "",
-    "codeNotes": "Bundles Claude Agent SDK and Anthropic sandbox runtime, even with Codex; Happy Terminal may provision companion code.",
+    "codeNotes": "Bundles upstream adapters and SDK code. Agent availability and authentication are independent; Nix owns the runtime.",
     "controllerAllowed": false,
     "workerAllowed": true,
     "requiresWorker": false
   },
   {
-    "id": "happy-remote",
+    "id": "happier-daemon",
     "package": "",
-    "family": "happy",
+    "family": "happier",
     "command": "",
     "dependencies": [
-      "happy"
+      "happier"
     ],
     "presentations": [
       "headless",
@@ -320,9 +302,89 @@
       "wayland"
     ],
     "unfree": false,
-    "mutableCode": true,
+    "mutableCode": false,
     "blocked": "",
-    "codeNotes": "Starts Happy Terminal alongside the supervisor; backend selection is not an isolation or code-exclusion boundary.",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "hermes",
+    "package": "hermes-agent",
+    "family": "hermes",
+    "command": "hermes",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "hermes-dashboard",
+    "package": "",
+    "family": "hermes",
+    "command": "",
+    "dependencies": [
+      "hermes"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "hermes-gateway",
+    "package": "",
+    "family": "hermes",
+    "command": "",
+    "dependencies": [
+      "hermes"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "omp",
+    "package": "omp",
+    "family": "omp",
+    "command": "omp",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
     "controllerAllowed": false,
     "workerAllowed": true,
     "requiresWorker": false
@@ -415,6 +477,25 @@
     "dependencies": [
       "opencode"
     ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "pi",
+    "package": "pi",
+    "family": "pi",
+    "command": "pi",
+    "dependencies": [],
     "presentations": [
       "headless",
       "x11",

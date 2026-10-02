@@ -3,6 +3,7 @@ use assbox_domain::*;
 use assbox_policy::*;
 fn choices() -> Choices {
     Choices {
+        instance: Default::default(),
         hostname: Hostname::parse("assbox-example").unwrap(),
         timezone: "America/New_York".into(),
         components: Components::default(),
@@ -18,7 +19,6 @@ fn choices() -> Choices {
         ssh_access: Default::default(),
         additional_packages: Default::default(),
         worker: None,
-        happy_backends: Default::default(),
     }
 }
 #[test]
@@ -41,7 +41,7 @@ fn exactly_ten_application_presentation_combinations_are_valid() {
                 c.worker = Some(assbox_domain::worker::WorkerSpec {
                     components: Component::Codex.into(),
                     mutable_components: Components::default(),
-                    happy_backends: Default::default(),
+
                     memory_mib: 3072,
                     vcpus: 2,
                     state_gib: 32,
@@ -96,15 +96,9 @@ fn input_contract_rejects_injection_and_unfree_without_consent() {
     assert!(c.validate().is_err());
 }
 #[test]
-fn installer_requires_happy_backends_and_separate_editor_access() {
+fn happier_needs_no_backend_list_and_editor_access_is_separate() {
     let mut c = choices();
-    c.components = "happy,happy-remote,codex,gemini-cli".parse().unwrap();
-    assert!(c.validate().is_err());
-    c.happy_backends = Component::GeminiCli.into();
-    assert!(c.validate().is_err());
-    c.happy_backends = Component::ClaudeCode.into();
-    assert!(c.validate().is_err());
-    c.happy_backends = Component::Codex.into();
+    c.components = "happier,happier-daemon,codex,pi,omp".parse().unwrap();
     assert!(c.validate().is_ok());
     c.components.insert(Component::ZedRemoteHost);
     c.admin_ssh_key = Some("ssh-ed25519 admin-fixture".into());

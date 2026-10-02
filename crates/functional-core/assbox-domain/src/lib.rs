@@ -3,7 +3,9 @@
 //! Values, validated names, and explicit observations. No environment access.
 
 pub mod hardware;
+pub mod instances;
 pub mod maintenance;
+mod preset_ids;
 pub mod release;
 pub use hardware::{Hardware, PciNetworkDevice, WirelessInterface};
 pub use maintenance::{BootAcceptance, BootId, PendingReboot};
@@ -161,7 +163,7 @@ pub struct Choices {
     pub ssh_access: access::SshAccess,
     pub additional_packages: std::collections::BTreeSet<PackageName>,
     pub worker: Option<worker::WorkerSpec>,
-    pub happy_backends: Components,
+    pub instance: instances::InstanceConfig,
 }
 
 /// Owners of the graphical launchers supported by the installer.
@@ -178,23 +180,6 @@ pub fn installer_launcher_owner(launcher: &str) -> Result<Component> {
             "unknown installer graphical launcher; configure GUI Emacs explicitly in local.nix",
         )),
     }
-}
-
-pub fn validate_happy_backends(selected: Components, backends: Components) -> Result<()> {
-    if selected.contains(Component::HappyRemote) {
-        if backends == Components::default()
-            || backends.iter().any(|id| {
-                !matches!(id, Component::Codex | Component::ClaudeCode) || !selected.contains(id)
-            })
-        {
-            return Err(Error::new(
-                "Happy requires explicit installed Codex/Claude backends",
-            ));
-        }
-    } else if backends != Components::default() {
-        return Err(Error::new("Happy backends require selecting Happy Remote"));
-    }
-    Ok(())
 }
 
 impl Choices {
@@ -215,6 +200,14 @@ impl Choices {
         {
             return Err(Error::new("invalid timezone identifier"));
         }
+        self.instance.validate()?;
+        if self.instance.protected_code != self.worker.is_some()
+            && self.instance.purpose == instances::Purpose::Kiosk
+        {
+            return Err(Error::new(
+                "protected Code placement does not match the worker selection",
+            ));
+        }
         self.components
             .validate(self.presentation, self.allow_unfree)?;
         if let Some(worker) = &self.worker {
@@ -223,7 +216,11 @@ impl Choices {
         worker::validate_host_selection(self.components, self.worker.as_ref())?;
         self.ssh_access
             .validate(self.admin_ssh_key.is_some() || self.agent_ssh_key.is_some())?;
-        if self.worker.is_some() && !self.additional_packages.is_empty() {
+        let sensitive = self.worker.is_some()
+            || !self.instance.web_apps.is_empty()
+            || self.components.contains(Component::ChatgptDesktop)
+            || self.components.contains(Component::ClaudeDesktop);
+        if sensitive && !self.additional_packages.is_empty() {
             return Err(Error::new(
                 "additional controller packages are not allowed; configure tools inside the worker",
             ));
@@ -245,7 +242,6 @@ impl Choices {
                 ));
             }
         }
-        validate_happy_backends(self.components, self.happy_backends)?;
         if (self.components.contains(Component::VscodeRemoteHost)
             || self.components.contains(Component::ZedRemoteHost))
             && self.agent_ssh_key.is_none()

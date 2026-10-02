@@ -135,7 +135,7 @@ mod tests {
         WorkerSpec {
             components: "vim".parse().unwrap(),
             mutable_components: Components::default(),
-            happy_backends: Default::default(),
+
             memory_mib: 3072,
             vcpus: 2,
             state_gib: 32,

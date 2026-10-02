@@ -77,6 +77,7 @@ fn base(firmware: Firmware, table: Table) -> (Inventory, InstallRequest) {
             backup: "/dev/sdb1".into(),
             esp,
             choices: Choices {
+                instance: Default::default(),
                 hostname: Hostname::parse("assbox-test").unwrap(),
                 timezone: "UTC".into(),
                 components: Components::default(),
@@ -92,7 +93,6 @@ fn base(firmware: Firmware, table: Table) -> (Inventory, InstallRequest) {
                 ssh_access: Default::default(),
                 additional_packages: Default::default(),
                 worker: None,
-                happy_backends: Default::default(),
             },
         },
     )
