@@ -1,6 +1,9 @@
 # Component research and qualification
 
-Research reviewed 2026-09-16. Native component builds, new VMs, authenticated tasks and
+The original package research was reviewed 2026-09-16; the supplied plan's dated
+provider evidence is maintained separately in the [Linux capability matrix](product/linux-computer-use-support.md).
+This operational gate inventory is updated for the current source candidate.
+Native component builds, new VMs, authenticated tasks and
 Intel Mac acceptance are **not run** for this expansion. Source inspection and the
 lightweight module tests are not substitutes. Record actual results against the
 commit and package/client versions tested, outside the source tree.
@@ -18,9 +21,11 @@ proprietary consent and architectures were checked against its package recipes.
   disablement that would interfere with provider eligibility.
 - [Cursor personal workers](https://cursor.com/help/ai-features/self-hosted-machines):
   personal login and foreground worker start. The pinned recipe exports `cursor-agent`.
-  [Computer use](https://cursor.com/docs/cloud-agent/self-hosted/computer-use) supports
-  an explicit existing X11 display. Assbox supplies its documented X11/ffmpeg helpers
-  and excludes virtual desktop fallback and isolated desktop-sharing modes.
+  The candidate's selected virtual-desktop path supplies X11/TigerVNC/XFCE and
+  screenshot/input helpers for Cursor's provider-managed headless desktop. The
+  resource wrapper scrubs physical session state and holds a single desktop lease;
+  it does not select the controller display. Exact tool and optional sharing
+  behavior still needs independent [computer-use qualification](product/computer-use.md).
 - [OpenClaw node registration at v2026.9.4](https://github.com/openclaw/openclaw/blob/v2026.9.4/src/cli/node-cli/register.ts):
   `node run` is the foreground host, distinct from daemon installation and the private
   worker command. [Session hosting](https://docs.openclaw.ai/nodes/session-hosting)
@@ -39,12 +44,14 @@ See [worker acceptance](worker/acceptance.md).
 
 | Capability | Evidence and required resolution |
 | --- | --- |
-| Cowork Dispatch | [Linux scope](https://support.claude.com/en/articles/13947068-assign-tasks-from-anywhere-in-claude-cowork) includes files/connectors/plugins, excluding computer use. Review and demonstrate the packaged VM/device-permission requirements without expanding agent administrative authority. |
-| Antigravity Remote | [Documented start](https://antigravity.google/docs/remote-control/) installs an OS service. Review the pinned binary/source's exact foreground daemon contract, state and shutdown before adding an Assbox-owned unit. Do not nest service installers. |
+| Claude Cowork | Ordinary selected cloud behavior follows the post-6-October contract, observed for the actual account/build. Eligible local provider VM modes require their own immutable contract, entitlement/isolation observations and explicit prerequisite selection. The retired `cowork-dispatch` ID is not an activation path. |
+| Antigravity Remote | Selection stages the adapter when its reviewed foreground argv is empty. An immutable configured argv declares one Assbox-owned unit; setup and runtime compatibility remain separate. Do not nest service installers. |
+| Native ChatGPT/Claude | Public launchers and autostart call the native policy supervisor. No contract ships qualified. Missing, ineffective or stale evidence leaves the affected app inactive; worker selection cannot waive the gate. |
+| Direct Codex relay | Advanced staged adapter requires its own foreground contract and client/auth evidence. It cannot run alongside Happier's daemon until that coexistence is separately designed and qualified. |
 
-These entries remain in the catalog for discoverability but reject enablement. No
-unavailable capability appears in the passing configuration matrix. Removing a
-blocker requires its adapter and regression coverage in the same reviewed change.
+Staged selection is different from active capability. Credential-free fixtures may
+build a staged configuration and verify its refusal; that is not a provider or
+native-policy pass. A supplied contract still needs exact runtime and account evidence.
 
 ## Automated gates
 
@@ -70,17 +77,22 @@ blocker requires its adapter and regression coverage in the same reviewed change
   vendor binaries. Review known bundled SDKs and downloaded helpers separately.
 - `application-<family>-vm`: native runtime checks for every independent family.
   Existing OpenCode/OpenClaw VMs test local authentication and session lifecycle;
-  the ChatGPT-only VM checks its desktop executable and window while requiring
-  standalone Codex to remain absent. It does not depend on Codex CLI setup.
+  the ChatGPT-only VM checks its installed guarded executable and refuses launch
+  without native policy evidence. It does not authenticate or open an unrestricted
+  native window to discover whether enforcement works.
   New remote units must remain dormant before interactive onboarding. None of
   these credential-free VMs certifies provider login or completed remote tasks.
 - `remote-lifecycle-vm`: real production adapter modules and systemd user units with
   harmless substitute provider programs. It exercises onboarding, repeated failures
-  beyond the former start limit, clean-exit recovery, explicit stop, descendant
+  beyond the former start limit, clean-exit stop, explicit stop, descendant
   cleanup, foreground GUI crashes with surviving helpers and normal close, graphical-session teardown,
   structured doctor output, private diagnostic capture, changed settings and
   component removal through NixOS reconfiguration. Only restart delays are shortened;
   native execution remains required on both architectures.
+- `computer-use-vm`: real execution-UID Xvfb/Xauthority/private D-Bus,
+  screenshot/input, occupied-lease refusal, cancellation/cleanup and private
+  sandboxed Chromium against a local page. This unrun substrate gate does not
+  qualify a provider tool loop or native consumer computer-use feature.
 - `editor-vm`: actual packaged VS Code, Zed and GUI Emacs on X11. It requires visible
   windows, kills only each main process, verifies recovery, closes windows normally,
   and checks recovery after Openbox failure, X-server failure and logout without

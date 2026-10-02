@@ -112,8 +112,9 @@ pkgs.testers.runNixOSTest {
     machine.succeed("mkfs.ext4 -F /dev/vdd; mkdir -p /iso")
     machine.succeed("mkdir -p /dev/disk/by-id; ln -s /dev/vdb /dev/disk/by-id/assbox-vm-target")
     before = machine.succeed("sha256sum /dev/vdb /dev/vdc")
-    answers = [root] + ([esp] if esp else []) + ["/dev/vdc1", "assbox-vm", "UTC", "generic", "none", "headless",
-                   "n", "n", "n", "n", "n", "n", "none"]
+    answers = [root] + ([esp] if esp else []) + ["/dev/vdc1", "assbox-vm", "UTC", "generic",
+                   "custom", "none", "n", "n", "headless", "n", "internet", "none", "y",
+                   "n", "n", "n", "n", "n", "n", "none", "n", "none"]
     text = "\n".join(answers) + "\n"
     machine.succeed("printf %s " + shlex.quote(text) + " > /tmp/assbox-answers")
     for source, kind in [("/dev/vdd", "Disk"), ("/dev/sr0", "Optical")]:

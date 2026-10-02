@@ -106,7 +106,7 @@ end-to-end tests described in [verification](verification.md).
 
 Use the reviewed native executable and installation procedure in
 [installation](installation.md#native-binary-and-source-identity). Run plan-only
-first. For a minimal baseline choose `generic`, `standalone`, `none`, `headless`, and the intended local timezone/SSH
+first. For a minimal baseline choose `generic`, Custom with no components or managed worker, `headless`, and the intended local timezone/SSH
 public key. For the external-controller arrangement use the choices above. With explicit authorization, run `--apply` against the disposable VM.
 Record the immutable source identity, built system path, commands and real results.
 No host hardware configuration is committed to the public repository.
