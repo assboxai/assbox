@@ -126,7 +126,10 @@ class ProductSurfaceTests(unittest.TestCase):
         self.assertRegex((ROOT / "README.md").read_text(), r'(?i)\bbeta\b')
         for path in ROOT.rglob("*.md"):
             if path != ROOT / "README.md" and ".git" not in path.parts:
-                self.assertNotRegex(path.read_text(), r'(?i)\bbeta\b', str(path))
+                # Dated upstream evidence may call a provider feature beta.
+                # The Assbox public status label belongs only in README.
+                self.assertNotRegex(path.read_text(),
+                    r'(?im)^\*?\*?(?:source |release |project )?status:\*?\*?.*\bbeta\b', str(path))
 
 
 if __name__ == "__main__":

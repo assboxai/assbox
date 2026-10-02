@@ -1,6 +1,8 @@
-# Architecture
+# Implementation architecture
 
-> **Controller deployments:** ChatGPT Desktop uses the [managed controller/worker model](worker/controller-model.md). Its coding agents, development tooling and credentials belong in the worker. Generic standalone examples below do not override the mandatory sensitive-controller placement policy. Follow [worker operations](worker/operations.md) and [scoped Git onboarding](worker/git-workflow.md).
+The accepted deployment contract is in [product architecture](product/architecture.md); [instance types](product/instance-types.md) defines the purpose-first target. [Implementation status](implementation-status.md) distinguishes that target from the baseline source described below.
+
+Sensitive local controllers require explicitly qualified execution separation. Standalone examples never override controller placement policy. The managed-worker subsystem is specialized; it is not required for every headless or remotely operated Assbox.
 
 ## Internal crates
 

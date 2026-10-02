@@ -1,0 +1,858 @@
+[
+  {
+    "id": "W01",
+    "title": "Bind the baseline and publish the product contract",
+    "depends_on": [],
+    "paths": [
+      "README.md",
+      "docs/product/ [new]",
+      "docs/implementation-status.md [new]",
+      "docs/decisions/ [new]"
+    ],
+    "deliverables": [
+      "Verify the archive and per-file hashes; create the working branch from the 244-file exported tree.",
+      "Install the normative documentation and status ledger without describing target features as already shipped.",
+      "Inventory all references to removed IDs and known current placement/default statements."
+    ],
+    "done_when": [
+      "Baseline identity is recorded; no application code is imported wholesale from the alternate package.",
+      "Product contract and current implementation facts are visibly distinguished."
+    ],
+    "decisions": [
+      "D01",
+      "D29",
+      "D31"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W02",
+    "title": "Remove obsolete IDs and retain supported product scope",
+    "depends_on": [
+      "W01"
+    ],
+    "paths": [
+      "catalog/components.json",
+      "scripts/component_catalog.py",
+      "scripts/component_families.py",
+      "flake.nix",
+      "flake.lock",
+      "crates/functional-core/assbox-domain/src/component_ids.rs",
+      "crates/functional-core/assbox-domain/src/worker.rs",
+      "crates/functional-core/assbox-config/src/worker.rs",
+      "crates/imperative-shell/assbox-cli/src/worker.rs",
+      "modules/remotes.nix",
+      "modules/worker/default.nix"
+    ],
+    "deliverables": [
+      "Remove Happy/Happy Remote/Gemini CLI and all Happy backend fields and flags.",
+      "Fold Cowork capability settings into claude-desktop rather than retaining cowork-dispatch.",
+      "Retain claude-desktop and antigravity-remote; replace obsolete reasons only when their actual implementation gates are satisfied.",
+      "Remove obsolete family checks and release-monitor references; preserve every unrelated component and user data directory.",
+      "Keep nano/tmux and existing base recovery tools unconditionally installed through catalog cleanup and every preset."
+    ],
+    "done_when": [
+      "Deleted IDs fail with actionable errors, without automatic account migration or data deletion.",
+      "No executable Happy/Gemini configuration path remains; historic migration notes are explicitly scoped."
+    ],
+    "decisions": [
+      "D09",
+      "D10",
+      "D28"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W03",
+    "title": "Add pinned application and helper closures",
+    "depends_on": [
+      "W02"
+    ],
+    "paths": [
+      "flake.nix",
+      "flake.lock",
+      "nix/",
+      "catalog/components.json",
+      "modules/components.nix",
+      "scripts/component_catalog.py",
+      "tests/nix/component-family-vm.nix",
+      "tests/nix/component-closure.nix"
+    ],
+    "deliverables": [
+      "Add independently held Happier, Hermes, Pi and OMP families and components.",
+      "Audit current package definitions; package missing Happier runtime/bridges declaratively rather than invoking its network installer.",
+      "Select Hermes extras without automatically installing browser/CUA/speech/local-model features.",
+      "Map unique commands and remove or privately contain ambiguous package aliases such as Grok agent; test all-curated coexistence.",
+      "Record platform/CPU requirements and client-managed-code exceptions."
+    ],
+    "done_when": [
+      "Both target architectures evaluate or produce an explicit component-specific unsupported result before destructive installation.",
+      "Pinned closures and lock diff contain only intended family/helper changes; self-updaters cannot replace Assbox-managed binaries."
+    ],
+    "decisions": [
+      "D07",
+      "D11",
+      "D26",
+      "D30"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W04",
+    "title": "Refresh native desktop packaging and prerequisites",
+    "depends_on": [
+      "W01"
+    ],
+    "paths": [
+      "flake.nix",
+      "modules/components.nix",
+      "modules/applications.nix",
+      "modules/presentation.nix",
+      "tests/nix/component-family-vm.nix",
+      "tests/nix/desktop-services-vm.nix"
+    ],
+    "deliverables": [
+      "Identify exact native ChatGPT/Claude source and versions; prefer supported official Linux artifacts where compatible.",
+      "Package required libraries, launchers, portals and Secret Service integration on NixOS.",
+      "Audit helper downloads and supported managed settings independently of distro install instructions. Identify which policy keys/delivery paths actually apply to each Linux client/build/account; browser policy alone is not a universal local-agent disable switch, and macOS/Windows MDM documentation is not proof of Linux enforcement.",
+      "Inventory local Cowork QEMU/firmware/virtiofs/vsock prerequisites only for selected eligible post-6-October account/build modes. Ordinary native chat/cloud must not enable a VM or require device privileges; disclose unavoidable inert helper code bundled by the native app."
+    ],
+    "done_when": [
+      "App installation/launch is tested independently from coding/Cowork isolation qualification.",
+      "Native requirements and actual package provenance appear in the release support record."
+    ],
+    "decisions": [
+      "D05",
+      "D14",
+      "D15",
+      "D26"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W05",
+    "title": "Implement pure preset resolution and policy",
+    "depends_on": [
+      "W02"
+    ],
+    "paths": [
+      "catalog/presets.json [new]",
+      "scripts/component_catalog.py",
+      "crates/functional-core/assbox-domain/src/instances.rs [new]",
+      "crates/functional-core/assbox-policy/src/instances.rs [new]",
+      "crates/functional-core/assbox-config/src/lib.rs",
+      "modules/options.nix",
+      "modules/audit.nix"
+    ],
+    "deliverables": [
+      "Define four purpose categories and concrete preset IDs as data, with no command recipes.",
+      "Resolve presets into explicit components, worker selection, presentation, access defaults and consent requirements.",
+      "Persist informational purpose/preset/version provenance in ordinary Nix; runtime security is derived from concrete settings.",
+      "Add deterministic validation for exclusions, dependencies, architecture, lack of KVM, removed IDs and unsupported feature combinations.",
+      "Keep raw component defaults off; prevent later bundle updates from changing installed selection.",
+      "Define minimal coder-codex-ssh and separate Claude relay/SSH presets; grouped Cursor, Antigravity and OpenCode native choices; no automatic Codex relay daemon for SSH.",
+      "Represent native kiosk localExecution=none as requested policy, not asserted capability. Consume typed shell-observed facts plus release-qualified policy contracts; return verified, pending, unsupported, ineffective or stale/conflicting findings per app/feature. No-worker activation requires verified enforcement. Keep callbacks and account secrets out of the pure core.",
+      "Represent independent ChatGPT Codex/Work/local-bridge observations in native-policy resolution. A missing, newly exposed or ineffective locally acting surface blocks the affected native activation; one disabled entitlement never supplies evidence for another surface."
+    ],
+    "done_when": [
+      "Resolver is pure, deterministic and idempotent; no filesystem/process/network callbacks enter functional core.",
+      "Nix and Rust agree on resolved placement and errors; changing a label cannot bypass an assertion.",
+      "Unknown facts do not resolve to an active native kiosk; Custom and generated settings cannot bypass required policy. Informational role selection is not enforcement evidence."
+    ],
+    "decisions": [
+      "D02",
+      "D03",
+      "D04",
+      "D06",
+      "D08",
+      "D05",
+      "D33",
+      "D35"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W06",
+    "title": "Build the category-first installer and explicit reconfiguration",
+    "depends_on": [
+      "W03",
+      "W05"
+    ],
+    "paths": [
+      "crates/imperative-shell/assbox-cli/src/wizard.rs",
+      "crates/imperative-shell/assbox-cli/src/main.rs",
+      "crates/imperative-shell/assbox-engine/src/install.rs",
+      "crates/imperative-shell/assbox-engine/src/manage.rs",
+      "crates/functional-core/assbox-config/src/lib.rs",
+      "tests/fixtures/installer_terminal.py"
+    ],
+    "deliverables": [
+      "Present Assistant/Coder/Kiosk/Custom before low-level arrangement choices.",
+      "Implement branch menus, independent agent selection, private access choices and capability/resource summary.",
+      "Keep the prepared-storage, release verification and pre-write authorization flow intact.",
+      "Add `assbox configure` to reuse the same selection/resolution path for a proposed existing-machine change; show a diff and require explicit apply, preserving local.nix.",
+      "Never convert standalone/managed-worker persistent state as a routine profile switch. Require a separate explicit export/migration procedure.",
+      "Expose installed/authenticated/integration-maturity/qualification separately in selection summaries. Show actual transport and controller/tool-execution locations.",
+      "Make Codex-over-SSH directly discoverable in Coder and explain the external macOS/Parallels topology; keep experimental direct relay in Advanced.",
+      "Implement the Kiosk policy-gate screen and fail-closed transitions: retain unknown/failed apps inactive, offer only separately qualified protected/remote or explicit web alternatives, and allow Back/deselection. Unknown account checks can be deferred into staged setup but cannot authorize unrestricted launch or force authentication during read-only browsing."
+    ],
+    "done_when": [
+      "Golden terminal transcripts cover every branch, backtracking, consent refusal, deselection and cancellation before writes.",
+      "Reconfiguration builds/validates before publication and reports custom local overrides rather than overwriting them.",
+      "Golden transcripts cover verified, pending, unavailable, ineffective and stale policy, mixed-app outcomes, failed alternative preflight, Back and cancellation. No implicit worker/web selection or weakened local execution occurs."
+    ],
+    "decisions": [
+      "D02",
+      "D06",
+      "D08",
+      "D19",
+      "D28",
+      "D33",
+      "D35",
+      "D05",
+      "D16"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W07",
+    "title": "Extend the execution network boundary to standalone",
+    "depends_on": [
+      "W01",
+      "W05"
+    ],
+    "paths": [
+      "modules/access.nix",
+      "modules/network-policy.nix [new]",
+      "modules/worker/default.nix",
+      "crates/functional-core/assbox-domain/src/access.rs",
+      "crates/functional-core/assbox-config/src/lib.rs",
+      "modules/audit.nix",
+      "tests/nix/access-vm.nix",
+      "tests/nix/worker-network-vm.nix"
+    ],
+    "deliverables": [
+      "Implement root-owned workload egress policy that covers all processes of the execution UID, including SSH shells and user-service children.",
+      "Default internet-only; enforce IPv4/IPv6 LAN, overlay, link-local, local-broker and metadata restrictions with reviewed resolver/loopback exceptions.",
+      "Allow replies to authorized inbound connections without granting new outbound peer access.",
+      "Define least-privilege explicit private exceptions and clearly broader normal/offline modes.",
+      "Install fail-closed rules before execution becomes available; preserve administration/recovery independently."
+    ],
+    "done_when": [
+      "Adversarial tests cover user namespaces, helper proxies, overlay routes, DNS/rebinding, reboot/reload and failed ruleset installation.",
+      "No claim of internet exfiltration prevention or hostile-root containment is made."
+    ],
+    "decisions": [
+      "D21",
+      "D22"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W08",
+    "title": "Make Tailscale the guided default without automatic enrollment",
+    "depends_on": [
+      "W07"
+    ],
+    "paths": [
+      "modules/access.nix",
+      "modules/options.nix",
+      "crates/imperative-shell/assbox-cli/src/wizard.rs",
+      "crates/imperative-shell/assbox-system/src/services.rs",
+      "tests/nix/access-vm.nix"
+    ],
+    "deliverables": [
+      "Retain the existing tailscale.enable meaning: install/support tailscaled, not authenticate into a tailnet. Guided defaults enable support; raw module default remains off.",
+      "Keep root-only enrollment/control, Tailscale SSH off, route acceptance off, no subnet/exit-node advertising and no Funnel default.",
+      "Add root-owned approved Serve mappings for explicitly selected dashboards; do not grant the agent Tailscale operator rights.",
+      "Make HTTPS consent, application auth, grants and enrollment visible steps; preserve recovery SSH as an independently keyed role.",
+      "Remove stale Serve exposure on disable before stopping the backend; do not reset unrelated owner-managed mappings.",
+      "For Hermes recommended exposure, configure an exact non-loopback HTTPS public_url while retaining loopback backend binding and native authentication. Verify this behavior on the selected release; do not infer it from listener reachability.",
+      "Offer tunnel-only Hermes access only as an explicitly consented Advanced policy exception, never a fallback from broken native authentication; preserve narrow tailnet/SSH access and do not expose publicly."
+    ],
+    "done_when": [
+      "An unpaired installed system is not joined or publishing applications.",
+      "Happier works without Tailscale; authorized tailnet access works without giving workloads broad peer access."
+    ],
+    "decisions": [
+      "D19",
+      "D20",
+      "D24"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W09",
+    "title": "Generalize existing service onboarding only as needed",
+    "depends_on": [
+      "W03"
+    ],
+    "paths": [
+      "modules/remotes.nix",
+      "modules/applications.nix",
+      "modules/diagnostics/remote.sh",
+      "crates/imperative-shell/assbox-cli/src/user.rs",
+      "crates/imperative-shell/assbox-system/src/services.rs",
+      "tests/nix/remote-lifecycle-vm.nix"
+    ],
+    "deliverables": [
+      "Reuse configuration-bound onboarding markers, private diagnostics and user-manager supervision.",
+      "Define staged, setup-required, ready, temporarily unavailable, auth-required, config-error, disabled and retired observations.",
+      "Inspect the supported foreground/runtime or exported user-service contract; Nix supplies one reproducible supervisor, not a wrapper around a service installer or daemonizer. Distinguish intentional stop, permanent refusal and transient provider failure.",
+      "Gate consent by relevant configuration and runtime/permission contract, not just a mutable unchecked marker.",
+      "Ensure explicit stop/disable is durable across boot and no provider-owned service resurrects it."
+    ],
+    "done_when": [
+      "Lifecycle ownership is singular; no token appears in normal journal/argv/Nix store.",
+      "Missing credentials are not an OS boot failure; diagnostics are bounded and actionable."
+    ],
+    "decisions": [
+      "D25",
+      "D27",
+      "D28"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W10",
+    "title": "Integrate Happier and its selected agent bridges",
+    "depends_on": [
+      "W03",
+      "W09",
+      "W07"
+    ],
+    "paths": [
+      "modules/remotes.nix",
+      "nix/happier.nix [new, if needed]",
+      "modules/components.nix",
+      "tests/nix/remote-lifecycle-vm.nix",
+      "tests/fixtures/remote_provider.py"
+    ],
+    "deliverables": [
+      "Provide happier and happier-daemon selections. Inspect the pinned supported user-systemd unit (including a supported dry-run/export where available), declare its equivalent with exact Nix paths and one supervisor; pairing must not create a competing service or updater.",
+      "Configure hosted relay default and a self-hosted endpoint override, supported E2EE enforcement, local provider auth and no automatic external-machine/account-wide imports.",
+      "Map Codex, Claude, Cursor, Grok and Antigravity adapters to exact pinned paths; inspect Antigravity bridge/auth separately.",
+      "Keep Pi/OMP usable as CLIs; enable only verified upstream adapters or Custom ACP configuration.",
+      "Test normal approval/cancel/resume behavior without creating an Assbox scheduler.",
+      "Display dated upstream maturity per agent adapter and separate Assbox qualification. OMP CLI availability is not proof of a built-in Happier backend.",
+      "Use the pinned upstream headless auth login --no-open --method web flow as the normal no-browser/no-TTY setup. Offer owner-initiated auth pair-remote --ssh only from an already authenticated trusted client, after verifying the target host key, execution user and selected server/account scope. Do not require incoming SSH or Tailscale for the local URL flow.",
+      "Inspect pairing side effects on the selected releases: credential writes, runtime resolution, service creation/start, updater and autostart. Keep credentials private to the execution identity and redact URLs/codes/tokens including JSON diagnostics. A pair command that cannot preserve single-owner managed lifecycle must be unavailable; use the explicitly selected URL flow instead, not an extra wrapper daemon or copied HOME."
+    ],
+    "done_when": [
+      "Real remote Codex and Claude sessions run on the intended execution machine.",
+      "Installed/deselected agent behavior and bridge provisioning match the selected closure and disclosure.",
+      "Every enabled pairing path has expiry/cancel/retry/revocation evidence, exact machine/account mapping, no unrelated credential imports, and no competing service; an unsupported SSH pairing path reports its exact blocker without blocking a separately qualified URL flow. Package install and preset browsing remain unauthenticated."
+    ],
+    "decisions": [
+      "D04",
+      "D11",
+      "D12",
+      "D24",
+      "D26",
+      "D25",
+      "D35"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W11",
+    "title": "Refresh OpenClaw as an Assistant integration",
+    "depends_on": [
+      "W03",
+      "W08",
+      "W09"
+    ],
+    "paths": [
+      "modules/applications.nix",
+      "modules/remotes.nix",
+      "modules/components.nix",
+      "tests/nix/application-vm.nix",
+      "tests/nix/remote-lifecycle-vm.nix"
+    ],
+    "deliverables": [
+      "Reuse Gateway lifecycle and private dashboard profile; make channel pairing and tool policy explicit.",
+      "Pin selected ACP/native plugins and bridges, including exact executable paths; no ad-hoc npx/latest bootstrap in normal supported flows.",
+      "Configure loopback authenticated UI and optional root-managed Serve; retain advanced node capabilities and explicit private-node egress exceptions.",
+      "Separate model credentials from external CLI subscription credentials.",
+      "Retain supported upstream automations; no universal global agent orchestration layer."
+    ],
+    "done_when": [
+      "Authorized channel request and private UI task succeed; unknown senders/unauthenticated clients fail.",
+      "Delegation, cancellation and gateway restart behavior are exercised for selected agents."
+    ],
+    "decisions": [
+      "D03",
+      "D12",
+      "D24",
+      "D25"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W12",
+    "title": "Add Hermes as an Assistant integration",
+    "depends_on": [
+      "W03",
+      "W08",
+      "W09"
+    ],
+    "paths": [
+      "modules/hermes.nix [new]",
+      "modules/default.nix",
+      "modules/components.nix",
+      "tests/nix/remote-lifecycle-vm.nix",
+      "tests/fixtures/remote_provider.py"
+    ],
+    "deliverables": [
+      "Add hermes CLI, hermes-gateway and independent hermes-dashboard options from one family.",
+      "Run `hermes gateway` in foreground; use an explicit persistent HERMES_HOME with no root/sudo or default Docker socket.",
+      "Reuse upstream model setup, messaging allowlists/pairing and bundled delegation skills; preserve selected provider identity/state across restarts.",
+      "Offer the dashboard as a separate opt-in access choice; configure exact public URL, Host/Origin, trusted proxy and native auth semantics for loopback+Serve.",
+      "Keep application memory, skills, schedules and user-auth data mutable/persistent while the managed runtime remains pinned.",
+      "Treat browser/CUA/voice/model helper installation as capability-dependent packaging, not automatic upstream PM actions.",
+      "Set dashboard.public_url or HERMES_DASHBOARD_PUBLIC_URL to the exact non-loopback HTTPS endpoint; verify documented auth-required/fail-closed behavior with a loopback backend. Secure-cookie and trusted-proxy behavior must be established, not inferred from public_url.",
+      "Keep the recommended app-authenticated route unavailable if that pinned behavior is absent; any Advanced tunnel-only exception must have explicit consent and accurately state that the tunnel is its only user-facing gate."
+    ],
+    "done_when": [
+      "Gateway messaging and the recommended app-authenticated dashboard are each authorized and actually usable, including WebSockets. An explicitly selected tunnel-only dashboard has separate access evidence and no app-auth claim.",
+      "Unknown-sender, update-command, restart, replay and state-recovery tests pass for the chosen release.",
+      "Authenticated browser and terminal WebSockets work through Serve, while unauthenticated and forged-header requests fail on protected routes; missing auth configuration fails closed."
+    ],
+    "decisions": [
+      "D03",
+      "D11",
+      "D12",
+      "D25",
+      "D28",
+      "D24"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W13",
+    "title": "Integrate provider-native Coder routes and separately gate experiments",
+    "depends_on": [
+      "W03",
+      "W09"
+    ],
+    "paths": [
+      "modules/remotes.nix",
+      "modules/components.nix",
+      "catalog/components.json",
+      "tests/nix/remote-lifecycle-vm.nix",
+      "tests/nix/component-family-vm.nix"
+    ],
+    "deliverables": [
+      "Keep native Claude Remote, Cursor worker, OpenCode server, VS Code tunnel and OpenClaw node independently selectable.",
+      "Replace the Antigravity research blocker with a tested declarative runtime adapter; `agy remote-control start` is not used blindly as a forever-running service command.",
+      "Pin actual commands and relevant auth modes; native help commands that require login are not treated as offline build smoke tests.",
+      "Preserve independent capability and exposure defaults.",
+      "Expose Claude relay, Cursor My Machines, Antigravity Remote and OpenCode authenticated private web/server through purpose-first presets over existing components. Keep their lifecycles and credentials separate.",
+      "Document Cursor cloud agent loop versus local tool execution and cloud HTTP/SSE MCP versus local stdio MCP; no claim of universal local execution.",
+      "Evaluate experimental codex remote-control foreground/start/stop/pair against the pinned CLI and actual supported clients. If a supported contract exists, add an explicitly experimental codex-remote service and acceptance path; otherwise record the concrete blocker, not guessed flags or a substitute route.",
+      "Direct Codex relay enrollment is independent of Desktop SSH, shares no assumed session/credential semantics, and requires expiry/revocation, cancellation, listener and duplicate-supervisor checks. No public app-server port."
+    ],
+    "done_when": [
+      "No second daemon is installed; long-lived modes survive logout/boot and stop cleanly.",
+      "Each provider path has its own evidence instead of borrowing Happier success."
+    ],
+    "decisions": [
+      "D10",
+      "D25",
+      "D26",
+      "D33",
+      "D35"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W14",
+    "title": "Implement native chat/cloud and protected coding kiosks",
+    "depends_on": [
+      "W04",
+      "W05",
+      "W09",
+      "W17"
+    ],
+    "paths": [
+      "modules/controller.nix",
+      "modules/applications.nix",
+      "modules/presentation.nix",
+      "modules/sessions/x11.sh",
+      "modules/options.nix",
+      "crates/functional-core/assbox-domain/src/worker.rs",
+      "tests/nix/desktop-services-vm.nix",
+      "tests/worker/native-ssh-policy.py"
+    ],
+    "deliverables": [
+      "Provide ChatGPT/Claude selection and physical X11/Openbox defaults; keep optional Wayland for separately qualified combinations.",
+      "Request native kiosk localExecution=none, but activate only after exact app/platform/account policy is proven applicable and effectively applied. Selected protected local Code reuses one worker with necessary tools, under its own no-fallback and exact-client gate. Neither KVM nor a worker makes an otherwise unsafe controller safe.",
+      "Implement effective Claude Desktop managed SSH settings and local-Code disabling; test resume/fallback/preview/plugin/connector paths separately.",
+      "Do not replace controllerAllowed=false with an unconditional allow. Add handwritten feature assertions tied to the qualified native-kiosk profile.",
+      "Provide distinct web launchers using protected browser profiles as an explicit no-worker chat/cloud alternative.",
+      "Keep normal keyring behavior and clearly explain auto-login does not guarantee unlocked secrets after reboot.",
+      "Implement the same native policy gate in setup, launch, reconfiguration and update/rollback activation. Bind evidence to app/helper builds, OS/platform, authentication/workspace scope, feature set and effective policy digest. Do not trust execution-writable readiness markers. A changed or missing contract keeps affected capability inactive until valid observations are available; any safe login/bootstrap path must itself be qualified.",
+      "Qualify Linux ChatGPT Desktop -> managed-worker SSH independently from macOS external Desktop and phone->Mac->SSH. Do not infer Linux mobile Remote-host support from Linux GUI availability or generic SSH docs. Keep other independently qualified kiosk apps/routes usable.",
+      "Implement the ChatGPT surface contract in specifications/SECURITY_AND_LIFECYCLE.md: Codex Local, Work Local, Work Cloud local-computer access, cloud-only Work/Codex, browser/computer control and local plugins/MCP/helpers have separate placement and policy observations. Test independent enablement, account changes, new/resumed tasks and helper entry points. Workspace entitlement is not a machine-specific deny rule.",
+      "Keep Work execution bridges to the protected controller blocked under both no-local-execution and protected-Code presets. A worker alone does not route Work into that worker. Qualify any selected cloud continuation independently, including new-turn loss/recovery of a local computer and differences from Codex SSH/Remote; never imply local Nix/network/enterprise restrictions govern the cloud executor."
+    ],
+    "done_when": [
+      "Ordinary native chat/cloud operates without an Assbox guest when its no-local-execution policy is enforceable; selected local Code executes in the worker without controller fallback.",
+      "GUI login/close/reopen, keyring lock, session crash and reboot recover without leaking desktop credentials to execution.",
+      "Native account/build/policy changes cannot reuse stale activation evidence. Missing native enforcement has an actionable blocked result, not a bypass, automatic local fallback or OS boot failure.",
+      "No ChatGPT surface can inherit a false local-execution pass from another surface. Selected cloud-only tasks remain distinguishable from local-capable Work, and Codex SSH success grants no authority to Work or controller helpers."
+    ],
+    "decisions": [
+      "D05",
+      "D14",
+      "D16",
+      "D18"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W15",
+    "title": "Implement post-6-October Cowork topology and conditional local modes",
+    "depends_on": [
+      "W04",
+      "W14"
+    ],
+    "paths": [
+      "modules/applications.nix",
+      "modules/components.nix",
+      "modules/controller.nix",
+      "modules/devices.nix",
+      "modules/resources.nix",
+      "tests/nix/desktop-services-vm.nix"
+    ],
+    "deliverables": [
+      "Use deployment floor 2026-10-06. For new Pro/Max tasks expect the documented cloud Cowork path; do not implement pre-transition local-task migration or advertise an Only on your computer control for those tasks.",
+      "Detect and record actual entitlement, app version, observed execution topology and feature policies during onboarding. An unexpected rollout or mode must not silently gain local execution.",
+      "Qualify cloud Cowork/Dispatch plus explicitly selected local folders, browser bridges and connectors independently of Code SSH. Explain provider-side copies/retention and dependence on an open/connected Desktop bridge.",
+      "Only when a selected account/build actually offers local Cowork, implement the separate provider-VM requirements for devices, firmware/helpers, shares, lifecycle, storage and resources. This conditional gate is not a prerequisite for ordinary Claude kiosk support.",
+      "Do not redirect Cowork by analogy with SSH Code, grant blanket workload KVM privileges or impose another VM on the external-Codex Parallels profile."
+    ],
+    "done_when": [
+      "Ordinary Pro/Max cloud operation has independent evidence and no unintended local-VM dependency.",
+      "Eligible local modes remain unavailable until their own qualification passes; inapplicability is documented with account/build evidence rather than counted as a passed VM test."
+    ],
+    "decisions": [
+      "D15",
+      "D16",
+      "D22",
+      "D30"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W16",
+    "title": "Implement optional browser and virtual desktop support",
+    "depends_on": [
+      "W07",
+      "W11",
+      "W12",
+      "W13",
+      "W14"
+    ],
+    "paths": [
+      "modules/computer-use.nix [new]",
+      "modules/remotes.nix",
+      "modules/applications.nix",
+      "modules/worker/guest.nix",
+      "modules/resources.nix",
+      "tests/nix/computer-use-vm.nix [new]"
+    ],
+    "deliverables": [
+      "Provide selected browser/X11 dependencies without coupling physical presentation to agent capability.",
+      "Adapt Cursor/OpenClaw to provider-managed headless desktops; scrub inherited DISPLAY/Wayland/DBus/Xauthority rather than selecting physical :0.",
+      "Provide a small provider-specific isolated-display resource unit for OMP/Hermes only where their pinned tools need one; do not add a task scheduler or new computer-use API.",
+      "Keep private browser profiles, browser sandbox, ephemeral display credentials and authenticated optional viewing.",
+      "Set a one-active-desktop default; prevent collisions, leaks after teardown and fallback to an unrelated RFB listener.",
+      "Maintain exact Linux browser/desktop support rows and native fixtures for each selected provider path. Prefer a qualified upstream-owned Hermes Bot Screen when the pin includes it; a minimal display resource wrapper is only for a pinned path needing an existing display. Do not infer Wayland behavior from X11 success or generic upstream binary limitations from a differently compiled Nix package."
+    ],
+    "done_when": [
+      "A headless guest/host without GPU or monitor completes screenshot/input/browser fixtures.",
+      "Controller display, keyring and unrelated browser sessions remain inaccessible from the managed worker route."
+    ],
+    "decisions": [
+      "D17",
+      "D18",
+      "D30"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W17",
+    "title": "Port canonical identity hardening without storage regressions",
+    "depends_on": [
+      "W01"
+    ],
+    "paths": [
+      "scripts/worker/worker.py",
+      "modules/worker/default.nix",
+      "modules/worker/identities.nix",
+      "tests/worker/test_identity_continuity.py",
+      "tests/worker/test_seed_permissions.py",
+      "tests/worker/test_sparse_storage.py",
+      "tests/worker/test_transport_lifecycle.py"
+    ],
+    "deliverables": [
+      "Port bounded Ed25519 structure parsing, noninteractive private-key validation and whole-key-set validation before side effects.",
+      "Validate ownership, group, modes, links, sizes and persistent-state consistency; fail closed on canonical damage and regenerate only verified derived artifacts.",
+      "Preserve exact home/overlay 0600 policy, seed chmod under restrictive umask, sparse disk allocation and QEMU werror/rerror stop behavior.",
+      "Treat absent home with evidence of operation as damage. Preserve create-only infrastructure metadata rules.",
+      "Retain real OpenSSH tests including accumulated wildcard/include identities/certificates/forwardings; do not claim ordinary user SSH config is completely audited."
+    ],
+    "done_when": [
+      "Behavioral permission/storage regressions remain green alongside added adversarial identity tests.",
+      "Damaged state is unchanged on refusal; no identity rotation occurs beside preserved state."
+    ],
+    "decisions": [
+      "D13",
+      "D29"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W18",
+    "title": "Extend release-family and feature qualification wiring",
+    "depends_on": [
+      "W02",
+      "W03",
+      "W05"
+    ],
+    "paths": [
+      "scripts/component_catalog.py",
+      "scripts/component_families.py",
+      "scripts/release-check",
+      "scripts/release_data.py",
+      "scripts/release.py",
+      "tests/nix/matrix.nix",
+      ".github/workflows/",
+      "infra/release-monitor/worker.mjs",
+      "release/policy.json"
+    ],
+    "deliverables": [
+      "Wire new/removed families through lock handling, generation, checks and release monitoring.",
+      "Add profile/composition fixtures without an exhaustive impossible cross-product.",
+      "Include exact helper/protocol versions, runtime-code exceptions and feature evidence in release records.",
+      "Preserve authenticated publication/admission authority and numeric owner/repository ID provisioning gates.",
+      "Require no hidden latest/network install in ordinary image activation; distinguish runtime model traffic from dependency downloads."
+    ],
+    "done_when": [
+      "Catalog, generated Rust, family set, lock graph, CI and monitor agree.",
+      "Release records cannot label an unrun authenticated feature as qualified."
+    ],
+    "decisions": [
+      "D26",
+      "D27",
+      "D31",
+      "D32"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W19",
+    "title": "Complete lifecycle, resource and state integration",
+    "depends_on": [
+      "W08",
+      "W10",
+      "W11",
+      "W12",
+      "W13",
+      "W14",
+      "W16",
+      "W15"
+    ],
+    "paths": [
+      "modules/maintenance.nix",
+      "modules/resources.nix",
+      "modules/audit.nix",
+      "modules/generation.nix",
+      "crates/imperative-shell/assbox-system/src/services.rs",
+      "crates/imperative-shell/assbox-engine/src/acceptance.rs",
+      "tests/nix/maintenance-eval.nix"
+    ],
+    "deliverables": [
+      "Apply resource accounting to the selected stack including native GUI, provider guest and optional virtual desktops.",
+      "Keep liveness local/non-billable; separate network/auth/provider quota issues from OS boot acceptance.",
+      "Preserve pinned service restart and retirement behavior through scheduled OS maintenance.",
+      "Document and exercise application DB migration/backups/rollback limits.",
+      "Do not automatically reissue in-flight tool actions after restart; verify upstream recovery semantics."
+    ],
+    "done_when": [
+      "Disabling/removing services leaves no public/private exposure or orphan daemon, while preserving explicitly retained data.",
+      "Low-memory/disk-pressure/outage states are bounded and diagnosable."
+    ],
+    "decisions": [
+      "D27",
+      "D28",
+      "D30"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W20",
+    "title": "Refresh every affected document and remove conflicting authorities",
+    "depends_on": [
+      "W05",
+      "W06",
+      "W14",
+      "W15",
+      "W16",
+      "W19",
+      "W23"
+    ],
+    "paths": [
+      "README.md",
+      "SECURITY.md",
+      "CONTRIBUTING.md",
+      "docs/",
+      "examples/worker/",
+      "tests/tooling/test_documentation.py",
+      "docs/product/linux-computer-use-support.md [new dated evidence]"
+    ],
+    "deliverables": [
+      "Apply the documentation map and ready-to-integrate product documents.",
+      "Rewrite operational examples against implemented settings/commands; retire duplicate proposal language and scope worker docs to managed-worker deployments.",
+      "Generate preset/catalog tables from the same reviewed data as the installer.",
+      "Attach versioned evidence and explicit statuses to provider capability statements; link dated research separately from stable strategy.",
+      "Add documentation checks for stale removed IDs, unsafe examples, broken links and mismatched defaults.",
+      "Add a normative Coder-route guide and refresh docs/parallels.md with macOS external-controller responsibilities, exact SSH runtime behavior, guest egress, native versus experimental routes and no-worker native kiosk policy.",
+      "Remove all pre-6-October Cowork migration requirements and present local provider VMs as entitlement-dependent; preserve cloud bridge authority warnings.",
+      "Publish separate upstream-evidence and Assbox-qualification columns for Mac SSH, phone->Mac->SSH, Linux Desktop->managed-worker SSH and experimental direct relay. Generate no-worker policy and minimal Codex/Tailscale wording consistently across installer, acceptance and operations.",
+      "Integrate docs/product/linux-computer-use-support.md as dated evidence, with browser versus screen control, native product versus alternative harness, helper/build prerequisites and Assbox test status separated. Generate it from the planning evidence data; maintain it in the repository with release evidence, not by fetching live websites at boot.",
+      "Document independent ChatGPT Work/Codex/local-computer access controls and cloud continuation authority. Link the detailed control inventory from kiosk and external-controller instructions. Add Happier upstream pairing guidance with exact machine roles, redaction and single-supervisor requirements; do not invent an Assbox pairing protocol."
+    ],
+    "done_when": [
+      "A reader can determine where execution, credentials and graphical control live for every preset without reading chat history.",
+      "No contradictory global claims about headless-only use, all-components-off guided defaults, worker ubiquity or proven Claude token scope remain.",
+      "The dated Linux matrix has valid source/date/path references and cannot be mistaken for an Assbox pass; current pairing and per-surface kiosk policy are understandable without chat history."
+    ],
+    "decisions": [
+      "D01",
+      "D31",
+      "D33",
+      "D34",
+      "D35"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W21",
+    "title": "Execute static and native system qualification",
+    "depends_on": [
+      "W17",
+      "W18",
+      "W19",
+      "W20"
+    ],
+    "paths": [
+      "scripts/verify",
+      "scripts/release-check",
+      "tests/tooling/",
+      "tests/nix/",
+      "tests/worker/"
+    ],
+    "deliverables": [
+      "Run all real Rust, generated-metadata, Nix evaluation/build, native ISO/OpenSSH, VM lifecycle and security gates.",
+      "Use exact selected package versions and architecture; report unavailable prerequisites as not run, not pass.",
+      "Exercise installation/reconfiguration failure injection and ensure application changes do not bypass worker publication/admission."
+    ],
+    "done_when": [
+      "All required automated gates have recorded commands and evidence for the release candidate.",
+      "Failures are repaired in code/tests rather than removing gates."
+    ],
+    "decisions": [
+      "D29",
+      "D32"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W22",
+    "title": "Execute authenticated feature and hardware acceptance",
+    "depends_on": [
+      "W21"
+    ],
+    "paths": [
+      "docs/component-acceptance.md",
+      "docs/worker/acceptance.md",
+      "docs/intel-mac-acceptance.md",
+      "docs/parallels.md",
+      "docs/implementation-status.md [new]"
+    ],
+    "deliverables": [
+      "Use sacrificial identities for credential-boundary probes; use intended subscription/auth modes for normal remote workflows.",
+      "Test top-level remote Codex/Claude plus Antigravity/Cursor/Grok delegation via actual selected frontend paths.",
+      "Exercise native kiosk, Cowork, headless browser/desktop, remote viewing, revocation and disable behavior independently.",
+      "Run reference old x86 hardware and generic ARM VM acceptance, including CPU instructions, memory and power/reboot behavior.",
+      "Record exactly which combinations are qualified without calling a default bundle universally equivalent across frontends.",
+      "Run the external macOS ChatGPT Desktop -> standalone Parallels guest Codex acceptance path on each advertised CPU architecture. Record client and VM versions, SSH resolved configuration, guest-only canaries, host sharing controls, sleep/reconnect and mobile coordinator dependencies.",
+      "Treat experimental CLI Codex relay, Claude relay/SSH and native provider routes as separate client/auth/lifecycle evidence rows, never borrow another route's pass.",
+      "Record an independent exact Linux ChatGPT Desktop/worker route result and a separate Linux-as-mobile-Remote-host result when advertised. Mac evidence never substitutes; blocked Linux paths do not veto independently qualified external-Mac or other native-app paths."
+    ],
+    "done_when": [
+      "Advertised profile/capability/hardware support is backed by dated reproducible evidence.",
+      "Engineering complete and empirical qualification complete remain distinct status fields."
+    ],
+    "decisions": [
+      "D22",
+      "D23",
+      "D30",
+      "D32",
+      "D33",
+      "D34",
+      "D35"
+    ],
+    "status": "planned"
+  },
+  {
+    "id": "W23",
+    "title": "Implement external Desktop SSH Coder and Parallels reference path",
+    "depends_on": [
+      "W03",
+      "W05",
+      "W07",
+      "W08",
+      "W09"
+    ],
+    "paths": [
+      "modules/access.nix",
+      "modules/options.nix",
+      "modules/remotes.nix",
+      "crates/imperative-shell/assbox-cli/src/wizard.rs",
+      "tests/nix/access-vm.nix",
+      "tests/worker/native-ssh-policy.py",
+      "docs/parallels.md",
+      "docs/component-acceptance.md",
+      "tests/fixtures/external_coder.py [new]"
+    ],
+    "deliverables": [
+      "Resolve coder-codex-ssh to standalone Codex and deliberate workload OpenSSH as its only Coder-specific runtime/access components. Keep common Assbox services and explicitly selected Tailscale support. No guest Desktop, inner worker, persistent public app-server service or separately provisioned direct relay.",
+      "Make the exact selected Codex command available in the remote login shell. Document guest-side authentication, concrete SSH Host aliases, independent workload keys and trusted-console host-key verification.",
+      "Verify the app-started app-server lifetime and any needed SSH channels/forwarding against the selected client; reject incidental identity/certificate/forward accumulation without assuming a blanket forwarding ban is compatible.",
+      "Provide Claude Desktop SSH as a separate minimal provider route. Qualify its automatic remote helper provisioning or a supported pin override; do not assume it uses the preinstalled CLI unchanged.",
+      "Codify the Mac/Parallels reference topology: matching CPU architecture, no nested virtualization requirement, repositories/credentials in guest, unnecessary host sharing disabled, and independently tested guest execution-egress policy.",
+      "Document owner-managed Mac/hypervisor actions separately from Assbox capabilities. Mac-to-guest SSH replies must work while unauthorized guest-initiated access to the Mac/private peers remains blocked.",
+      "Implement reproducible canary/disconnect/reconnect acceptance fixtures; test explicit handoff separately from forbidden silent host fallback and document Mac availability for mobile relay coordination.",
+      "Test both the guided Tailscale-selected, unenrolled configuration and an explicitly deselected configuration over a reviewed local Mac/guest route. The latter contains no Tailscale runtime/service dependency and performs an actual Desktop SSH task without overlay enrollment.",
+      "Label macOS Desktop->SSH and phone->Mac->SSH as upstream-documented topologies awaiting Assbox/Parallels acceptance. Keep exact Linux client and Linux Remote-coordinator qualification in distinct evidence rows; do not change the default Coder route to the experimental CLI relay."
+    ],
+    "done_when": [
+      "The exact supported macOS app launches and controls guest Codex over SSH with no extra Assbox VM or public RPC listener.",
+      "Guest-only file/process checks, private-network denial, reboot/suspend/reconnect and optional mobile continuation have route-specific evidence. Unobserved client or platform combinations remain unqualified."
+    ],
+    "decisions": [
+      "D04",
+      "D06",
+      "D13",
+      "D21",
+      "D26",
+      "D30",
+      "D33",
+      "D34"
+    ],
+    "status": "planned"
+  }
+]

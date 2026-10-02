@@ -18,6 +18,7 @@ def heading_ids(text: str) -> set[str]:
             fenced = not fenced
         if fenced:
             continue
+        identifiers.update(re.findall(r'<a\s+(?:id|name)=["\']([^"\']+)["\']', line))
         heading = re.match(r"^#{1,6}\s+(.*?)\s*#*\s*$", line)
         if heading is None:
             continue

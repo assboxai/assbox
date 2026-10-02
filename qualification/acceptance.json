@@ -1,0 +1,1600 @@
+[
+  {
+    "id": "A001",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "Exact baseline",
+    "method": "Archive/per-file hash and mode verification.",
+    "expected": "Start from the named 244-file master; record lock hash; reject a different export without re-baselining.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A002",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "Patch provenance",
+    "method": "Diff and application preflight against the selected baseline.",
+    "expected": "No donor-tree replacement; intended changed files/modes and deleted IDs are explicitly reviewed.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A003",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "Seed permissions",
+    "method": "Real umask 0077 plus built/mounted seed ISO and unprivileged read.",
+    "expected": "New derived seed directory is 0755; authorized-key files readable as intended without weakening canonical-state validation.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A004",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "Sparse storage and QEMU error behavior",
+    "method": "Actual sparse allocation/stat and native QEMU error injection.",
+    "expected": "Sparse contract retained; both writable disks stop on read/write errors; partial creation is not silently replaced.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A005",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "Canonical key admission",
+    "method": "Malformed/encrypted/oversized/empty/link/UID/GID/mode fixtures and real ssh-keygen.",
+    "expected": "Whole canonical set validates before mutation; valid comments accepted; no prompt or unbounded parse.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A006",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "Persistent-state damage",
+    "method": "Missing home plus root/operation evidence; bad disk modes; missing canonical key.",
+    "expected": "Refuse without changing preserved state or rotating an identity; exact disk/overlay 0600 required.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A007",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "Derived-state recovery",
+    "method": "Remove known-hosts, seed and unprivileged health copy independently.",
+    "expected": "Rebuild only from verified canonical state; repeat provisioning is idempotent.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A008",
+    "group": "Baseline and source authority",
+    "work": [
+      "W01",
+      "W17"
+    ],
+    "title": "SSH accumulated settings",
+    "method": "Native ssh -G retaining repeated entries, wildcard/include identities/certs and all forwarding types.",
+    "expected": "Dedicated CLI/health -F paths remain independent; unsafe ordinary alias fixture is detected without asserting universal user-config auditing.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A009",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Four purpose branches",
+    "method": "Golden terminal transcripts and pure resolver fixtures.",
+    "expected": "Assistant, Coder, Kiosk, Custom precede low-level arrangement; first two show only their relevant application choices.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A010",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Assistant defaults",
+    "method": "Resolve OpenClaw and Hermes independently.",
+    "expected": "Selected assistant and eight-CLI bundle; no second assistant or dashboard activated implicitly.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A011",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Coder defaults",
+    "method": "Resolve Happier, Codex SSH, Claude relay/SSH, More native options and terminal/SSH.",
+    "expected": "Happier selects eight; Codex SSH selects Codex plus workload SSH; Claude routes select only their required tools/service. Cursor/Antigravity/OpenCode use their existing services. No unused remotes auto-start.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A012",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Kiosk defaults",
+    "method": "Resolve ChatGPT-only, Claude-only and combined, with localExecution none and managed-worker.",
+    "expected": "Both apps are initially checked and no local execution/no worker is the requested default. Resolution does not assert native readiness: activation requires the exact qualified effective policy. Protected Code explicitly selects minimal guest agents and its own route/no-fallback controls; missing evidence remains pending or blocked.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A013",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Explicit web kiosk",
+    "method": "No KVM/native unsupported fixture and declined native fallback.",
+    "expected": "Offers separately named web chat/cloud use; never silently moves arbitrary execution onto controller.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A014",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Custom parity",
+    "method": "Raw component selection including advanced no-GUI managed worker.",
+    "expected": "All applicable dependency/placement/auth/network rules still enforced; no special bypass via custom label.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A015",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Bundle deselection",
+    "method": "Uncheck each CLI then resolve/reconfigure/update.",
+    "expected": "CLI remains omitted; mandatory dependency conflict is shown, not silently restored; no deferred frontend auto-install.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A016",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Preset stability",
+    "method": "Expand recommended bundle in a fixture after existing selection.",
+    "expected": "Existing resolved Nix settings unchanged; newly suggested components require explicit approval.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A017",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Pure policy",
+    "method": "Determinism/property tests and architecture gate.",
+    "expected": "No I/O callbacks or mutable runtime discovery enter functional core; Nix mirrors security assertions.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A018",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Safe reconfiguration",
+    "method": "New assbox configure preview/apply, handwritten local.nix overrides, forced build failure.",
+    "expected": "Show effective diff; preserve local.nix; build/admit before activation; no implicit state-format/topology migration.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A019",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Hardware preflight",
+    "method": "No KVM, nested virtualization unavailable, unsupported package architecture, old CPU.",
+    "expected": "Unsupported selected capabilities fail before writes. Absence of KVM does not reject an enforceable native chat/cloud kiosk or external-Codex Parallels profile.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A020",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Installation invariants",
+    "method": "Cancellation/backtracking, prepared-storage identity, power and release-auth failures.",
+    "expected": "Existing destructive-write authorization and signed-release checks remain authoritative.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A021",
+    "group": "Installer, configuration and selection",
+    "work": [
+      "W05",
+      "W06"
+    ],
+    "title": "Consent/version changes",
+    "method": "Change relay, effective permissions, helper-runtime contract or selected access.",
+    "expected": "Stale consent does not enable broader authority automatically; unrelated harmless settings do not force needless re-enrollment.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A022",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Removed selection cleanup",
+    "method": "Catalog/family/workflow/code/document scans.",
+    "expected": "No active Happy/Gemini/cowork-dispatch selection path; actionable stale-config errors; no data deletion.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A023",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Generated metadata",
+    "method": "Catalog validation, generator plus rustfmt comparison, Rust build.",
+    "expected": "Catalog and Rust/family/Nix metadata agree; component representation bounds respected.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A024",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Family isolation",
+    "method": "Lock-diff/update fixtures per new family.",
+    "expected": "Happier/Hermes/Pi/OMP independently held; unrelated pins unchanged without explicit intent.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A025",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "All-curated closure",
+    "method": "Evaluate/build minimal/full selections on advertised architectures.",
+    "expected": "Unselected components are absent as selectable CLIs; unavoidable frontend SDK dependencies disclosed.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A026",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Command resolution",
+    "method": "Run exact executable identity/help checks with all agents installed.",
+    "expected": "Grok agent alias never substitutes for Cursor; managed commands use exact unambiguous package paths.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A027",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Offline activation",
+    "method": "Deny non-test network during activation and first unauthenticated launch.",
+    "expected": "No hidden latest/plugin/browser/bridge installation; unavoidable mutable-runtime exception explicitly recorded and gated.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A028",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "CPU/runtime support",
+    "method": "Execute chosen Node/Bun/native helpers on oldest advertised reference CPU.",
+    "expected": "No illegal-instruction failure; tested fallback variants or explicit feature restriction before install.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A029",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Desktop provenance",
+    "method": "Native ChatGPT/Claude launch and dependency resolution under NixOS.",
+    "expected": "Official upstream Linux availability is not mistaken for NixOS package qualification; actual artifacts recorded.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A030",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Bridge identity",
+    "method": "Happier AG, OpenClaw ACP, Hermes browser/CUA optional closures.",
+    "expected": "Needed bridge binaries and auth states are distinct, pinned and tested; installing the branded CLI alone is not a pass.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A031",
+    "group": "Packaging and family wiring",
+    "work": [
+      "W02",
+      "W03",
+      "W04",
+      "W18"
+    ],
+    "title": "Release/auth authority",
+    "method": "Signed release, numeric identity, monitor, admission and failure fixtures.",
+    "expected": "New family/profile updates do not create a publication path bypassing existing security gates.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A032",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Default unauthenticated overlay",
+    "method": "Install each guided preset without Tailscale login.",
+    "expected": "Support package/unenrolled root daemon only; no tailnet membership, listener publication or implicit account consent.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A033",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Overlay opt-out",
+    "method": "Deselect Tailscale and run hosted Happier/native relay fixture.",
+    "expected": "Relay use works without overlay dependency; bare SSH path asks for a deliberate alternative access policy.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A034",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Root-only tailnet authority",
+    "method": "Agent access to local Tailscale API/control, serve, routes and operator commands.",
+    "expected": "Execution account cannot alter tailnet/exposure; no operator rights, Tailscale SSH, exit/subnet/Funnel defaults.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A035",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Private authenticated Serve",
+    "method": "Phone/laptop through Serve; unauthenticated request and forged identity headers.",
+    "expected": "Recommended routes require app auth as well as private access; only intended backend reachable. Local headers cannot forge identity to bypass app authorization. Explicit tunnel-only Hermes policy is tested separately, not counted as this pass.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A036",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Overlay directionality",
+    "method": "Admin-to-Assbox and Assbox-to-peer tests under broad remote tailnet grants.",
+    "expected": "Authorized inbound/replies work; new workload peer connections denied locally by default.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A037",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Complete UID coverage",
+    "method": "Launch via daemon, SSH, terminal, user service, subprocess and permitted user namespace.",
+    "expected": "Every execution process gets equivalent policy; no easy cgroup/UID/path escape.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A038",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "IPv4/IPv6 private ranges",
+    "method": "LAN, overlay, loopback brokers, link-local, metadata, route/rebinding fixtures.",
+    "expected": "Default denies reviewed private destinations; explicit scoped exceptions work only as declared.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A039",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Resolver/proxy boundary",
+    "method": "System resolver and local HTTP/SSH/proxy broker tests.",
+    "expected": "Necessary DNS works without turning a trusted local helper into unrestricted private-network routing.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A040",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Policy lifecycle",
+    "method": "Ruleset reload/failure, boot race, interface change, daemon crash.",
+    "expected": "Execution remains fail-closed while administration/recovery remains usable.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A041",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Exposure retirement",
+    "method": "Disable/remove dashboard and change Serve mapping.",
+    "expected": "Assbox-owned route withdrawn; backend stopped; owner-managed unrelated mapping preserved.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A042",
+    "group": "Standalone networking and remote access",
+    "work": [
+      "W07",
+      "W08"
+    ],
+    "title": "Network modes",
+    "method": "Internet-only/normal/offline and explicit private-node exception.",
+    "expected": "Names reflect actual enforcement; offline reports cloud unavailability and does not restart-loop.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A043",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Single supervisor",
+    "method": "Boot/start/stop/restart/logout/update each managed service.",
+    "expected": "Exactly one reproducible supervisor using the supported upstream contract; no installer/daemonizer wrapped by a competing unit, no unwanted updater or orphan process group.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A044",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Onboarding state machine",
+    "method": "Missing credentials, consent, malformed config, revoked token, outage, quota.",
+    "expected": "Useful distinct states; bounded retry; no paid health call or OS-boot failure solely for missing login.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A045",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Happier hosted pairing",
+    "method": "Real remote phone/web session, encryption policy, wrong scope. Run both documented pairing routes under A115/A116, with exact runtime/server/account identification.",
+    "expected": "Works over outbound path; actual pinned encryption policy effective; no undocumented env-based assurance.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A046",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Happier top-level agents",
+    "method": "Authenticated Codex and Claude using intended subscription modes.",
+    "expected": "Start/resume/approve/interrupt/finish on selected Assbox; no silent cloud or controller execution substitution.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A047",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Happier subagents",
+    "method": "Top-level Codex and Claude each delegate to AG/Cursor/Grok.",
+    "expected": "Actual bridge/auth paths work; bounded upstream concurrency/permission ceilings and cancellation verified.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A048",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Happier account boundary",
+    "method": "Sacrificial multi-machine account, stolen endpoint/session credentials and revoke.",
+    "expected": "Report observed authority; no unrelated trusted workstation automatically included in Assbox control scope.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A049",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "OpenClaw channels",
+    "method": "Pair allowed sender, unknown sender, group message and revoked sender.",
+    "expected": "Upstream authorization enforced before commands; no automatic public bot/admin privilege.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A050",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "OpenClaw coding delegation",
+    "method": "Actual selected native/app-server/ACP adapters and declined tool approval.",
+    "expected": "Invocation/results/cancel function inside execution domain; refusal does not globally loosen approvals.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A051",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Hermes gateway",
+    "method": "Foreground gateway, selected messaging channel, allowlist/pairing and persisted session.",
+    "expected": "Headless unattended service works; gateway is not misrepresented as web dashboard.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A052",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Hermes dashboard",
+    "method": "Hermes loopback backend with exact non-loopback HTTPS public_url and native auth through Serve; test missing auth, anonymous protected routes, WS/PTY, bad Host/Origin and proxy spoof.",
+    "expected": "Pinned public_url behavior enables authentication and refuses missing configuration; authorized interactive use works. Public health alone is not acceptance; Secure cookies are verified behind the actual HTTPS proxy.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A053",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Hermes delegation",
+    "method": "Bundled Codex/Claude skills and selected other tool paths.",
+    "expected": "Reuse supported upstream behavior; no promise all eight are first-class adapters; no competing runtime installs.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A054",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Native Claude Remote",
+    "method": "Eligible account, full login vs inference-only token, remote start/stop and outage.",
+    "expected": "Real server flow works using supported token; user sees authority limitations, not a false chat-history guarantee.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A055",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Native Antigravity Remote",
+    "method": "Inspect actual installed service/runtime; run managed equivalent and disable.",
+    "expected": "One supervisor; daemon-contract evidence; reboot and logout recovery; provider service cannot resurrect after disable.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A056",
+    "group": "Frontend and native-remote workflows",
+    "work": [
+      "W09",
+      "W10",
+      "W11",
+      "W12",
+      "W13"
+    ],
+    "title": "Advanced interfaces",
+    "method": "Cursor worker/OpenCode server/VS Code tunnel/OpenClaw node as selected.",
+    "expected": "Routes are selected deliberately within More native options or Advanced; remain off in other presets. Correct binding, credentials, agent-loop/tool location, workdir, cancellation and retirement are verified.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A057",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Kiosk shell",
+    "method": "One/both apps, launcher switching, resolution, app crash and session recovery.",
+    "expected": "Usable personal kiosk; no public-shared-login assurance; nano/tmux recovery intact.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A058",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Credential/keyring boundary",
+    "method": "Lock/unlock/reboot with sensitive browser/desktop login on controller.",
+    "expected": "No credential copy to worker; locked keyring shown as needing user attention rather than silently weakened.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A059",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Linux ChatGPT managed-worker routing",
+    "method": "On the exact advertised Linux ChatGPT Desktop build/account and Assbox worker image, exercise SSH projects, remote terminal/files and each selected browser/preview feature, then failed SSH/resume. Record client/helper/policy versions and platform.",
+    "expected": "Only actually qualified worker-routed features are enabled; controller-local fallback is blocked or that route remains unavailable. Generic Desktop SSH documentation and external macOS results are not Linux evidence. Linux mobile Remote-host behavior is a separate capability, never inferred from a successful SSH project.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A060",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Claude SSH Code policy",
+    "method": "Effective managed configuration and attempts to start local Code across entry points.",
+    "expected": "disableDesktopLocalSessions or equivalent is proven effective for selected build; actual commands/files land in worker.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A061",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Desktop helper mutation",
+    "method": "First connection, client update and helper version mismatch.",
+    "expected": "Supported preinstalled override or declared bounded client-managed exception; no unsupported reproducibility claim.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A062",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Connector/MCP exposure",
+    "method": "Selected connectors, local extensions, plugin and browser integrations.",
+    "expected": "Document specific authority delivered to worker; prevent unapproved local command helper path.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A063",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Cowork mode distinction",
+    "method": "For deployment >=2026-10-06 inspect actual account/build, new Pro/Max cloud task, Desktop bridge and Code SSH; inspect local Cowork only when entitlement exposes it.",
+    "expected": "Pro/Max baseline uses cloud tasks and no pre-transition migration. Local bridges have explicit authority. Account-dependent local VM is separate from Code SSH and not a basic kiosk prerequisite.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A064",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Local Cowork VM",
+    "method": "Only for a selected eligible post-transition local mode, exercise KVM/vsock/virtiofs/firmware, mounts, helpers, start/stop/update and disk pressure.",
+    "expected": "Reviewed minimal privileges/shares and independent resources. Inapplicable account/build does not block ordinary kiosk or count as a native VM pass.",
+    "status": "not_run",
+    "evidence": null,
+    "applicability": "Only a selected account/build that actually offers local Cowork; ordinary post-6-October Pro/Max cloud and chat-only kiosks are not dependent on this gate."
+  },
+  {
+    "id": "A065",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "Unqualified native feature",
+    "method": "Request native localExecution=none with an absent, wrong-platform, ineffective or account-inapplicable policy; repeat protected-route selection without valid no-fallback/client evidence.",
+    "expected": "The affected app/capability remains inactive with a structured reason. The installer offers only separately qualified protected/remote or explicit web alternatives plus Back/deselection; it cannot treat adding a VM as a universal fix. Independently qualified apps remain usable. See A109/A110 for state transitions and invalidation.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A066",
+    "group": "Protected physical kiosk and Cowork",
+    "work": [
+      "W14",
+      "W15"
+    ],
+    "title": "GUI coexistence",
+    "method": "Combined apps plus Assbox worker and optional provider guest on reference hardware.",
+    "expected": "Resource policy prevents unusable host; multi-GUI/kvm combinations measured, not assumed.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A067",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "No graphical opt-in",
+    "method": "Install full CLI bundle with computer use none.",
+    "expected": "No managed browser/desktop provisioned or started; documented bundled dependency exceptions only.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A068",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "Browser-only path",
+    "method": "Pinned headless browser, sandbox, private profile, download/attachment fixture.",
+    "expected": "No personal cookies; no no-sandbox workaround; no full desktop required.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A069",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "Provider virtual desktop",
+    "method": "Cursor/OpenClaw on headless machine without monitor or GPU.",
+    "expected": "TigerVNC/XFCE capture/click/type works with pinned dependencies and private D-Bus.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A070",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "OMP/Hermes display path",
+    "method": "Pinned native helper or driver and minimal supplied display. Where the Hermes pin supplies Bot Screen, test that provider-owned path rather than assuming an Assbox-created display is necessary.",
+    "expected": "Actual X11 screenshot/input test works; adapter is resource plumbing, not Assbox agent loop.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A071",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "Physical display isolation",
+    "method": "Inherited DISPLAY/XAUTHORITY/Wayland/session DBus/AT-SPI and physical :0.",
+    "expected": "Managed workload never attaches protected controller display or keyring; no implicit fallback.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A072",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "Existing listener collision",
+    "method": "Unrelated RFB listener on default port and stale display lock.",
+    "expected": "No attachment to unrelated desktop; clear safe refusal or distinct managed instance.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A073",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "Input concurrency",
+    "method": "Two computer-use requests, configured limit and cancellation.",
+    "expected": "Single-default active desktop policy enforced without agents racing input; upstream parallel sessions qualified separately.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A074",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "Human viewing",
+    "method": "Read-only and control viewer, unauthenticated access, disconnect and token revoke.",
+    "expected": "Private/authenticated exposure only; view vs control separated where provider supports it, otherwise limitation visible.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A075",
+    "group": "Browser and desktop execution",
+    "work": [
+      "W16"
+    ],
+    "title": "Desktop cleanup",
+    "method": "Stop/crash/reboot/deselect browser or desktop; inspect descendants and ports.",
+    "expected": "No orphan viewer/display/browser or stale authorization; named persistent profile only when explicitly retained.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A076",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "OS vs provider health",
+    "method": "Healthy OS while model/provider unreachable or credentials absent.",
+    "expected": "No paid inference probe or unnecessary rollback; diagnosable application state.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A077",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "Unattended service recovery",
+    "method": "Outage/reconnect/boot after update with signed known-good generation.",
+    "expected": "Availability restored without replaying uncertain external side effects.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A078",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "Bounded maintenance",
+    "method": "Busy agents, low power, repeated failure and reboot grace.",
+    "expected": "Existing safety gates and bounded deferrals/retries preserved; always-busy service cannot defer security updates forever.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A079",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "Data migration and rollback",
+    "method": "Application schema change, old binary rollback, backup/restore.",
+    "expected": "Rollback compatibility or recovery requirement explicit; Nix rollback not claimed to undo DB migrations.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A080",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "Revocation/retirement",
+    "method": "Revoke provider/control-plane credentials; remove preset/service and retain data.",
+    "expected": "No exposure or task resurrection; data ownership/backups explicit; no accidental credential migration.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A081",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "Resource pressure",
+    "method": "Full bundle idle, active agents, kiosk, CUA and VMs on 8GB/16GB references.",
+    "expected": "Bounds based on measured memory/disk/CPU; one CUA desktop default; no implicit local-model downloads.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A082",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "Native system gates",
+    "method": "Full Rust, rustfmt generation, Nix eval/build, OpenSSH/ISO, VM and vulnerability gates.",
+    "expected": "Record exact commands/versions and real results; unavailable prerequisite remains not_run.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A083",
+    "group": "Maintenance, persistence and hardware",
+    "work": [
+      "W19",
+      "W21",
+      "W22"
+    ],
+    "title": "Physical hardware",
+    "method": "Old x86 reference machines and advertised ARM/generic VM targets.",
+    "expected": "Boot, CPU instructions, sleep/lid/power, network and reboot acceptance; unsupported combinations disclosed.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A084",
+    "group": "Documentation and support claims",
+    "work": [
+      "W20",
+      "W22"
+    ],
+    "title": "One architectural authority",
+    "method": "Review README/product/architecture/worker docs together.",
+    "expected": "No inference that all Assboxes are headless, all need workers, or a virtual display makes every agent support CUA.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A085",
+    "group": "Documentation and support claims",
+    "work": [
+      "W20",
+      "W22"
+    ],
+    "title": "Selection/doc consistency",
+    "method": "Generate preset/component tables and validate removed ID references.",
+    "expected": "Docs and installer match defaults; historical/removal references are clearly migration-only.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A086",
+    "group": "Documentation and support claims",
+    "work": [
+      "W20",
+      "W22"
+    ],
+    "title": "Claim/evidence separation",
+    "method": "Support matrix completeness and release evidence schema.",
+    "expected": "Package/CLI/integration/CUA/native authentication statuses separately recorded; no unrun feature marked qualified. Dated Linux browser/desktop evidence is separate from test status and exact selected build flags; unknown is neither supported nor disproven.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A087",
+    "group": "Documentation and support claims",
+    "work": [
+      "W20",
+      "W22"
+    ],
+    "title": "Safe operational examples",
+    "method": "Audit SSH, browser, auth, tailscale, Serve, VM, sudo and network examples.",
+    "expected": "No public debug port, passwordless agent sudo, Docker socket or broad kvm/secret sharing shortcut.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A088",
+    "group": "Documentation and support claims",
+    "work": [
+      "W20",
+      "W22"
+    ],
+    "title": "Documentation navigation",
+    "method": "Relative link and destination check including new overlay and old-doc rewrites.",
+    "expected": "All product/operations/security docs reachable with no duplicate normative proposals or contradictory implementation status.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A089",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W04",
+      "W05",
+      "W14"
+    ],
+    "title": "Native kiosk without virtualization",
+    "method": "With localExecution=none requested, first establish exact client/platform/account policy applicability and effective restrictions; then boot qualified native apps without /dev/kvm and separately probe Codex Local, Work Local, Work Cloud local-computer access, terminal/MCP/plugin/helper and selected browser/file entry points. Use new and resumed tasks; an unknown/inapplicable policy exercises the blocked branch, not an unsafe launch.",
+    "expected": "No Assbox worker or active provider VM/KVM dependency for the permitted mode. The requested setting is not evidence: only effectively constrained clients activate, permitted bridges have separate scoped evidence, and blocked clients stay inactive. Inert bundled helper code is disclosed separately from enabling virtualization. No independent Work or cloud-to-local execution surface remains enabled merely because Codex Local is disabled. Selected cloud-only work and restricted browser/file bridges have separately identified authority.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A090",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W05",
+      "W06",
+      "W14"
+    ],
+    "title": "Protected kiosk capability transition",
+    "method": "Enable local coding from a no-execution kiosk and exercise missing KVM/policy preflight and explicit review.",
+    "expected": "The required worker/minimal CLIs and new authority are visible and explicitly approved. The selected native client also passes its own route/no-fallback gate; a worker is not selected automatically to waive a missing policy. No in-place host execution, credential relocation or implicit substitute topology.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A091",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W05",
+      "W15",
+      "W20"
+    ],
+    "title": "Cowork deployment-floor contract",
+    "method": "Use new Pro/Max accounts/tasks under the post-6-October design baseline and simulate different actual rollout/entitlement reports.",
+    "expected": "No pre-transition task migration or generic local-VM checkbox; unexpected topology is reported and held rather than assumed safe.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A092",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W03",
+      "W09",
+      "W10"
+    ],
+    "title": "Happier daemon identity and supervisor",
+    "method": "Evaluate the catalog and pinned supported user service; pair, logout, reboot, disable and update.",
+    "expected": "happier-daemon is the service ID; one declarative/upstream-compatible supervisor and no competing installer/autoupdater.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A093",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W08",
+      "W12"
+    ],
+    "title": "Hermes public URL fail-closed gate",
+    "method": "Bind loopback behind Serve, declare non-loopback HTTPS public_url, omit auth, then configure auth and exercise anonymous HTTP/WS/PTY.",
+    "expected": "Missing auth refuses startup or all protected access; no loopback bypass. Authentication, secure cookies and origins match the selected release.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A094",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W08",
+      "W12",
+      "W20"
+    ],
+    "title": "Explicit Hermes tunnel-only exception",
+    "method": "Select Advanced tunnel-only mode deliberately, inspect summary and access policy, attempt reachability without tunnel rights.",
+    "expected": "Only private tunnel/network auth is claimed; no public exposure, no auth-failure fallback, no app-authenticated qualification label.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A095",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W05",
+      "W06",
+      "W10",
+      "W20"
+    ],
+    "title": "Visible per-agent integration maturity",
+    "method": "Render curated bundle and one experimental/unintegrated adapter, authenticated and unauthenticated variants.",
+    "expected": "Installed, authenticated, frontend integration and qualification are independently visible; OMP/ACP compatibility is not invented.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A096",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W05",
+      "W23"
+    ],
+    "title": "External Codex SSH minimal closure",
+    "method": "Resolve and boot the guided coder-codex-ssh preset without KVM or GUI, leaving default-selected Tailscale support installed and unenrolled; enumerate components, services/listeners and run Desktop SSH over the approved non-overlay route. A108 separately tests complete Tailscale deselection.",
+    "expected": "Codex and deliberate workload OpenSSH are the only Coder-specific runtime/access components. Common Assbox baseline services and selected Tailscale support are allowed, but no enrollment or exposure is implied. No guest Desktop, inner worker, public app-server listener or independently provisioned direct-relay service. Record any remote-control subcommands the actual SSH client uses internally.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A097",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W03",
+      "W23"
+    ],
+    "title": "Codex remote login-shell contract",
+    "method": "Connect using the actual macOS app and its evaluated SSH Host alias; inspect selected command/path and app-server process ownership.",
+    "expected": "Pinned Codex is found in remote login shell and app-started server runs as guest execution user; no root or silently different runtime. This is native Assbox evidence for the documented macOS SSH topology, not proof for a Linux Desktop client.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A098",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W23"
+    ],
+    "title": "External SSH identity and channel policy",
+    "method": "Exercise includes, wildcard identities/certificates, agent forwarding and local/remote/dynamic forwarding beside the real app connection.",
+    "expected": "Host identity is independently verified; only deliberate keys/channels are used. Necessary client channels work without unrelated inherited forwarding or host credential exposure.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A099",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W23",
+      "W22"
+    ],
+    "title": "Parallels guest-only execution",
+    "method": "On each advertised architecture create a random guest-only canary and a host-only canary; run a real code/test task and inspect processes and files.",
+    "expected": "Results originate in guest; host-only state absent; no host folders, clipboard, credential/SSH-agent sharing or device access beyond explicit reviewed needs.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A100",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W07",
+      "W08",
+      "W23"
+    ],
+    "title": "Parallels reachability versus egress",
+    "method": "Test Mac->guest SSH on chosen shared/host-only/overlay network, replies, guest-initiated Mac/LAN/tailnet probes, IPv6 and approved resolver paths.",
+    "expected": "Authorized controller traffic works while new private destinations remain denied unless explicitly excepted. NAT is not counted as isolation.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A101",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W23",
+      "W22"
+    ],
+    "title": "External client outage and explicit handoff",
+    "method": "Suspend/stop guest, sleep/wake Mac, change guest address, restart CLI/app, reconnect; attempt explicit local handoff separately.",
+    "expected": "Failure does not silently execute on Mac or replay side effects. Explicit handoff is a distinct user-authorized data/placement change, not an automatic fallback.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A102",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W23",
+      "W22"
+    ],
+    "title": "Mobile continuation through external Mac",
+    "method": "Pair the actually supported mobile app with macOS controller, select guest project, interrupt guest/Mac connectivity and recover.",
+    "expected": "The upstream-documented phone->Mac->SSH topology is exercised with real Assbox/Parallels evidence. Guest execution stays guest-side, and Mac/guest availability requirements are reported. This does not qualify a Linux mobile host or the experimental direct CLI relay.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A103",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W13",
+      "W23"
+    ],
+    "title": "Claude Desktop SSH helper ownership",
+    "method": "Use external Claude Desktop SSH mode, inspect first-connect provisioning, version and runtime paths; test supported override or declared exception.",
+    "expected": "Separate from Claude relay; helper provenance/update policy is recorded, not assumed equal to preinstalled Claude. No guest Desktop or nested VM required.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A104",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W13",
+      "W22"
+    ],
+    "title": "Codex direct relay experiment",
+    "method": "When pinned commands/client permit, test foreground or one managed service, pairing expiry/redaction/revocation, stop/reboot and task cancellation.",
+    "expected": "Opt-in experimental codex-remote has actual client/auth/lifecycle evidence, no public RPC and no claim of equivalence with Desktop SSH. Unsupported contract is explicitly blocked.",
+    "status": "not_run",
+    "evidence": null,
+    "applicability": "Only an explicitly selected experimental direct-Codex route with an actual supported pinned CLI/client contract; never required for coder-codex-ssh."
+  },
+  {
+    "id": "A105",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W09",
+      "W13",
+      "W23"
+    ],
+    "title": "Multiple Codex entry-point ownership",
+    "method": "Select SSH and experimental relay together; inspect supervisor, CODEX_HOME/session writes, disconnect and stop each path.",
+    "expected": "No competing daemon or ambiguous credential/session ownership. Unsupported coexistence is rejected or separated explicitly; one route disabling does not silently orphan the other.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A106",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W13",
+      "W20",
+      "W22"
+    ],
+    "title": "Provider-native execution-location disclosures",
+    "method": "Exercise Cursor My Machines including local stdio and remote HTTP/SSE MCP; inspect Antigravity and OpenCode routes separately.",
+    "expected": "Cursor cloud loop/local tools and cloud MCP behavior are visible; other routes use their own evidence. No universal claim that every tool/model loop is on Assbox.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A107",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W05",
+      "W06",
+      "W13",
+      "W23"
+    ],
+    "title": "Native Coder services remain separable",
+    "method": "Install all curated CLIs, then select exactly one native route; switch explicitly and retire the old service.",
+    "expected": "Only chosen services/enrollment/exposure appear. SSH is not an excuse to publish a server; Grok TUI dashboard/Pi RPC/OMP collab are not mislabeled as supported always-on provider remotes.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A108",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W05",
+      "W08",
+      "W23"
+    ],
+    "title": "Codex SSH with Tailscale deselected",
+    "method": "Build and boot coder-codex-ssh with Tailscale explicitly deselected and no inherited enrollment; inspect runtime closure/units and run a real macOS Desktop task over the approved local Mac-to-guest SSH route.",
+    "expected": "No Tailscale package, enabled daemon, tunnel, DNS dependency or enrollment is needed by this preset. Common non-overlay Assbox services remain; workload keys, host verification and egress policy still apply. Exact guest-only task result, listeners and routing are recorded.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A109",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W04",
+      "W05",
+      "W06",
+      "W14"
+    ],
+    "title": "Kiosk policy-gate transitions",
+    "method": "Use deterministic shell-observation fixtures for verified, pending, unsupported, ineffective and stale/conflicting per-app policy; exercise combined apps, alternatives whose own qualification fails, Back, cancellation, staged setup and explicit apply. Include contradictory and unknown per-surface Codex Local, Work Local and Work Cloud local-computer access observations, plus a newly exposed local helper after account change.",
+    "expected": "None is policy intent, never an assumed client capability. Only a matching verified contract enables the affected native app/capability. Pending may stage an inactive installation; failed modes show remedies without silent worker/web selection or a consent bypass. No login, disk mutation or enrollment occurs while browsing presets; one blocked app does not veto another independently safe app. One verified/disabled surface never substitutes for a complete selected-client inventory; cloud-only availability does not authorize a local execution bridge.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A110",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W04",
+      "W09",
+      "W14",
+      "W18"
+    ],
+    "title": "Kiosk evidence invalidation and activation",
+    "method": "Change app/helper build, platform, account/workspace, feature selection and effective policy; exercise reboot, update/rollback, missing observations and forged execution-writable markers. Check safe authentication/bootstrap separately when policy facts require login. Toggle each Work/Codex/local-computer surface independently and exercise fresh/resumed tasks after policy changes; include new local-tool paths and changes in cloud continuation behavior.",
+    "expected": "Launch/re-enable uses current applicable release evidence and effective settings. Stale/forged observations cannot authorize native execution; affected capability stays inactive with a reason until revalidated. No unrestricted credential-bearing launch to discover whether a safety control works. Safety holds are not mislabeled as OS failures; account secrets stay out of evidence records. Static settings alone do not prove account-dependent enforcement. The activation scope includes all locally acting surfaces. A valid Codex SSH contract cannot keep stale Work-local authority active on the controller.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A111",
+    "group": "Purpose-specific native and external-controller qualification",
+    "work": [
+      "W14",
+      "W20",
+      "W22",
+      "W23"
+    ],
+    "title": "Controller-platform evidence separation",
+    "method": "Validate installer/docs/release support rows for external macOS SSH, phone->Mac->SSH, Linux Desktop->worker SSH, Linux-as-mobile-host when selected, and direct CLI relay; deliberately substitute a generic source or another route's pass.",
+    "expected": "Upstream-documented topology and empirical Assbox qualification are distinct. Mac and mobile-through-Mac retain their documented status with not-run native evidence until exercised. Generic Desktop SSH/Linux-package docs cannot qualify exact Linux routing or mobile-host behavior; direct relay remains separately experimental. Cross-route evidence substitution is rejected.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A112",
+    "group": "Native kiosk surface authority",
+    "work": [
+      "W04",
+      "W05",
+      "W14",
+      "W22"
+    ],
+    "title": "Independent ChatGPT local-execution surfaces",
+    "method": "In disposable test accounts/builds, enumerate Codex Local, Work Local, Work Cloud local-computer access, cloud-only Work/Codex, browser, computer use, local plugins/MCP and helper entry points. Vary each independently; test new/resumed tasks, existing projects and mobile/web continuation. Use local-execution probes and controller/worker canaries. Missing controls exercise blocked activation, not an unrestricted application.",
+    "expected": "Codex-off alone is never a passing no-local-execution result. Under none, every arbitrary controller-local path is effectively denied; selected cloud-only/restricted bridges have their own evidence. Protected Code executes only on its qualified remote route and leaves unrelated Work-local paths denied. A workspace entitlement that is needed for remote Codex is not blindly disabled as though it were a device-local deny switch; unsupported isolation remains blocked.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A113",
+    "group": "Native kiosk surface authority",
+    "work": [
+      "W14",
+      "W20",
+      "W22",
+      "W23"
+    ],
+    "title": "Work Cloud execution-location transitions",
+    "method": "For selected eligible Work Cloud/local-computer test modes, observe execution at new-task creation, task continuation and turn boundaries with the computer available, absent and returning. Record process/file canaries and compare cloud versus local policy scope. Separately repeat the Codex SSH guest-outage case; use sacrificial accounts and non-sensitive tasks.",
+    "expected": "Cloud-only kiosk tasks cannot acquire an unapproved local bridge when a computer appears or a task resumes. For any separately qualified local-capable mode, cloud continuation is within explicitly selected policy, visibly identified and not represented as inheriting local controls. No automatic replay of uncertain side effects or controller-local fallback. Documented Work Cloud new-turn continuation is not extrapolated to Codex Remote or guaranteed for every account/build.",
+    "status": "not_run",
+    "evidence": null,
+    "applicability": "Applicable Work Cloud transitions require actual entitlement/build support and explicit feature selection; record the unsupported/inapplicable reason separately. No-local-execution denial and Codex SSH no-fallback remain unconditional for their selected profiles."
+  },
+  {
+    "id": "A114",
+    "group": "Documentation and support claims",
+    "work": [
+      "W16",
+      "W20",
+      "W22"
+    ],
+    "title": "Dated Linux computer-use evidence matrix",
+    "method": "Validate generated matrix rows, review dates, source references, product-path and auth/helper/build scopes; compare release claims with the corresponding native evidence. Check deliberate stale/missing evidence and differently compiled OMP packages.",
+    "expected": "Browser actions, arbitrary desktop control and alternative harnesses stay distinct. Current upstream support and exact-pin build observations cannot become an Assbox pass. ChatGPT/Claude native limits are not generalized to models used through other tools; X11 success does not prove Wayland. Every unexecuted Assbox test remains not_run with null evidence.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A115",
+    "group": "Frontend pairing and lifecycle",
+    "work": [
+      "W09",
+      "W10",
+      "W22"
+    ],
+    "title": "Happier headless URL pairing",
+    "method": "Inspect pinned help/runtime and use happier auth login --no-open --method web on a browserless execution host with and without a TTY. Approve from a separate trusted browser; test expiry, cancellation, wrong server/account scope, retry and revocation. Run without incoming SSH or Tailscale. Inspect outputs, credentials and resulting processes/services.",
+    "expected": "The owner approves only the intended execution machine/server/account, credentials stay private to that execution identity, and provider/browser/account directories are not bulk-copied. URLs/codes/tokens stay out of routine logs, argv and Nix. Expired/denied/cancelled flows never report ready. Exactly one declared daemon can become active after explicit consent; a pairing success is not model authentication or a paid-inference health check.",
+    "status": "not_run",
+    "evidence": null
+  },
+  {
+    "id": "A116",
+    "group": "Frontend pairing and lifecycle",
+    "work": [
+      "W08",
+      "W09",
+      "W10",
+      "W22"
+    ],
+    "title": "Happier owner-initiated SSH pairing",
+    "method": "From an already authenticated trusted client, inspect and invoke the pinned happier auth pair-remote --ssh <approved-target> flow with reviewed host-key and workload identity settings. Exercise wrong/changed host key, interrupted credential write, malformed or secret-bearing JSON, rejected account scope, existing disabled daemon, and mismatched runtime path. Compare service/autostart and runtime state before/after pairing, reboot and disable.",
+    "expected": "Pairing uses an existing approved SSH path and the execution user, not root or a newly opened listener; it does not auto-enroll Tailscale, forward the SSH agent or import unrelated credentials/machines. Validate credential and relay scope separately from SSH identity. No mutable CLI install/update, competing daemon or resurrection of a disabled service is accepted. If the upstream command cannot meet this contract on the pin, leave SSH pairing unavailable with a reason and offer explicit URL pairing; do not silently weaken supervision or access.",
+    "status": "not_run",
+    "evidence": null
+  }
+]
