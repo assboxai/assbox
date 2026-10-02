@@ -104,6 +104,33 @@ pub(crate) fn require_selected(component: Component) -> Result<()> {
     Ok(())
 }
 
+/// Inspect the installed gate without setup, account access or refreshing probes.
+pub(crate) fn native_policy_status(
+    component: Component,
+    requested: &str,
+) -> Result<(String, String)> {
+    let output = Command::new(installed_program("assbox-native-policy")?)
+        .args(["status", component.as_str(), requested])
+        .env_clear()
+        .env("PATH", Commands::path())
+        .stdin(std::process::Stdio::null())
+        .output()
+        .map_err(|e| Error::new(e.to_string()))?;
+    if !output.status.success() || output.stdout.len() > 8192 {
+        return Err(Error::new("native policy status is unavailable"));
+    }
+    let fields = Commands.jq_fields(&output.stdout, r#"[.state,.reason] | .[] | . + "\u0000""#)?;
+    if fields.len() != 2
+        || !matches!(
+            fields[0].as_str(),
+            "verified" | "pending" | "unavailable" | "ineffective" | "stale"
+        )
+    {
+        return Err(Error::new("invalid native policy status"));
+    }
+    Ok((fields[0].clone(), fields[1].clone()))
+}
+
 pub fn diagnose(component: Component) -> Result<()> {
     require_selected(component)?;
     let path = Path::new("/etc/assbox/diagnostics").join(component.as_str());

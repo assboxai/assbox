@@ -98,7 +98,9 @@ fn print_connection_summary(choices: &Choices) {
         }
     }
 }
-pub(crate) fn instance_prompt() -> Result<assbox_policy::instances::ResolvedInstance> {
+pub(crate) fn instance_prompt(
+    installed: bool,
+) -> Result<assbox_policy::instances::ResolvedInstance> {
     use instances::{ComputerUse, Purpose};
     loop {
         println!(
@@ -129,13 +131,15 @@ pub(crate) fn instance_prompt() -> Result<assbox_policy::instances::ResolvedInst
                 "codex" => "coder-codex-ssh",
                 "ssh" => "coder-ssh",
                 "back" => continue,
-                "claude" => match ask("Claude access: relay / ssh", Some("relay"))?.as_str() {
+                "claude" => match ask("Claude access: relay / ssh / back", Some("relay"))?.as_str()
+                {
                     "relay" => "coder-claude-native",
                     "ssh" => "coder-claude-ssh",
+                    "back" => continue,
                     _ => return Err(Error::new("choose relay or ssh")),
                 },
                 "more" => match ask(
-                    "Native route: cursor / antigravity / opencode",
+                    "Native route: cursor / antigravity / opencode / back",
                     Some("cursor"),
                 )?
                 .as_str()
@@ -143,6 +147,7 @@ pub(crate) fn instance_prompt() -> Result<assbox_policy::instances::ResolvedInst
                     "cursor" => "coder-cursor",
                     "antigravity" => "coder-antigravity",
                     "opencode" => "coder-opencode",
+                    "back" => continue,
                     _ => return Err(Error::new("unknown native route")),
                 },
                 "desktop" => "kiosk-native",
@@ -157,16 +162,64 @@ pub(crate) fn instance_prompt() -> Result<assbox_policy::instances::ResolvedInst
             Purpose::Custom => "custom",
         };
         let preset = instances::Preset::find(id)?;
+        let (transport, controller) = match id {
+            "coder-happier" => ("Happier provider connection", "external Happier client"),
+            "coder-codex-ssh" => (
+                "SSH; ChatGPT owns its app-server channel",
+                "external ChatGPT Desktop (Mac to Parallels is supported topology)",
+            ),
+            "coder-claude-ssh" => (
+                "SSH; native helper behavior requires qualification",
+                "external Claude Desktop",
+            ),
+            "coder-claude-native" => (
+                "Claude native Remote Control relay",
+                "external Claude client",
+            ),
+            "coder-cursor" => (
+                "Cursor native self-hosted worker connection",
+                "external Cursor client",
+            ),
+            "coder-antigravity" => (
+                "reviewed Antigravity foreground contract; otherwise staged",
+                "external Antigravity client",
+            ),
+            "coder-opencode" => (
+                "OpenCode loopback server; private access selected separately",
+                "external browser/client",
+            ),
+            "coder-ssh" => ("plain SSH", "external terminal/editor"),
+            "kiosk-native" => (
+                "native client; optional independently qualified worker SSH",
+                "local native kiosk",
+            ),
+            "kiosk-web" => ("browser HTTPS", "local browser kiosk"),
+            "assistant-openclaw" => ("OpenClaw gateway", "selected external channel/client"),
+            "assistant-hermes" => ("Hermes gateway", "selected external channel/client"),
+            _ => ("explicit component choices", "chosen by the owner"),
+        };
+        println!("Transport: {transport} | controller: {controller}");
+        println!(
+            "Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection"
+        );
+        if purpose == Purpose::Custom {
+            println!(
+                "Advanced experimental Codex relay is available as codex,codex-relay. It remains staged without a reviewed immutable foreground contract; it is separate from the normal Codex SSH route."
+            );
+        }
         let defaults = assbox_policy::instances::resolve(id, None, Components::default(), false)?;
         println!("Initially checked components: {}", defaults.host);
         println!(
             "Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter."
         );
-        let mut selected: Components = ask(
-            "Selected components, comma-separated; remove unwanted entries, or none",
+        let selected_text = ask(
+            "Selected components, comma-separated; remove unwanted entries, none, or back",
             Some(&defaults.host.to_string()),
-        )?
-        .parse()?;
+        )?;
+        if selected_text == "back" {
+            continue;
+        }
+        let mut selected: Components = selected_text.parse()?;
         if !id.starts_with("kiosk-")
             && id != "coder-happier"
             && purpose != Purpose::Assistant
@@ -283,10 +336,24 @@ pub(crate) fn instance_prompt() -> Result<assbox_policy::instances::ResolvedInst
             resolved.config.web_apps = apps.split(',').map(|a| a.trim().to_owned()).collect();
             resolved.config.validate()?;
         }
-        if id == "kiosk-native" {
+        if resolved.host.contains(Component::ChatgptDesktop)
+            || resolved.host.contains(Component::ClaudeDesktop)
+        {
             println!(
                 "Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice."
             );
+            for app in [Component::ChatgptDesktop, Component::ClaudeDesktop]
+                .into_iter()
+                .filter(|app| resolved.host.contains(*app))
+            {
+                let mode = if protected { "managed-worker" } else { "none" };
+                let (state, reason) = if installed {
+                    super::user::native_policy_status(app, mode).unwrap_or_else(|_| ("pending".into(), "installed policy observations are unavailable; activation remains gated".into()))
+                } else {
+                    ("pending".into(), "exact installed client/account/platform must be qualified after installation".into())
+                };
+                println!("{app}: requested {mode} | gate {state} | {reason}");
+            }
             if !yes(
                 "Keep this native selection staged pending policy qualification?",
                 Some(true),
@@ -297,6 +364,19 @@ pub(crate) fn instance_prompt() -> Result<assbox_policy::instances::ResolvedInst
         println!(
             "Host: {} | worker: {} | presentation: {} | setup/auth/integration qualification remains separate",
             resolved.host, resolved.worker, resolved.presentation
+        );
+        println!(
+            "Execution location: {} | computer use: {} | egress: {} | Tailscale support: {} (enrollment unobserved here)",
+            if resolved.config.execution_in_worker {
+                "managed worker"
+            } else if id.starts_with("kiosk-") {
+                "no local execution requested"
+            } else {
+                "standalone host"
+            },
+            resolved.config.computer_use.as_str(),
+            resolved.config.egress,
+            resolved.config.tailscale
         );
         if yes("Use this selection?", Some(true))? {
             return Ok(resolved);
@@ -424,7 +504,7 @@ pub fn install(args: &[&str]) -> Result<()> {
         Some(recommended.as_str()),
     )?
     .parse()?;
-    let resolved = instance_prompt()?;
+    let resolved = instance_prompt(false)?;
     let components = resolved.host;
     let managed = resolved.worker != Components::default();
     let presentation = resolved.presentation;
@@ -655,7 +735,7 @@ pub fn configure(apply: bool) -> Result<()> {
     files::require_root()?;
     println!("Current effective configuration:");
     Commands.run("nix", &["eval","--json","--no-update-lock-file","--no-write-lock-file","path:/etc/nixos#nixosConfigurations.assbox.config.assbox","--apply","c: { inherit (c) instance selectedComponents presentation; worker = c.worker.enable; }"])?;
-    let resolved = instance_prompt()?;
+    let resolved = instance_prompt(true)?;
     let unfree = yes("Accept proprietary packages if required?", Some(false))?;
     let mutable = (resolved.host.iter().any(|c| c.mutable_code())
         || resolved.worker.iter().any(|c| c.mutable_code()))

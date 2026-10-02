@@ -153,6 +153,13 @@ managed worker. Selecting offline removes its configured uplinks and DNS. Enabli
 egress afterward requires explicit worker network configuration; reconfiguration
 does not guess interfaces or silently replace an incompatible resolver.
 
+The native kiosk screen reads each selected app's current installed gate as
+verified, pending, unavailable, ineffective or stale. It starts no login or
+observer probe. A changed requested policy cannot reuse a receipt for another
+policy. A proposed installation starts pending, and every launch still checks
+the independent gate. Back returns to selection, where apps can be deselected;
+worker and web alternatives require explicit selection and their own preflight.
+
 ```sh
 sudo assbox component set opencode,opencode-server wayland
 sudo assbox component set none headless

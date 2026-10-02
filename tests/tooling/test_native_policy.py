@@ -1,11 +1,28 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Pure contract fixtures, never native account or Linux enforcement evidence."""
 import copy, importlib.util, sys, tempfile, unittest
+from unittest.mock import patch
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('native_policy',ROOT/'scripts/native/policy.py')
 policy=importlib.util.module_from_spec(spec);spec.loader.exec_module(policy)
 class NativePolicyTests(unittest.TestCase):
+    def test_read_only_status_classifies_mixed_and_stale_observations(self):
+        row,_,_=self.fixture()
+        config={'apps':{'chatgpt-desktop':row},'maximumAgeSeconds':45}
+        boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+        record={'state':'verified','scope':policy.scope(row),'boot':boot,'observed':90}
+        with patch.object(policy,'probe_observation',side_effect=AssertionError('status must never probe')):
+            self.assertEqual(policy.status('claude-desktop',config)['state'],'unavailable')
+            self.assertEqual(policy.status('chatgpt-desktop',config,'managed-worker')['state'],'stale')
+            with patch.object(policy,'trusted_json',side_effect=FileNotFoundError):
+                self.assertEqual(policy.status('chatgpt-desktop',config)['state'],'pending')
+            with patch.object(policy,'trusted_json',return_value=record),patch.object(policy.time,'monotonic',return_value=100):
+                self.assertEqual(policy.status('chatgpt-desktop',config)['state'],'verified')
+                record['observed']=0
+                self.assertEqual(policy.status('chatgpt-desktop',config)['state'],'stale')
+                record['state']='ineffective'
+                self.assertEqual(policy.status('chatgpt-desktop',config)['state'],'ineffective')
     def test_probe_output_is_bounded_before_json_parsing(self):
         row,_,_=self.fixture()
         with tempfile.TemporaryDirectory() as directory:

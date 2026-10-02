@@ -50,6 +50,24 @@ def check(app,config,root=Path('/run/assbox-native-policy')):
  if record.get('scope')!=scope(row) or record.get('state')!='verified' or record.get('boot')!=Path('/proc/sys/kernel/random/boot_id').read_text().strip() or time.monotonic()-record.get('observed',-1)>config['maximumAgeSeconds']:raise Refusal('native policy observations are missing, stale, or ineffective')
  return record
 
+def status(app,config,requested=None,root=Path('/run/assbox-native-policy')):
+ """Read current evidence only. Never run a probe, authenticate or authorize launch."""
+ def result(state,reason):return {'app':app,'state':state,'reason':reason}
+ row=config['apps'].get(app)
+ if not row:return result('unavailable','application is not selected in the installed configuration')
+ if requested is not None and requested not in {'none','managed-worker'}:raise Refusal('invalid requested native policy')
+ if requested is not None and row['mode']!=requested:return result('stale','installed observations cover a different requested local-execution policy')
+ if not row.get('contract'):return result('unavailable','no qualified contract for the exact installed client/account/platform')
+ if (Path('/home/agent/.config/assbox/disabled')/app).exists():return result('unavailable','application was explicitly disabled')
+ try:record=trusted_json(root/(app+'.json'))
+ except FileNotFoundError:return result('pending','current native policy observations are not available yet')
+ except (OSError,ValueError,Refusal):return result('ineffective','current native evidence cannot be trusted')
+ if record.get('state')=='unsupported':return result('unavailable','installed contract is not qualified')
+ if record.get('state')!='verified':return result('ineffective','current observations do not establish the requested policy')
+ try:check(app,config,root)
+ except (OSError,ValueError,TypeError,Refusal):return result('stale','observations are stale or no longer cover the installed scope')
+ return result('verified','fresh observations cover the installed native policy; activation still checks independently')
+
 def validate_observation(app,row,observation,qualification):
  contract=row['contract']
  expected={'app':app,'contract':contract['id'],'client':row['client'],'platform':row['platform'],'accountScopeDigest':contract['accountScopeDigest']}
@@ -119,10 +137,13 @@ def launch(app,config,args):
   except subprocess.TimeoutExpired:
    os.killpg(child.pid,signal.SIGKILL);child.wait()
 def main():
- a=argparse.ArgumentParser();a.add_argument('mode',choices=['refresh','check','launch']);a.add_argument('app',nargs='?',choices=sorted(APPS));a.add_argument('args',nargs=argparse.REMAINDER);args=a.parse_args()
+ a=argparse.ArgumentParser();a.add_argument('mode',choices=['refresh','check','launch','status']);a.add_argument('app',nargs='?',choices=sorted(APPS));a.add_argument('args',nargs=argparse.REMAINDER);args=a.parse_args()
  config=trusted_json(Path('/etc/assbox/native-policy.json').resolve(strict=True))
  if args.mode=='refresh':refresh(config);return 0
  if not args.app:raise Refusal('select a native application')
+ if args.mode=='status':
+  if len(args.args)>1:raise Refusal('status accepts only an optional requested policy')
+  print(json.dumps(status(args.app,config,args.args[0] if args.args else None),sort_keys=True));return 0
  if args.mode=='check':print(check(args.app,config)['reason']);return 0
  return launch(args.app,config,args.args)
 if __name__=='__main__':
