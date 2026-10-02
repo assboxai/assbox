@@ -17,6 +17,9 @@ const HELP: &str = r#"Assbox — Assistant Box
 
   assbox install [--apply] [--release r-SEQUENCE]
       Interactive prepared-storage installer. --apply requires --release. Without --apply, display the plan only.
+  assbox state backup|list|restore NAME [--apply]  Private provider-state checkpoints (sudo)
+  assbox configure [--apply]            Preview or build/stage purpose-first reconfiguration
+  assbox component stop|disable|enable ID  Explicit service lifecycle as agent
   assbox release verify TAG DIRECTORY   Authenticate/download without installing
   assbox status                         Show running, boot and maintenance state
   assbox doctor                         Inspect system and agent-service state (sudo or agent)
@@ -43,7 +46,6 @@ const HELP: &str = r#"Assbox — Assistant Box
                                         execution packages off the host (sudo)
       --network normal|internet|offline IPv4 egress policy (interactive selection required)
       --uplink NAME --dns IPV4          Repeat for explicit uplinks and resolvers
-      --happy-backends IDS             Explicit Codex/Claude backends for Happy Remote
       --offline                        Legacy offline flag; uplink alone retains internet-only
       --memory auto|MIB --cpus N --state-gib auto|N
       --allow-mutable-code --allow-guest-sudo --accept-unfree
@@ -152,6 +154,47 @@ fn run(args: &[&str]) -> Result<()> {
         }
         ["component", "set", app, presentation, "--accept-unfree"] => {
             manage::components_set(app.parse()?, presentation.parse()?, true)
+        }
+        ["state", rest @ ..] => {
+            files::require_root()?;
+            let helper = std::fs::canonicalize("/etc/assbox/state-helper")
+                .map_err(|_| Error::new("state helper is not configured"))?;
+            if !helper.starts_with("/nix/store") {
+                return Err(Error::new("state helper must be immutable Nix code"));
+            }
+            let status = std::process::Command::new(helper)
+                .args(rest)
+                .status()
+                .map_err(|e| Error::new(e.to_string()))?;
+            if status.success() {
+                Ok(())
+            } else {
+                Err(Error::new(
+                    "state operation did not complete; inspect root-private recovery records",
+                ))
+            }
+        }
+        ["configure"] => wizard::configure(false),
+        ["configure", "--apply"] => wizard::configure(true),
+        ["component", action @ ("stop" | "disable" | "enable"), id] => {
+            if Commands.text("id", &["-u"])?.trim() == "0" {
+                let script = std::fs::canonicalize("/etc/assbox/service-helper")
+                    .map_err(|_| Error::new("owner service helper is not configured"))?;
+                if !script.starts_with("/nix/store") {
+                    return Err(Error::new("service helper must be immutable"));
+                }
+                let status = std::process::Command::new(script)
+                    .args([action, id])
+                    .status()
+                    .map_err(|e| Error::new(e.to_string()))?;
+                if status.success() {
+                    Ok(())
+                } else {
+                    Err(Error::new("owner service action did not complete"))
+                }
+            } else {
+                user::service_control(id.parse()?, action)
+            }
         }
         ["component", "setup", id] => user::setup(id.parse()?),
         ["component", "diagnose", id] => user::diagnose(id.parse()?),

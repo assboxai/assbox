@@ -1158,7 +1158,7 @@ pub fn worker_configure(
         )?;
         let filter = if spec.is_some() {
             r#"[(.enable|tostring),(.components|join(",")),
-             (.allowMutableCodeFor|join(",")),(.happyBackends|join(",")),(.memoryMiB|tostring),(.vcpus|tostring),
+             (.allowMutableCodeFor|join(",")),(.memoryMiB|tostring),(.vcpus|tostring),
              (.stateGiB|tostring),(.uplinkInterfaces|join(",")),.egress,
              (.allowGuestSudo|tostring),
              (.nameservers|join(","))] | .[] | . + "\u0000""#
@@ -1199,6 +1199,220 @@ pub fn worker_configure(
         commit(&Commands, &system, &["assbox-settings.nix"], "boot")?;
         println!(
             "Worker configuration staged for reboot. Credentials and project data were not copied or removed. Verify Desktop worker-targeted tool routing before use."
+        );
+        Ok(())
+    })();
+    result.map_err(fail_before_activation)
+}
+
+/// Reuse the transaction journal and worker admission; ordinary Nix remains authority.
+pub fn instance_configure(
+    request: &assbox_policy::instances::ResolvedInstance,
+    accept_unfree: bool,
+    allow_mutable: bool,
+    apply: bool,
+) -> Result<()> {
+    let _lock = lock()?;
+    request.config.validate()?;
+    let existing=Commands.text("nix", &["eval","--json","--no-update-lock-file","--no-write-lock-file","path:/etc/nixos#nixosConfigurations.assbox.config.assbox","--apply","c: { worker = c.worker.enable; protected = c.kiosk.localExecution; consent = c.acceptUnfree; agentSsh = c.network.ssh.agent.enable; }"])?;
+    let fields=Commands.jq_fields(existing.as_bytes(),r#"[.worker|tostring] + [.protected,.consent|tostring] + [.agentSsh|tostring] | .[] | . + "\u0000""#)?;
+    if fields.len() != 4 {
+        return Err(Error::new("incomplete current instance observations"));
+    }
+    let requested_worker = request.worker != Components::default();
+    if requested_worker != (fields[0] == "true") {
+        return Err(Error::new(
+            "execution topology changes require explicit worker configuration/export first; repositories and credentials are never moved by a preset change",
+        ));
+    }
+    if request.workload_ssh && fields[3] != "true" {
+        return Err(Error::new(
+            "configure a workload public key and approved SSH exposure in local.nix before selecting this SSH route",
+        ));
+    }
+    request
+        .host
+        .validate(request.presentation, accept_unfree || fields[2] == "true")?;
+    let original = files::text(&Path::new(CONFIG).join("assbox-settings.nix"))?;
+    let selected =
+        assbox_config::selection(&original, request.host, request.presentation, accept_unfree)?;
+    let mut selected = assbox_config::instances::selection(&selected, &request.config)?;
+    if requested_worker {
+        let current = Commands.text(
+            "nix",
+            &[
+                "eval",
+                "--json",
+                "--no-update-lock-file",
+                "--no-write-lock-file",
+                "path:/etc/nixos#nixosConfigurations.assbox.config.assbox",
+                "--apply",
+                assbox_config::worker::EVALUATED_SELECTION,
+            ],
+        )?;
+        let values = Commands.jq_fields(current.as_bytes(),r#"[.enable|tostring] + [(.components|join(",")),(.allowMutableCodeFor|join(",")),(.memoryMiB|tostring),(.vcpus|tostring),(.stateGiB|tostring),(.uplinkInterfaces|join(",")),.egress,(.allowGuestSudo|tostring),(.nameservers|join(","))] | .[] | . + "\u0000""#)?;
+        if values.len() != 10 {
+            return Err(Error::new("incomplete worker resource observations"));
+        }
+        let retained: Components = values[2].parse()?;
+        let mut mutable = Components::default();
+        for c in request
+            .worker
+            .iter()
+            .filter(|c| c.mutable_code() && (allow_mutable || retained.contains(*c)))
+        {
+            mutable.insert(c);
+        }
+        let list = |s: &str| {
+            if s.is_empty() {
+                vec![]
+            } else {
+                s.split(',').map(str::to_owned).collect()
+            }
+        };
+        let number = |s: &str| {
+            s.parse::<u32>()
+                .map_err(|_| Error::new("invalid existing worker resources"))
+        };
+        let spec = assbox_domain::worker::WorkerSpec {
+            components: request.worker,
+            mutable_components: mutable,
+            memory_mib: number(&values[3])?,
+            vcpus: number(&values[4])?,
+            state_gib: number(&values[5])?,
+            auto_state: false,
+            uplinks: list(&values[6]),
+            network: values[7].parse()?,
+            guest_sudo: values[8] == "true",
+            nameservers: list(&values[9]),
+        };
+        spec.validate(accept_unfree || fields[2] == "true")?;
+        selected = assbox_config::worker::selection(&selected, Some(&spec))?;
+    }
+    // Consent is explicit and scoped to selected components; it never changes local.nix.
+    if allow_mutable {
+        let mut permissions = String::new();
+        for c in request.host.iter().filter(|c| c.mutable_code()) {
+            let denied =
+                format!("  assbox.components.{c}.allowMutableCode = lib.mkDefault false;\n");
+            selected = selected.replace(&denied, "");
+            if !selected.contains(&format!("assbox.components.{c}.allowMutableCode")) {
+                permissions.push_str(&format!(
+                    "  assbox.components.{c}.allowMutableCode = lib.mkDefault true;\n"
+                ));
+            }
+        }
+        selected.insert_str(selected.len() - 2, &permissions);
+    }
+    println!(
+        "Requested preset {} revision {} | host {} | presentation {} | Tailscale {} | egress {}",
+        request.config.preset,
+        request.config.revision,
+        request.host,
+        request.presentation,
+        request.config.tailscale,
+        request.config.egress
+    );
+    begin()?;
+    let result = (|| {
+        files::atomic_write(
+            &marker("candidate/assbox-settings.nix"),
+            selected.as_bytes(),
+            0o644,
+        )?;
+        let candidate = reference(&marker("candidate"))?;
+        let failures = Commands.text(
+            "nix",
+            &[
+                "eval",
+                "--json",
+                "--no-update-lock-file",
+                "--no-write-lock-file",
+                &format!("{candidate}#nixosConfigurations.assbox.config.assertions"),
+                "--apply",
+                "xs: map (x: x.message) (builtins.filter (x: !x.assertion) xs)",
+            ],
+        )?;
+        if failures.trim() != "[]" {
+            return Err(Error::new(format!(
+                "candidate configuration assertions failed: {failures}"
+            )));
+        }
+        let effective=Commands.text("nix", &["eval","--json","--no-update-lock-file","--no-write-lock-file",&format!("{candidate}#nixosConfigurations.assbox.config.assbox"),"--apply","c: { components = c.selectedComponents; presentation = c.presentation; instance = c.instance; tailscale = c.network.tailscale.enable; egress = c.network.execution.egress; computerUse = c.computerUse.mode; workerComputerUse = c.worker.computerUseMode; workerComponents = c.worker.components; protected = c.kiosk.localExecution; webApps = c.kiosk.webApps; hermes = c.components.hermes-dashboard; serve = c.network.tailscale.serveMappings; consent = c.acceptUnfree; mutable = builtins.filter (id: c.components.${id}.allowMutableCode) c.selectedComponents; }"])?;
+        let observed=Commands.jq_fields(effective.as_bytes(),r#"[.components|join(",")] + [.presentation,.instance.preset,(.instance.revision|tostring),(.tailscale|tostring),.egress,.computerUse,.workerComputerUse,(.workerComponents|sort|join(",")),.protected,(.webApps|join(",")),(.instance.exclusions|sort|join(",")),.instance.purpose,.hermes.publicUrl,.hermes.accessProfile,(.hermes.consentTunnelOnly|tostring),(.serve|map(.component+"|"+.publicUrl+"|"+(.port|tostring))|sort|join(",")),(.consent|tostring)] | .[] | . + "\u0000""#)?;
+        let expected = vec![
+            request.host.to_string(),
+            request.presentation.to_string(),
+            request.config.preset.clone(),
+            request.config.revision.to_string(),
+            request.config.tailscale.to_string(),
+            request.config.egress.to_string(),
+            if requested_worker {
+                "none".into()
+            } else {
+                request.config.computer_use.as_str().into()
+            },
+            if requested_worker {
+                request.config.computer_use.as_str().into()
+            } else {
+                "none".into()
+            },
+            request.worker.to_string(),
+            if request.config.protected_code {
+                "managed-worker".into()
+            } else {
+                "none".into()
+            },
+            request.config.web_apps.join(","),
+            request.config.exclusions.to_string(),
+            request.config.purpose.as_str().into(),
+            request.config.hermes_public_url.clone(),
+            if request.config.hermes_tunnel_only {
+                "tunnel-only".into()
+            } else {
+                "authenticated".into()
+            },
+            request.config.hermes_tunnel_only.to_string(),
+            if request.config.dashboard_serve {
+                format!("hermes-dashboard|{}|9119", request.config.hermes_public_url)
+            } else {
+                String::new()
+            },
+            (accept_unfree || fields[2] == "true").to_string(),
+        ];
+        if observed != expected {
+            return Err(Error::new(
+                "effective configuration differs from the preview; review local.nix overrides before applying",
+            ));
+        }
+        if allow_mutable {
+            let permitted =
+                Commands.jq_fields(effective.as_bytes(), r#".mutable[] | . + "\u0000""#)?;
+            if request
+                .host
+                .iter()
+                .filter(|c| c.mutable_code())
+                .any(|c| !permitted.iter().any(|id| id == c.as_str()))
+            {
+                return Err(Error::new(
+                    "effective mutable-code consent differs from the preview; review local.nix overrides before applying",
+                ));
+            }
+        }
+        println!(
+            "Effective selection matches the preview. Native applications still require their independent policy gate."
+        );
+        if !apply {
+            remove_txn()?;
+            println!(
+                "Preview complete; no build or activation. Use assbox configure --apply to build and stage the chosen settings."
+            );
+            return Ok(());
+        }
+        let system = build(&Commands)?;
+        commit(&Commands, &system, &["assbox-settings.nix"], "boot")?;
+        println!(
+            "Instance configuration staged for reboot; provider setup and qualification remain independent."
         );
         Ok(())
     })();

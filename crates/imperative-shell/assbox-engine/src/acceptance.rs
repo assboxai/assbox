@@ -105,6 +105,7 @@ fn install_apply() {
         esp: (!values[1].is_empty()).then(|| values[1].clone()),
         backup: values[2].clone(),
         choices: Choices {
+            instance: Default::default(),
             hostname: Hostname::parse("assbox-vm").unwrap(),
             timezone: "UTC".into(),
             components: Components::default(),
@@ -120,7 +121,6 @@ fn install_apply() {
             ssh_access: Default::default(),
             additional_packages: Default::default(),
             worker: None,
-            happy_backends: Default::default(),
         },
     };
     let plan =

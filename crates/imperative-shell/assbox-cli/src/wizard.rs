@@ -3,7 +3,7 @@ use assbox_domain::*;
 use assbox_system::{commands::Commands, files, probe};
 use std::io::{self, IsTerminal, Write};
 
-fn ask(label: &str, default: Option<&str>) -> Result<String> {
+pub(crate) fn ask(label: &str, default: Option<&str>) -> Result<String> {
     if !io::stdin().is_terminal() {
         return Err(Error::new("the installer requires an interactive terminal"));
     }
@@ -27,7 +27,7 @@ fn ask(label: &str, default: Option<&str>) -> Result<String> {
     }
     Ok(answer.to_owned())
 }
-fn yes(label: &str, default: Option<bool>) -> Result<bool> {
+pub(crate) fn yes(label: &str, default: Option<bool>) -> Result<bool> {
     loop {
         match ask(label, default.map(|b| if b { "y" } else { "n" }))?
             .to_ascii_lowercase()
@@ -40,14 +40,19 @@ fn yes(label: &str, default: Option<bool>) -> Result<bool> {
     }
 }
 
-fn ssh_access_prompt(enabled: bool, c: &Commands) -> Result<access::SshAccess> {
+fn ssh_access_prompt(enabled: bool, c: &Commands, tailscale: bool) -> Result<access::SshAccess> {
     if !enabled {
         return Ok(Default::default());
     }
     println!(
         "SSH accepts keys only. The exposure choice applies to both enabled SSH accounts. Tailscale requires console enrollment after boot; LAN can connect directly over a Parallels private network."
     );
-    match ask("SSH exposure: tailscale / lan", Some("tailscale"))?.as_str() {
+    match ask(
+        "SSH exposure: tailscale / lan",
+        Some(if tailscale { "tailscale" } else { "lan" }),
+    )?
+    .as_str()
+    {
         "tailscale" => Ok(Default::default()),
         "lan" => {
             let links = c.capture("ip", &["-j", "link", "show"])?;
@@ -93,6 +98,212 @@ fn print_connection_summary(choices: &Choices) {
         }
     }
 }
+pub(crate) fn instance_prompt() -> Result<assbox_policy::instances::ResolvedInstance> {
+    use instances::{ComputerUse, Purpose};
+    loop {
+        println!(
+            "Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here."
+        );
+        let purpose: Purpose = ask(
+            "What will this Assbox primarily do? assistant / coder / kiosk / custom",
+            None,
+        )?
+        .to_ascii_lowercase()
+        .parse()?;
+        let id = match purpose {
+            Purpose::Assistant => {
+                match ask("Assistant: openclaw / hermes / back", Some("openclaw"))?.as_str() {
+                    "openclaw" => "assistant-openclaw",
+                    "hermes" => "assistant-hermes",
+                    "back" => continue,
+                    _ => return Err(Error::new("choose OpenClaw or Hermes")),
+                }
+            }
+            Purpose::Coder => match ask(
+                "Coder: happier / codex / claude / more / ssh / desktop / back",
+                Some("happier"),
+            )?
+            .as_str()
+            {
+                "happier" => "coder-happier",
+                "codex" => "coder-codex-ssh",
+                "ssh" => "coder-ssh",
+                "back" => continue,
+                "claude" => match ask("Claude access: relay / ssh", Some("relay"))?.as_str() {
+                    "relay" => "coder-claude-native",
+                    "ssh" => "coder-claude-ssh",
+                    _ => return Err(Error::new("choose relay or ssh")),
+                },
+                "more" => match ask(
+                    "Native route: cursor / antigravity / opencode",
+                    Some("cursor"),
+                )?
+                .as_str()
+                {
+                    "cursor" => "coder-cursor",
+                    "antigravity" => "coder-antigravity",
+                    "opencode" => "coder-opencode",
+                    _ => return Err(Error::new("unknown native route")),
+                },
+                "desktop" => "kiosk-native",
+                _ => return Err(Error::new("unknown Coder route")),
+            },
+            Purpose::Kiosk => match ask("Kiosk: native / web / back", Some("native"))?.as_str() {
+                "native" => "kiosk-native",
+                "web" => "kiosk-web",
+                "back" => continue,
+                _ => return Err(Error::new("choose native or web kiosk")),
+            },
+            Purpose::Custom => "custom",
+        };
+        let preset = instances::Preset::find(id)?;
+        let defaults = assbox_policy::instances::resolve(id, None, Components::default(), false)?;
+        println!("Initially checked components: {}", defaults.host);
+        println!(
+            "Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter."
+        );
+        let mut selected: Components = ask(
+            "Selected components, comma-separated; remove unwanted entries, or none",
+            Some(&defaults.host.to_string()),
+        )?
+        .parse()?;
+        if !id.starts_with("kiosk-")
+            && id != "coder-happier"
+            && purpose != Purpose::Assistant
+            && yes("Add all eight curated coding agents?", Some(false))?
+        {
+            for c in [
+                Component::Codex,
+                Component::ClaudeCode,
+                Component::AntigravityCli,
+                Component::CursorAgent,
+                Component::Grok,
+                Component::Opencode,
+                Component::Pi,
+                Component::Omp,
+            ] {
+                selected.insert(c);
+            }
+        }
+        let mut exclusions = Components::default();
+        for c in defaults.host.iter() {
+            if !selected.contains(c) {
+                exclusions.insert(c);
+            }
+        }
+        let expanded = selected.with_dependencies();
+        if expanded != selected {
+            println!("Required dependencies: {expanded}");
+            if !yes("Accept the required dependencies?", Some(false))? {
+                continue;
+            }
+            for c in expanded.iter() {
+                exclusions.remove(c);
+            }
+            selected = expanded;
+        }
+        let protected = id == "kiosk-native"
+            && yes(
+                "Select protected local Code in the managed worker?",
+                Some(purpose == Purpose::Coder),
+            )?;
+        let split_custom = purpose == Purpose::Custom
+            && yes(
+                "Use a managed worker for execution components?",
+                Some(false),
+            )?;
+        let host_selection = if split_custom {
+            worker::controller_components(selected)
+        } else {
+            selected
+        };
+        let mut resolved =
+            assbox_policy::instances::resolve(id, Some(host_selection), exclusions, protected)?;
+        if split_custom {
+            for c in selected.iter().filter(|c| !c.controller_allowed()) {
+                if !c.worker_allowed() {
+                    return Err(Error::new("component cannot run in the headless worker"));
+                }
+                resolved.worker.insert(c);
+            }
+        }
+        resolved.config.execution_in_worker = resolved.worker != Components::default();
+        resolved.presentation = ask(
+            "Presentation: headless / x11 / wayland",
+            Some(preset.presentation.as_str()),
+        )?
+        .parse()?;
+        resolved.config.tailscale = yes(
+            "Install Tailscale support (enrollment happens separately)?",
+            Some(true),
+        )?;
+        resolved.config.egress = ask(
+            "Execution egress: internet / normal / offline",
+            Some("internet"),
+        )?
+        .parse()?;
+        resolved.config.computer_use = ask(
+            "Execution computer use: none / browser / virtual-desktop",
+            Some("none"),
+        )?
+        .parse()?;
+        if resolved.config.computer_use != ComputerUse::None
+            && (selected.contains(Component::ChatgptDesktop)
+                || selected.contains(Component::ClaudeDesktop))
+            && resolved.worker == Components::default()
+        {
+            return Err(Error::new(
+                "autonomous computer use needs an execution-side worker or standalone instance",
+            ));
+        }
+        if selected.contains(Component::HermesDashboard) {
+            resolved.config.hermes_tunnel_only = yes(
+                "Advanced: use only an SSH tunnel, without claiming native dashboard authentication?",
+                Some(false),
+            )?;
+            if !resolved.config.hermes_tunnel_only {
+                resolved.config.hermes_public_url = ask(
+                    "Exact private HTTPS dashboard URL (for example https://assbox.example.ts.net/)",
+                    None,
+                )?;
+                if resolved.config.tailscale {
+                    resolved.config.dashboard_serve = yes(
+                        "Approve root-managed private Tailscale Serve for this exact dashboard URL?",
+                        Some(false),
+                    )?;
+                }
+            }
+            resolved.config.validate()?;
+        }
+        if id == "kiosk-web" {
+            let apps = ask(
+                "Web kiosk sites: chatgpt,claude (remove either if desired)",
+                Some("chatgpt,claude"),
+            )?;
+            resolved.config.web_apps = apps.split(',').map(|a| a.trim().to_owned()).collect();
+            resolved.config.validate()?;
+        }
+        if id == "kiosk-native" {
+            println!(
+                "Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice."
+            );
+            if !yes(
+                "Keep this native selection staged pending policy qualification?",
+                Some(true),
+            )? {
+                continue;
+            }
+        }
+        println!(
+            "Host: {} | worker: {} | presentation: {} | setup/auth/integration qualification remains separate",
+            resolved.host, resolved.worker, resolved.presentation
+        );
+        if yes("Use this selection?", Some(true))? {
+            return Ok(resolved);
+        }
+    }
+}
+
 pub fn install(args: &[&str]) -> Result<()> {
     let mut apply = false;
     let mut release_tag = None;
@@ -213,90 +424,11 @@ pub fn install(args: &[&str]) -> Result<()> {
         Some(recommended.as_str()),
     )?
     .parse()?;
-    println!(
-        "Standalone: selected tools run directly here, including when another computer connects over SSH. Managed-worker: this system owns an isolated headless VM; only approved controller components stay outside it."
-    );
-    let mut managed = match ask(
-        "Arrangement: standalone / managed-worker",
-        Some("standalone"),
-    )?
-    .as_str()
-    {
-        "standalone" => false,
-        "managed-worker" => true,
-        _ => return Err(Error::new("choose standalone or managed-worker")),
-    };
-    println!(
-        "Optional components: {}",
-        Component::ALL
-            .iter()
-            .filter(|c| c.blocked().is_empty() && (!c.requires_worker() || c.controller_allowed()))
-            .map(|c| c.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-    let mut components: Components =
-        ask("Components (comma-separated IDs, or none)", Some("none"))?.parse()?;
-    let expanded = components.with_dependencies();
-    if expanded != components {
-        println!("Required selection: {expanded}");
-        if !yes("Include these required components?", Some(false))? {
-            return Err(Error::new("component dependencies were not accepted"));
-        }
-        components = expanded;
-    }
-    if !managed && components.iter().any(Component::requires_worker) {
-        println!("Selected sensitive desktop components require a managed worker.");
-        if !yes("Switch to the managed-worker arrangement?", Some(false))? {
-            return Err(Error::new(
-                "select a managed worker or remove the sensitive desktop components",
-            ));
-        }
-        managed = true;
-    }
-    let requested_worker = if managed {
-        if components
-            .iter()
-            .any(|c| c.requires_worker() && !c.controller_allowed())
-        {
-            return Err(Error::new(
-                "this sensitive desktop has no qualified Assbox controller adapter; do not combine it with controller agent execution",
-            ));
-        }
-        let controller = assbox_domain::worker::controller_components(components);
-        let mut execution = Components::default();
-        for component in components.iter().filter(|c| !c.controller_allowed()) {
-            if !component.worker_allowed() {
-                return Err(Error::new("unqualified component on the controller"));
-            }
-            execution.insert(component);
-        }
-        // The proposed dependency is displayed and explicitly accepted below.
-        if controller.contains(Component::ChatgptDesktop) {
-            execution.insert(Component::Codex);
-        }
-        println!("Proposed controller: {controller}. Proposed worker: {execution}.");
-        if !yes(
-            "Use this managed worker-only execution layout?",
-            Some(false),
-        )? {
-            return Err(Error::new("managed-worker placement was not accepted"));
-        }
-        components = controller;
-        Some(execution)
-    } else {
-        None
-    };
-    let happy_backends = crate::worker::happy_prompt(&mut components)?;
-    let presentation: Presentation = ask(
-        "Presentation: headless / wayland / x11",
-        Some(if components.contains(Component::ChatgptDesktop) {
-            "x11"
-        } else {
-            "headless"
-        }),
-    )?
-    .parse()?;
+    let resolved = instance_prompt()?;
+    let components = resolved.host;
+    let managed = resolved.worker != Components::default();
+    let presentation = resolved.presentation;
+    let requested_worker = managed.then_some(resolved.worker);
     let network = probe::default_network(&c).unwrap_or_default();
     let wifi = assbox_policy::suggested_wifi(&network);
     if wifi.is_none() {
@@ -334,7 +466,8 @@ pub fn install(args: &[&str]) -> Result<()> {
     for component in components.iter().filter(|c| !c.code_notes().is_empty()) {
         println!("{component}: {}", component.code_notes());
     }
-    let mutable = components.iter().any(|c| c.mutable_code());
+    let mutable = components.iter().any(|c| c.mutable_code())
+        || resolved.worker.iter().any(|c| c.mutable_code());
     if mutable {
         println!(
             "Selected desktop components may download executable helpers. Worker selection does not automatically disable a desktop application's built-in controller-local tools."
@@ -354,9 +487,23 @@ pub fn install(args: &[&str]) -> Result<()> {
     let autostart = if presentation == Presentation::Headless {
         Vec::new()
     } else {
+        let native_launchers = components
+            .iter()
+            .filter(|c| matches!(c, Component::ChatgptDesktop | Component::ClaudeDesktop))
+            .map(|c| c.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
         let text = ask(
             "Graphical autostart IDs (chatgpt-desktop, claude-desktop, vscode, zed, chromium, opencode-attach, openclaw-dashboard; or none)",
-            Some("none"),
+            Some(
+                if resolved.config.purpose == instances::Purpose::Kiosk
+                    && resolved.config.web_apps.is_empty()
+                {
+                    native_launchers.as_str()
+                } else {
+                    "none"
+                },
+            ),
         )?;
         if text == "none" {
             Vec::new()
@@ -375,7 +522,7 @@ pub fn install(args: &[&str]) -> Result<()> {
         && (editor_ssh
             || yes(
                 "Allow an external controller/editor/terminal to connect to the workload account over SSH?",
-                Some(false),
+                Some(resolved.workload_ssh),
             )?) {
         Some(ask(
             "Workload SSH public key (unprivileged agent account; separate from administrator access)",
@@ -384,7 +531,25 @@ pub fn install(args: &[&str]) -> Result<()> {
     } else {
         None
     };
-    let ssh_access = ssh_access_prompt(admin_ssh_key.is_some() || agent_ssh_key.is_some(), &c)?;
+    if resolved.workload_ssh && agent_ssh_key.is_none() {
+        return Err(Error::new(
+            "this SSH Coder route requires a workload public key",
+        ));
+    }
+    let ssh_access = ssh_access_prompt(
+        admin_ssh_key.is_some() || agent_ssh_key.is_some(),
+        &c,
+        resolved.config.tailscale,
+    )?;
+    if (admin_ssh_key.is_some() || agent_ssh_key.is_some())
+        && ssh_access.exposure == access::SshExposure::Tailscale
+        && !resolved.config.tailscale
+    {
+        return Err(Error::new(
+            "select LAN SSH when Tailscale support is deselected",
+        ));
+    }
+
     let additional_packages = if managed {
         Default::default()
     } else {
@@ -401,6 +566,7 @@ pub fn install(args: &[&str]) -> Result<()> {
         }
     };
     let choices = Choices {
+        instance: resolved.config,
         hostname,
         timezone,
         components,
@@ -416,7 +582,6 @@ pub fn install(args: &[&str]) -> Result<()> {
         ssh_access,
         additional_packages,
         worker,
-        happy_backends,
     };
     print_connection_summary(&choices);
     let request = InstallRequest {
@@ -482,4 +647,19 @@ pub fn install(args: &[&str]) -> Result<()> {
         ));
     }
     assbox_engine::install::apply(plan, release_tag)
+}
+
+pub fn configure(apply: bool) -> Result<()> {
+    files::require_root()?;
+    println!("Current effective configuration:");
+    Commands.run("nix", &["eval","--json","--no-update-lock-file","--no-write-lock-file","path:/etc/nixos#nixosConfigurations.assbox.config.assbox","--apply","c: { inherit (c) instance selectedComponents presentation; worker = c.worker.enable; }"])?;
+    let resolved = instance_prompt()?;
+    let unfree = yes("Accept proprietary packages if required?", Some(false))?;
+    let mutable = (resolved.host.iter().any(|c| c.mutable_code())
+        || resolved.worker.iter().any(|c| c.mutable_code()))
+        && yes(
+            "Accept the disclosed client-managed helpers for the selected native clients?",
+            Some(false),
+        )?;
+    assbox_engine::manage::instance_configure(&resolved, unfree, mutable, apply)
 }

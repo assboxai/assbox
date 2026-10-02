@@ -126,9 +126,11 @@ pub fn setup(component: Component) -> Result<()> {
         return interactive_executable(&script, &[]);
     }
     match component {
-        Component::ChatgptDesktop => {
+        Component::ChatgptDesktop | Component::ClaudeDesktop => {
+            let program = installed_program("assbox-native-policy")?;
+            interactive_executable(&program, &["check", component.as_str()])?;
             println!(
-                "Sign in using the ChatGPT window in the X11 session, then pair Remote. For isolation, select an SSH worker project."
+                "Native policy verified. Sign in through the guarded launcher; worker routing does not grant Work or Cowork controller execution."
             );
             Ok(())
         }
@@ -157,10 +159,15 @@ pub fn setup(component: Component) -> Result<()> {
             );
             Ok(())
         }
-        Component::Happy => interactive("happy", &["auth", "login"]),
+        Component::Happier => interactive(
+            "happier",
+            &["auth", "login", "--no-open", "--method", "web"],
+        ),
+        Component::Hermes => interactive("hermes", &["setup"]),
+        Component::Pi => interactive("pi", &[]),
+        Component::Omp => interactive("omp", &[]),
         Component::Codex => interactive("codex", &["login"]),
         Component::ClaudeCode => interactive("claude", &[]),
-        Component::GeminiCli => interactive("gemini", &[]),
         Component::Grok => interactive("grok", &[]),
         Component::CursorAgent => interactive("cursor-agent", &["login"]),
         Component::AntigravityCli => interactive("agy", &[]),
@@ -200,6 +207,54 @@ pub(crate) fn installed_program(name: &str) -> Result<std::path::PathBuf> {
         ));
     }
     Ok(path)
+}
+
+pub fn service_control(component: Component, action: &str) -> Result<()> {
+    require_selected(component)?;
+    if matches!(action, "stop" | "disable") && Path::new("/etc/assbox/serve.json").exists() {
+        let mappings = files::text(Path::new("/etc/assbox/serve.json"))?;
+        let published = Commands.jq_fields(
+            mappings.as_bytes(),
+            r#".mappings[] | .component + "\u0000""#,
+        )?;
+        if published.iter().any(|id| id == component.as_str()) {
+            return Err(Error::new(format!(
+                "this dashboard has owner-managed exposure; use sudo assbox component {action} {component} to withdraw it before stopping"
+            )));
+        }
+    }
+    let service_config = files::text(Path::new("/etc/assbox/service-control.json"))?;
+    let units = Commands.jq_fields(
+        service_config.as_bytes(),
+        &format!(r#"(.units["{component}"] // [])[] | . + "\u0000""#),
+    )?;
+    if units.is_empty() {
+        return Err(Error::new(
+            "this selected component has no configured managed service",
+        ));
+    }
+    let directory = Path::new("/home/agent/.config/assbox/disabled");
+    files::create_private(directory)?;
+    let marker = directory.join(component.as_str());
+    match action {
+        "disable" | "stop" => {
+            files::atomic_write(&marker, b"disabled by owner\n", 0o600)?;
+            let mut arguments = vec!["--user", "stop"];
+            arguments.extend(units.iter().map(String::as_str));
+            interactive("systemctl", &arguments)?;
+        }
+        "enable" => {
+            if marker.exists() {
+                files::io(fs::remove_file(marker))?;
+            }
+            let mut arguments = vec!["--user", "start"];
+            arguments.extend(units.iter().map(String::as_str));
+            interactive("systemctl", &arguments)?;
+        }
+        _ => return Err(Error::new("choose stop, disable, or enable")),
+    }
+    println!("{component}: {action}; setup and authentication remain independent");
+    Ok(())
 }
 
 #[cfg(test)]

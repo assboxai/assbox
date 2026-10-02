@@ -21,14 +21,15 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
             "[\"chatgpt-desktop\"]",
         ),
         (
-            "codex,happy,happy-remote,zed-remote-host",
+            "codex,happier,happier-daemon,zed-remote-host",
             Presentation::Headless,
             true,
-            "[\"codex\",\"happy\",\"happy-remote\",\"zed-remote-host\"]",
+            "[\"codex\",\"happier\",\"happier-daemon\",\"zed-remote-host\"]",
         ),
     ] {
         let components: Components = ids.parse().unwrap();
         let choices = Choices {
+            instance: Default::default(),
             hostname: Hostname::parse("assbox-fixture").unwrap(),
             timezone: "UTC".into(),
             components,
@@ -47,7 +48,7 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
                 assbox_domain::worker::WorkerSpec {
                     components: Component::Codex.into(),
                     mutable_components: Components::default(),
-                    happy_backends: Default::default(),
+
                     memory_mib: 3072,
                     vcpus: 2,
                     state_gib: 32,
@@ -58,11 +59,6 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
                     guest_sudo: false,
                 }
             }),
-            happy_backends: if components.contains(Component::HappyRemote) {
-                Component::Codex.into()
-            } else {
-                Components::default()
-            },
         };
         let original = assbox_config::settings(&choices).unwrap();
         // Exercise the real renderer and managed editor, without a NixOS
@@ -117,6 +113,7 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
 fn managed_launcher_transitions_satisfy_actual_component_assertions() {
     let ids = "vscode,zed,opencode,opencode-server,openclaw,openclaw-gateway";
     let choices = Choices {
+        instance: Default::default(),
         hostname: Hostname::parse("assbox-fixture").unwrap(),
         timezone: "UTC".into(),
         components: ids.parse().unwrap(),
@@ -134,7 +131,6 @@ fn managed_launcher_transitions_satisfy_actual_component_assertions() {
         ssh_access: Default::default(),
         additional_packages: Default::default(),
         worker: None,
-        happy_backends: Default::default(),
     };
     let original = assbox_config::settings(&choices).unwrap();
     let lib_path = std::env::var("ASSBOX_NIX_LIB").expect("Nix module library is required");

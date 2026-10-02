@@ -14,7 +14,7 @@ use std::{
 #[derive(Debug)]
 struct Request {
     components: Components,
-    happy_backends: Components,
+
     memory: Option<u32>,
     cpus: Option<u32>,
     state: Option<u32>,
@@ -38,7 +38,7 @@ fn parse(args: &[&str]) -> Result<Request> {
         .ok_or_else(|| Error::new("worker configure requires explicit component IDs"))?;
     let mut r = Request {
         components: ids.parse()?,
-        happy_backends: Components::default(),
+
         memory: None,
         cpus: None,
         state: None,
@@ -93,10 +93,6 @@ fn parse(args: &[&str]) -> Result<Request> {
                 i += 1;
                 r.uplinks.push(value(i)?.to_owned());
             }
-            "--happy-backends" => {
-                i += 1;
-                r.happy_backends = value(i)?.parse()?;
-            }
             "--offline" => r.network = WorkerNetwork::Offline,
             "--network" => {
                 i += 1;
@@ -137,7 +133,7 @@ fn configure(request: Request) -> Result<()> {
     }
     let spec = WorkerSpec {
         components: request.components,
-        happy_backends: request.happy_backends,
+
         mutable_components,
         memory_mib: match request.memory {
             Some(m) => m,
@@ -245,23 +241,6 @@ pub(crate) fn accept_dependencies(components: Components) -> Result<Components> 
     Ok(expanded)
 }
 
-pub(crate) fn happy_prompt(components: &mut Components) -> Result<Components> {
-    if !components.contains(assbox_domain::Component::HappyRemote) {
-        return Ok(Components::default());
-    }
-    let backends: Components = ask(
-        "Happy backends: codex, claude-code, or both comma-separated (required)",
-        "",
-    )?
-    .parse()?;
-    for backend in backends.iter() {
-        components.insert(backend);
-    }
-    assbox_domain::validate_happy_backends(*components, backends)?;
-    println!("Complete selection including Happy backends: {components}");
-    Ok(backends)
-}
-
 fn setup() -> Result<()> {
     files::require_root()?;
     recommend()?;
@@ -272,8 +251,7 @@ fn setup() -> Result<()> {
         println!("No worker configured.");
         return Ok(());
     }
-    let mut components = accept_dependencies(ids.parse()?)?;
-    let happy_backends = happy_prompt(&mut components)?;
+    let components = accept_dependencies(ids.parse()?)?;
     let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
     let ram = ask("Worker memory in MiB", &memory.to_string())?;
     let state = ask(
@@ -297,9 +275,7 @@ fn setup() -> Result<()> {
         "--state-gib".to_owned(),
         state,
     ];
-    if happy_backends != Components::default() {
-        args.extend(["--happy-backends".to_owned(), happy_backends.to_string()]);
-    }
+
     args.extend(["--network".to_owned(), network.to_string()]);
     for uplink in uplinks {
         args.extend(["--uplink".to_owned(), uplink]);
@@ -336,8 +312,7 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
         "Explicit worker component IDs (Codex is required for ChatGPT)",
         &selected.to_string(),
     )?;
-    let mut components = accept_dependencies(ids.parse()?)?;
-    let happy_backends = happy_prompt(&mut components)?;
+    let components = accept_dependencies(ids.parse()?)?;
     for c in components.iter().filter(|c| !c.code_notes().is_empty()) {
         println!("{c}: {}", c.code_notes());
     }
@@ -381,7 +356,7 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
     }
     let spec = WorkerSpec {
         components,
-        happy_backends,
+
         mutable_components,
         memory_mib,
         vcpus,
