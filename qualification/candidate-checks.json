@@ -116,8 +116,8 @@
     "remote": "https://github.com/buu700/assbox-dev.git",
     "branch": "master",
     "status": "pushed",
-    "verifiedThroughCommit": "5cf4c693a10bd82e7bdd4064828119c2971f27d5",
-    "verifiedAt": "2026-10-02T14:41:56.354828+00:00"
+    "verifiedThroughCommit": "680c779e42023f44b1304588db765822ce110279",
+    "verifiedAt": "2026-10-02T15:12:21.193061+00:00"
   },
   "followups": [
     {
@@ -308,6 +308,140 @@
       ],
       "notRun": "All previously listed runtime, build, account, hardware and release qualification remains deferred; the new substrate VM and external native fixture are unrun.",
       "remainingAudit": "Requirement-level source audit continues. Provider-specific browser integration and complete deliverable-to-source coverage remain under review."
+    },
+    {
+      "recordedAt": "2026-10-02T15:12:21.193061+00:00",
+      "testedCommit": "680c779e42023f44b1304588db765822ce110279",
+      "scope": "Final requirement-level source candidate audit; full qualification deferred at owner request.",
+      "changes": [
+        {
+          "commit": "fe7c1cd",
+          "work": [
+            "W12",
+            "W19"
+          ],
+          "result": "Configured provider state homes enter checkpoints; selected homes are normalized and scoped."
+        },
+        {
+          "commit": "8facd28",
+          "work": [
+            "W09",
+            "W13",
+            "W23"
+          ],
+          "result": "Active direct Codex relay/Happier coexistence is refused until separately qualified."
+        },
+        {
+          "commit": "cd4b58e",
+          "work": [
+            "W04",
+            "W14"
+          ],
+          "result": "Removed the unguarded duplicate Claude editor autostart; both native autostarts use the policy supervisor."
+        },
+        {
+          "commit": "cf39dca",
+          "work": [
+            "W14",
+            "W19"
+          ],
+          "result": "Web-kiosk and autostart GUI durable controls, resource bounds, managed profile checkpoints and quiescence."
+        },
+        {
+          "commit": "9fcbec4",
+          "work": [
+            "W06",
+            "W20",
+            "W21"
+          ],
+          "result": "Plan-only VM input and acceptance documentation match current purpose/native/desktop behavior."
+        },
+        {
+          "commit": "680c779",
+          "work": [
+            "W05",
+            "W08",
+            "W12"
+          ],
+          "result": "Guided and raw Nix Hermes public-origin validation agree on loopback, ambiguous host and port refusal."
+        }
+      ],
+      "checks": [
+        {
+          "name": "Deterministic Rust core",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-domain -p assbox-policy -p assbox-config --all-targets --offline -j 1",
+          "status": "passed",
+          "passed": 106
+        },
+        {
+          "name": "Scripted purpose-selection transcripts",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-cli purpose_flow_matches --offline -j 1",
+          "status": "passed",
+          "scenarios": 29
+        },
+        {
+          "name": "Workspace Clippy",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+          "status": "passed"
+        },
+        {
+          "name": "Inert component/substrate fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+          "status": "passed",
+          "passed": 28
+        },
+        {
+          "name": "Application launcher fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_application_launchers.py",
+          "status": "passed",
+          "passed": 6
+        },
+        {
+          "name": "Architecture/product surface fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_contracts.py",
+          "status": "passed",
+          "passed": 13
+        },
+        {
+          "name": "Remote lifecycle and diagnostics fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p 'test_remote_*.py'",
+          "status": "passed",
+          "passed": 9
+        },
+        {
+          "name": "Documentation navigation and generated artifacts",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+          "status": "passed",
+          "passed": 2
+        },
+        {
+          "name": "Source syntax",
+          "status": "passed",
+          "pythonFiles": 75,
+          "nixFiles": 72,
+          "scope": "Python AST and Nix parsing in scripts/tests/modules/nix plus flake.nix; no system evaluation or build."
+        },
+        {
+          "name": "Focused static checks",
+          "status": "passed",
+          "scope": "Rust and changed Nix formatting, ShellCheck verify/release-check, actionlint, architecture/workflow guards, catalog/preset/product-documentation drift, exact offline lock, git diff --check."
+        },
+        {
+          "name": "Authored source traceability integrity",
+          "status": "passed",
+          "scope": "All 23 work packages and 116 requirements mapped to 34 reviewed mechanisms with source paths, gates and remaining limits. This is coverage bookkeeping, not runtime proof."
+        }
+      ],
+      "notRun": "All previously listed build, runtime, network, account, hardware and full release qualification remains deferred. No acceptance requirement was promoted.",
+      "sourceAudit": {
+        "path": "source-audit.json",
+        "status": "candidate_with_explicit_qualification_holds",
+        "workPackages": 23,
+        "requirements": 116,
+        "mechanisms": 34,
+        "remainingSourceOmissionsIdentified": []
+      },
+      "remainingAudit": "No remaining obvious source-scope omission identified in this pass. The separately listed qualification holds, W21/W22 execution and production release gates remain outstanding."
     }
   ]
 }

@@ -12,6 +12,13 @@ No generic Linux policy probe is presented as enforceable. If the selected app/a
 
 [candidate-checks.json](candidate-checks.json) is the separately scoped lightweight check record. Its results do not mark native, provider, hardware or release acceptance as passed.
 
+[source-audit.json](source-audit.json) records source traceability for all 23 work
+packages and 116 acceptance requirements at its named commit. Each mechanism
+identifies behavior, source, qualification paths and remaining limits. A covered
+row means the candidate contains an implementation or explicit contract gate;
+it does not mean the requirement passed. W21/W22 execution remains deferred at
+the owner's request. The original planning work ledger is preserved separately.
+
 The [external Coder fixture](../docs/external-coder-fixture.md) records separate
 Mac/guest canaries and initial/disconnected/reconnected tasks. Its result is
 limited to those observed paths; it deliberately does not promote a route to
