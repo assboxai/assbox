@@ -264,6 +264,10 @@
             inherit module;
             inherit (p) pkgs;
           };
+          computer-use-vm = import ./tests/nix/computer-use-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
           access-lan-vm = import ./tests/nix/access-vm.nix {
             inherit module;
             inherit (p) pkgs;

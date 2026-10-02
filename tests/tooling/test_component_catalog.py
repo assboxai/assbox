@@ -89,7 +89,7 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertIsNone(disabled['substrate']['computerUse'])
         self.assertNotIn('/nix/store/test-chromium',disabled['packages'])
         browser=self.evaluate({},substrate=True,instance={'computerUse':{'mode':'browser'}})
-        self.assertEqual(browser['substrate']['computerUse'],{'modes':['browser']})
+        self.assertEqual(browser['substrate']['computerUse'],{'modes':['browser','chromium'],'browser':'/nix/store/test-chromium/bin/chromium'})
         self.assertNotIn('/nix/store/test-xorgserver',browser['packages'])
         desktop=self.evaluate({},substrate=True,instance={'computerUse':{'mode':'virtual-desktop'}})
         self.assertIn('display',desktop['substrate']['computerUse']['modes'])

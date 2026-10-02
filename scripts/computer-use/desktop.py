@@ -30,6 +30,26 @@ def clean_environment():
     return {k: v for k, v in os.environ.items() if k not in SCRUB}
 
 
+def chromium_command(arguments, executable, profile, cache):
+    """Only the selected browser owns this fresh profile and loopback endpoint."""
+    protected = {
+        '--user-data-dir', '--disk-cache-dir', '--profile-directory', '--password-store',
+        '--remote-debugging-address', '--no-sandbox', '--disable-sandbox',
+        '--disable-setuid-sandbox', '--disable-seccomp-filter-sandbox',
+        '--single-process', '--no-zygote',
+    }
+    for argument in arguments:
+        name, _, value = argument.partition('=')
+        if name in protected or (name == '--headless' and value not in ('', 'new')):
+            raise Refusal('browser profile, sandbox and listener are managed by Assbox')
+        if name == '--remote-debugging-port' and (not value.isascii() or not value.isdecimal() or not 0 <= int(value) <= 65535):
+            raise Refusal('use --remote-debugging-port=0 or a valid loopback port')
+    return [executable, '--headless=new', '--no-first-run',
+            '--no-default-browser-check', '--disable-sync', '--password-store=basic',
+            '--user-data-dir=' + str(profile), '--disk-cache-dir=' + str(cache),
+            '--remote-debugging-address=127.0.0.1', *arguments]
+
+
 def bus_address(process, cancelled):
     """Read a bounded readiness line while keeping the bus foreground-owned."""
     deadline = time.monotonic() + 5
@@ -82,7 +102,7 @@ def run(mode, command, tools):
         raise Refusal('computer use runs only as the unprivileged execution identity')
     if mode not in tools.get('modes', []):
         raise Refusal('this computer-use resource was not selected in configuration')
-    if not command:
+    if not command and mode != 'chromium':
         raise Refusal('supply an upstream command after --')
     runtime = Path('/run/user/1000')
     fd = os.open(runtime / 'assbox-computer-use.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
@@ -116,6 +136,12 @@ def run(mode, command, tools):
             try:
                 d = Path(temporary)
                 d.chmod(0o700)
+                if mode == 'chromium':
+                    profile, cache = d / 'browser', d / 'cache'
+                    profile.mkdir(mode=0o700)
+                    cache.mkdir(mode=0o700)
+                    command = chromium_command(command, tools['browser'], profile, cache)
+                    env['XDG_CACHE_HOME'] = str(cache)
                 if mode == 'display':
                     display = ':90'
                     socket_path = Path('/tmp/.X11-unix/X90')
@@ -157,7 +183,7 @@ def run(mode, command, tools):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['provider', 'display', 'browser'])
+    parser.add_argument('mode', choices=['provider', 'display', 'browser', 'chromium'])
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command and args.command[0] == '--' else args.command
@@ -167,6 +193,6 @@ def main():
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except (OSError, ValueError, Refusal, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, KeyError, Refusal, subprocess.SubprocessError) as error:
         print('Assbox computer use: ' + str(error), file=sys.stderr)
         sys.exit(78)

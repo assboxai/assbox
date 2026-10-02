@@ -21,6 +21,9 @@ let
       --property=CPUAccounting=yes --property=MemoryAccounting=yes \
       ${runtime}/bin/assbox-computer-use-runtime "$@"
   '';
+  browser = pkgs.writeShellScriptBin "assbox-browser" ''
+    exec ${launcher}/bin/assbox-computer-use chromium -- "$@"
+  '';
 in
 {
   options.assbox.computerUse = {
@@ -60,6 +63,7 @@ in
       lib.optionals active (
         [
           launcher
+          browser
           pkgs.chromium
         ]
         ++ lib.optional (cfg.providerRuntime != null) cfg.providerRuntime
@@ -84,11 +88,13 @@ in
         {
           modes = [
             "browser"
+            "chromium"
           ]
           ++ lib.optionals desktop [
             "provider"
             "display"
           ];
+          browser = "${pkgs.chromium}/bin/chromium";
         }
         // lib.optionalAttrs desktop {
           xvfb = "${pkgs.xorg.xorgserver}/bin/Xvfb";
