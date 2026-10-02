@@ -16,7 +16,6 @@ in
     controller = {
       active = mkOption {
         type = types.bool;
-        default = false;
         readOnly = true;
         internal = true;
         description = "Evaluated thin-controller policy; not an administrator bypass toggle.";
@@ -26,9 +25,10 @@ in
           "none"
           "generic"
           "chatgpt-desktop"
+          "native-kiosk"
+          "web-kiosk"
           "unqualified"
         ];
-        default = "none";
         readOnly = true;
         description = "Controller adapter selected from component capabilities.";
       };

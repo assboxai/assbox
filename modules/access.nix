@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.assbox.network;
   ssh = cfg.ssh;
@@ -121,6 +126,9 @@ in
         "--accept-routes=false"
       ];
     };
+    systemd.services.tailscaled.serviceConfig.ExecStartPost = lib.mkIf cfg.tailscale.enable [
+      "${pkgs.coreutils}/bin/chmod 0600 /run/tailscale/tailscaled.sock"
+    ];
     users.users.admin.openssh.authorizedKeys.keys = lib.optionals ssh.admin.enable ssh.admin.keys;
     users.users.agent.openssh.authorizedKeys.keys = lib.optionals ssh.agent.enable ssh.agent.keys;
     services.openssh = {
