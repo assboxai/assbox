@@ -116,8 +116,8 @@
     "remote": "https://github.com/buu700/assbox-dev.git",
     "branch": "master",
     "status": "pushed",
-    "verifiedThroughCommit": "f5e90cd4e37d416f0e8b94713ed648b7ae238c3c",
-    "verifiedAt": "2026-10-02T13:37:39.162537+00:00"
+    "verifiedThroughCommit": "5cf4c693a10bd82e7bdd4064828119c2971f27d5",
+    "verifiedAt": "2026-10-02T14:41:56.354828+00:00"
   },
   "followups": [
     {
@@ -207,6 +207,107 @@
       ],
       "notRun": "All previously listed runtime, build, account, hardware and release qualification remains deferred.",
       "remainingAudit": "Requirement-level source audit continues, including purpose-flow terminal transcripts, provider-private browser integration and external SSH qualification fixture coverage."
+    },
+    {
+      "recordedAt": "2026-10-02T14:41:56.354828+00:00",
+      "testedCommit": "5cf4c693a10bd82e7bdd4064828119c2971f27d5",
+      "scope": "Continued requirement-level source audit; cached deterministic fixtures only.",
+      "changes": [
+        {
+          "commit": "1b51e7d",
+          "work": [
+            "W16",
+            "W18",
+            "W19"
+          ],
+          "result": "Ephemeral private Chromium resource and a wired, unrun display/browser substrate VM gate."
+        },
+        {
+          "commit": "dadc4d5",
+          "work": [
+            "W05",
+            "W06",
+            "W14"
+          ],
+          "result": "29 reviewed scripted purpose-selection scenarios, including native gate states, Back, exclusions and cancellation."
+        },
+        {
+          "commit": "5f473cc",
+          "work": [
+            "W08",
+            "W23"
+          ],
+          "result": "Deselected Tailscale no longer enters the Serve runtime closure; unresolved ownership is retained for recovery."
+        },
+        {
+          "commit": "43254fd",
+          "work": [
+            "W14",
+            "W19"
+          ],
+          "result": "Native stop and checkpoint controls refer to the actual declared desktop units."
+        },
+        {
+          "commit": "5cf4c69",
+          "work": [
+            "W22",
+            "W23"
+          ],
+          "result": "Owner-run external Coder canary, disconnect and reconnect fixture; route qualification is explicitly separate."
+        }
+      ],
+      "checks": [
+        {
+          "name": "Inert component/substrate fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+          "status": "passed",
+          "passed": 23
+        },
+        {
+          "name": "Scripted purpose-selection transcripts",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-cli purpose_flow_matches --offline -j 1",
+          "status": "passed",
+          "scenarios": 29,
+          "scope": "The actual shared selection routine with scripted input and observations; no terminal, account, hardware or installation run."
+        },
+        {
+          "name": "Workspace Clippy",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+          "status": "passed"
+        },
+        {
+          "name": "Private browser and display lease fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_computer_use.py",
+          "status": "passed",
+          "passed": 6
+        },
+        {
+          "name": "External Coder fixture self-checks",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_external_coder.py",
+          "status": "passed",
+          "passed": 4,
+          "scope": "Temporary directories and injected process/platform facts; no real desktop, SSH or route qualification."
+        },
+        {
+          "name": "Missing Serve backend refusal",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_serve.py",
+          "status": "passed",
+          "passed": 1
+        },
+        {
+          "name": "Documentation navigation and generated artifacts",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+          "status": "passed",
+          "passed": 2
+        },
+        {
+          "name": "Focused static checks",
+          "status": "passed",
+          "scope": "Rust formatting, changed Nix formatting, release-check ShellCheck, architecture graph, product-documentation drift, git diff --check."
+        }
+      ],
+      "notRun": "All previously listed runtime, build, account, hardware and release qualification remains deferred; the new substrate VM and external native fixture are unrun.",
+      "remainingAudit": "Requirement-level source audit continues. Provider-specific browser integration and complete deliverable-to-source coverage remain under review."
     }
   ]
 }
