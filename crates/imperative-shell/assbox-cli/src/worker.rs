@@ -198,12 +198,20 @@ fn ask(label: &str, default: &str) -> Result<String> {
         text.to_owned()
     })
 }
-fn network_prompt(observed: &[String]) -> Result<(WorkerNetwork, Vec<String>, Vec<String>)> {
+fn network_prompt(
+    observed: &[String],
+    selected: Option<WorkerNetwork>,
+) -> Result<(WorkerNetwork, Vec<String>, Vec<String>)> {
     println!(
         "Worker IPv4 networking: normal = internet and LAN; internet = public destinations only; offline = no external access. Controller services and unsolicited inbound traffic remain blocked."
     );
-    let network: WorkerNetwork =
-        ask("Choose normal / internet / offline (required)", "")?.parse()?;
+    let network = match selected {
+        Some(network) => {
+            println!("Worker egress selected in the purpose flow: {network}");
+            network
+        }
+        None => ask("Choose normal / internet / offline (required)", "")?.parse()?,
+    };
     if network == WorkerNetwork::Offline {
         return Ok((network, vec![], vec![]));
     }
@@ -252,7 +260,7 @@ fn setup() -> Result<()> {
         return Ok(());
     }
     let components = accept_dependencies(ids.parse()?)?;
-    let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
+    let (network, uplinks, nameservers) = network_prompt(&host.uplinks, None)?;
     let ram = ask("Worker memory in MiB", &memory.to_string())?;
     let state = ask(
         "Persistent state GiB: auto or capacity (existing disks retained)",
@@ -299,7 +307,11 @@ fn setup() -> Result<()> {
 
 /// First installation defines the guest as part of the OUTER configuration.
 /// It never invokes a second installer or creates an independent update channel.
-pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<WorkerSpec> {
+pub fn installation_spec(
+    selected: Components,
+    accept_unfree: bool,
+    egress: WorkerNetwork,
+) -> Result<WorkerSpec> {
     let host = system::hardware(&Commands)?;
     let recommended = assbox_policy::worker::recommended_memory(&host)?;
     println!(
@@ -342,7 +354,7 @@ pub fn installation_spec(selected: Components, accept_unfree: bool) -> Result<Wo
     };
     let auto_state = state == "auto";
     let state_gib = if auto_state { 8 } else { number(&state)? };
-    let (network, uplinks, nameservers) = network_prompt(&host.uplinks)?;
+    let (network, uplinks, nameservers) = network_prompt(&host.uplinks, Some(egress))?;
     let mut mutable_components = Components::default();
     for c in components.iter().filter(|c| c.mutable_code()) {
         if ask(

@@ -148,6 +148,11 @@ unchanged context and redacts sensitive settings. Both commands preserve
 `local.nix`, repositories, credentials and worker resources; an execution topology
 change requires the separate worker configuration/export procedure.
 
+Execution egress applies to the actual execution domain, including an existing
+managed worker. Selecting offline removes its configured uplinks and DNS. Enabling
+egress afterward requires explicit worker network configuration; reconfiguration
+does not guess interfaces or silently replace an incompatible resolver.
+
 ```sh
 sudo assbox component set opencode,opencode-server wayland
 sudo assbox component set none headless

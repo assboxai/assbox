@@ -1,10 +1,29 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use assbox_domain::{
     Error, Result,
-    worker::{WorkerHardware, WorkerSpec},
+    worker::{WorkerHardware, WorkerNetwork, WorkerSpec},
 };
 
 use assbox_domain::worker::{GIB, storage_reserve};
+
+/// Change only egress on an existing topology; never guess newly required uplinks.
+pub fn with_egress(
+    mut spec: WorkerSpec,
+    network: WorkerNetwork,
+    unfree: bool,
+) -> Result<WorkerSpec> {
+    spec.network = network;
+    if network == WorkerNetwork::Offline {
+        spec.uplinks.clear();
+        spec.nameservers.clear();
+    } else if spec.uplinks.is_empty() {
+        return Err(Error::new(
+            "enabling worker egress requires explicit uplinks and DNS; use assbox worker configure first",
+        ));
+    }
+    spec.validate(unfree)?;
+    Ok(spec)
+}
 
 /// Resolve once after building the provisional controller/image closure. Leave
 /// another GiB for the final configuration derivations. No disk is resized here.
@@ -145,6 +164,25 @@ mod tests {
             nameservers: vec![],
             guest_sudo: false,
         }
+    }
+    #[test]
+    fn egress_changes_preserve_resources_and_never_invent_authority() {
+        let mut original = spec();
+        original.network = WorkerNetwork::Normal;
+        original.uplinks = vec!["eth0".into()];
+        original.nameservers = vec!["1.1.1.1".into()];
+        let internet = with_egress(original.clone(), WorkerNetwork::Internet, false).unwrap();
+        let mut expected = original.clone();
+        expected.network = WorkerNetwork::Internet;
+        assert_eq!(internet, expected);
+        let offline = with_egress(original, WorkerNetwork::Offline, false).unwrap();
+        assert!(offline.uplinks.is_empty());
+        assert!(offline.nameservers.is_empty());
+        assert_eq!(offline.memory_mib, expected.memory_mib);
+        assert_eq!(offline.state_gib, expected.state_gib);
+        assert!(with_egress(offline, WorkerNetwork::Internet, false).is_err());
+        expected.nameservers = vec!["192.168.1.1".into()];
+        assert!(with_egress(expected, WorkerNetwork::Internet, false).is_err());
     }
     #[test]
     fn automatic_budgets_have_boundaries() {

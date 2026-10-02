@@ -482,7 +482,9 @@ pub fn install(args: &[&str]) -> Result<()> {
         return Err(Error::new("mutable helper provisioning was not accepted"));
     }
     let worker = requested_worker
-        .map(|selected| crate::worker::installation_spec(selected, allow_unfree))
+        .map(|selected| {
+            crate::worker::installation_spec(selected, allow_unfree, resolved.config.egress)
+        })
         .transpose()?;
     let autostart = if presentation == Presentation::Headless {
         Vec::new()

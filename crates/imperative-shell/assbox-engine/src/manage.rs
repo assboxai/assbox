@@ -1286,7 +1286,11 @@ pub fn instance_configure(
             guest_sudo: values[8] == "true",
             nameservers: list(&values[9]),
         };
-        spec.validate(accept_unfree || fields[2] == "true")?;
+        let spec = assbox_policy::worker::with_egress(
+            spec,
+            request.config.egress,
+            accept_unfree || fields[2] == "true",
+        )?;
         selected = assbox_config::worker::selection(&selected, Some(&spec))?;
     }
     // Consent is explicit and scoped to selected components; it never changes local.nix.
@@ -1342,8 +1346,8 @@ pub fn instance_configure(
                 "candidate configuration assertions failed: {failures}"
             )));
         }
-        let effective=Commands.text("nix", &["eval","--json","--no-update-lock-file","--no-write-lock-file",&format!("{candidate}#nixosConfigurations.assbox.config.assbox"),"--apply","c: { components = c.selectedComponents; presentation = c.presentation; instance = c.instance; tailscale = c.network.tailscale.enable; egress = c.network.execution.egress; computerUse = c.computerUse.mode; workerComputerUse = c.worker.computerUseMode; workerComponents = c.worker.components; protected = c.kiosk.localExecution; webApps = c.kiosk.webApps; hermes = c.components.hermes-dashboard; serve = c.network.tailscale.serveMappings; consent = c.acceptUnfree; mutable = builtins.filter (id: c.components.${id}.allowMutableCode) c.selectedComponents; }"])?;
-        let observed=Commands.jq_fields(effective.as_bytes(),r#"[.components|join(",")] + [.presentation,.instance.preset,(.instance.revision|tostring),(.tailscale|tostring),.egress,.computerUse,.workerComputerUse,(.workerComponents|sort|join(",")),.protected,(.webApps|join(",")),(.instance.exclusions|sort|join(",")),.instance.purpose,.hermes.publicUrl,.hermes.accessProfile,(.hermes.consentTunnelOnly|tostring),(.serve|map(.component+"|"+.publicUrl+"|"+(.port|tostring))|sort|join(",")),(.consent|tostring)] | .[] | . + "\u0000""#)?;
+        let effective=Commands.text("nix", &["eval","--json","--no-update-lock-file","--no-write-lock-file",&format!("{candidate}#nixosConfigurations.assbox.config.assbox"),"--apply","c: { components = c.selectedComponents; presentation = c.presentation; instance = c.instance; tailscale = c.network.tailscale.enable; egress = c.network.execution.egress; computerUse = c.computerUse.mode; workerComputerUse = c.worker.computerUseMode; workerComponents = c.worker.components; protected = c.kiosk.localExecution; webApps = c.kiosk.webApps; hermes = c.components.hermes-dashboard; serve = c.network.tailscale.serveMappings; workerEgress = if c.worker.enable then c.worker.egress else null; consent = c.acceptUnfree; mutable = builtins.filter (id: c.components.${id}.allowMutableCode) c.selectedComponents; }"])?;
+        let observed=Commands.jq_fields(effective.as_bytes(),r#"[.components|join(",")] + [.presentation,.instance.preset,(.instance.revision|tostring),(.tailscale|tostring),.egress,.computerUse,.workerComputerUse,(.workerComponents|sort|join(",")),.protected,(.webApps|join(",")),(.instance.exclusions|sort|join(",")),.instance.purpose,.hermes.publicUrl,.hermes.accessProfile,(.hermes.consentTunnelOnly|tostring),(.serve|map(.component+"|"+.publicUrl+"|"+(.port|tostring))|sort|join(",")),(.consent|tostring),(.workerEgress // "")] | .[] | . + "\u0000""#)?;
         let expected = vec![
             request.host.to_string(),
             request.presentation.to_string(),
@@ -1383,6 +1387,11 @@ pub fn instance_configure(
                 String::new()
             },
             (accept_unfree || fields[2] == "true").to_string(),
+            if requested_worker {
+                request.config.egress.to_string()
+            } else {
+                String::new()
+            },
         ];
         if observed != expected {
             return Err(Error::new(
