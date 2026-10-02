@@ -2,6 +2,8 @@
 """Validate local documentation navigation without fetching external services."""
 from __future__ import annotations
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -30,6 +32,9 @@ def heading_ids(text: str) -> set[str]:
 
 
 class DocumentationTests(unittest.TestCase):
+    def test_product_tables_match_reviewed_catalog_and_evidence(self):
+        subprocess.run([sys.executable, 'scripts/product_docs.py', '--check'], cwd=ROOT, check=True)
+
     def test_relative_files_and_heading_links_resolve(self):
         checked = 0
         for source in ROOT.rglob("*.md"):

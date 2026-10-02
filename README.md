@@ -19,6 +19,8 @@ Standalone execution is the normal headless arrangement. A sensitive native cont
 
 Read [strategy](docs/product/strategy.md), [instance types](docs/product/instance-types.md), [Coder interfaces](docs/product/coder-options.md), [deployment architecture](docs/product/architecture.md), [access/security](docs/product/access-and-security.md), [computer use](docs/product/computer-use.md) and [lifecycle](docs/product/lifecycle.md).
 
+The [generated preset and component tables](docs/product/component-presets.md) use the installer's reviewed data and describe initial selections and placement.
+
 ### Native Coder and kiosk choices
 
 The Coder menu makes Codex via an external ChatGPT Desktop SSH connection explicit, including macOS controlling a standalone Parallels guest. No Desktop or nested worker is required in that guest. Native chat/cloud Kiosk requests no local agent execution; activation requires verified effective controls for each selected client/platform/account. Protected local Code explicitly selects the managed worker and still needs its own exact-route/no-fallback evidence. The purpose-first wizard and generated configuration are implemented; [native and integration qualification](docs/implementation-status.md) remains separate.

@@ -33,6 +33,11 @@ The workspace uses Rust edition 2024 and declares minimum Rust 1.90. Its six int
 crates are non-publishable and forbid unsafe code. `Cargo.lock` is committed. Rust,
 Cargo, rustfmt and Clippy come from the reviewed Nix lock, as do system tools.
 Tooling tests use Python with PyYAML supplied by the Nix development shell.
+After changing reviewed component/preset data, regenerate with
+`python3 scripts/component_catalog.py`, `python3 scripts/preset_catalog.py` and
+`python3 scripts/product_docs.py`. The last command also renders the dated Linux
+evidence matrix from `qualification/linux-computer-use.json`. Static verification
+checks these artifacts for drift without fetching provider websites.
 The shell and package check environment also supply PyGObject and libnm's type
 metadata for the Wi-Fi renderer's real-parser regression test. Missing bindings
 fail that test; they do not silently skip it. No NetworkManager daemon is needed.
