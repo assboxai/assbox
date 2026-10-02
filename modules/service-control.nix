@@ -24,17 +24,31 @@ let
     "claude-desktop"
   ];
   units =
-    lib.genAttrs (builtins.filter (
-      id:
-      cfg.components.${id}.enable
-      && (
-        !(builtins.elem id [
-          "codex-relay"
-          "antigravity-remote"
-        ])
-        || cfg.components.${id}.foregroundCommand != [ ]
-      )
-    ) remoteIds) (id: [ "assbox-${id}.service" ])
+    lib.genAttrs
+      (builtins.filter (
+        id:
+        cfg.components.${id}.enable
+        && (
+          !(builtins.elem id [
+            "codex-relay"
+            "antigravity-remote"
+          ])
+          || cfg.components.${id}.foregroundCommand != [ ]
+        )
+      ) remoteIds)
+      (id: [
+        "${
+          if
+            builtins.elem id [
+              "chatgpt-desktop"
+              "claude-desktop"
+            ]
+          then
+            id
+          else
+            "assbox-${id}"
+        }.service"
+      ])
     // lib.optionalAttrs cfg.components.openclaw-gateway.enable {
       openclaw-gateway =
         lib.optional (builtins.elem "openclaw-dashboard" cfg.session.autostart) "assbox-openclaw-ui.service"

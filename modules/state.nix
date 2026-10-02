@@ -33,21 +33,37 @@ let
     "assbox-opencode-ui.service"
     "assbox-openclaw-ui.service"
   ]
-  ++ map (id: "assbox-${id}.service") (
-    builtins.filter selected [
-      "happier-daemon"
-      "hermes-gateway"
-      "hermes-dashboard"
-      "claude-code-remote"
-      "cursor-worker"
-      "codex-relay"
-      "antigravity-remote"
-      "vscode-tunnel"
-      "openclaw-node"
-      "chatgpt-desktop"
-      "claude-desktop"
-    ]
-  )
+  ++
+    map
+      (
+        id:
+        "${
+          if
+            builtins.elem id [
+              "chatgpt-desktop"
+              "claude-desktop"
+            ]
+          then
+            id
+          else
+            "assbox-${id}"
+        }.service"
+      )
+      (
+        builtins.filter selected [
+          "happier-daemon"
+          "hermes-gateway"
+          "hermes-dashboard"
+          "claude-code-remote"
+          "cursor-worker"
+          "codex-relay"
+          "antigravity-remote"
+          "vscode-tunnel"
+          "openclaw-node"
+          "chatgpt-desktop"
+          "claude-desktop"
+        ]
+      )
   ++ lib.optional (selected "openclaw-gateway") "assbox-openclaw.service"
   ++ lib.optional (selected "opencode-server") "assbox-opencode.service";
   helper = pkgs.writeShellScriptBin "assbox-state" ''

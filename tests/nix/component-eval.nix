@@ -61,6 +61,8 @@ let
       "virtiofsd"
       "tigervnc"
       "openbox"
+      "st"
+      "foot"
       "nftables"
       "pam"
       "gnutar"
@@ -89,6 +91,7 @@ let
     specialArgs = {
       inherit pkgs;
       assboxApplications = apps;
+      assboxPackage = pkg "assbox";
     };
     modules =
       lib.optionals substrate [
@@ -101,6 +104,7 @@ let
         ../../modules/service-control.nix
         ../../modules/resources.nix
         ../../modules/state.nix
+        ../../modules/applications.nix
       ]
       ++ [
         ../../modules/options.nix

@@ -93,6 +93,19 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertIsNone(facts['native']['apps']['chatgpt-desktop']['contract'])
         self.assertEqual(facts['nft'],{})
         self.assertEqual(result['services']['user']['services']['chatgpt-desktop']['serviceConfig']['MemoryMax'],'4096M')
+        self.assertEqual(facts['services']['units']['chatgpt-desktop'],['chatgpt-desktop.service'])
+        self.assertIn('chatgpt-desktop.service',facts['state']['units'])
+
+    def test_native_lifecycle_uses_the_actual_declared_units(self):
+        result=self.evaluate({app:{'enable':True,'allowMutableCode':True}
+                              for app in ['chatgpt-desktop','claude-desktop']},presentation='x11',substrate=True)
+        for app in ['chatgpt-desktop','claude-desktop']:
+            units=result['substrate']['services']['units'][app]
+            self.assertEqual(units,[app+'.service'])
+            self.assertIn(app,result['services']['user']['services'])
+            self.assertIn(app+'.service',result['substrate']['state']['units'])
+            self.assertIn('assbox-native-policy launch '+app,
+                          result['services']['user']['services'][app]['serviceConfig']['ExecStart'])
 
     def test_computer_use_desktop_closure_requires_explicit_selection(self):
         disabled=self.evaluate({},substrate=True)
