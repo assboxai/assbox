@@ -421,6 +421,10 @@ in
           || lib.hasPrefix "/nix/store/" (builtins.head command.antigravity-remote);
         message = "Antigravity foreground contract must use pinned Nix runtime code.";
       }
+      {
+        assertion = !enabled "codex-relay" || command.codex-relay == [ ] || !enabled "happier-daemon";
+        message = "Direct Codex relay and Happier daemon coexistence is not qualified; explicitly retire one route before activating the other.";
+      }
     ]
     ++ map (id: {
       assertion =

@@ -33,6 +33,8 @@ Use only the commands for selected components. Setup, provider authentication an
 
 Happier setup uses `happier auth login --no-open --method web`. This does not require inbound SSH or Tailscale. Owner-initiated `happier auth pair-remote --ssh user@host --json` is a separate trusted-client procedure: verify the target key/user/server/account and qualify its credential and service side effects first. Do not import a whole HOME or run its service installer. Pi/OMP CLI availability does not imply a built-in Happier adapter. Dynamic bridges and client-managed helpers require the disclosed consent and their own qualification; managed binaries remain owned by Nix.
 
+A configured direct Codex relay cannot run alongside `happier-daemon`; their shared Codex runtime/session ownership has not been qualified. Retire one route explicitly before activating the other. An empty relay contract may remain staged. SSH remains an independently keyed entry point and starts no persistent Assbox Codex service; concurrent client-owned Codex sessions still require upstream session and credential qualification.
+
 ## SSH and Tailscale
 
 Workload SSH is separately selected with explicit keys and exposure; external Desktop SSH connects to the standalone execution user. Administrator SSH uses a separate identity. Tailscale support is a deselectable installer default, while enrollment and approved exposure remain owner actions. Its control socket is root-only.

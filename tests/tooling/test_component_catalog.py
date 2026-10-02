@@ -242,6 +242,19 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertNotIn('assbox-antigravity-remote',result['services']['user']['services'])
         self.assertIn('assbox/onboarding/antigravity-remote', result['scripts'])
 
+    def test_direct_codex_relay_cannot_compete_with_happier_daemon(self):
+        selected={id:{'enable':True} for id in ['codex','codex-relay','happier','happier-daemon']}
+        staged=self.evaluate(selected)
+        self.assertFalse(staged['failures'])
+        self.assertNotIn('assbox-codex-relay',staged['services']['user']['services'])
+        selected['codex-relay']['foregroundCommand']=['/nix/store/fixture-codex/bin/codex','remote-control']
+        active=self.evaluate(selected)
+        self.assertTrue(any('coexistence is not qualified' in f for f in active['failures']))
+        selected['happier-daemon']['enable']=False
+        separate=self.evaluate(selected)
+        self.assertFalse(separate['failures'])
+        self.assertIn('assbox-codex-relay',separate['services']['user']['services'])
+
     def test_computer_use_cannot_inherit_a_physical_display(self):
         selected = {'cursor-worker': {'enable': True, 'computerUse': {'enable': True}}, 'cursor-agent': {'enable': True}}
         result = self.evaluate(selected,presentation='x11')
