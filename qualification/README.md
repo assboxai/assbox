@@ -11,3 +11,9 @@ A native contract belongs in immutable Nix configuration. Its qualification JSON
 No generic Linux policy probe is presented as enforceable. If the selected app/account cannot establish the strict policy, leave the native client inactive and choose a separately explicit qualified route or web instance.
 
 [candidate-checks.json](candidate-checks.json) is the separately scoped lightweight check record. Its results do not mark native, provider, hardware or release acceptance as passed.
+
+The [external Coder fixture](../docs/external-coder-fixture.md) records separate
+Mac/guest canaries and initial/disconnected/reconnected tasks. Its result is
+limited to those observed paths; it deliberately does not promote a route to
+qualified. The optional browser/display substrate gate is `computer-use-vm`.
+Neither native fixture has been run in this lightweight candidate pass.

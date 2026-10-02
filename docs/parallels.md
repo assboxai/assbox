@@ -151,6 +151,10 @@ integration. Both test environments have distinct acceptance value.
 
 ## External-controller acceptance record
 
+The [canary and reconnect fixture](external-coder-fixture.md) provides reproducible
+owner-run tasks and bounded private records for the actual Mac/guest integration.
+Its synthetic unit checks are separate from the pending native workflow below.
+
 Record the source commit/release, guest architecture, Parallels/macOS/app versions,
 presentation and network choice. All results below are **pending** for this tranche.
 Use disposable credentials and a synthetic repository, then revoke test tokens.
