@@ -5,6 +5,7 @@ use assbox_domain::*;
 use assbox_policy::InstallPlan;
 use std::collections::BTreeSet;
 pub mod instances;
+pub mod settings_diff;
 pub mod storage_summary;
 
 pub fn nix_string(s: &str) -> String {

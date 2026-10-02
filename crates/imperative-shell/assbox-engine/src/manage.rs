@@ -1313,6 +1313,10 @@ pub fn instance_configure(
         request.config.tailscale,
         request.config.egress
     );
+    print!(
+        "{}",
+        assbox_config::settings_diff::render(&original, &selected)?
+    );
     begin()?;
     let result = (|| {
         files::atomic_write(

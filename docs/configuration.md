@@ -140,6 +140,14 @@ module system itself.
 
 ## Components and devices
 
+`sudo assbox configure` reuses the purpose-first selection flow and prints the
+generated settings changes, then checks assertions and effective values against
+local overrides. It does not build or activate. `sudo assbox configure --apply`
+builds the validated candidate and stages it for reboot. The preview omits
+unchanged context and redacts sensitive settings. Both commands preserve
+`local.nix`, repositories, credentials and worker resources; an execution topology
+change requires the separate worker configuration/export procedure.
+
 ```sh
 sudo assbox component set opencode,opencode-server wayland
 sudo assbox component set none headless
