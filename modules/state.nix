@@ -17,7 +17,13 @@ let
       ".claude.json"
     ]
     ++ lib.optionals (selected "happier") [ ".happier" ]
+    ++ lib.optionals (selected "happier-daemon") [
+      (lib.removePrefix "/home/agent/" cfg.components.happier-daemon.home)
+    ]
     ++ lib.optionals (selected "hermes") [ ".hermes" ]
+    ++ lib.optionals (selected "hermes-gateway" || selected "hermes-dashboard") [
+      (lib.removePrefix "/home/agent/" cfg.components.hermes-gateway.home)
+    ]
     ++ lib.optionals (selected "openclaw") [ ".openclaw" ]
     ++ lib.optionals (selected "opencode") [
       ".config/opencode"

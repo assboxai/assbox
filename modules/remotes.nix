@@ -431,7 +431,32 @@ in
       assertion =
         !enabled id || !(builtins.elem ".." (lib.splitString "/" cfg.components.${id}.workingDirectory));
       message = "${id} working directory cannot traverse outside the agent home.";
-    }) ids;
+    }) ids
+    ++
+      map
+        (entry: {
+          assertion =
+            !(builtins.any enabled entry.ids)
+            || builtins.all (part: part != "" && part != "." && part != "..") (
+              lib.splitString "/" (lib.removePrefix "/home/agent/" entry.home)
+            );
+          message = "${entry.label} state home must be a normalized directory inside /home/agent.";
+        })
+        [
+          {
+            ids = [ "happier-daemon" ];
+            label = "Happier";
+            home = cfg.components.happier-daemon.home;
+          }
+          {
+            ids = [
+              "hermes-gateway"
+              "hermes-dashboard"
+            ];
+            label = "Hermes";
+            home = cfg.components.hermes-gateway.home;
+          }
+        ];
     environment.systemPackages =
       lib.optionals (enabled "cursor-worker" && cfg.components.cursor-worker.computerUse.enable)
         [

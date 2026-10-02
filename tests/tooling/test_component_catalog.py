@@ -83,6 +83,24 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertNotIn('assbox-serve',result['services'].get('timers',{}))
         self.assertNotIn('assbox-serve',result['services'].get('services',{}))
 
+    def test_checkpoint_tracks_custom_provider_homes_and_rejects_traversal(self):
+        selected={'happier':{'enable':True},
+                  'happier-daemon':{'enable':True,'home':'/home/agent/state/happier'},
+                  'hermes':{'enable':True},
+                  'hermes-dashboard':{'enable':True,'publicUrl':'https://fixture.example/'},
+                  'hermes-gateway':{'home':'/home/agent/state/hermes'}}
+        result=self.evaluate(selected,substrate=True)
+        self.assertFalse(result['failures'])
+        self.assertEqual(result['substrate']['state']['paths'],
+                         ['.config/assbox','.happier','state/happier','.hermes','state/hermes'])
+        dashboard=result['services']['user']['services']['assbox-hermes-dashboard']
+        self.assertEqual(dashboard['environment']['HERMES_HOME'],'/home/agent/state/hermes')
+        for home in ['/home/agent/state/../other','/home/agent/state//hermes','/home/agent/.']:
+            selected['hermes-gateway']['home']=home
+            with self.subTest(home=home):
+                self.assertTrue(any('normalized directory' in f
+                                    for f in self.evaluate(selected,substrate=True)['failures']))
+
     def test_native_none_is_staged_without_a_worker_or_execution_firewall(self):
         result=self.evaluate({'chatgpt-desktop':{'enable':True,'allowMutableCode':True}},
                              presentation='x11',substrate=True)
