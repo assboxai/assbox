@@ -9,6 +9,7 @@ let
   cfg = config.assbox;
   state = cfg.state;
   selected = id: cfg.components.${id}.enable;
+  webApps = cfg.kiosk.webApps or [ ];
   paths = lib.unique (
     [ ".config/assbox" ]
     ++ lib.optionals (selected "codex") [ ".codex" ]
@@ -33,6 +34,8 @@ let
     ++ lib.optionals (selected "omp") [ ".omp" ]
     ++ lib.optionals (selected "chatgpt-desktop") [ ".config/ChatGPT" ]
     ++ lib.optionals (selected "claude-desktop") [ ".config/Claude" ]
+    ++ map (site: ".local/share/assbox/web-${site}") webApps
+    ++ lib.optional (builtins.elem "openclaw-dashboard" cfg.session.autostart) ".local/share/assbox/openclaw-browser"
     ++ state.additionalPaths
   );
   units = [
@@ -71,7 +74,16 @@ let
         ]
       )
   ++ lib.optional (selected "openclaw-gateway") "assbox-openclaw.service"
-  ++ lib.optional (selected "opencode-server") "assbox-opencode.service";
+  ++ lib.optional (selected "opencode-server") "assbox-opencode.service"
+  ++ map (site: "assbox-web-${site}.service") webApps
+  ++ map (id: "assbox-${id}.service") (
+    builtins.filter (id: builtins.elem id cfg.session.autostart) [
+      "chromium"
+      "vscode"
+      "zed"
+      "emacs"
+    ]
+  );
   helper = pkgs.writeShellScriptBin "assbox-state" ''
     exec ${pkgs.python3}/bin/python3 ${../scripts/state/snapshot.py} "$@"
   '';

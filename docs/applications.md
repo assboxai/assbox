@@ -45,6 +45,8 @@ For a dashboard published through Serve, use `sudo assbox component stop hermes-
 
 Native Kiosk requests `assbox.kiosk.localExecution = "none"` by default. Protected local Code selects `"managed-worker"` and the required guest tools. Both modes still need each app's native gate. ChatGPT Codex Local, Work Local, Work Cloud local access, cloud-only operation, browser actions, computer use, helpers and SSH are checked separately. Routing Code to SSH does not route Work or disable controller-local execution. Cloud tasks and local Cowork/provider VM are separate opt-ins and separate evidence scopes. Raw app installation is not an enforcement result.
 
+For an explicit web kiosk, `assbox component stop chromium` durably stops every selected web-kiosk browser and any declared ordinary Chromium launcher. `enable chromium` starts those declared units again. The corresponding stop/enable controls also cover autostart VS Code, Zed and graphical Emacs. A selected CLI or manual GUI without a declared service has no managed stop control.
+
 Computer-use resources are opt-in on execution instances. Cursor uses its upstream-managed private desktop. For a provider that needs supplied display resources, use `assbox-computer-use display -- omp` or the Hermes managed gateway's display wrapper. Browser-only resources do not install the virtual desktop stack. Physical presentation and execution desktops are separate; no autonomous resources are enabled on a sensitive native controller.
 
 See [product contract](product/index.md), [status](implementation-status.md), [network/security](product/access-and-security.md), [state and resources](resources.md), and [qualification](../qualification/README.md).

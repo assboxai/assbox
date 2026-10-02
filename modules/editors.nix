@@ -74,6 +74,7 @@ in
         after = [ "graphical-session.target" ];
         unitConfig = {
           ConditionUser = "agent";
+          ConditionPathExists = "!%h/.config/assbox/disabled/${id}";
           StartLimitIntervalSec = 0; # Backoff limits retries without permanently stranding the unit.
         };
         serviceConfig = {

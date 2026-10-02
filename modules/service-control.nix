@@ -23,6 +23,13 @@ let
     "chatgpt-desktop"
     "claude-desktop"
   ];
+  gui = builtins.filter (id: builtins.elem id cfg.session.autostart) [
+    "chromium"
+    "vscode"
+    "zed"
+    "emacs"
+  ];
+  webApps = cfg.kiosk.webApps or [ ];
   units =
     lib.genAttrs
       (builtins.filter (
@@ -58,6 +65,12 @@ let
       opencode-server =
         lib.optional (builtins.elem "opencode-attach" cfg.session.autostart) "assbox-opencode-ui.service"
         ++ [ "assbox-opencode.service" ];
+    }
+    // lib.genAttrs gui (id: [ "assbox-${id}.service" ])
+    // lib.optionalAttrs (webApps != [ ]) {
+      chromium =
+        lib.optional (builtins.elem "chromium" gui) "assbox-chromium.service"
+        ++ map (site: "assbox-web-${site}.service") webApps;
     };
 in
 {

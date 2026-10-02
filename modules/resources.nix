@@ -32,6 +32,29 @@ let
       "assbox-opencode"
     else
       "assbox-${id}";
+  units =
+    map unitFor (
+      builtins.filter (
+        id:
+        cfg.components.${id}.enable
+        && (
+          !(builtins.elem id [
+            "antigravity-remote"
+            "codex-relay"
+          ])
+          || cfg.components.${id}.foregroundCommand != [ ]
+        )
+      ) ids
+    )
+    ++ map (id: "assbox-${id}") (
+      builtins.filter (id: builtins.elem id cfg.session.autostart) [
+        "chromium"
+        "vscode"
+        "zed"
+        "emacs"
+      ]
+    )
+    ++ map (site: "assbox-web-${site}") (cfg.kiosk.webApps or [ ]);
 in
 {
   options.assbox.resources = {
@@ -49,34 +72,15 @@ in
     # Compress cold anonymous pages in RAM. These are the standard NixOS zram
     # defaults: zstd, a logical size of 50% of RAM, allocated only as used.
     zramSwap.enable = true;
-    systemd.user.services = lib.listToAttrs (
-      map
-        (
-          id:
-          lib.nameValuePair (unitFor id) {
-            serviceConfig = {
-              MemoryMax = lib.mkDefault "${toString cfg.resources.agentMemoryMaxMiB}M";
-              CPUWeight = cfg.resources.agentCPUWeight;
-              CPUAccounting = true;
-              MemoryAccounting = true;
-              IOAccounting = true;
-            };
-          }
-        )
-        (
-          builtins.filter (
-            id:
-            cfg.components.${id}.enable
-            && (
-              !(builtins.elem id [
-                "antigravity-remote"
-                "codex-relay"
-              ])
-              || cfg.components.${id}.foregroundCommand != [ ]
-            )
-          ) ids
-        )
-    );
+    systemd.user.services = lib.genAttrs units (_: {
+      serviceConfig = {
+        MemoryMax = lib.mkDefault "${toString cfg.resources.agentMemoryMaxMiB}M";
+        CPUWeight = cfg.resources.agentCPUWeight;
+        CPUAccounting = true;
+        MemoryAccounting = true;
+        IOAccounting = true;
+      };
+    });
 
     # A root slice competes with system.slice and user.slice. Weights matter only
     # under contention; idle CPUs and available I/O remain fully usable by Nix.

@@ -136,6 +136,30 @@ class ComponentCatalogTests(unittest.TestCase):
             self.assertEqual(unit['wantedBy'],['graphical-session.target'])
             self.assertIn('assbox-native-policy launch '+app,unit['serviceConfig']['ExecStart'])
 
+    def test_web_kiosk_and_gui_lifecycle_matches_declared_units(self):
+        result=self.evaluate({'chromium':{'enable':True}},presentation='x11',autostart=['chromium'],substrate=True,
+                             instance={'kiosk':{'webApps':['chatgpt','claude']}})
+        self.assertFalse(result['failures'])
+        facts=result['substrate']
+        self.assertEqual(facts['services']['units']['chromium'],
+                         ['assbox-chromium.service','assbox-web-chatgpt.service','assbox-web-claude.service'])
+        for site in ['chatgpt','claude']:
+            self.assertIn('.local/share/assbox/web-'+site,facts['state']['paths'])
+        editor=self.evaluate({'zed':{'enable':True}},presentation='x11',autostart=['zed'],substrate=True)
+        self.assertFalse(editor['failures'])
+        self.assertEqual(editor['substrate']['services']['units']['zed'],['assbox-zed.service'])
+        for configuration in [result,editor]:
+            for id, units in configuration['substrate']['services']['units'].items():
+                for unit in units:
+                    name=unit.removesuffix('.service')
+                    self.assertIn(name,configuration['services']['user']['services'])
+                    self.assertIn(unit,configuration['substrate']['state']['units'])
+                    service=configuration['services']['user']['services'][name]
+                    self.assertEqual(service['unitConfig']['ConditionPathExists'],
+                                     '!%h/.config/assbox/disabled/'+id)
+                    self.assertEqual(service['serviceConfig']['MemoryMax'],'4096M')
+                    self.assertEqual(service['serviceConfig']['CPUWeight'],100)
+
     def test_computer_use_desktop_closure_requires_explicit_selection(self):
         disabled=self.evaluate({},substrate=True)
         self.assertIsNone(disabled['substrate']['computerUse'])

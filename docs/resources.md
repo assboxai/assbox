@@ -31,8 +31,8 @@ from five to sixty seconds. The OpenClaw Gateway also restarts after a successfu
 exit because its configuration-reload restart path hands control to systemd this way.
 Remote servers and editor launchers back off from twenty
 to three hundred seconds over five restart steps, without a start-count lockout.
-Remote servers restart after both successful and unsuccessful unexpected exits;
-closing a graphical editor normally leaves it closed. Explicit service stop,
+Remote adapters restart after transient failures; clean exits and declared permanent
+refusals remain stopped. Closing a graphical editor normally leaves it closed. Explicit service stop,
 disablement and graphical-session teardown do not trigger automatic restarts.
 Managed graphical launchers use foreground application entry points. Zed's public
 CLI and VS Code's public CLI may detach and hide the application exit status, so
@@ -79,6 +79,8 @@ sudo assbox state restore SNAPSHOT_NAME --apply
 Backup stops and later restores only the previously active managed services. Checkpoints are root-private 0700/0600 archives and may contain credentials; protect or encrypt the storage. They remain bound to this machine and explicit selected application paths. Repositories are not included by default. Configure `assbox.state.directory` on owner-controlled storage, `additionalPaths` for intentional extra data, archive size/free-space reserve and retention. Snapshot links/devices need manual export; automatic restore refuses them. Do not use this feature to migrate accounts, copy a HOME across machines or replace canonical worker identities.
 
 Selected Happier and Hermes services add their configured state homes to checkpoints, including a dashboard-only Hermes service. The default CLI homes remain included when those CLIs are selected. Service homes must be normalized directories inside `/home/agent`; overlapping checkpoint paths require an explicit selection change. Other custom provider paths need an `additionalPaths` entry.
+
+Selected web-kiosk profiles and the autostart OpenClaw dashboard profile are included. Their managed browser services are stopped for the checkpoint. Graphical editor services are also quiesced, but editor/project state needs an explicit `additionalPaths` selection. Web kiosks and declared graphical launchers receive the same service memory and CPU accounting limits.
 
 A restore preview shows the source generation and integrity metadata. `--apply` stops the execution user and requires no remaining execution processes, so keep an independent administrator connection. It preserves previous state and an explicit recovery journal and leaves execution stopped for review. It does not infer provider schema compatibility or start migrated credentials. `backupBeforeUpdate` is an explicit opt-in for scheduled update checkpoints. Worker application state is checkpointed inside its own guest; the existing host worker-disk admission and identity rules remain authoritative.
 

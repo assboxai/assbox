@@ -15,6 +15,7 @@ let
     site:
     pkgs.writeShellScriptBin "assbox-web-${site}" ''
       test "$(${pkgs.coreutils}/bin/id -un)" = agent || exit 77
+      test ! -e "$HOME/.config/assbox/disabled/chromium" || exit 77
       exec ${pkgs.chromium}/bin/chromium --user-data-dir="$HOME/.local/share/assbox/web-${site}" --app=${sites.${site}} "$@"
     '';
 in
@@ -49,14 +50,22 @@ in
           wantedBy = [ "graphical-session.target" ];
           partOf = [ "graphical-session.target" ];
           after = [ "graphical-session.target" ];
-          unitConfig.ConditionUser = "agent";
+          unitConfig = {
+            ConditionUser = "agent";
+            ConditionPathExists = "!%h/.config/assbox/disabled/chromium";
+          };
           serviceConfig = {
             ExecStart = "${launch site}/bin/assbox-web-${site}";
             Restart = "on-failure";
             RestartSec = 10;
+            RestartSteps = 5;
+            RestartMaxDelaySec = 300;
+            TimeoutStopSec = 60;
             KillMode = "control-group";
             UMask = "0077";
             NoNewPrivileges = true;
+            StandardOutput = "null";
+            StandardError = "null";
           };
         }
       ) cfg.kiosk.webApps
