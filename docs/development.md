@@ -38,6 +38,15 @@ After changing reviewed component/preset data, regenerate with
 `python3 scripts/product_docs.py`. The last command also renders the dated Linux
 evidence matrix from `qualification/linux-computer-use.json`. Static verification
 checks these artifacts for drift without fetching provider websites.
+
+The purpose-flow transcript test runs the same selection code through a scripted
+terminal adapter, without hardware probes, login, enrollment or configuration
+writes. It covers all preset branches, Back, exclusions, dependency refusal,
+cancellation and per-app native policy states. Review intentional UI changes in
+`tests/fixtures/selection_transcripts.txt`; regenerate that file with
+`ASSBOX_UPDATE_SELECTION_GOLDENS=1 cargo test -p assbox-cli purpose_flow_matches`
+in the pinned development shell. Running the test normally never rewrites it.
+These fixtures do not substitute for a real terminal/install or native account test.
 The shell and package check environment also supply PyGObject and libnm's type
 metadata for the Wi-Fi renderer's real-parser regression test. Missing bindings
 fail that test; they do not silently skip it. No NetworkManager daemon is needed.

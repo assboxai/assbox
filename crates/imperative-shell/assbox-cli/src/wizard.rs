@@ -16,6 +16,10 @@ pub(crate) fn ask(label: &str, default: Option<&str>) -> Result<String> {
     if files::io(io::stdin().read_line(&mut answer))? == 0 {
         return Err(Error::new("input closed; installation cancelled"));
     }
+    answer_value(&answer, default)
+}
+
+fn answer_value(answer: &str, default: Option<&str>) -> Result<String> {
     let answer = answer.trim();
     if answer.is_empty() {
         return default
@@ -28,15 +32,38 @@ pub(crate) fn ask(label: &str, default: Option<&str>) -> Result<String> {
     Ok(answer.to_owned())
 }
 pub(crate) fn yes(label: &str, default: Option<bool>) -> Result<bool> {
-    loop {
-        match ask(label, default.map(|b| if b { "y" } else { "n" }))?
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "y" | "yes" => return Ok(true),
-            "n" | "no" => return Ok(false),
-            _ => println!("Answer y or n."),
+    TerminalSelectionUi.yes(label, default)
+}
+
+trait SelectionUi {
+    fn ask(&mut self, label: &str, default: Option<&str>) -> Result<String>;
+    fn show(&mut self, text: &str);
+    fn native_status(&mut self, app: Component, requested: &str) -> Result<(String, String)>;
+    fn yes(&mut self, label: &str, default: Option<bool>) -> Result<bool> {
+        loop {
+            match self
+                .ask(label, default.map(|b| if b { "y" } else { "n" }))?
+                .to_ascii_lowercase()
+                .as_str()
+            {
+                "y" | "yes" => return Ok(true),
+                "n" | "no" => return Ok(false),
+                _ => self.show("Answer y or n."),
+            }
         }
+    }
+}
+
+struct TerminalSelectionUi;
+impl SelectionUi for TerminalSelectionUi {
+    fn ask(&mut self, label: &str, default: Option<&str>) -> Result<String> {
+        ask(label, default)
+    }
+    fn show(&mut self, text: &str) {
+        println!("{text}");
+    }
+    fn native_status(&mut self, app: Component, requested: &str) -> Result<(String, String)> {
+        super::user::native_policy_status(app, requested)
     }
 }
 
@@ -101,48 +128,61 @@ fn print_connection_summary(choices: &Choices) {
 pub(crate) fn instance_prompt(
     installed: bool,
 ) -> Result<assbox_policy::instances::ResolvedInstance> {
+    selection_with_ui(&mut TerminalSelectionUi, installed)
+}
+
+fn selection_with_ui(
+    ui: &mut impl SelectionUi,
+    installed: bool,
+) -> Result<assbox_policy::instances::ResolvedInstance> {
     use instances::{ComputerUse, Purpose};
     loop {
-        println!(
-            "Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here."
-        );
-        let purpose: Purpose = ask(
-            "What will this Assbox primarily do? assistant / coder / kiosk / custom",
-            None,
-        )?
-        .to_ascii_lowercase()
-        .parse()?;
+        ui.show("Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.");
+        let purpose: Purpose = ui
+            .ask(
+                "What will this Assbox primarily do? assistant / coder / kiosk / custom",
+                None,
+            )?
+            .to_ascii_lowercase()
+            .parse()?;
         let id = match purpose {
             Purpose::Assistant => {
-                match ask("Assistant: openclaw / hermes / back", Some("openclaw"))?.as_str() {
+                match ui
+                    .ask("Assistant: openclaw / hermes / back", Some("openclaw"))?
+                    .as_str()
+                {
                     "openclaw" => "assistant-openclaw",
                     "hermes" => "assistant-hermes",
                     "back" => continue,
                     _ => return Err(Error::new("choose OpenClaw or Hermes")),
                 }
             }
-            Purpose::Coder => match ask(
-                "Coder: happier / codex / claude / more / ssh / desktop / back",
-                Some("happier"),
-            )?
-            .as_str()
+            Purpose::Coder => match ui
+                .ask(
+                    "Coder: happier / codex / claude / more / ssh / desktop / back",
+                    Some("happier"),
+                )?
+                .as_str()
             {
                 "happier" => "coder-happier",
                 "codex" => "coder-codex-ssh",
                 "ssh" => "coder-ssh",
                 "back" => continue,
-                "claude" => match ask("Claude access: relay / ssh / back", Some("relay"))?.as_str()
+                "claude" => match ui
+                    .ask("Claude access: relay / ssh / back", Some("relay"))?
+                    .as_str()
                 {
                     "relay" => "coder-claude-native",
                     "ssh" => "coder-claude-ssh",
                     "back" => continue,
                     _ => return Err(Error::new("choose relay or ssh")),
                 },
-                "more" => match ask(
-                    "Native route: cursor / antigravity / opencode / back",
-                    Some("cursor"),
-                )?
-                .as_str()
+                "more" => match ui
+                    .ask(
+                        "Native route: cursor / antigravity / opencode / back",
+                        Some("cursor"),
+                    )?
+                    .as_str()
                 {
                     "cursor" => "coder-cursor",
                     "antigravity" => "coder-antigravity",
@@ -153,7 +193,10 @@ pub(crate) fn instance_prompt(
                 "desktop" => "kiosk-native",
                 _ => return Err(Error::new("unknown Coder route")),
             },
-            Purpose::Kiosk => match ask("Kiosk: native / web / back", Some("native"))?.as_str() {
+            Purpose::Kiosk => match ui
+                .ask("Kiosk: native / web / back", Some("native"))?
+                .as_str()
+            {
                 "native" => "kiosk-native",
                 "web" => "kiosk-web",
                 "back" => continue,
@@ -198,21 +241,17 @@ pub(crate) fn instance_prompt(
             "assistant-hermes" => ("Hermes gateway", "selected external channel/client"),
             _ => ("explicit component choices", "chosen by the owner"),
         };
-        println!("Transport: {transport} | controller: {controller}");
-        println!(
-            "Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection"
-        );
+        ui.show(&format!(
+            "Transport: {transport} | controller: {controller}"
+        ));
+        ui.show("Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection");
         if purpose == Purpose::Custom {
-            println!(
-                "Advanced experimental Codex relay is available as codex,codex-relay. It remains staged without a reviewed immutable foreground contract; it is separate from the normal Codex SSH route."
-            );
+            ui.show("Advanced experimental Codex relay is available as codex,codex-relay. It remains staged without a reviewed immutable foreground contract; it is separate from the normal Codex SSH route.");
         }
         let defaults = assbox_policy::instances::resolve(id, None, Components::default(), false)?;
-        println!("Initially checked components: {}", defaults.host);
-        println!(
-            "Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter."
-        );
-        let selected_text = ask(
+        ui.show(&format!("Initially checked components: {}", defaults.host));
+        ui.show("Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.");
+        let selected_text = ui.ask(
             "Selected components, comma-separated; remove unwanted entries, none, or back",
             Some(&defaults.host.to_string()),
         )?;
@@ -223,7 +262,7 @@ pub(crate) fn instance_prompt(
         if !id.starts_with("kiosk-")
             && id != "coder-happier"
             && purpose != Purpose::Assistant
-            && yes("Add all eight curated coding agents?", Some(false))?
+            && ui.yes("Add all eight curated coding agents?", Some(false))?
         {
             for c in [
                 Component::Codex,
@@ -246,8 +285,8 @@ pub(crate) fn instance_prompt(
         }
         let expanded = selected.with_dependencies();
         if expanded != selected {
-            println!("Required dependencies: {expanded}");
-            if !yes("Accept the required dependencies?", Some(false))? {
+            ui.show(&format!("Required dependencies: {expanded}"));
+            if !ui.yes("Accept the required dependencies?", Some(false))? {
                 continue;
             }
             for c in expanded.iter() {
@@ -256,12 +295,12 @@ pub(crate) fn instance_prompt(
             selected = expanded;
         }
         let protected = id == "kiosk-native"
-            && yes(
+            && ui.yes(
                 "Select protected local Code in the managed worker?",
                 Some(purpose == Purpose::Coder),
             )?;
         let split_custom = purpose == Purpose::Custom
-            && yes(
+            && ui.yes(
                 "Use a managed worker for execution components?",
                 Some(false),
             )?;
@@ -281,25 +320,28 @@ pub(crate) fn instance_prompt(
             }
         }
         resolved.config.execution_in_worker = resolved.worker != Components::default();
-        resolved.presentation = ask(
-            "Presentation: headless / x11 / wayland",
-            Some(preset.presentation.as_str()),
-        )?
-        .parse()?;
-        resolved.config.tailscale = yes(
+        resolved.presentation = ui
+            .ask(
+                "Presentation: headless / x11 / wayland",
+                Some(preset.presentation.as_str()),
+            )?
+            .parse()?;
+        resolved.config.tailscale = ui.yes(
             "Install Tailscale support (enrollment happens separately)?",
             Some(true),
         )?;
-        resolved.config.egress = ask(
-            "Execution egress: internet / normal / offline",
-            Some("internet"),
-        )?
-        .parse()?;
-        resolved.config.computer_use = ask(
-            "Execution computer use: none / browser / virtual-desktop",
-            Some("none"),
-        )?
-        .parse()?;
+        resolved.config.egress = ui
+            .ask(
+                "Execution egress: internet / normal / offline",
+                Some("internet"),
+            )?
+            .parse()?;
+        resolved.config.computer_use = ui
+            .ask(
+                "Execution computer use: none / browser / virtual-desktop",
+                Some("none"),
+            )?
+            .parse()?;
         if resolved.config.computer_use != ComputerUse::None
             && (selected.contains(Component::ChatgptDesktop)
                 || selected.contains(Component::ClaudeDesktop))
@@ -310,17 +352,17 @@ pub(crate) fn instance_prompt(
             ));
         }
         if selected.contains(Component::HermesDashboard) {
-            resolved.config.hermes_tunnel_only = yes(
+            resolved.config.hermes_tunnel_only = ui.yes(
                 "Advanced: use only an SSH tunnel, without claiming native dashboard authentication?",
                 Some(false),
             )?;
             if !resolved.config.hermes_tunnel_only {
-                resolved.config.hermes_public_url = ask(
+                resolved.config.hermes_public_url = ui.ask(
                     "Exact private HTTPS dashboard URL (for example https://assbox.example.ts.net/)",
                     None,
                 )?;
                 if resolved.config.tailscale {
-                    resolved.config.dashboard_serve = yes(
+                    resolved.config.dashboard_serve = ui.yes(
                         "Approve root-managed private Tailscale Serve for this exact dashboard URL?",
                         Some(false),
                     )?;
@@ -329,7 +371,7 @@ pub(crate) fn instance_prompt(
             resolved.config.validate()?;
         }
         if id == "kiosk-web" {
-            let apps = ask(
+            let apps = ui.ask(
                 "Web kiosk sites: chatgpt,claude (remove either if desired)",
                 Some("chatgpt,claude"),
             )?;
@@ -339,33 +381,43 @@ pub(crate) fn instance_prompt(
         if resolved.host.contains(Component::ChatgptDesktop)
             || resolved.host.contains(Component::ClaudeDesktop)
         {
-            println!(
-                "Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice."
-            );
+            ui.show("Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.");
             for app in [Component::ChatgptDesktop, Component::ClaudeDesktop]
                 .into_iter()
                 .filter(|app| resolved.host.contains(*app))
             {
                 let mode = if protected { "managed-worker" } else { "none" };
                 let (state, reason) = if installed {
-                    super::user::native_policy_status(app, mode).unwrap_or_else(|_| ("pending".into(), "installed policy observations are unavailable; activation remains gated".into()))
+                    ui.native_status(app, mode).unwrap_or_else(|_| ("pending".into(), "installed policy observations are unavailable; activation remains gated".into()))
                 } else {
                     ("pending".into(), "exact installed client/account/platform must be qualified after installation".into())
                 };
-                println!("{app}: requested {mode} | gate {state} | {reason}");
+                ui.show(&format!(
+                    "{app}: requested {mode} | gate {state} | {reason}"
+                ));
             }
-            if !yes(
-                "Keep this native selection staged pending policy qualification?",
-                Some(true),
-            )? {
-                continue;
+            match ui
+                .ask(
+                    "Native policy action: stage / back (deselect apps after Back)",
+                    Some("stage"),
+                )?
+                .to_ascii_lowercase()
+                .as_str()
+            {
+                "stage" | "y" | "yes" => {}
+                "back" | "n" | "no" => continue,
+                _ => {
+                    return Err(Error::new(
+                        "choose stage or back; native activation is never granted by this screen",
+                    ));
+                }
             }
         }
-        println!(
+        ui.show(&format!(
             "Host: {} | worker: {} | presentation: {} | setup/auth/integration qualification remains separate",
             resolved.host, resolved.worker, resolved.presentation
-        );
-        println!(
+        ));
+        ui.show(&format!(
             "Execution location: {} | computer use: {} | egress: {} | Tailscale support: {} (enrollment unobserved here)",
             if resolved.config.execution_in_worker {
                 "managed worker"
@@ -377,8 +429,8 @@ pub(crate) fn instance_prompt(
             resolved.config.computer_use.as_str(),
             resolved.config.egress,
             resolved.config.tailscale
-        );
-        if yes("Use this selection?", Some(true))? {
+        ));
+        if ui.yes("Use this selection?", Some(true))? {
             return Ok(resolved);
         }
     }
@@ -745,3 +797,6 @@ pub fn configure(apply: bool) -> Result<()> {
         )?;
     assbox_engine::manage::instance_configure(&resolved, unfree, mutable, apply)
 }
+
+#[cfg(test)]
+mod selection_tests;
