@@ -53,7 +53,7 @@ pkgs.testers.runNixOSTest {
   };
   testScript = ''
     import json, shlex
-    machine.start()
+    machine.start(allow_reboot=True)
     machine.wait_for_unit("multi-user.target")
     disabled = machine.succeed("readlink -f /run/current-system").strip()
     enabled = disabled + "/specialisation/worker-enabled"

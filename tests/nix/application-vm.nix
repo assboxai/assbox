@@ -123,7 +123,7 @@ pkgs.testers.runNixOSTest {
         for mode in modes:
             # Resolve by node name rather than assuming test-driver machine ordering.
             machine = next(node for node in machines_qemu if node.name == mode)
-            machine.start()
+            machine.start(allow_reboot=True)
             machine.wait_for_unit("multi-user.target")
             uid = machine.succeed("id -u agent").strip()
             prefix = "runuser -u agent -- env HOME=/home/agent XDG_RUNTIME_DIR=/run/user/" + uid + " "

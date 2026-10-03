@@ -67,8 +67,8 @@ pkgs.testers.runNixOSTest {
     import json, shlex, time
 
     # Run one machine at a time; exercise native Wayland and X11 dialogs.
-    for machine in machines:
-        machine.start()
+    for machine in machines_qemu:
+        machine.start(allow_reboot=True)
         machine.wait_for_unit("multi-user.target")
         uid = machine.succeed("id -u agent").strip()
         prefix = "runuser -u agent -- env XDG_RUNTIME_DIR=/run/user/" + uid + " DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/" + uid + "/bus "
