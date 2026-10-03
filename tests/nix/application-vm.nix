@@ -101,7 +101,6 @@ pkgs.testers.runNixOSTest {
   testScript =
     if application == "chatgpt" then
       ''
-        import shlex
         start_all()
         machine = x11
         machine.wait_for_unit("multi-user.target")
