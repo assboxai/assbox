@@ -11,7 +11,9 @@ import base64
 import hashlib
 
 CASE = '/var/lib/assbox-acceptance'
-INSTALL = shlex.quote(harness) + ' --ignored --exact acceptance::install_apply --nocapture'
+# The backdoor shell has a TTY. Ordinary cases must fail an unexpected build
+# retry instead of waiting for input; the retry scenario uses its own PTY below.
+INSTALL = shlex.quote(harness) + ' --ignored --exact acceptance::install_apply --nocapture < /dev/null'
 
 
 def write(machine, path, value):
