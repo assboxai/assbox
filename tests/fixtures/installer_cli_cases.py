@@ -153,7 +153,7 @@ try:
     assert server.succeed(ssh + 'admin@192.168.1.3 id -un', timeout=postboot_remaining()).strip() == 'admin'
     postboot.append({'id': 'P08', 'status': 'passed'})
     server.fail(ssh + 'root@192.168.1.3 true', timeout=postboot_remaining()); server.fail(ssh + 'agent@192.168.1.3 true', timeout=postboot_remaining())
-    assert_guest(9, "sshd -T | grep -x 'passwordauthentication no'; getent shadow root | cut -d: -f2 | grep '^!$'")
+    assert_guest(9, "set -o pipefail; sshd -T -f /etc/ssh/sshd_config | awk '{ $1 = tolower($1); print }' | grep -x 'passwordauthentication no' && getent shadow root | cut -d: -f2 | grep '^!$'")
     target.fail('runuser -u agent -- sudo -n true', timeout=postboot_remaining())
     target.fail('runuser -u agent -- head -c1 /dev/vda', timeout=postboot_remaining())
     target.fail('runuser -u agent -- head -c1 /var/lib/assbox-secrets/admin-password.hash', timeout=postboot_remaining())

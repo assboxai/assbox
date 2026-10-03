@@ -144,6 +144,7 @@ pkgs.testers.runNixOSTest {
     start_all()
     box.wait_for_unit("sshd.service")
     box.wait_for_unit("nftables.service")
+    box.wait_for_unit("user@1000.service")
     box.succeed("systemctl is-active user-1000.slice")
     box.succeed("nft list table inet assbox-execution | grep -F 'socket cgroupv2 level 2 \"user.slice/user-1000.slice\"'")
     client.wait_for_unit("network.target")
@@ -155,18 +156,22 @@ pkgs.testers.runNixOSTest {
     if ${if exposure == "tailscale" then "True" else "False"}:
         client.fail(ssh("agent", "agent", "192.168.10.1"))
         box.succeed("ip link set eth1 down; ip link set eth1 name tailscale0; ip link set tailscale0 up")
+        # Bringing the fixture link down removes its static IPv6 address.
+        box.succeed("ip -6 address replace fd00:10::1/64 dev tailscale0 nodad")
     for host in ["192.168.10.1", "fd00:10::1"]:
         client.wait_until_succeeds(ssh("agent", "agent", host))
         client.succeed(ssh("admin", "admin", host))
         client.fail(ssh("admin", "agent", host))
         client.fail(ssh("root", "agent", host))
         client.fail(ssh("agent", "agent", host, "sudo -n true"))
-    box.succeed("sshd -T | grep -F 'allowagentforwarding no'")
-    box.succeed("sshd -T | grep -F 'gatewayports no'")
-    box.succeed("sshd -T | grep -Fx 'allowtcpforwarding local'")
-    box.succeed("sshd -T | grep -Fx 'permitopen localhost:* 127.0.0.1:* [::1]:*'")
+    # OpenSSH 10.5 emits canonical directive case; preserve case-sensitive values.
+    box.succeed("set -o pipefail; sshd -T -f /etc/ssh/sshd_config | awk '{ $1 = tolower($1); print }' | grep -F 'allowagentforwarding no'")
+    box.succeed("set -o pipefail; sshd -T -f /etc/ssh/sshd_config | awk '{ $1 = tolower($1); print }' | grep -F 'gatewayports no'")
+    box.succeed("set -o pipefail; sshd -T -f /etc/ssh/sshd_config | awk '{ $1 = tolower($1); print }' | grep -Fx 'allowtcpforwarding local'")
+    box.succeed("set -o pipefail; sshd -T -f /etc/ssh/sshd_config | awk '{ $1 = tolower($1); print }' | grep -Fx 'permitopen localhost:* 127.0.0.1:* [::1]:*'")
     if ${if exposure == "tailscale" then "True" else "False"}:
         box.succeed("ip link set tailscale0 down; ip link set tailscale0 name untrusted0; ip link set untrusted0 up")
+        box.succeed("ip -6 address replace fd00:10::1/64 dev untrusted0 nodad")
         for host in ["192.168.10.1", "fd00:10::1"]:
             client.fail(ssh("agent", "agent", host))
   '';

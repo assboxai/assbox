@@ -17,6 +17,7 @@ def effective(sshd: str, config: str, user: str) -> dict[str, str]:
         if " " not in line:
             continue
         key, value = line.split(" ", 1)
+        key = key.lower()
         fields[key] = (fields.get(key, "") + " " + value).strip()
     return fields
 

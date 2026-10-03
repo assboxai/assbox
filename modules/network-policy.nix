@@ -168,6 +168,8 @@ in
     # this namespace through an execution-UID userspace forwarder. No delegated
     # privileged network setup, rootless container socket or blanket devices.
     systemd.services."user@1000" = {
+      # Keep systemd's user-manager template; add admission dependencies to its instance.
+      overrideStrategy = "asDropin";
       requires = [ "nftables.service" ];
       after = [ "nftables.service" ];
       bindsTo = [ "nftables.service" ];
