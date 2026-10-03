@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox development runner storage observation
+name: Assbox development hosted runner toolchain clearance qualification
 'on':
   workflow_dispatch: null
 permissions: {}
@@ -23,26 +23,31 @@ jobs:
     env:
       ASSBOX_OBSERVE_SYSTEM: ${{ matrix.system }}
     steps:
-    - name: Measure fixed preinstalled tool directories without changing the runner
+    - name: Clear only measured unused toolchains on this disposable hosted runner
       shell: bash
-      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_STORAGE_OBSERVATION'\nimport json,os,pathlib,platform,shutil,stat,subprocess\n\
-        assert os.environ['GITHUB_REPOSITORY']=='assboxai/assbox'\nassert os.environ['GITHUB_REF']=='refs/heads/test-runner-storage'\n\
-        assert os.environ['GITHUB_EVENT_NAME']=='workflow_dispatch'\nfacts=dict(schema=1,kind='assbox-development-runner-storage',source_commit=os.environ['GITHUB_SHA'],source_ref=os.environ['GITHUB_REF'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),system=os.environ['ASSBOX_OBSERVE_SYSTEM'],native_machine=platform.machine(),cpu_count=os.cpu_count(),volumes=[],directories=[],runner_changed=False)\n\
-        assert facts['native_machine']==facts['system'].removesuffix('-linux')\nfor name in ('/', '/mnt',\
-        \ os.environ['RUNNER_TEMP']):\n    p=pathlib.Path(name)\n    if p.exists():\n        usage=shutil.disk_usage(p)\n\
-        \        facts['volumes'].append(dict(path=name,device=p.stat().st_dev,total_bytes=usage.total,available_bytes=usage.free))\n\
-        for name in ('/usr/local/lib/android','/usr/share/dotnet','/opt/ghc','/opt/hostedtoolcache','/usr/local/.ghcup','/usr/local/swift','/usr/local/share/powershell','/usr/local/share/chromium','/usr/local/share/boost','/usr/local/share/vcpkg','/opt/google','/opt/microsoft','/var/lib/docker','/usr/lib/jvm'):\n\
-        \    p=pathlib.Path(name)\n    item=dict(path=name,exists=p.exists(),symlink=p.is_symlink())\n\
-        \    if p.exists() and not p.is_symlink():\n        try:\n            result=subprocess.run(['sudo','-n','/usr/bin/du','--summarize','--one-file-system','--block-size=1','--',name],capture_output=True,text=True,timeout=120\
-        \ if name=='/usr/local/lib/android' else 30)\n            item['du_exit']=result.returncode\n\
-        \            if result.returncode==0:\n                text=result.stdout.strip().split('\\t')\n\
-        \                assert len(text)==2 and text[1]==name\n                item['allocated_bytes']=int(text[0])\n\
-        \        except subprocess.TimeoutExpired:\n            item['du_timed_out']=True\n    facts['directories'].append(item)\n\
-        output=pathlib.Path(os.environ['RUNNER_TEMP'])/'assbox-runner-storage.json'\noutput.write_text(json.dumps(facts,sort_keys=True,separators=(',',':'))+'\\\
-        n')\nprint(json.dumps(facts,sort_keys=True))\nASSBOX_STORAGE_OBSERVATION\n"
+      run: "set -euo pipefail\nsudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_REF,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,ASSBOX_OBSERVE_SYSTEM,RUNNER_TEMP\
+        \ /usr/bin/python3 -I -B <<'ASSBOX_FIXED_CLEARANCE'\nimport json,os,pathlib,platform,shutil,stat,time\n\
+        \nassert os.geteuid()==0\nassert os.environ['GITHUB_ACTIONS']=='true'\nassert os.environ['RUNNER_ENVIRONMENT']=='github-hosted'\n\
+        assert os.environ['GITHUB_REPOSITORY']=='assboxai/assbox'\nassert os.environ['GITHUB_REPOSITORY_ID']=='1402455771'\n\
+        assert os.environ['GITHUB_REPOSITORY_OWNER_ID']=='327835666'\nassert os.environ['GITHUB_REF']=='refs/heads/test-runner-storage'\n\
+        assert os.environ['GITHUB_EVENT_NAME']=='workflow_dispatch'\nassert platform.system()=='Linux'\n\
+        assert shutil.rmtree.avoids_symlink_attacks\nrunner_uid=pathlib.Path(os.environ['RUNNER_TEMP']).stat().st_uid\n\
+        assert runner_uid>0\npaths=tuple(pathlib.Path(name) for name in ('/usr/local/lib/android','/usr/share/dotnet','/opt/hostedtoolcache','/usr/local/.ghcup'))\n\
+        mounts=[]\nfor line in pathlib.Path('/proc/self/mountinfo').read_text().splitlines():\n    value=line.split()[4]\n\
+        \    # None of the fixed cleanup paths contains escaped whitespace.\n    mounts.append(pathlib.Path(value))\n\
+        for path in paths:\n    assert not path.is_symlink()\n    assert path.resolve()==path\n    if\
+        \ not path.exists():continue\n    metadata=path.lstat()\n    assert stat.S_ISDIR(metadata.st_mode)\
+        \ and metadata.st_uid in (0,runner_uid)\n    assert metadata.st_dev==pathlib.Path('/').stat().st_dev\n\
+        \    assert all(mount!=path and path not in mount.parents for mount in mounts)\nbefore=shutil.disk_usage('/')\n\
+        removed=[]\nstarted=time.time()\nfor path in paths:\n    if path.exists():\n        shutil.rmtree(path)\n\
+        \        assert not path.exists()\n        removed.append(str(path))\nafter=shutil.disk_usage('/')\n\
+        assert after.free>=before.free\nfacts=dict(schema=1,kind='assbox-development-hosted-runner-clearance',source_commit=os.environ['GITHUB_SHA'],source_ref=os.environ['GITHUB_REF'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),system=os.environ['ASSBOX_OBSERVE_SYSTEM'],native_machine=platform.machine(),removed_directories=removed,before_available_bytes=before.free,after_available_bytes=after.free,observed_free_bytes_increase=after.free-before.free,seconds=time.time()-started,caller_changed=False,verification_pass_claimed=False)\n\
+        assert facts['native_machine']==facts['system'].removesuffix('-linux')\noutput=pathlib.Path(os.environ['RUNNER_TEMP'])/'assbox-runner-clearance.json'\n\
+        output.write_text(json.dumps(facts,sort_keys=True,separators=(',',':'))+'\\n')\noutput.chmod(0o644)\n\
+        print(json.dumps(facts,sort_keys=True))\nASSBOX_FIXED_CLEARANCE\n"
     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: runner-storage-${{ matrix.system }}
-        path: ${{ runner.temp }}/assbox-runner-storage.json
+        name: runner-clearance-${{ matrix.system }}
+        path: ${{ runner.temp }}/assbox-runner-clearance.json
         if-no-files-found: error
         retention-days: 14
