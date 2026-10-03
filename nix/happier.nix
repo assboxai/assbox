@@ -32,7 +32,9 @@ stdenvNoCC.mkDerivation {
     openssl
     libgcc
   ];
-  sourceRoot = ".";
+  sourceRoot = "happier-v${source.version}-linux-${
+    if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"
+  }";
   installPhase = ''
     runHook preInstall
     mkdir -p "$out/lib/happier" "$out/bin"
@@ -43,15 +45,28 @@ stdenvNoCC.mkDerivation {
     find "$out/lib/happier" -type f -name '*.musl.node' -delete
     find "$out/lib/happier" -type d -name '*-linuxmusl-*' -prune \
       -exec rm -rf -- {} +
-    # Upstream archives carry a complete runtime. Refuse an unexpected layout.
-    binary=$(find "$out/lib/happier" -type f -name happier -perm /111 -print -quit)
-    test -n "$binary"
-    makeWrapper "$binary" "$out/bin/happier" \
+    # The executable shipped as "happier" is the Bun runtime. Launch the
+    # declared JavaScript entrypoint with our pinned Node instead of presenting
+    # the runtime's version and command parser as the application.
+    entrypoint="$out/lib/happier/package-dist/index.mjs"
+    test -f "$entrypoint"
+    rm "$out/lib/happier/happier"
+    makeWrapper ${nodejs}/bin/node "$out/bin/happier" \
+      --add-flags "$entrypoint" \
       --set HAPPIER_NO_BROWSER_OPEN 1 \
       --set HAPPIER_ENCRYPTION_REQUIREMENT require_e2ee \
       --set SSL_CERT_FILE ${cacert}/etc/ssl/certs/ca-bundle.crt \
       --prefix PATH : ${lib.makeBinPath [ nodejs ]}
     runHook postInstall
+  '';
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    export HOME="$TMPDIR/happier-install-check-home"
+    export HAPPIER_HOME_DIR="$HOME/.happier"
+    mkdir -p "$HOME"
+    "$out/bin/happier" --version | grep -Fx ${lib.escapeShellArg source.version}
+    runHook postInstallCheck
   '';
   meta = {
     description = "Pinned Happier CLI and daemon runtime";

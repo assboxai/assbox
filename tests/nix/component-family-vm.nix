@@ -32,13 +32,14 @@ pkgs.testers.runNixOSTest {
       presentation = mode;
       acceptUnfree = true;
       components =
-        lib.genAttrs selected (_: {
-          enable = true;
-          allowMutableCode = true;
-        })
-        // {
-          hermes-dashboard.publicUrl = "https://assbox-ci.example.ts.net/";
-        };
+        lib.recursiveUpdate
+          (lib.genAttrs selected (_: {
+            enable = true;
+            allowMutableCode = true;
+          }))
+          {
+            hermes-dashboard.publicUrl = "https://assbox-ci.example.ts.net/";
+          };
       session.autostart = [ ];
       updates.enable = false;
     };
