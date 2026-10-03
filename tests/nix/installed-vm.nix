@@ -172,6 +172,7 @@ pkgs.testers.runNixOSTest {
     installer = { lib, ... }: {
       imports = [
         common
+        ./fixture-store-compression.nix
         (import ./fixture-cache-signing.nix {
           inherit pkgs;
           roots = [
