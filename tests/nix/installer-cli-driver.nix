@@ -145,6 +145,7 @@ let
     virtualisation.memorySize = 3072;
     virtualisation.restrictNetwork = true;
     virtualisation.qemu.forceAccel = lib.mkForce (!arm);
+    virtualisation.qemu.options = lib.optionals arm [ "-cpu max,lpa2=off" ];
     # No default route to the host LAN, metadata or public network. eth1 is the
     # driver's private virtual switch; source acquisition uses the exact mirror.
     networking.useDHCP = lib.mkForce false;
@@ -221,6 +222,14 @@ let
           substituters = lib.mkForce [ ];
           builders = lib.mkForce "";
         };
+        # Read the offline closure from a block-backed image instead of 9p.
+        virtualisation.useNixStoreImage = true;
+        virtualisation.writableStore = true;
+        # The optical fixture is attached through a modular virtio SCSI driver.
+        boot.kernelModules = [
+          "virtio_scsi"
+          "sr_mod"
+        ];
         virtualisation.diskSize = 65536;
         virtualisation.useEFIBoot = true;
         # QEMU's EFI firmware boots the supplied kernel/initrd; constructing a

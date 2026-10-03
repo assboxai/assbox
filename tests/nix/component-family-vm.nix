@@ -49,6 +49,9 @@ pkgs.testers.runNixOSTest {
     users.allowNoPasswordLogin = true;
     users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
+    # Startup reads many small JavaScript modules; keep them off 9p.
+    virtualisation.useNixStoreImage = pkgs.stdenv.hostPlatform.isAarch64;
+    virtualisation.writableStore = true;
     virtualisation.memorySize = if graphical then 4096 else 2048;
     virtualisation.qemu.forceAccel = lib.mkForce (!pkgs.stdenv.hostPlatform.isAarch64);
     system.stateVersion = "26.05";

@@ -134,6 +134,7 @@ let
   common = { lib, ... }: {
     virtualisation.memorySize = 3072;
     virtualisation.qemu.forceAccel = lib.mkForce (!arm);
+    virtualisation.qemu.options = lib.optionals arm [ "-cpu max,lpa2=off" ];
     system.stateVersion = "26.05";
   };
 in
@@ -220,6 +221,14 @@ pkgs.testers.runNixOSTest {
         ];
         substituters = lib.mkForce [ ];
       };
+      # Read the offline closure from a block-backed image instead of 9p.
+      virtualisation.useNixStoreImage = true;
+      virtualisation.writableStore = true;
+      # The optical fixture is attached through a modular virtio SCSI driver.
+      boot.kernelModules = [
+        "virtio_scsi"
+        "sr_mod"
+      ];
       virtualisation.diskSize = 65536;
       virtualisation.emptyDiskImages = [ 2048 ]; # Independent backup disk.
       virtualisation.useEFIBoot = efi;

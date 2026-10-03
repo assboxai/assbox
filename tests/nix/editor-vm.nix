@@ -137,7 +137,7 @@ pkgs.testers.runNixOSTest {
     for failure in ["openbox-crash", "xserver-crash", "logout"]:
         previous_manager = manager("MainPID")
         previous_restarts = int(manager("NRestarts"))
-        previous_wm = only_pid("pgrep -u agent -x openbox")
+        previous_wm = only_pid("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'")
         previous_apps = [machine.succeed(ctl("show -p MainPID --value " + unit(id))).strip() for id in editors]
         if failure == "openbox-crash":
             machine.succeed("kill -KILL " + previous_wm)
@@ -147,9 +147,9 @@ pkgs.testers.runNixOSTest {
             machine.succeed(user("openbox --exit"))
         machine.wait_until_succeeds("test $(systemctl show display-manager -p NRestarts --value) -gt " + str(previous_restarts), timeout=180)
         machine.wait_until_succeeds("systemctl is-active display-manager", timeout=180)
-        machine.wait_until_succeeds("pgrep -u agent -x openbox", timeout=180)
+        machine.wait_until_succeeds("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'", timeout=180)
         assert manager("MainPID") != previous_manager
-        assert only_pid("pgrep -u agent -x openbox") != previous_wm
+        assert only_pid("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'") != previous_wm
         for id in editors:
             ready(id)
         for pid in [previous_wm, *previous_apps]:
@@ -162,7 +162,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("systemctl stop display-manager")
     assert manager("ActiveState") == "inactive"
     assert manager("MainPID") == "0"
-    machine.fail("pgrep -u agent -x openbox")
+    machine.fail("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'")
     machine.fail(ctl("is-active graphical-session.target"))
     for id in editors:
         machine.wait_until_succeeds(ctl("show -p ActiveState --value " + unit(id)) + " | grep -x inactive", timeout=90)

@@ -101,6 +101,7 @@ class DesktopServicesTests(unittest.TestCase):
                 module = null;
                 pkgs = { stdenv.hostPlatform.isAarch64 = %s;
                          python3 = "/inert/python"; patchelf = "/inert/patchelf";
+                         openbox = "/inert/openbox";
                          rust-analyzer-unwrapped = "/inert/rust-analyzer";
                          runCommand = name: _: script: builtins.seq (builtins.stringLength script) ("/inert/" + name);
                          testers.runNixOSTest = spec: spec; };
