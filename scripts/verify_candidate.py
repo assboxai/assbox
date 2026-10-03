@@ -33,7 +33,18 @@ def main():
     parser.add_argument('--production-only', action='store_true')
     parser.add_argument('--oracle-ref')
     parser.add_argument('--oracle-source', type=Path)
+    parser.add_argument('--minimum-memory-gib', type=int)
+    parser.add_argument('--minimum-disk-gib', type=int)
     args = parser.parse_args()
+    if args.minimum_memory_gib is not None or args.minimum_disk_gib is not None:
+        if args.production_only:
+            parser.error('canonical resource guardrails do not apply to production-only verification')
+        from repair_loop import resource_policy
+        try:
+            resource_policy(args.minimum_memory_gib if args.minimum_memory_gib is not None else 10,
+                            args.minimum_disk_gib if args.minimum_disk_gib is not None else 100)
+        except ValueError as error:
+            parser.error(str(error))
     state_root = Path(os.environ.get('XDG_STATE_HOME', Path.home() / '.local/state')).resolve() / 'assbox/verification'
     state_root.mkdir(mode=0o700, parents=True, exist_ok=True)
     state = Path(tempfile.mkdtemp(prefix='candidate-', dir=state_root))
@@ -81,6 +92,10 @@ def main():
                 oracle_files, oracle_oid = export_commit(ROOT, args.oracle_ref or 'HEAD')
                 materialize(oracle_files, state / 'oracle')
                 command += ['--oracle-source', str(state / 'oracle')]
+            for option, value in [('--minimum-memory-gib', args.minimum_memory_gib),
+                                  ('--minimum-disk-gib', args.minimum_disk_gib)]:
+                if value is not None:
+                    command += [option, str(value)]
             canonical_env = production_environment(state)
             canonical_env['XDG_STATE_HOME'] = str(state / 'canonical-state')
             subprocess.run(command, cwd=ROOT, env=canonical_env, check=True)

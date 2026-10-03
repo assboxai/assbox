@@ -42,6 +42,18 @@ twice. The initial 10-GiB memory and 100-GiB storage guardrails are conservative
 configuration, not measured minimum requirements. It does not run sudo, repair
 permissions, collect credentials or garbage-collect the Nix store.
 
+Select different reviewed guardrails only when creating a session, using
+`repair-init --minimum-memory-gib N --minimum-disk-gib N`. Full `just verify`
+accepts the same optional arguments for its new canonical session. Positive whole
+GiB values are recorded in a separate read-only policy with a digest binding;
+later entrypoints reject policy drift and cannot override the thresholds.
+Finalization forwards the same thresholds. Changing a threshold does not qualify
+it as a measured requirement; record the resource evidence supporting the choice.
+Preflight records unreported inode capacity separately from genuine exhaustion,
+including on filesystems that allocate inodes dynamically. Sessions also bind the
+executing controller and source-admission helper; running a changed controller
+requires a new reviewed session.
+
 ## Build, run and finalize
 
 ```sh

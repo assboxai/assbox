@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import time
 import uuid
+import candidate_snapshot as snapshot_module
 from candidate_snapshot import (MAX_FILE, MAX_TREE, ROOT, canonical, capture, digest, git, manifest,
     materialize, read_raw, safe_path, verify_files)
 
@@ -104,8 +105,26 @@ def file_identity(files):
     return digest(canonical(manifest(files)))
 
 
+def resource_policy(memory_gib=10, disk_gib=100):
+    values = (memory_gib, disk_gib)
+    if any(type(value) is not int or not 1 <= value < 2**23 for value in values):
+        raise ValueError('resource guardrails require positive whole GiB within the evidence bound')
+    return {'available_memory_bytes': memory_gib * 1024**3,
+            'available_disk_bytes': disk_gib * 1024**3}
+
+
+def controller_files():
+    files = {}
+    for name, filename in [('scripts/repair_loop.py', __file__),
+                           ('scripts/candidate_snapshot.py', snapshot_module.__file__)]:
+        path = Path(filename).resolve()
+        files[name] = read_raw(path.parent, path.name)
+    return files
+
+
 def initialise(worktree, destination=None, oracle_ref='HEAD', oracle_source=None,
-               include_new=(), purpose='repair', retain_disks=False):
+               include_new=(), purpose='repair', retain_disks=False, memory_gib=10, disk_gib=100):
+    resources = resource_policy(memory_gib, disk_gib)
     worktree = Path(worktree).resolve()
     candidate, _ = capture(worktree, include_new)
     if oracle_source is None:
@@ -128,6 +147,10 @@ def initialise(worktree, destination=None, oracle_ref='HEAD', oracle_source=None
                 continue
             if candidate.get(name) != value:
                 raise Blocked('candidate changes protected oracle surface: ' + name)
+    controller = controller_files()
+    for name, value in controller.items():
+        if name in oracle and oracle[name] != value:
+            raise Blocked('running controller differs from the reviewed oracle: ' + name)
     destination = (Path(destination).absolute() if destination else
                    state_home() / ('session-' + uuid.uuid4().hex))
     destination = private(destination, worktree, create=True)
@@ -139,13 +162,16 @@ def initialise(worktree, destination=None, oracle_ref='HEAD', oracle_source=None
     session = dict(schema=1, kind='assbox-repair-session', id=uuid.uuid4().hex,
         worktree=str(worktree), created_at=time.time(), oracle=origin,
         oracle_sha256=file_identity(oracle), oracle_manifest=manifest(oracle),
+        controller_code_sha256=file_identity(controller),
         protected_manifest=manifest({name: value for name, value in candidate.items()
             if protected(name)}),
         include_new=list(include_new), purpose=purpose, isolation='cooperative-single-user',
-        budgets=scenario['budgets'], resource_policy={'available_memory_bytes': 10 * 1024**3,
-            'available_disk_bytes': 100 * 1024**3}, retain_disks=retain_disks)
+        budgets=scenario['budgets'], resource_policy=resources,
+        resource_policy_sha256=digest(canonical(resources)), retain_disks=retain_disks)
     (destination / 'runs').mkdir(mode=0o700)
     atomic(destination / 'oracle-manifest.json', session['oracle_manifest'])
+    atomic(destination / 'resource-policy.json', resources)
+    (destination / 'resource-policy.json').chmod(0o400)
     atomic(destination / 'session.json', session)
     return destination
 
@@ -163,11 +189,20 @@ def locked(path):
 
 
 def check_oracle(path, session):
+    if file_identity(controller_files()) != session.get('controller_code_sha256'):
+        raise Blocked('controller code drift; create a separately reviewed session')
     files, _ = capture(path / 'oracle')
     if manifest(files) != session['oracle_manifest'] or file_identity(files) != session['oracle_sha256']:
         raise Blocked('oracle-drift')
     scenario = json.loads(files['development/canonical-scenario.json'][1])
     if session['budgets'] != scenario['budgets']: raise Blocked('frozen budget drift')
+    try:
+        _, resources = read_raw(path, 'resource-policy.json')
+        if (resources != canonical(session['resource_policy'])
+                or digest(resources) != session.get('resource_policy_sha256')):
+            raise ValueError('resource binding mismatch')
+    except (OSError, ValueError, KeyError) as error:
+        raise Blocked('frozen resource guardrail drift; create a separately reviewed session') from error
     return files
 
 
@@ -218,11 +253,19 @@ def capabilities(path, session):
     for name, root in [('state', path), ('store', Path('/nix/store'))]:
         if not root.exists(): issues.append('Nix store unavailable'); continue
         info = os.statvfs(root)
-        volumes[name] = dict(device=root.stat().st_dev, available_bytes=info.f_bavail * info.f_frsize, available_inodes=info.f_favail)
-        if volumes[name]['available_bytes'] < session['resource_policy']['available_disk_bytes'] or not info.f_favail:
+        # Dynamic-inode filesystems such as Btrfs report both inode counts as
+        # zero. That is unavailable capacity information, not exhaustion.
+        inode_capacity_reported = info.f_files > 0
+        volumes[name] = dict(device=root.stat().st_dev, available_bytes=info.f_bavail * info.f_frsize,
+            inode_capacity_reported=inode_capacity_reported,
+            available_inodes=info.f_favail if inode_capacity_reported else None)
+        if (volumes[name]['available_bytes'] < session['resource_policy']['available_disk_bytes']
+                or (inode_capacity_reported and info.f_favail == 0)):
             issues.append(name + ' capacity below frozen guardrail')
     return dict(schema=1, status='blocked' if issues else 'ready', issues=issues, host_system=system,
         guest_system=system, accelerator='kvm' if kvm else 'tcg', available_memory_bytes=memory,
+        resource_policy=session['resource_policy'], resource_policy_sha256=session['resource_policy_sha256'],
+        controller_code_sha256=session['controller_code_sha256'],
         volumes=volumes, tools=tools, isolation=session['isolation'], vm_executed=False,
         guardrails_are_qualified_requirements=False)
 
@@ -336,12 +379,15 @@ def once(path, session, additions=(), build_only=False):
     receipt = materialize(files, run / 'source')
     atomic(run / 'source-manifest.json', manifest(files)); atomic(run / 'candidate-snapshot.json', receipt)
     atomic(run / 'runtime.json', runtime)
-    event(path, dict(event='attempt-start', attempt_id=run.name, candidate_snapshot=receipt, time=time.time()))
+    event(path, dict(event='attempt-start', attempt_id=run.name, candidate_snapshot=receipt,
+                    resource_policy_sha256=session['resource_policy_sha256'], time=time.time()))
     start = time.monotonic(); driver_start = None; status = 'error'; failure = None
     cleanup = {'owned_group_drained': False, 'daemon_builder_cancellation_proven': False}
     summary = dict(schema=1, kind='assbox-canonical-run', attempt_id=run.name, nonce=uuid.uuid4().hex,
         candidate_snapshot=receipt, candidate_content_sha256=receipt['source_content_sha256'],
         oracle_sha256=session['oracle_sha256'], root_lock_sha256=digest(files['flake.lock'][1]),
+        resource_policy=session['resource_policy'], resource_policy_sha256=session['resource_policy_sha256'],
+        controller_code_sha256=session['controller_code_sha256'],
         dev_lock_sha256=digest(files['nix/dev/flake.lock'][1]), chainman_revision=files['chainman.lock'][1].decode().strip(),
         host_system=runtime['host_system'], guest_system=runtime['guest_system'], accelerator=runtime['accelerator'],
         isolation=session['isolation'], vm_executed=False, postboot=[], started_at=time.time())
@@ -476,17 +522,27 @@ def main():
     parser.add_argument('--include-new', action='append', default=[])
     parser.add_argument('--json', action='store_true')
     parser.add_argument('--retain-disks', action='store_true')
+    parser.add_argument('--minimum-memory-gib', type=int)
+    parser.add_argument('--minimum-disk-gib', type=int)
     args = parser.parse_args()
+    if args.command not in ('init', 'canonical') and (args.minimum_memory_gib is not None or args.minimum_disk_gib is not None):
+        parser.error('resource guardrails can only be selected when creating a session')
+    resources = {'memory_gib': args.minimum_memory_gib if args.minimum_memory_gib is not None else 10,
+                 'disk_gib': args.minimum_disk_gib if args.minimum_disk_gib is not None else 100}
+    try:
+        resource_policy(**resources)
+    except ValueError as error:
+        parser.error(str(error))
     def cancel(number, frame): raise Cancelled(number)
     for number in (signal.SIGINT, signal.SIGTERM): signal.signal(number, cancel)
     try:
         if args.command == 'init':
-            print(initialise(args.worktree, args.session, args.oracle_ref, args.oracle_source, args.include_new, retain_disks=args.retain_disks)); return 0
+            print(initialise(args.worktree, args.session, args.oracle_ref, args.oracle_source, args.include_new, retain_disks=args.retain_disks, **resources)); return 0
         if args.command == 'canonical':
             worktree = args.snapshot or args.worktree
             oracle = args.oracle_source or (Path(os.environ['ASSBOX_ORACLE_SOURCE']) if os.environ.get('ASSBOX_ORACLE_SOURCE') else None)
             session_path = initialise(worktree, oracle_ref=args.oracle_ref, oracle_source=oracle,
-                include_new=args.include_new, purpose='dependency-verification', retain_disks=args.retain_disks)
+                include_new=args.include_new, purpose='dependency-verification', retain_disks=args.retain_disks, **resources)
         else:
             if args.session is None: parser.error('--session is required')
             session_path = args.session
@@ -502,7 +558,10 @@ def main():
                 if not result['attempts'] or result['attempts'][-1]['status'] != 'passed': raise Blocked('no current canonical pass')
                 run = path / 'runs' / result['attempts'][-1]['attempt_id']
                 subprocess.run(['nix', 'run', 'path:' + str(run / 'source/nix/dev') + '#just', '--',
-                    'verify', '--oracle-source', str(path / 'oracle')], cwd=run / 'source', check=True)
+                    'verify', '--oracle-source', str(path / 'oracle'),
+                    '--minimum-memory-gib', str(session['resource_policy']['available_memory_bytes'] // 1024**3),
+                    '--minimum-disk-gib', str(session['resource_policy']['available_disk_bytes'] // 1024**3)],
+                    cwd=run / 'source', check=True)
                 if candidate_files(path, session) != capture(run / 'source')[0]: raise Blocked('source-drift')
                 atomic(path / 'finalization.json', dict(schema=1, status='passed', system=result['attempts'][-1]['host_system'],
                     candidate_snapshot=result['attempts'][-1]['candidate_snapshot'], remote_writes=False))
