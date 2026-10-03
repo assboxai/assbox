@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Weekly native verification precedes a lock-only or empty direct-to-master commit.
 name: Verified bootstrap maintenance
 'on':
   schedule:
@@ -31,6 +30,30 @@ jobs:
           accept-flake-config = false
 
           '
+    - name: Remove installer credentials before candidate execution
+      run: "sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
+        \ GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials before candidate execution.\"\
+        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG = 256 *\
+        \ 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise ValueError('Nix\
+        \ configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
+        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\\
+        s+', line):\n            raise ValueError('Indirect Nix configuration requires separate cleanup review')\n\
+        \        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or continuation:\n\
+        \            continuation = line.rstrip().endswith('\\\\')\n            continue\n        result.append(line)\n\
+        \    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path,\
+        \ owner):\n    path = Path(path)\n    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd,\
+        \ 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
+        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise ValueError('Unexpected\
+        \ Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n\
+        \    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n    \
+        \    with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
+        \            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n            stream.write(contents)\n\
+        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n\
+        \    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\n\nif __name__\
+        \ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential cleanup requires the trusted\
+        \ runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl\
+        \ restart nix-daemon.service\nnix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert\
+        \ json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
     - run: python3 scripts/bootstrap.py discover "$RUNNER_TEMP/assbox-bootstrap-discovery.json"
       env:
         GH_TOKEN: ${{ github.token }}
@@ -72,6 +95,30 @@ jobs:
           accept-flake-config = false
 
           '
+    - name: Remove installer credentials before candidate execution
+      run: "sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
+        \ GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials before candidate execution.\"\
+        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG = 256 *\
+        \ 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise ValueError('Nix\
+        \ configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
+        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\\
+        s+', line):\n            raise ValueError('Indirect Nix configuration requires separate cleanup review')\n\
+        \        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or continuation:\n\
+        \            continuation = line.rstrip().endswith('\\\\')\n            continue\n        result.append(line)\n\
+        \    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path,\
+        \ owner):\n    path = Path(path)\n    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd,\
+        \ 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
+        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise ValueError('Unexpected\
+        \ Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n\
+        \    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n    \
+        \    with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
+        \            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n            stream.write(contents)\n\
+        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n\
+        \    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\n\nif __name__\
+        \ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential cleanup requires the trusted\
+        \ runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl\
+        \ restart nix-daemon.service\nnix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert\
+        \ json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
     - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
         name: bootstrap-locks

@@ -328,7 +328,7 @@ class WorkflowPolicyTests(unittest.TestCase):
 
     def test_tokens_cannot_reach_candidate_builds_or_other_privileged_environments(self):
         d = copy.deepcopy(self.release)
-        step = next(s for s in d["jobs"]["live-verify"]["steps"] if "run" in s)
+        step = next(s for s in d["jobs"]["live-verify"]["steps"] if s.get("run", "").startswith("python3 scripts/release.py live-verify"))
         step["env"]["GH_TOKEN"] = "${{ github.token }}"; self.reject(d, "release.yml")
         d = copy.deepcopy(self.release)
         step = next(s for s in d["jobs"]["publish"]["steps"] if s.get("run") == policy.PUBLISH)
@@ -339,11 +339,11 @@ class WorkflowPolicyTests(unittest.TestCase):
         d = copy.deepcopy(self.release); d["jobs"]["advertise"]["needs"] = ["publish"]; self.reject(d, "release.yml")
         d = copy.deepcopy(self.release); del d["jobs"]["live-verify"]; self.reject(d, "release.yml")
         d = copy.deepcopy(self.release)
-        step = next(s for s in d["jobs"]["live-verify"]["steps"] if "run" in s)
+        step = next(s for s in d["jobs"]["live-verify"]["steps"] if s.get("run", "").startswith("python3 scripts/release.py live-verify"))
         step["run"] = "echo passed"; self.reject(d, "release.yml")
         live = self.release["jobs"]["live-verify"]
         self.assertEqual({row["system"] for row in live["strategy"]["matrix"]["include"]}, {"aarch64-linux", "x86_64-linux"})
-        command = next(s["run"] for s in live["steps"] if "run" in s)
+        command = next(s["run"] for s in live["steps"] if s.get("run", "").startswith("python3 scripts/release.py live-verify"))
         self.assertIn("scripts/release.py live-verify", command)
         self.assertIn("GITHUB_RUN_ATTEMPT", command)
 

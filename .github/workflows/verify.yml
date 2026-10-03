@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 name: Verify locked source
-on:
-  workflow_dispatch:
+'on':
+  workflow_dispatch: null
 permissions:
   contents: read
 concurrency:
@@ -13,40 +13,70 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
-        with:
-          install_url: https://releases.nixos.org/nix/nix-2.35.2/install
-          enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            accept-flake-config = false
-      - name: Require committed input lock
-        run: test -f flake.lock && git ls-files --error-unmatch flake.lock
-      - name: Set up Chainman without Git hooks
-        run: nix run path:./nix/dev#just -- setup --no-hooks
-      - name: Full native Chainman verification
-        run: nix run path:./nix/dev#just -- verify
-        env:
-          XDG_STATE_HOME: ${{ runner.temp }}
-      - name: Retain verification diagnostics
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/assbox-verification
-            ${{ runner.temp }}/assbox/verification/*/summary.json
-            ${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json
-            ${{ runner.temp }}/assbox/verification/*/canonical-summary.json
-          if-no-files-found: warn
-          retention-days: 14
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - name: Remove installer credentials before candidate execution
+      run: "sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
+        \ GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials before candidate execution.\"\
+        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG = 256 *\
+        \ 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise ValueError('Nix\
+        \ configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
+        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\\
+        s+', line):\n            raise ValueError('Indirect Nix configuration requires separate cleanup review')\n\
+        \        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or continuation:\n\
+        \            continuation = line.rstrip().endswith('\\\\')\n            continue\n        result.append(line)\n\
+        \    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path,\
+        \ owner):\n    path = Path(path)\n    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd,\
+        \ 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
+        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise ValueError('Unexpected\
+        \ Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n\
+        \    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n    \
+        \    with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
+        \            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n            stream.write(contents)\n\
+        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n\
+        \    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\n\nif __name__\
+        \ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential cleanup requires the trusted\
+        \ runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl\
+        \ restart nix-daemon.service\nnix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert\
+        \ json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
+    - name: Require committed input lock
+      run: test -f flake.lock && git ls-files --error-unmatch flake.lock
+    - name: Set up Chainman without Git hooks
+      run: nix run path:./nix/dev#just -- setup --no-hooks
+    - name: Full native Chainman verification
+      run: nix run path:./nix/dev#just -- verify
+      env:
+        XDG_STATE_HOME: ${{ runner.temp }}
+    - name: Retain verification diagnostics
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
+        path: '${{ runner.temp }}/assbox-verification
+
+          ${{ runner.temp }}/assbox/verification/*/summary.json
+
+          ${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json
+
+          ${{ runner.temp }}/assbox/verification/*/canonical-summary.json
+
+          '
+        if-no-files-found: warn
+        retention-days: 14

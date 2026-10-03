@@ -176,6 +176,15 @@ inspect the configuration. `just setup` installs owned staged-format hooks; use
 pinned runtime's protocol. Do not replace someone else's hook or run a second
 handwritten hook manager.
 
+On a fresh host with Nix and no installed Just, run
+`nix run path:./nix/dev#just -- setup --no-hooks`. Public recipes reuse the invoking
+Just executable, including when `nix run` has not added it to `PATH`.
+
+The pinned CI Nix installer persists the job's GitHub token in `/etc/nix/nix.conf`.
+Every installation immediately runs the reviewed inline cleanup, restarts the
+daemon and checks that the effective access-token setting is empty before running
+candidate code. Child environment scrubbing alone does not remove that file.
+
 `nix/dev` is self-contained with a genuine independent lock and default, formatter
 and repair profiles. It initially shares the production Nixpkgs revision. The root
 flake has explicit `release-tools` and `release-check` shells and no default
