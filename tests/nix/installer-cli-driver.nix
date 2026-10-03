@@ -130,6 +130,7 @@ let
       # This module is copied into a new flake. Embed the same public test CA
       # instead of introducing an absolute path outside that flake's inputs.
       ${import ./fixture-certificate.nix { certificate = ca; }}
+      nix.settings.trusted-public-keys = lib.mkAfter [ ${builtins.toJSON (import ./fixture-cache-public-key.nix)} ];
       nix.settings.substituters = lib.mkForce [];
       nix.settings.builders = lib.mkForce "";
       systemd.timers.assbox-maintenance.enable = lib.mkForce false;
@@ -177,7 +178,16 @@ let
         virtualisation.additionalPaths = [ assbox.src ];
       };
       installer = { lib, ... }: {
-        imports = [ common ];
+        imports = [
+          common
+          (import ./fixture-cache-signing.nix {
+            inherit pkgs;
+            roots = [
+              cli
+              dependencies
+            ];
+          })
+        ];
         networking.interfaces.eth1.ipv4.addresses = lib.mkForce [
           {
             address = "192.168.1.2";
