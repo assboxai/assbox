@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Verify locked source
+# Isolated test-branch distribution experiment; not the full verification workflow.
+name: Assbox native development kernel cache experiment
 'on':
   workflow_dispatch: null
-permissions:
-  contents: read
+permissions: {}
 concurrency:
-  group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: assbox-native-development-kernel-cache
+  cancel-in-progress: false
 jobs:
-  verify:
-    strategy:
+  produce:
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/test-kernel-cache' && github.event_name
+      == 'workflow_dispatch'
+    strategy: &id001
       fail-fast: false
       matrix:
         include:
@@ -19,64 +21,226 @@ jobs:
           runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 360
+    permissions:
+      contents: read
+    env:
+      ASSBOX_KERNEL_SYSTEM: ${{ matrix.system }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
+        repository: assboxai/assbox
+        ref: 92df406e62c697a02c391293e20c874aa09cabfd
+        path: product
         persist-credentials: false
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
       with:
         install_url: https://releases.nixos.org/nix/nix-2.35.2/install
-        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+        enable_kvm: false
         extra_nix_config: 'experimental-features = nix-command flakes
 
           accept-flake-config = false
 
           '
     - name: Remove installer credentials before candidate execution
-      run: "sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
-        \ GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials before candidate execution.\"\
-        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG = 256 *\
-        \ 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise ValueError('Nix\
-        \ configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
-        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\\
-        s+', line):\n            raise ValueError('Indirect Nix configuration requires separate cleanup review')\n\
-        \        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or continuation:\n\
-        \            continuation = line.rstrip().endswith('\\\\')\n            continue\n        result.append(line)\n\
-        \    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path,\
-        \ owner):\n    path = Path(path)\n    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd,\
-        \ 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
-        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise ValueError('Unexpected\
-        \ Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n\
-        \    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n    \
-        \    with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
+      shell: bash
+      run: "set -euo pipefail\nsudo /usr/bin/python3 -I -B <<'ASSBOX_FIXED_PYTHON'\n#!/usr/bin/env python3\n\
+        # SPDX-License-Identifier: GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials\
+        \ before candidate execution.\"\"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\n\
+        import tempfile\n\nMAX_CONFIG = 256 * 1024\n\n\ndef sanitized(contents):\n    if len(contents)\
+        \ > MAX_CONFIG:\n        raise ValueError('Nix configuration exceeds the cleanup bound')\n   \
+        \ lines = contents.decode('utf-8').splitlines(keepends=True)\n    result = []\n    continuation\
+        \ = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\s+', line):\n       \
+        \     raise ValueError('Indirect Nix configuration requires separate cleanup review')\n      \
+        \  credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or\
+        \ continuation:\n            continuation = line.rstrip().endswith('\\\\')\n            continue\n\
+        \        result.append(line)\n    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\\
+        n').encode('utf-8')\n\n\ndef rewrite(path, owner):\n    path = Path(path)\n    fd = os.open(path,\
+        \ os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd, 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n\
+        \        if (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1\n                or\
+        \ metadata.st_uid != owner):\n            raise ValueError('Unexpected Nix configuration ownership\
+        \ or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n    temporary_fd,\
+        \ temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n        with\
+        \ os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
         \            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n            stream.write(contents)\n\
-        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n\
-        \    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\n\nif __name__\
-        \ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential cleanup requires the trusted\
-        \ runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl\
-        \ restart nix-daemon.service\nnix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert\
-        \ json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
-    - name: Require committed input lock
-      run: test -f flake.lock && git ls-files --error-unmatch flake.lock
-    - name: Set up Chainman without Git hooks
-      run: nix run path:./nix/dev#just -- setup --no-hooks
-    - name: Full native Chainman verification
-      run: nix run path:./nix/dev#just -- verify
-      env:
-        XDG_STATE_HOME: ${{ runner.temp }}
-    - name: Retain verification diagnostics
-      if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary,\
+        \ path)\n    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\
+        \n\nif __name__ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential\
+        \ cleanup requires the trusted runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\n\n\
+        ASSBOX_FIXED_PYTHON\nsudo systemctl restart nix-daemon.service\nnix config show --json | /usr/bin/python3\
+        \ -I -B -c 'import json,sys; assert json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {},\
+        \ \"Nix API credentials remain configured\"'\n"
+    - name: Build the reviewed native kernel and produce its signed cache
+      shell: bash
+      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_FIXED_PYTHON'\nimport base64\nimport hashlib\n\
+        import json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\nimport shutil\n\
+        import subprocess\nimport time\nimport urllib.parse\n\nCORE = '92df406e62c697a02c391293e20c874aa09cabfd'\n\
+        LOCK = 'cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86'\nassert os.environ['GITHUB_REPOSITORY']\
+        \ == 'assboxai/assbox'\nassert os.environ['GITHUB_REPOSITORY_ID'] == '1402455771'\nassert os.environ['GITHUB_REPOSITORY_OWNER_ID']\
+        \ == '327835666'\nassert os.environ['GITHUB_REF'] == 'refs/heads/test-kernel-cache'\nassert os.environ['GITHUB_EVENT_NAME']\
+        \ == 'workflow_dispatch'\nsystem = os.environ['ASSBOX_KERNEL_SYSTEM']\nassert system in ('x86_64-linux',\
+        \ 'aarch64-linux')\nassert platform.machine() == system.removesuffix('-linux')\nworkflow_sha =\
+        \ os.environ['GITHUB_SHA']\nassert re.fullmatch('[0-9a-f]{40}', workflow_sha)\nrun = int(os.environ['GITHUB_RUN_ID'])\n\
+        attempt = int(os.environ['GITHUB_RUN_ATTEMPT'])\nassert run > 0 and attempt > 0\nroot = Path(os.environ['GITHUB_WORKSPACE'])\
+        \ / 'product'\nstate = Path(os.environ['RUNNER_TEMP']) / ('assbox-kernel-' + system)\nstate.mkdir(mode=0o700)\n\
+        for name in ('home', 'cache', 'tmp', 'private', 'public-cache'):\n    (state / name).mkdir(mode=0o700)\n\
+        environment = {key: os.environ[key] for key in ('PATH', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'NIX_SSL_CERT_FILE')\
+        \ if key in os.environ}\nenvironment.update(HOME=str(state / 'home'), XDG_CACHE_HOME=str(state\
+        \ / 'cache'), TMPDIR=str(state / 'tmp'),\n                   GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null',\
+        \ GIT_CONFIG_COUNT='0', GIT_TERMINAL_PROMPT='0')\ndef call(*args):\n    return subprocess.check_output(args,\
+        \ cwd=root, env=environment, text=True).strip()\nassert call('git', '-c', 'core.hooksPath=/dev/null',\
+        \ 'rev-parse', 'HEAD') == CORE\nassert call('git', '-c', 'core.hooksPath=/dev/null', 'status',\
+        \ '--porcelain') == ''\nassert hashlib.sha256((root / 'flake.lock').read_bytes()).hexdigest()\
+        \ == LOCK\nassert json.loads(call('nix', 'config', 'show', '--json'))['access-tokens']['value']\
+        \ == {}\nselector = '.#nixosConfigurations.' + system + '-uefi-none-headless.config.boot.kernelPackages.kernel'\n\
+        frozen = ('--no-update-lock-file', '--no-write-lock-file')\nderivation = call('nix', 'eval', '--raw',\
+        \ *frozen, selector + '.drvPath')\nassert re.fullmatch(r'/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-linux-[^/]+\\\
+        .drv', derivation)\nif system == 'x86_64-linux':\n    assert derivation == '/nix/store/k5006izwwn388hc17pvlzfhbf8wdqyk1-linux-6.18.51.drv'\n\
+        outputs = {name: call('nix', 'eval', '--raw', *frozen, selector + '.' + name + '.outPath') for\
+        \ name in ('out', 'modules')}\nversion = call('nix', 'eval', '--raw', *frozen, selector + '.version')\n\
+        started = time.time()\nprint(json.dumps({'stage': 'native-kernel-build', 'system': system, 'core_commit':\
+        \ CORE, 'derivation': derivation}), flush=True)\ncall('nix', 'build', '--no-link', *frozen, selector)\n\
+        print(json.dumps({'stage': 'native-kernel-built', 'system': system, 'elapsed_seconds': time.time()\
+        \ - started}), flush=True)\ndev = call('nix', 'eval', '--raw', *frozen, selector + '.dev.outPath')\n\
+        config = Path(dev) / 'lib/modules' / version / 'build/.config'\nraw_config = config.read_bytes()\n\
+        assert b'# CONFIG_RFKILL_INPUT is not set\\n' in raw_config\nassert b'CONFIG_RFKILL_INPUT=y\\\
+        n' not in raw_config\nclosure = json.loads(call('nix', 'path-info', '--recursive', '--json', '--json-format',\
+        \ '1', *outputs.values()))\nassert isinstance(closure, dict) and 1 <= len(closure) <= 240\ncache\
+        \ = state / 'public-cache'\nsecret = state / 'private/secret-key'\npublic = state / 'private/public-key'\n\
+        keyname = f'assbox-development-kernel-{run}-{attempt}-{system}'\ntry:\n    call('nix-store', '--generate-binary-cache-key',\
+        \ keyname, str(secret), str(public))\n    secret.chmod(0o600)\n    uri = cache.as_uri() + '?secret-key='\
+        \ + urllib.parse.quote(str(secret), safe='/')\n    call('nix', 'copy', '--to', uri, *outputs.values())\n\
+        finally:\n    if secret.exists():\n        secret.unlink()\nkey = public.read_text().strip()\n\
+        assert key.startswith(keyname + ':') and len(base64.b64decode(key.split(':')[1], validate=True))\
+        \ == 32\nnarinfos = list(cache.glob('*.narinfo'))\nassert len(narinfos) == len(closure)\nfor info\
+        \ in narinfos:\n    text = info.read_text()\n    fields = {}\n    signatures = []\n    for line\
+        \ in text.splitlines():\n        field, value = line.split(': ', 1) if ': ' in line else (line.rstrip(':'),\
+        \ '')\n        if field == 'Sig':\n            signatures.append(value)\n        else:\n     \
+        \       assert field not in fields\n            fields[field] = value\n    assert fields['StorePath']\
+        \ in closure\n    selected = [value for value in signatures if value.startswith(keyname + ':')]\n\
+        \    assert len(selected) == 1 and len(base64.b64decode(selected[0].split(':', 1)[1], validate=True))\
+        \ == 64\n    old = fields['URL']\n    assert re.fullmatch(r'nar/[0-9abcdfghijklmnpqrsvwxyz]{52}\\\
+        .nar\\.xz', old)\n    new = 'nar-' + old.split('/')[1]\n    if (cache / old).exists():\n     \
+        \   (cache / old).rename(cache / new)\n    assert (cache / new).is_file()\n    info.write_text(text.replace('URL:\
+        \ ' + old + '\\n', 'URL: ' + new + '\\n'))\nfor directory in ('nar', 'log', 'build-trace-v2'):\n\
+        \    if (cache / directory).exists():\n        (cache / directory).rmdir()\nassets = {}\nfor path\
+        \ in sorted(cache.iterdir()):\n    assert re.fullmatch(r'nix-cache-info|[0-9abcdfghijklmnpqrsvwxyz]{32}\\\
+        .narinfo|nar-[0-9abcdfghijklmnpqrsvwxyz]{52}\\.nar\\.xz', path.name)\n    assert path.is_file()\
+        \ and not path.is_symlink() and 0 < path.stat().st_size < 2 * 1024**3\n    hasher = hashlib.sha256()\n\
+        \    with path.open('rb') as stream:\n        for block in iter(lambda: stream.read(1024**2),\
+        \ b''):\n            hasher.update(block)\n    assets[path.name] = dict(size=path.stat().st_size,\
+        \ sha256=hasher.hexdigest())\nassert sum(proof['size'] for proof in assets.values()) <= 8 * 1024**3\n\
+        assert len(assets) <= 481\nmanifest = dict(schema=1, kind='assbox-development-kernel-cache-experiment',\
+        \ channel='development',\n                repository='assboxai/assbox', repository_id=1402455771,\
+        \ owner_id=327835666,\n                workflow_commit=workflow_sha, source_ref='refs/heads/test-kernel-cache',\
+        \ core_commit=CORE,\n                root_lock_sha256=LOCK, run_id=run, run_attempt=attempt, system=system,\n\
+        \                derivation=derivation, kernel_version=version, outputs=outputs, public_key=key,\n\
+        \                kernel_config_sha256=hashlib.sha256(raw_config).hexdigest(), rfkill_input_disabled=True,\n\
+        \                closure={path: {field: data[field] for field in ('narHash', 'narSize', 'references')}\
+        \ for path, data in closure.items()},\n                cache_assets=assets, kernel_built=True,\
+        \ vm_executed=False, installation_qualified=False)\nencoded = (json.dumps(manifest, sort_keys=True,\
+        \ separators=(',', ':')) + '\\n').encode()\nassert len(encoded) <= 1024**2\n(cache / 'kernel-manifest.json').write_bytes(encoded)\n\
+        assert hashlib.sha256((root / 'flake.lock').read_bytes()).hexdigest() == LOCK\nassert call('git',\
+        \ '-c', 'core.hooksPath=/dev/null', 'status', '--porcelain') == ''\nprint(json.dumps({'stage':\
+        \ 'signed-cache-produced', 'system': system, 'assets': len(assets), 'bytes': sum(a['size'] for\
+        \ a in assets.values()), 'vm_executed': False}), flush=True)\n\nASSBOX_FIXED_PYTHON\n"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
-        path: '${{ runner.temp }}/assbox-verification
-
-          ${{ runner.temp }}/assbox/verification/*/summary.json
-
-          ${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json
-
-          ${{ runner.temp }}/assbox/verification/*/canonical-summary.json
-
-          '
-        if-no-files-found: warn
+        name: native-kernel-cache-${{ matrix.system }}
+        path: ${{ runner.temp }}/assbox-kernel-${{ matrix.system }}/public-cache/
+        if-no-files-found: error
+        compression-level: 0
         retention-days: 14
+  publish:
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/test-kernel-cache' && github.event_name
+      == 'workflow_dispatch'
+    needs: produce
+    strategy: *id001
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      ASSBOX_KERNEL_SYSTEM: ${{ matrix.system }}
+    steps:
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: native-kernel-cache-${{ matrix.system }}
+        path: ${{ runner.temp }}/assbox-kernel-cache
+    - name: Validate the complete bounded native cache without executing candidate code
+      shell: bash
+      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_FIXED_PYTHON'\nimport base64\nimport hashlib\n\
+        import json\nimport os\nfrom pathlib import Path\nimport re\nimport stat\n\noutput = Path(os.environ['RUNNER_TEMP'])\
+        \ / 'assbox-kernel-cache'\nsystem = os.environ['ASSBOX_KERNEL_SYSTEM']\nassert system in ('x86_64-linux',\
+        \ 'aarch64-linux')\nassert os.environ['GITHUB_REPOSITORY'] == 'assboxai/assbox'\nassert os.environ['GITHUB_REF']\
+        \ == 'refs/heads/test-kernel-cache'\nassert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'\n\
+        manifest_path = output / 'kernel-manifest.json'\nassert stat.S_ISREG(manifest_path.lstat().st_mode)\n\
+        assert manifest_path.stat().st_size <= 1024**2\nraw = manifest_path.read_bytes()\nmanifest = json.loads(raw)\n\
+        assert raw == (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\\n').encode()\n\
+        assert set(manifest) == {'schema', 'kind', 'channel', 'repository', 'repository_id', 'owner_id',\
+        \ 'workflow_commit', 'source_ref', 'core_commit', 'root_lock_sha256', 'run_id', 'run_attempt',\
+        \ 'system', 'derivation', 'kernel_version', 'outputs', 'public_key', 'kernel_config_sha256', 'rfkill_input_disabled',\
+        \ 'closure', 'cache_assets', 'kernel_built', 'vm_executed', 'installation_qualified'}\nassert\
+        \ manifest['schema'] == 1 and manifest['kind'] == 'assbox-development-kernel-cache-experiment'\
+        \ and manifest['channel'] == 'development'\nassert manifest['repository'] == 'assboxai/assbox'\
+        \ and manifest['repository_id'] == 1402455771 and manifest['owner_id'] == 327835666\nassert manifest['source_ref']\
+        \ == 'refs/heads/test-kernel-cache' and manifest['workflow_commit'] == os.environ['GITHUB_SHA']\n\
+        assert manifest['core_commit'] == '92df406e62c697a02c391293e20c874aa09cabfd'\nassert manifest['root_lock_sha256']\
+        \ == 'cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86'\nrun = int(os.environ['GITHUB_RUN_ID'])\n\
+        attempt = int(os.environ['GITHUB_RUN_ATTEMPT'])\nassert run > 0 and attempt > 0 and manifest['run_id']\
+        \ == run and manifest['run_attempt'] == attempt\nassert manifest['system'] == system\nassert manifest['kernel_built']\
+        \ is True and manifest['vm_executed'] is False and manifest['installation_qualified'] is False\n\
+        assert manifest['rfkill_input_disabled'] is True\nassert re.fullmatch('[0-9a-f]{64}', manifest['kernel_config_sha256'])\n\
+        store = r'/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-[^/\\s]+'\nassert re.fullmatch(store + r'\\\
+        .drv', manifest['derivation'])\nif system == 'x86_64-linux':\n    assert manifest['derivation']\
+        \ == '/nix/store/k5006izwwn388hc17pvlzfhbf8wdqyk1-linux-6.18.51.drv'\nassert set(manifest['outputs'])\
+        \ == {'out', 'modules'}\nassert all(re.fullmatch(store, path) for path in manifest['outputs'].values())\n\
+        keyname = f'assbox-development-kernel-{run}-{attempt}-{system}'\nassert manifest['public_key'].startswith(keyname\
+        \ + ':')\nassert len(base64.b64decode(manifest['public_key'].split(':')[1], validate=True)) ==\
+        \ 32\nclosure = manifest['closure']\nassert isinstance(closure, dict) and 1 <= len(closure) <=\
+        \ 240\nassert set(manifest['outputs'].values()) <= set(closure)\nfor path, proof in closure.items():\n\
+        \    assert re.fullmatch(store, path) and set(proof) == {'narHash', 'narSize', 'references'}\n\
+        \    assert re.fullmatch(r'sha256-[A-Za-z0-9+/]{43}=', proof['narHash'])\n    assert type(proof['narSize'])\
+        \ is int and 0 < proof['narSize'] <= 16 * 1024**3\n    assert isinstance(proof['references'],\
+        \ list) and len(proof['references']) <= 240\n    assert set(proof['references']) <= set(closure)\n\
+        assets = manifest['cache_assets']\nassert isinstance(assets, dict) and 3 <= len(assets) <= 481\
+        \ and 'nix-cache-info' in assets\nassert {path.name for path in output.iterdir()} == set(assets)\
+        \ | {'kernel-manifest.json'}\nassert sum(proof['size'] for proof in assets.values()) <= 8 * 1024**3\n\
+        for name, proof in assets.items():\n    assert re.fullmatch(r'nix-cache-info|[0-9abcdfghijklmnpqrsvwxyz]{32}\\\
+        .narinfo|nar-[0-9abcdfghijklmnpqrsvwxyz]{52}\\.nar\\.xz', name)\n    path = output / name\n  \
+        \  metadata = path.lstat()\n    assert stat.S_ISREG(metadata.st_mode) and metadata.st_nlink ==\
+        \ 1\n    assert set(proof) == {'size', 'sha256'} and type(proof['size']) is int and 0 < proof['size']\
+        \ < 2 * 1024**3\n    assert re.fullmatch('[0-9a-f]{64}', proof['sha256']) and metadata.st_size\
+        \ == proof['size']\n    hasher = hashlib.sha256()\n    with path.open('rb') as stream:\n     \
+        \   for block in iter(lambda: stream.read(1024**2), b''):\n            hasher.update(block)\n\
+        \    assert hasher.hexdigest() == proof['sha256']\nfor path, proof in closure.items():\n    name\
+        \ = path.split('/')[-1][:32] + '.narinfo'\n    assert name in assets\n    fields = {}\n    signatures\
+        \ = []\n    for line in (output / name).read_text().splitlines():\n        key, value = line.split(':\
+        \ ', 1) if ': ' in line else (line.rstrip(':'), '')\n        if key == 'Sig':\n            signatures.append(value)\n\
+        \            continue\n        assert key not in fields\n        fields[key] = value\n    assert\
+        \ fields['StorePath'] == path and fields['URL'] in assets and fields['Compression'] == 'xz'\n\
+        \    assert set('/nix/store/' + item for item in fields['References'].split()) == set(proof['references'])\n\
+        \    selected = [value for value in signatures if value.startswith(keyname + ':')]\n    assert\
+        \ len(selected) == 1 and len(base64.b64decode(selected[0].split(':', 1)[1], validate=True)) ==\
+        \ 64\nassert (output / 'nix-cache-info').read_text().splitlines()[0] == 'StoreDir: /nix/store'\n\
+        print(json.dumps({'system': system, 'assets_validated': len(assets), 'bytes_validated': sum(proof['size']\
+        \ for proof in assets.values()), 'candidate_executed_in_publisher': False}))\n\nASSBOX_FIXED_PYTHON\n"
+    - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+      id: attest
+      with:
+        subject-path: ${{ runner.temp }}/assbox-kernel-cache/kernel-manifest.json
+    - name: Publish an immutable development kernel cache prerelease
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+      run: "set -euo pipefail\ntest \"$(gh api repos/assboxai/assbox/git/ref/heads/test-kernel-cache --jq\
+        \ '.object.sha')\" = \"$GITHUB_SHA\"\ncp -- \"$BUNDLE\" \"$RUNNER_TEMP/assbox-kernel-cache/kernel-manifest.sigstore.json\"\
+        \ntag=\"kernel-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${ASSBOX_KERNEL_SYSTEM}-dev\"\ngh release\
+        \ create \"$tag\" \"$RUNNER_TEMP/assbox-kernel-cache/\"* \\\n  --repo assboxai/assbox --target\
+        \ \"$GITHUB_SHA\" --prerelease --latest=false \\\n  --title \"Assbox native ${ASSBOX_KERNEL_SYSTEM}\
+        \ kernel cache experiment\" \\\n  --notes \"Development distribution experiment: actual native\
+        \ appliance kernel, preserved RFKILL_INPUT policy, exact reviewed core and production lock, ephemeral\
+        \ Nix cache signing and GitHub/Sigstore provenance. This cache experiment does not qualify Assbox\
+        \ installation or a production release.\"\n"
