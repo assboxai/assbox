@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   produce:
-    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && github.event_name == 'workflow_dispatch'
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -24,7 +24,7 @@ jobs:
         assert os.environ['GITHUB_REPOSITORY'] == 'assboxai/assbox'
         assert os.environ['GITHUB_REPOSITORY_ID'] == '1402455771'
         assert os.environ['GITHUB_REPOSITORY_OWNER_ID'] == '327835666'
-        assert os.environ['GITHUB_REF'] == 'refs/heads/master'
+        assert os.environ['GITHUB_REF'] == 'refs/heads/dev'
         assert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'
         assert re.fullmatch('[0-9a-f]{40}', os.environ['GITHUB_SHA'])
         output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'assbox-dev-probe'
@@ -33,7 +33,7 @@ jobs:
         (output / 'payload.txt').write_bytes(payload)
         manifest = dict(schema=1, kind='assbox-development-transport-probe', channel='development',
                         repository='assboxai/assbox', repository_id=1402455771, owner_id=327835666,
-                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/master',
+                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/dev',
                         run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
                         payload_name='payload.txt', payload_size=len(payload), payload_sha256=hashlib.sha256(payload).hexdigest(),
                         kernel_built=False, vm_executed=False, installation_qualified=False)
@@ -73,7 +73,7 @@ jobs:
         assert payload == b'Assbox development artifact transport probe. No installation qualification.\n'
         expected = dict(schema=1, kind='assbox-development-transport-probe', channel='development',
                         repository='assboxai/assbox', repository_id=1402455771, owner_id=327835666,
-                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/master',
+                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/dev',
                         run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
                         payload_name='payload.txt', payload_size=len(payload), payload_sha256=hashlib.sha256(payload).hexdigest(),
                         kernel_built=False, vm_executed=False, installation_qualified=False)
@@ -90,7 +90,7 @@ jobs:
         BUNDLE: ${{ steps.attest.outputs.bundle-path }}
       run: |
         set -euo pipefail
-        test "$(gh api repos/assboxai/assbox/git/ref/heads/master --jq '.object.sha')" = "$GITHUB_SHA"
+        test "$(gh api repos/assboxai/assbox/git/ref/heads/dev --jq '.object.sha')" = "$GITHUB_SHA"
         cp -- "$BUNDLE" "$RUNNER_TEMP/assbox-dev-probe/dev-manifest.sigstore.json"
         tag="transport-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-dev"
         gh release create "$tag" \
