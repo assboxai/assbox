@@ -14,7 +14,7 @@ def dispatch(tool, args, case, root=ROOT):
         if args == ['show', '--property=Timezone', '--value']: return 'UTC'
         if args == ['show', '--property=NTPSynchronized', '--value']: return 'yes'
     elif tool == 'systemd-ask-password':
-        if args in [['Choose an administrator password:'], ['Repeat the administrator password:']]:
+        if args in [['--echo=no', 'Choose an administrator password:'], ['--echo=no', 'Repeat the administrator password:']]:
             # Public disposable data, never a reusable operator password.
             return 'assbox-disposable-fixture-password-2026'
     elif tool == 'curl':
