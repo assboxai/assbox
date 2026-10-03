@@ -11,32 +11,79 @@ jobs:
   produce:
     if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
-    - name: Produce bounded public probe bytes without credentials
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: false
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          accept-flake-config = false
+    - name: Produce a bounded signed Nix cache without repository credentials
       shell: bash
       run: |
         set -euo pipefail
         /usr/bin/python3 -I -B - <<'PYTHON'
-        import hashlib, json, os, pathlib, re
+        import base64, hashlib, json, os, pathlib, re, subprocess, urllib.parse
         assert os.environ['GITHUB_REPOSITORY'] == 'assboxai/assbox'
         assert os.environ['GITHUB_REPOSITORY_ID'] == '1402455771'
         assert os.environ['GITHUB_REPOSITORY_OWNER_ID'] == '327835666'
         assert os.environ['GITHUB_REF'] == 'refs/heads/dev'
         assert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'
-        assert re.fullmatch('[0-9a-f]{40}', os.environ['GITHUB_SHA'])
+        sha = os.environ['GITHUB_SHA']
+        assert re.fullmatch('[0-9a-f]{40}', sha)
+        run = int(os.environ['GITHUB_RUN_ID'])
+        attempt = int(os.environ['GITHUB_RUN_ATTEMPT'])
+        assert run > 0 and attempt > 0
         output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'assbox-dev-probe'
         output.mkdir(mode=0o700)
-        payload = b'Assbox development artifact transport probe. No installation qualification.\n'
-        (output / 'payload.txt').write_bytes(payload)
-        manifest = dict(schema=1, kind='assbox-development-transport-probe', channel='development',
-                        repository='assboxai/assbox', repository_id=1402455771, owner_id=327835666,
-                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/dev',
-                        run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
-                        payload_name='payload.txt', payload_size=len(payload), payload_sha256=hashlib.sha256(payload).hexdigest(),
-                        kernel_built=False, vm_executed=False, installation_qualified=False)
+        private = pathlib.Path(os.environ['RUNNER_TEMP']) / 'assbox-dev-cache-signing'
+        private.mkdir(mode=0o700)
+        keyname = f'assbox-development-probe-{run}-{attempt}'
+        secret = private / 'secret-key'
+        public = private / 'public-key'
+        def call(*args):
+            return subprocess.check_output(args, text=True).strip()
+        payload = f'Assbox development binary cache probe. No installation qualification.\nRun {run}, attempt {attempt}, commit {sha}.\n'
+        input_expr = 'builtins.fetchTree { type = "github"; owner = "NixOS"; repo = "nixpkgs"; rev = "aff8a0b28396750446e5537a96461bc4facdb287"; narHash = "sha256-xfX/toC2QV707s06GbP4II/TxYF0fNQj7s5/LClNDKc="; }'
+        expression = 'let p = import (' + input_expr + ') { system = "x86_64-linux"; }; in p.runCommand "assbox-development-cache-probe" { text = ' + json.dumps(payload) + '; } ' + json.dumps('printf %s "$text" > "$out"')
+        store_path = call('nix', 'build', '--no-link', '--print-out-paths', '--no-update-lock-file', '--no-write-lock-file', '--expr', expression)
+        assert re.fullmatch('/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-assbox-development-cache-probe', store_path)
+        assert pathlib.Path(store_path).read_bytes() == payload.encode()
+        try:
+            call('nix-store', '--generate-binary-cache-key', keyname, str(secret), str(public))
+            secret.chmod(0o600)
+            uri = output.as_uri() + '?secret-key=' + urllib.parse.quote(str(secret), safe='/')
+            call('nix', 'copy', '--to', uri, store_path)
+        finally:
+            if secret.exists(): secret.unlink()
+        public_key = public.read_text().strip()
+        assert public_key.startswith(keyname + ':') and len(base64.b64decode(public_key.split(':')[1], validate=True)) == 32
+        infos = list(output.glob('*.narinfo'))
+        assert len(infos) == 1
+        info = infos[0]
+        fields = dict(line.split(': ', 1) if ': ' in line else (line.rstrip(':'), '') for line in info.read_text().splitlines())
+        assert fields['StorePath'] == store_path and fields['References'] == '' and 'CA' not in fields
+        assert fields['Sig'].startswith(keyname + ':')
+        assert len(base64.b64decode(fields['Sig'].split(':')[1], validate=True)) == 64
+        old_url = fields['URL']
+        assert re.fullmatch(r'nar/[0-9abcdfghijklmnpqrsvwxyz]{52}\.nar\.xz', old_url)
+        new_url = 'nar-' + old_url.split('/')[1]
+        (output / old_url).rename(output / new_url)
+        (output / 'nar').rmdir()
+        for directory in ('log','build-trace-v2'):
+            if (output / directory).exists(): (output / directory).rmdir()
+        info.write_text(info.read_text().replace('URL: ' + old_url + '\n', 'URL: ' + new_url + '\n'))
+        assets = {}
+        for path in sorted(output.iterdir()):
+            assert path.is_file() and not path.is_symlink() and path.stat().st_size <= 65536
+            raw = path.read_bytes()
+            assets[path.name] = dict(size=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+        assert set(assets) == {'nix-cache-info',info.name,new_url}
+        manifest = dict(schema=1, kind='assbox-development-nix-cache-probe', channel='development', repository='assboxai/assbox', repository_id=1402455771, owner_id=327835666, source_commit=sha, source_ref='refs/heads/dev', run_id=run, run_attempt=attempt, store_path=store_path, public_key=public_key, payload_sha256=hashlib.sha256(payload.encode()).hexdigest(), payload_size=len(payload.encode()), cache_assets=assets, kernel_built=False, vm_executed=False, installation_qualified=False)
         (output / 'dev-manifest.json').write_bytes((json.dumps(manifest,sort_keys=True,separators=(',',':'))+'\n').encode())
         PYTHON
     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -48,7 +95,7 @@ jobs:
   publish:
     needs: produce
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: write
       id-token: write
@@ -58,26 +105,47 @@ jobs:
       with:
         name: development-transport-probe
         path: ${{ runner.temp }}/assbox-dev-probe
-    - name: Validate exact probe bytes before attestation
+    - name: Validate exact cache bytes before attestation
       shell: bash
       run: |
         set -euo pipefail
         /usr/bin/python3 -I -B - <<'PYTHON'
-        import hashlib, json, os, pathlib, stat
+        import base64, hashlib, json, os, pathlib, re, stat
         output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'assbox-dev-probe'
-        assert {p.name for p in output.iterdir()} == {'payload.txt','dev-manifest.json'}
-        for name in ('payload.txt','dev-manifest.json'):
-            p = output / name
-            assert stat.S_ISREG(p.lstat().st_mode) and p.stat().st_size <= 4096
-        payload = (output / 'payload.txt').read_bytes()
-        assert payload == b'Assbox development artifact transport probe. No installation qualification.\n'
-        expected = dict(schema=1, kind='assbox-development-transport-probe', channel='development',
-                        repository='assboxai/assbox', repository_id=1402455771, owner_id=327835666,
-                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/dev',
-                        run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
-                        payload_name='payload.txt', payload_size=len(payload), payload_sha256=hashlib.sha256(payload).hexdigest(),
-                        kernel_built=False, vm_executed=False, installation_qualified=False)
-        assert (output / 'dev-manifest.json').read_bytes() == (json.dumps(expected,sort_keys=True,separators=(',',':'))+'\n').encode()
+        raw = (output / 'dev-manifest.json').read_bytes()
+        assert len(raw) <= 4096
+        manifest = json.loads(raw)
+        assert raw == (json.dumps(manifest,sort_keys=True,separators=(',',':'))+'\n').encode()
+        assert set(manifest) == {'schema','kind','channel','repository','repository_id','owner_id','source_commit','source_ref','run_id','run_attempt','store_path','public_key','payload_sha256','payload_size','cache_assets','kernel_built','vm_executed','installation_qualified'}
+        assert manifest['schema'] == 1 and manifest['kind'] == 'assbox-development-nix-cache-probe' and manifest['channel'] == 'development'
+        assert manifest['repository'] == 'assboxai/assbox' and manifest['repository_id'] == 1402455771 and manifest['owner_id'] == 327835666
+        sha = os.environ['GITHUB_SHA']
+        run = int(os.environ['GITHUB_RUN_ID'])
+        attempt = int(os.environ['GITHUB_RUN_ATTEMPT'])
+        assert re.fullmatch('[0-9a-f]{40}',sha) and run > 0 and attempt > 0
+        assert manifest['source_commit'] == sha and manifest['source_ref'] == 'refs/heads/dev' and manifest['run_id'] == run and manifest['run_attempt'] == attempt
+        assert manifest['kernel_built'] is False and manifest['vm_executed'] is False and manifest['installation_qualified'] is False
+        payload = f'Assbox development binary cache probe. No installation qualification.\nRun {run}, attempt {attempt}, commit {sha}.\n'.encode()
+        assert manifest['payload_size'] == len(payload) and manifest['payload_sha256'] == hashlib.sha256(payload).hexdigest()
+        assert re.fullmatch('/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-assbox-development-cache-probe',manifest['store_path'])
+        keyname = f'assbox-development-probe-{run}-{attempt}'
+        assert manifest['public_key'].startswith(keyname + ':') and len(base64.b64decode(manifest['public_key'].split(':')[1], validate=True)) == 32
+        assets = manifest['cache_assets']
+        assert isinstance(assets,dict) and len(assets) == 3 and 'nix-cache-info' in assets
+        assert {p.name for p in output.iterdir()} == set(assets) | {'dev-manifest.json'}
+        for name, proof in assets.items():
+            assert re.fullmatch(r'nix-cache-info|[0-9abcdfghijklmnpqrsvwxyz]{32}\.narinfo|nar-[0-9abcdfghijklmnpqrsvwxyz]{52}\.nar\.xz',name)
+            path = output / name
+            assert stat.S_ISREG(path.lstat().st_mode) and 0 < path.stat().st_size <= 65536
+            data = path.read_bytes()
+            assert set(proof) == {'size','sha256'} and len(data) == proof['size'] and hashlib.sha256(data).hexdigest() == proof['sha256']
+        infos = [name for name in assets if name.endswith('.narinfo')]
+        assert len(infos) == 1 and infos[0] == manifest['store_path'].split('/')[-1][:32] + '.narinfo'
+        fields = dict(line.split(': ',1) if ': ' in line else (line.rstrip(':'),'') for line in (output / infos[0]).read_text().splitlines())
+        assert fields['StorePath'] == manifest['store_path'] and fields['References'] == '' and 'CA' not in fields
+        assert fields['URL'] in assets and fields['Compression'] == 'xz' and fields['Sig'].startswith(keyname + ':')
+        assert len(base64.b64decode(fields['Sig'].split(':')[1],validate=True)) == 64
+        assert (output / 'nix-cache-info').read_text().splitlines()[0] == 'StoreDir: /nix/store'
         PYTHON
     - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
       id: attest
@@ -92,11 +160,9 @@ jobs:
         set -euo pipefail
         test "$(gh api repos/assboxai/assbox/git/ref/heads/dev --jq '.object.sha')" = "$GITHUB_SHA"
         cp -- "$BUNDLE" "$RUNNER_TEMP/assbox-dev-probe/dev-manifest.sigstore.json"
-        tag="transport-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-dev"
+        tag="cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-dev"
         gh release create "$tag" \
-          "$RUNNER_TEMP/assbox-dev-probe/dev-manifest.json" \
-          "$RUNNER_TEMP/assbox-dev-probe/dev-manifest.sigstore.json" \
-          "$RUNNER_TEMP/assbox-dev-probe/payload.txt" \
+          "$RUNNER_TEMP/assbox-dev-probe/"* \
           --repo assboxai/assbox --target "$GITHUB_SHA" --prerelease --latest=false \
-          --title "Assbox development artifact transport probe" \
-          --notes "Development transport experiment: exact bounded bytes and real GitHub/Sigstore provenance. No kernel build, VM execution or Assbox installation qualification."
+          --title "Assbox development signed Nix cache probe" \
+          --notes "Development binary cache experiment: one bounded Nix build, ephemeral cache signing, immutable release assets and exact GitHub/Sigstore provenance. No kernel build, VM execution or Assbox installation qualification."
