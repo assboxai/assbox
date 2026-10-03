@@ -1,38 +1,44 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Verify locked source
+# Manual isolated diagnostics; no production activation.
+name: Assbox ARM failure diagnostics
 'on':
   workflow_dispatch: null
 permissions:
   contents: read
 concurrency:
-  group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: assbox-isolated-native-arm-diagnostics
+  cancel-in-progress: false
 jobs:
-  verify:
+  retest:
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/test-native-arm-diagnostics'
+      && github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
         include:
-        - system: x86_64-linux
-          runner: ubuntu-24.04
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 360
+    timeout-minutes: 240
+    env:
+      ASSBOX_CANDIDATE_SYSTEM: ${{ matrix.system }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
+        repository: assboxai/assbox
+        ref: d35c5394dd29311481049b733118d7bbd6309d10
+        path: product
         persist-credentials: false
     - name: Clear unused SDKs on the ephemeral hosted runner
       run: "sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP\
         \ /usr/bin/python3 -I -B <<'ASSBOX_RUNNER_CLEARANCE'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
         \ GPL-3.0-or-later\n\"\"\"Reclaim fixed unused SDK directories on an ephemeral GitHub-hosted Linux\
-        \ runner.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\nimport\
-        \ shutil\nimport stat\nimport time\n\nPATHS = tuple(Path(name) for name in (\n    '/usr/local/lib/android',\
+        \ runner.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\n\
+        import shutil\nimport stat\nimport time\n\nPATHS = tuple(Path(name) for name in (\n    '/usr/local/lib/android',\
         \ '/usr/share/dotnet',\n    '/opt/hostedtoolcache', '/usr/local/.ghcup'))\n\n\ndef validate_environment(environment):\n\
         \    if (os.geteuid() != 0 or platform.system() != 'Linux'\n            or environment.get('GITHUB_ACTIONS')\
-        \ != 'true'\n            or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'\n           \
-        \ or environment.get('GITHUB_EVENT_NAME') not in (\n                'workflow_dispatch', 'schedule',\
+        \ != 'true'\n            or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'\n       \
+        \     or environment.get('GITHUB_EVENT_NAME') not in (\n                'workflow_dispatch', 'schedule',\
         \ 'push', 'pull_request', 'workflow_run', 'workflow_call')):\n        raise ValueError('Clearance\
         \ requires an ephemeral hosted Linux workflow runner')\n    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',\
         \ environment.get('GITHUB_REPOSITORY', '')):\n        raise ValueError('Missing workflow repository\
@@ -40,36 +46,36 @@ jobs:
         \ 'GITHUB_RUN_ATTEMPT'):\n        if not re.fullmatch(r'[1-9][0-9]*', environment.get(name, '')):\n\
         \            raise ValueError('Missing numeric workflow identity')\n    if not re.fullmatch(r'[0-9a-f]{40}',\
         \ environment.get('GITHUB_SHA', '')):\n        raise ValueError('Missing workflow source identity')\n\
-        \    temporary = Path(environment.get('RUNNER_TEMP', ''))\n    if not temporary.is_absolute() or temporary.resolve()\
-        \ != temporary:\n        raise ValueError('Unexpected runner temporary path')\n    metadata = temporary.lstat()\n\
-        \    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid == 0:\n        raise ValueError('Unexpected\
-        \ runner temporary ownership')\n    return temporary, metadata.st_uid\n\n\ndef mount_points():\n \
-        \   points = []\n    for line in Path('/proc/self/mountinfo').read_text().splitlines():\n        value\
-        \ = line.split()[4]\n        value = re.sub(r'\\\\([0-7]{3})', lambda match: chr(int(match[1], 8)),\
-        \ value)\n        points.append(Path(value))\n    return points\n\n\ndef clear_directories(paths,\
-        \ runner_uid, root_device, mounts):\n    if not shutil.rmtree.avoids_symlink_attacks:\n        raise\
-        \ ValueError('Symlink-resistant directory deletion is required')\n    admitted = []\n    for path\
-        \ in paths:\n        if path.is_symlink() or path.resolve() != path:\n            raise ValueError('Refusing\
-        \ a redirected toolchain directory')\n        if not path.exists():\n            continue\n      \
-        \  metadata = path.lstat()\n        if (not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid not\
-        \ in (0, runner_uid)\n                or metadata.st_dev != root_device):\n            raise ValueError('Unexpected\
-        \ toolchain directory type, owner or volume')\n        if any(mount == path or path in mount.parents\
-        \ for mount in mounts):\n            raise ValueError('Refusing a mounted toolchain directory')\n\
-        \        admitted.append(path)\n    # Admit the entire fixed set before removing anything.\n    for\
-        \ path in admitted:\n        shutil.rmtree(path)\n        if path.exists():\n            raise ValueError('Toolchain\
-        \ clearance was incomplete')\n    return [str(path) for path in admitted]\n\n\ndef main():\n    temporary,\
-        \ runner_uid = validate_environment(os.environ)\n    before = shutil.disk_usage('/')\n    started\
-        \ = time.monotonic()\n    removed = clear_directories(PATHS, runner_uid, Path('/').stat().st_dev,\
-        \ mount_points())\n    after = shutil.disk_usage('/')\n    facts = dict(schema=1, kind='hosted-runner-toolchain-clearance',\n\
-        \                 system=platform.machine() + '-linux', source_commit=os.environ['GITHUB_SHA'],\n\
-        \                 run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n\
-        \                 removed_directories=removed, before_available_bytes=before.free,\n             \
-        \    after_available_bytes=after.free, observed_free_bytes_increase=after.free - before.free,\n  \
-        \               seconds=round(time.monotonic() - started, 2))\n    output = temporary / 'assbox-runner-clearance.json'\n\
-        \    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)\n    with os.fdopen(fd,\
-        \ 'w') as stream:\n        stream.write(json.dumps(facts, sort_keys=True, separators=(',', ':')) +\
-        \ '\\n')\n    print(json.dumps(facts, sort_keys=True))\n\n\nif __name__ == '__main__':\n    main()\n\
-        ASSBOX_RUNNER_CLEARANCE"
+        \    temporary = Path(environment.get('RUNNER_TEMP', ''))\n    if not temporary.is_absolute()\
+        \ or temporary.resolve() != temporary:\n        raise ValueError('Unexpected runner temporary\
+        \ path')\n    metadata = temporary.lstat()\n    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid\
+        \ == 0:\n        raise ValueError('Unexpected runner temporary ownership')\n    return temporary,\
+        \ metadata.st_uid\n\n\ndef mount_points():\n    points = []\n    for line in Path('/proc/self/mountinfo').read_text().splitlines():\n\
+        \        value = line.split()[4]\n        value = re.sub(r'\\\\([0-7]{3})', lambda match: chr(int(match[1],\
+        \ 8)), value)\n        points.append(Path(value))\n    return points\n\n\ndef clear_directories(paths,\
+        \ runner_uid, root_device, mounts):\n    if not shutil.rmtree.avoids_symlink_attacks:\n      \
+        \  raise ValueError('Symlink-resistant directory deletion is required')\n    admitted = []\n \
+        \   for path in paths:\n        if path.is_symlink() or path.resolve() != path:\n            raise\
+        \ ValueError('Refusing a redirected toolchain directory')\n        if not path.exists():\n   \
+        \         continue\n        metadata = path.lstat()\n        if (not stat.S_ISDIR(metadata.st_mode)\
+        \ or metadata.st_uid not in (0, runner_uid)\n                or metadata.st_dev != root_device):\n\
+        \            raise ValueError('Unexpected toolchain directory type, owner or volume')\n      \
+        \  if any(mount == path or path in mount.parents for mount in mounts):\n            raise ValueError('Refusing\
+        \ a mounted toolchain directory')\n        admitted.append(path)\n    # Admit the entire fixed\
+        \ set before removing anything.\n    for path in admitted:\n        shutil.rmtree(path)\n    \
+        \    if path.exists():\n            raise ValueError('Toolchain clearance was incomplete')\n \
+        \   return [str(path) for path in admitted]\n\n\ndef main():\n    temporary, runner_uid = validate_environment(os.environ)\n\
+        \    before = shutil.disk_usage('/')\n    started = time.monotonic()\n    removed = clear_directories(PATHS,\
+        \ runner_uid, Path('/').stat().st_dev, mount_points())\n    after = shutil.disk_usage('/')\n \
+        \   facts = dict(schema=1, kind='hosted-runner-toolchain-clearance',\n                 system=platform.machine()\
+        \ + '-linux', source_commit=os.environ['GITHUB_SHA'],\n                 run_id=int(os.environ['GITHUB_RUN_ID']),\
+        \ run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n                 removed_directories=removed,\
+        \ before_available_bytes=before.free,\n                 after_available_bytes=after.free, observed_free_bytes_increase=after.free\
+        \ - before.free,\n                 seconds=round(time.monotonic() - started, 2))\n    output =\
+        \ temporary / 'assbox-runner-clearance.json'\n    fd = os.open(output, os.O_WRONLY | os.O_CREAT\
+        \ | os.O_EXCL | os.O_NOFOLLOW, 0o644)\n    with os.fdopen(fd, 'w') as stream:\n        stream.write(json.dumps(facts,\
+        \ sort_keys=True, separators=(',', ':')) + '\\n')\n    print(json.dumps(facts, sort_keys=True))\n\
+        \n\nif __name__ == '__main__':\n    main()\nASSBOX_RUNNER_CLEARANCE"
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
       with:
         install_url: https://releases.nixos.org/nix/nix-2.35.2/install
@@ -82,48 +88,288 @@ jobs:
     - name: Remove installer credentials before candidate execution
       run: "sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
         \ GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials before candidate execution.\"\
-        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG = 256 *\
-        \ 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise ValueError('Nix\
-        \ configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
-        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\\
-        s+', line):\n            raise ValueError('Indirect Nix configuration requires separate cleanup review')\n\
-        \        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or continuation:\n\
-        \            continuation = line.rstrip().endswith('\\\\')\n            continue\n        result.append(line)\n\
-        \    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path,\
-        \ owner):\n    path = Path(path)\n    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd,\
-        \ 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
-        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise ValueError('Unexpected\
-        \ Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n\
-        \    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n    \
-        \    with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
-        \            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n            stream.write(contents)\n\
-        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n\
-        \    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\n\nif __name__\
-        \ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential cleanup requires the trusted\
-        \ runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl\
-        \ restart nix-daemon.service\nnix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert\
-        \ json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
-    - name: Require committed input lock
-      run: test -f flake.lock && git ls-files --error-unmatch flake.lock
-    - name: Set up Chainman without Git hooks
-      run: nix run path:./nix/dev#just -- setup --no-hooks
-    - name: Full native Chainman verification
-      run: nix run path:./nix/dev#just -- verify
-      env:
-        XDG_STATE_HOME: ${{ runner.temp }}
-    - name: Retain verification diagnostics
+        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG\
+        \ = 256 * 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise\
+        \ ValueError('Nix configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
+        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\\
+        s*!?include\\s+', line):\n            raise ValueError('Indirect Nix configuration requires separate\
+        \ cleanup review')\n        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n\
+        \        if credential or continuation:\n            continuation = line.rstrip().endswith('\\\
+        \\')\n            continue\n        result.append(line)\n    return (''.join(result).rstrip('\\\
+        n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path, owner):\n    path = Path(path)\n\
+        \    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd, 'rb') as stream:\n\
+        \        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
+        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise\
+        \ ValueError('Unexpected Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG\
+        \ + 1))\n    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n\
+        \    try:\n        with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(),\
+        \ stat.S_IMODE(metadata.st_mode))\n            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n\
+        \            stream.write(contents)\n            stream.flush()\n            os.fsync(stream.fileno())\n\
+        \        os.replace(temporary, path)\n    finally:\n        if os.path.exists(temporary):\n  \
+        \          os.unlink(temporary)\n\n\nif __name__ == '__main__':\n    if os.geteuid() != 0:\n \
+        \       raise SystemExit('Credential cleanup requires the trusted runner administrator')\n   \
+        \ rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl restart nix-daemon.service\n\
+        nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)[\"\
+        access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
+    - name: Authenticate the complete native kernel cache
+      shell: bash
+      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_REVIEWED_CONTROLLER'\n\"\"\"Bounded retries\
+        \ for public GET responses, without changing asset admission.\"\"\"\nimport time\nimport urllib.error\n\
+        import urllib.request\n\n\nclass PerRequestRedirect(urllib.request.HTTPRedirectHandler):\n   \
+        \ \"\"\"Bound each redirect chain independently of subsequent GET retries.\"\"\"\n\n    def redirect_request(self,\
+        \ req, fp, code, msg, headers, newurl):\n        count = getattr(req, '_assbox_redirect_count',\
+        \ 0) + 1\n        if count > 2:\n            raise ValueError('Public asset redirect chain exceeds\
+        \ its bound')\n        if any(key.lower() == 'authorization' for key, _ in req.header_items()):\n\
+        \            raise ValueError('Public asset redirects cannot carry authorization')\n        redirected\
+        \ = super().redirect_request(req, fp, code, msg, headers, newurl)\n        if redirected is not\
+        \ None:\n            redirected._assbox_redirect_count = count\n        return redirected\n\n\n\
+        def open_public_with_retry(client, request, timeout):\n    if request.get_method() != 'GET':\n\
+        \        raise ValueError('Only public read requests may be retried')\n    if any(key.lower()\
+        \ == 'authorization' for key, _ in request.header_items()):\n        raise ValueError('Public\
+        \ download retries cannot carry authorization')\n    for attempt in range(3):\n        try:\n\
+        \            return client.open(request, timeout=timeout)\n        except urllib.error.HTTPError\
+        \ as error:\n            status = error.code\n            error.close()\n            if status\
+        \ not in (408, 429, 500, 502, 503, 504) or attempt == 2:\n                raise\n            time.sleep((1,\
+        \ 3)[attempt])\n\n\"\"\"Independently authenticate and import the native kernel experiment, anonymously.\"\
+        \"\"\nimport base64\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport\
+        \ re\nimport subprocess\nimport sys\nimport time\nimport urllib.parse\nimport urllib.request\n\
+        \nCORE = 'd35c5394dd29311481049b733118d7bbd6309d10'\nLOCK = 'cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86'\n\
+        assert os.environ['GITHUB_REPOSITORY'] == 'assboxai/assbox'\nassert os.environ['GITHUB_REPOSITORY_ID']\
+        \ == '1402455771'\nassert os.environ['GITHUB_REPOSITORY_OWNER_ID'] == '327835666'\nassert os.environ['GITHUB_REF']\
+        \ == 'refs/heads/test-native-arm-diagnostics'\nassert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'\n\
+        system = os.environ['ASSBOX_CANDIDATE_SYSTEM']\nassert system in ('x86_64-linux', 'aarch64-linux')\n\
+        import platform\nassert platform.machine() == system.removesuffix('-linux')\nroot = Path(os.environ['GITHUB_WORKSPACE'])\
+        \ / 'product'\nSTATE = Path(os.environ['RUNNER_TEMP']) / ('assbox-candidate-preseed-' + system)\n\
+        STATE.mkdir(mode=0o700)\nrun = dict(id=37101091605, run_attempt=1,\n           head_sha='b790f6bfa442f6b8905bee0011ecb4a170e574ac',\n\
+        \           head_branch='test-kernel-complete-cache',\n           html_url='https://github.com/assboxai/assbox/actions/runs/37101091605')\n\
+        tag = f\"kernel-{run['id']}-{run['run_attempt']}-{system}-dev\"\nclass NoRedirect(urllib.request.HTTPRedirectHandler):\n\
+        \    def redirect_request(self, *args, **kwargs):\n        raise RuntimeError('Unexpected anonymous\
+        \ API redirect')\nopener = urllib.request.build_opener(NoRedirect())\nrequest = urllib.request.Request('https://api.github.com/repos/assboxai/assbox/releases/tags/'\
+        \ + tag\n                                 + '?assbox_observation=' + str(int(time.time())),\n\
+        \                                 headers={'Accept': 'application/vnd.github+json', 'User-Agent':\
+        \ 'assbox-anonymous-kernel-cache-client',\n                                          'Cache-Control':\
+        \ 'no-cache'})\n# The native producers are already running. Wait only for this exact immutable\n\
+        # development tag, with bounded anonymous observations and no credential fallback.\nimport urllib.error\n\
+        publication_deadline = time.monotonic() + 1200\nwhile True:\n    try:\n        with opener.open(request,\
+        \ timeout=30) as response:\n            raw_metadata = response.read(1024**2 + 1)\n          \
+        \  assert len(raw_metadata) <= 1024**2\n        break\n    except urllib.error.HTTPError as error:\n\
+        \        assert error.code in (404, 403), 'Unexpected public release metadata failure'\n     \
+        \   if error.code == 403:\n            assert error.headers.get('X-RateLimit-Remaining') == '0',\
+        \ 'Unexpected public authorization refusal'\n        assert time.monotonic() + 60 < publication_deadline,\
+        \ 'Exact native cache publication unavailable within wait budget'\n        time.sleep(60)\nrelease\
+        \ = json.loads(raw_metadata)\nassert release['tag_name'] == tag and release['immutable'] is True\
+        \ and release['prerelease'] is True and release['draft'] is False\nassets = {asset['name']: asset\
+        \ for asset in release['assets']}\nassert len(assets) == len(release['assets']) and 5 <= len(assets)\
+        \ <= 483\nassert {'kernel-manifest.json', 'kernel-manifest.sigstore.json', 'nix-cache-info'} <=\
+        \ set(assets)\nassert sum(asset['size'] for asset in assets.values()) <= 8 * 1024**3 + 2 * 1024**2\n\
+        output = STATE / ('native-kernel-complete-public-' + system)\noutput.mkdir(mode=0o700)\ndef download(name,\
+        \ maximum):\n    asset = assets[name]\n    assert type(asset['size']) is int and 0 < asset['size']\
+        \ <= maximum\n    assert re.fullmatch(r'sha256:[0-9a-f]{64}', asset['digest'])\n    expected =\
+        \ 'https://github.com/assboxai/assbox/releases/download/' + tag + '/' + name\n    assert asset['browser_download_url']\
+        \ == expected\n    class AssetRedirect(PerRequestRedirect):\n        def redirect_request(self,\
+        \ req, fp, code, msg, headers, newurl):\n            parsed = urllib.parse.urlsplit(newurl)\n\
+        \            assert parsed.scheme == 'https'\n            assert parsed.hostname == 'release-assets.githubusercontent.com'\
+        \ and not parsed.username and not parsed.password\n            assert not any(key.lower() == 'authorization'\
+        \ for key in req.headers)\n            return super().redirect_request(req, fp, code, msg, headers,\
+        \ newurl)\n    client = urllib.request.build_opener(AssetRedirect())\n    hasher = hashlib.sha256()\n\
+        \    count = 0\n    path = output / name\n    descriptor = os.open(path, os.O_CREAT | os.O_EXCL\
+        \ | os.O_WRONLY | os.O_NOFOLLOW, 0o600)\n    with os.fdopen(descriptor, 'wb') as stream:\n   \
+        \     public = urllib.request.Request(expected, headers={'User-Agent': 'assbox-anonymous-kernel-cache-client'})\n\
+        \        with open_public_with_retry(client, public, 120) as response:\n            for block\
+        \ in iter(lambda: response.read(1024**2), b''):\n                count += len(block)\n       \
+        \         assert count <= maximum and count <= asset['size']\n                stream.write(block)\n\
+        \                hasher.update(block)\n    assert count == asset['size'] and hasher.hexdigest()\
+        \ == asset['digest'].removeprefix('sha256:')\n    return dict(size=count, sha256=hasher.hexdigest(),\
+        \ authorization_sent=False)\nproof = {name: download(name, 1024**2) for name in ('kernel-manifest.json',\
+        \ 'kernel-manifest.sigstore.json')}\nhome = STATE / ('native-kernel-complete-anonymous-home-'\
+        \ + system)\nhome.mkdir(mode=0o700)\nenvironment = {'PATH': '/nix/var/nix/profiles/default/bin:/usr/bin:/bin',\
+        \ 'HOME': str(home),\n               'XDG_CACHE_HOME': str(home / 'cache'), 'GH_CONFIG_DIR': str(home\
+        \ / 'gh'),\n               'NIX_USER_CONF_FILES': '/dev/null', 'LANG': 'C.UTF-8', 'GH_PROMPT_DISABLED':\
+        \ '1'}\nassert subprocess.check_output(['git', '-c', 'core.hooksPath=/dev/null', 'rev-parse',\
+        \ 'HEAD'], cwd=root, env=environment, text=True).strip() == CORE\nassert not subprocess.check_output(['git',\
+        \ '-c', 'core.hooksPath=/dev/null', 'status', '--porcelain'], cwd=root, env=environment)\nassert\
+        \ hashlib.sha256((root / 'flake.lock').read_bytes()).hexdigest() == LOCK\nassert json.loads(subprocess.check_output(['nix',\
+        \ 'config', 'show', '--json'], env=environment))['access-tokens']['value'] == {}\n# Build only\
+        \ the reviewed anonymous verification client from the production pin.\nexpression = ('let f =\
+        \ builtins.getFlake ' + json.dumps('git+file://' + str(root)) + '; '\n              + 'p = import\
+        \ f.inputs.nixpkgs { system = ' + json.dumps(system) + '; }; '\n              + 'in p.callPackage\
+        \ ' + json.dumps(str(root / 'nix/anonymous-gh.nix')) + ' {}')\ngh_output = subprocess.check_output(['nix',\
+        \ 'build', '--impure', '--no-link', '--print-out-paths',\n    '--no-update-lock-file', '--no-write-lock-file',\
+        \ '--expr', expression], cwd=root, env=environment, text=True).strip()\nassert re.fullmatch(r'/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-gh-[^/]+',\
+        \ gh_output)\ngh = str(Path(gh_output) / 'bin/gh')\nidentity = 'https://github.com/assboxai/assbox/.github/workflows/verify.yml@refs/heads/test-kernel-complete-cache'\n\
+        command = [gh, 'attestation', 'verify', str(output / 'kernel-manifest.json'), '--bundle', str(output\
+        \ / 'kernel-manifest.sigstore.json'),\n           '--repo', 'assboxai/assbox', '--cert-identity',\
+        \ identity, '--source-ref', 'refs/heads/test-kernel-complete-cache',\n           '--source-digest',\
+        \ run['head_sha'], '--signer-digest', run['head_sha'], '--cert-oidc-issuer', 'https://token.actions.githubusercontent.com',\n\
+        \           '--deny-self-hosted-runners', '--predicate-type', 'https://slsa.dev/provenance/v1',\
+        \ '--format', 'json']\nresult = subprocess.run(command, env=environment, capture_output=True,\
+        \ timeout=180)\n(output / 'sigstore-verification.json').write_bytes(result.stdout)\n(output /\
+        \ 'sigstore-verification.stderr.log').write_bytes(result.stderr)\nassert result.returncode ==\
+        \ 0, 'Independent Sigstore verification failed'\nvalues = json.loads(result.stdout)\nassert len(values)\
+        \ == 1\nverified = values[0]['verificationResult']\ncertificate = verified['signature']['certificate']\n\
+        expected_certificate = dict(sourceRepositoryIdentifier='1402455771', sourceRepositoryOwnerIdentifier='327835666',\n\
+        \    sourceRepositoryURI='https://github.com/assboxai/assbox', sourceRepositoryOwnerURI='https://github.com/assboxai',\n\
+        \    sourceRepositoryDigest=run['head_sha'], sourceRepositoryRef='refs/heads/test-kernel-complete-cache',\n\
+        \    buildConfigURI=identity, buildConfigDigest=run['head_sha'], buildSignerURI=identity, buildSignerDigest=run['head_sha'],\n\
+        \    buildTrigger='workflow_dispatch', runInvocationURI=run['html_url'] + '/attempts/1', runnerEnvironment='github-hosted',\n\
+        \    issuer='https://token.actions.githubusercontent.com')\nfor key, value in expected_certificate.items():\n\
+        \    assert certificate[key] == value\nassert verified['verifiedTimestamps'] and verified['statement']['predicateType']\
+        \ == 'https://slsa.dev/provenance/v1'\nsubjects = verified['statement']['subject']\nassert len(subjects)\
+        \ == 1 and subjects[0]['digest']['sha256'] == proof['kernel-manifest.json']['sha256']\nraw = (output\
+        \ / 'kernel-manifest.json').read_bytes()\nmanifest = json.loads(raw)\nassert raw == (json.dumps(manifest,\
+        \ sort_keys=True, separators=(',', ':')) + '\\n').encode()\nassert manifest['kind'] == 'assbox-development-kernel-cache-experiment'\
+        \ and manifest['channel'] == 'development'\nassert manifest['core_commit'] == '495fb2afe5c1026327bb4e3337a4ebcfcff1562f'\n\
+        assert manifest['root_lock_sha256'] == 'cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86'\n\
+        assert manifest['workflow_commit'] == run['head_sha'] and manifest['source_ref'] == 'refs/heads/test-kernel-complete-cache'\n\
+        assert manifest['run_id'] == run['id'] and manifest['run_attempt'] == run['run_attempt'] and manifest['system']\
+        \ == system\nassert manifest['kernel_built'] is True and manifest['rfkill_input_disabled'] is\
+        \ True\nassert manifest['vm_executed'] is False and manifest['installation_qualified'] is False\n\
+        assert manifest['schema'] == 2\nassert set(manifest['outputs']) == {'out', 'modules', 'dev'}\n\
+        assert manifest['runtime_outputs'] == {name: manifest['outputs'][name] for name in ('out', 'modules')}\n\
+        assert isinstance(manifest['closure'], dict) and 1 <= len(manifest['closure']) <= 240\nassert\
+        \ set(manifest['outputs'].values()) <= set(manifest['closure'])\nfor store_path, declared in manifest['closure'].items():\n\
+        \    assert re.fullmatch(r'/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-[^/\\s]+', store_path)\n\
+        \    assert set(declared) == {'narHash', 'narSize', 'references'}\n    assert type(declared['narSize'])\
+        \ is int and 0 < declared['narSize'] <= 16 * 1024**3\n    assert re.fullmatch(r'sha256-[A-Za-z0-9+/]{43}=',\
+        \ declared['narHash'])\n    assert isinstance(declared['references'], list) and set(declared['references'])\
+        \ <= set(manifest['closure'])\nassert set(manifest['cache_assets']) == set(assets) - {'kernel-manifest.json',\
+        \ 'kernel-manifest.sigstore.json'}\nkeyname = f\"assbox-development-kernel-{run['id']}-{run['run_attempt']}-{system}\"\
+        \nassert manifest['public_key'].startswith(keyname + ':') and len(base64.b64decode(manifest['public_key'].split(':',\
+        \ 1)[1], validate=True)) == 32\nfor name, declared in manifest['cache_assets'].items():\n    assert\
+        \ re.fullmatch(r'nix-cache-info|[0-9abcdfghijklmnpqrsvwxyz]{32}\\.narinfo|nar-[0-9abcdfghijklmnpqrsvwxyz]{52}\\\
+        .nar\\.xz', name)\n    assert declared == {'size': assets[name]['size'], 'sha256': assets[name]['digest'].removeprefix('sha256:')}\n\
+        \    proof[name] = download(name, 2 * 1024**3 - 1)\nfor kind, arguments in [('immutable-release',\
+        \ ['release', 'verify', tag, '--repo', 'assboxai/assbox', '--format', 'json']),\n            \
+        \            ('immutable-manifest', ['release', 'verify-asset', tag, str(output / 'kernel-manifest.json'),\
+        \ '--repo', 'assboxai/assbox', '--format', 'json'])]:\n    result = subprocess.run([gh, *arguments],\
+        \ env=environment, capture_output=True, timeout=180)\n    (output / (kind + '.json')).write_bytes(result.stdout)\n\
+        \    (output / (kind + '.stderr.log')).write_bytes(result.stderr)\n    assert result.returncode\
+        \ == 0, 'Anonymous immutable release verification failed'\n# Derive the exact expected kernel\
+        \ identity from the clean candidate, before\n# admitting the attested signing key to the ephemeral\
+        \ runner's Nix store.\nselector = '.#nixosConfigurations.' + system + '-uefi-none-headless.config.boot.kernelPackages.kernel'\n\
+        def evaluate(field):\n    return subprocess.check_output(['nix', 'eval', '--raw', '--no-update-lock-file',\n\
+        \        '--no-write-lock-file', selector + '.' + field], cwd=root, env=environment, text=True).strip()\n\
+        expected_outputs = {name: evaluate(name + '.outPath') for name in ('out', 'modules', 'dev')}\n\
+        assert manifest['derivation'] == evaluate('drvPath')\nassert manifest['outputs'] == expected_outputs\n\
+        assert manifest['kernel_version'] == evaluate('version')\n# The authenticated downloaded bytes\
+        \ form a flat file cache. Only this fixed,\n# reviewed controller invokes sudo; candidate verification\
+        \ receives no key/token.\ncopy_command = ['sudo', '-n', 'env', '-i', 'PATH=/nix/var/nix/profiles/default/bin:/usr/bin:/bin',\n\
+        \    'HOME=/root', 'NIX_USER_CONF_FILES=/dev/null', 'nix', 'copy', '--from',\n    output.as_uri()\
+        \ + '?trusted=false', '--option', 'require-sigs', 'true',\n    '--option', 'trusted-public-keys',\
+        \ manifest['public_key'], '--option', 'substituters', '',\n    *expected_outputs.values()]\nresult\
+        \ = subprocess.run(copy_command, env=environment, capture_output=True, timeout=1200)\n(STATE /\
+        \ 'authenticated-import.stderr.log').write_bytes(result.stderr)\nassert result.returncode == 0,\
+        \ 'Authenticated complete kernel import failed'\ninfo = json.loads(subprocess.check_output(['nix',\
+        \ 'path-info', '--recursive', '--json',\n    '--json-format', '1', *expected_outputs.values()],\
+        \ env=environment))\nassert isinstance(info, dict) and set(info) == set(manifest['closure'])\n\
+        for path, observed in info.items():\n    assert isinstance(observed, dict), 'Nix returned an unregistered\
+        \ output'\n    expected = manifest['closure'][path]\n    assert observed['narHash'] == expected['narHash']\
+        \ and observed['narSize'] == expected['narSize']\n    assert set(observed['references']) == set(expected['references'])\n\
+        config = Path(expected_outputs['dev']) / 'lib/modules' / manifest['kernel_version'] / 'build/.config'\n\
+        config_bytes = config.read_bytes()\nassert hashlib.sha256(config_bytes).hexdigest() == manifest['kernel_config_sha256']\n\
+        assert b'# CONFIG_RFKILL_INPUT is not set\\n' in config_bytes\nassert b'CONFIG_RFKILL_INPUT=y\\\
+        n' not in config_bytes\nassert hashlib.sha256((root / 'flake.lock').read_bytes()).hexdigest()\
+        \ == LOCK\nassert not subprocess.check_output(['git', '-c', 'core.hooksPath=/dev/null', 'status',\
+        \ '--porcelain'], cwd=root, env=environment)\nassert json.loads(subprocess.check_output(['nix',\
+        \ 'config', 'show', '--json'], env=environment))['access-tokens']['value'] == {}\nrecord = dict(schema=1,\
+        \ kind='candidate-native-complete-kernel-preseed', system=system,\n              candidate_core_commit=CORE,\
+        \ cache_core_commit=manifest['core_commit'],\n              cache_workflow_commit=run['head_sha'],\
+        \ kernel_derivation=manifest['derivation'],\n              release_tag=tag, release_url=release['html_url'],\
+        \ immutable=True, prerelease=True,\n              exact_verified_certificate_fields=expected_certificate,\
+        \ outputs=expected_outputs,\n              closure_path_count=len(info), cache_assets=proof,\n\
+        \              signature_checks_enabled=True, anonymous_consumption=True,\n              kernel_build_invoked=False,\
+        \ vm_executed=False, full_verification_pass_claimed=False,\n              production_cache_policy_changed=False,\
+        \ observed_at=time.time())\n(STATE / 'summary.json').write_text(json.dumps(record, indent=2) +\
+        \ '\\n')\n# These are authenticated public staging files, now duplicated in the runner\n# store.\
+        \ Reclaim only the exact downloaded cache assets; retain proof/metadata.\nfor name in manifest['cache_assets']:\n\
+        \    path = output / name\n    assert path.is_file() and not path.is_symlink() and path.parent\
+        \ == output\n    path.unlink()\nprint(json.dumps(record))\n\nASSBOX_REVIEWED_CONTROLLER\n"
+    - name: Retain complete existing ARM VM failure output and startup measurements
+      shell: bash
+      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_REVIEWED_CONTROLLER'\n\"\"\"Execute the\
+        \ two existing native application VM gates on the reviewed source.\"\"\"\nimport hashlib,json,os\n\
+        from pathlib import Path\nimport platform,subprocess,time\nCORE='d35c5394dd29311481049b733118d7bbd6309d10'\n\
+        assert os.environ['GITHUB_REPOSITORY']=='assboxai/assbox'\nassert os.environ['GITHUB_REF']=='refs/heads/test-native-arm-diagnostics'\n\
+        assert os.environ['GITHUB_EVENT_NAME']=='workflow_dispatch'\nsystem=os.environ['ASSBOX_CANDIDATE_SYSTEM']\n\
+        assert system in ('x86_64-linux','aarch64-linux') and platform.machine()==system.removesuffix('-linux')\n\
+        root=Path(os.environ['GITHUB_WORKSPACE'])/'product'\nstate=Path(os.environ['RUNNER_TEMP'])/('assbox-native-recovery-'+system)\n\
+        state.mkdir(mode=0o700)\nfor name in ('home','cache','tmp'):(state/name).mkdir(mode=0o700)\nenv={k:os.environ[k]\
+        \ for k in ('PATH','LANG','LC_ALL','SSL_CERT_FILE','NIX_SSL_CERT_FILE') if k in os.environ}\n\
+        env.update(HOME=str(state/'home'),XDG_CACHE_HOME=str(state/'cache'),TMPDIR=str(state/'tmp'),\n\
+        \ NIX_USER_CONF_FILES='/dev/null',GIT_CONFIG_NOSYSTEM='1',GIT_CONFIG_GLOBAL='/dev/null',GIT_CONFIG_COUNT='0',GIT_TERMINAL_PROMPT='0')\n\
+        def call(*args):return subprocess.check_output(args,cwd=root,env=env,text=True).strip()\ndef unchanged():\n\
+        \ assert call('git','-c','core.hooksPath=/dev/null','rev-parse','HEAD')==CORE\n assert not call('git','-c','core.hooksPath=/dev/null','status','--porcelain')\n\
+        \ assert hashlib.sha256((root/'flake.lock').read_bytes()).hexdigest()=='cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86'\n\
+        \ assert json.loads(call('nix','config','show','--json'))['access-tokens']['value']=={}\nunchanged()\n\
+        preseed=json.loads((Path(os.environ['RUNNER_TEMP'])/('assbox-candidate-preseed-'+system)/'summary.json').read_bytes())\n\
+        assert preseed['candidate_core_commit']==CORE and preseed['system']==system and preseed['kernel_build_invoked']\
+        \ is False\nrecord=dict(schema=1,kind='native-existing-application-and-recovery-vm-retest',core_commit=CORE,system=system,\n\
+        \ workflow_commit=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n\
+        \ checks=[],kernel_preseed=preseed,full_gate_pass_claimed=False,canonical_vm_executed=False,status='running',started_at=time.time())\n\
+        def save():(state/'summary.json').write_text(json.dumps(record,indent=2)+'\\n')\nsave();code=0\n\
+        for family in ('application-happier-vm','happier-startup-diagnostic','activation-recovery-vm'):\n\
+        \ selector='.#checks.'+system+'.'+family\n arguments=[selector]\n if family=='happier-startup-diagnostic':\n\
+        \  needle='machine.wait_for_unit(\"multi-user.target\")'\n  commands=['time @NODE@ --version',\
+        \ \"time @NODE@ -e 'console.log(42)'\",\n            \"time @NODE@ --jitless -e 'console.log(42)'\"\
+        ,\n            'time @NODE@ --jitless @HAPPIER@ --version']\n  diagnostic=needle+chr(10)+chr(10).join('machine.succeed('+repr(command)+',\
+        \ timeout=120)' for command in commands)+chr(10)\n  expression=(\n   'let f = builtins.getFlake\
+        \ '+json.dumps('git+file://'+str(root))+'; '\n   'p = import f.inputs.nixpkgs { system = '+json.dumps(system)+';\
+        \ }; '\n   'diagnosticPkgs = p // { testers = p.testers // { runNixOSTest = original: '\n   'p.testers.runNixOSTest\
+        \ (original // { name = \"assbox-happier-startup-diagnostic\"; '\n   'testScript = builtins.replaceStrings\
+        \ [ '+json.dumps(needle)+' ] '\n   '[ (builtins.replaceStrings [ \"@NODE@\" \"@HAPPIER@\" ] '\n\
+        \   '[ \"${p.nodejs}/bin/node\" \"${p.callPackage (f.outPath + \"/nix/happier.nix\") {}}/lib/happier/package-dist/index.mjs\"\
+        \ ] '\n   +json.dumps(diagnostic)+') ] original.testScript; }); }; }; '\n   'in import (f.outPath\
+        \ + \"/tests/nix/component-family-vm.nix\") '\n   '{ pkgs = diagnosticPkgs; module = f.nixosModules.default;\
+        \ family = \"happier\"; }')\n  (state/'happier-startup-diagnostic.nix').write_text(expression+chr(10))\n\
+        \  arguments=['--impure','--expr',expression]\n print(json.dumps({'stage':'existing-native-application-vm','family':family,'system':system}),flush=True)\n\
+        \ started=time.time()\n r=subprocess.run(['nix','build','--print-build-logs','--no-link','--print-out-paths','--no-update-lock-file','--no-write-lock-file',*arguments],cwd=root,env=env,stdout=subprocess.PIPE,text=True)\n\
+        \ check=dict(existing_acceptance_check=family!='happier-startup-diagnostic',family=family,actual_exit=r.returncode,started_at=started,finished_at=time.time(),status='passed'\
+        \ if r.returncode==0 else 'failed')\n if r.returncode==0:\n  outputs=r.stdout.splitlines();assert\
+        \ len(outputs)==1 and outputs[0].startswith('/nix/store/')\n  info=json.loads(call('nix','path-info','--json','--json-format','1',outputs[0]))\n\
+        \  assert isinstance(info,dict) and set(info)==set(outputs) and isinstance(info[outputs[0]],dict)\n\
+        \  check['registered_test_output']=info\n else:code=r.returncode if r.returncode>0 else 128-r.returncode\n\
+        \ record['checks'].append(check);save();unchanged()\nrecord.update(status='passed' if code==0\
+        \ else 'failed',actual_exit=code,finished_at=time.time())\nsave();print(json.dumps(record));raise\
+        \ SystemExit(code)\n\nASSBOX_REVIEWED_CONTROLLER\n"
+    - name: Collect bounded public diagnostic metadata
       if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      shell: bash
+      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_REVIEWED_CONTROLLER'\n\"\"\"Retain a finite\
+        \ allowlist of public, credential-free verification metadata.\"\"\"\nimport hashlib\nimport json\n\
+        import os\nfrom pathlib import Path\nimport re\nimport stat\n\nsystem = os.environ['ASSBOX_CANDIDATE_SYSTEM']\n\
+        assert system in ('x86_64-linux', 'aarch64-linux')\nbase = Path(os.environ['RUNNER_TEMP'])\nassert\
+        \ base.is_absolute() and base.resolve() == base\nout = base / 'assbox-candidate-diagnostics'\n\
+        out.mkdir(mode=0o700)\nallowed = {'summary.json', 'candidate-snapshot.json', 'canonical-summary.json',\n\
+        \           'finalization.json', 'preflight.json', 'runtime.json', 'cleanup.json',\n         \
+        \  'driver-state.json', 'resource-policy.json', 'core-coverage.json'}\nroots = [base / ('assbox-candidate-preseed-'\
+        \ + system), base / ('assbox-native-recovery-' + system)]\nfiles = []\ntotal = 0\n# Select only\
+        \ metadata filenames. Never follow a source, Nix store, cache, home,\n# temp directory or a guest\
+        \ artifact tree, and never select images/private keys.\nblocked = {'source', 'oracle', '.git',\
+        \ 'home', 'cache', 'tmp', 'guest-artifacts', 'public-cache'}\nfor root in roots:\n    if not root.is_dir()\
+        \ or root.is_symlink():\n        continue\n    for directory, dirs, names in os.walk(root, followlinks=False):\n\
+        \        parent = Path(directory)\n        dirs[:] = sorted(name for name in dirs if name not\
+        \ in blocked and not (parent / name).is_symlink()\n                         and not name.startswith('native-kernel-complete-'))\n\
+        \        for name in sorted(names):\n            if name not in allowed and not re.fullmatch(r'vulnix-[A-Za-z0-9_-]+\\\
+        .json', name):\n                continue\n            path = parent / name\n            fd = os.open(path,\
+        \ os.O_RDONLY | os.O_NOFOLLOW)\n            with os.fdopen(fd, 'rb') as stream:\n            \
+        \    metadata = os.fstat(stream.fileno())\n                assert stat.S_ISREG(metadata.st_mode)\
+        \ and metadata.st_nlink == 1\n                assert metadata.st_uid == os.getuid() and metadata.st_size\
+        \ <= 2 * 1024**2\n                raw = stream.read(2 * 1024**2 + 1)\n            assert len(raw)\
+        \ <= 2 * 1024**2\n            json.loads(raw)\n            total += len(raw)\n            assert\
+        \ total <= 16 * 1024**2 and len(files) < 100\n            target = out / path.relative_to(base)\n\
+        \            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)\n            with target.open('xb')\
+        \ as stream:\n                stream.write(raw)\n            files.append(dict(path=str(path.relative_to(base)),\
+        \ bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()))\nclearance = base / 'assbox-runner-clearance.json'\n\
+        if clearance.is_file() and not clearance.is_symlink():\n    raw = clearance.read_bytes()\n   \
+        \ assert len(raw) <= 16384\n    json.loads(raw)\n    (out / clearance.name).write_bytes(raw)\n\
+        \    files.append(dict(path=clearance.name, bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()))\n\
+        (out / 'index.json').write_text(json.dumps(dict(schema=1, system=system, files=files,\n    images_included=False,\
+        \ credential_files_included=False, full_guest_state_included=False), indent=2) + '\\n')\nprint(json.dumps({'diagnostic_files':len(files),'bytes':total,'images_included':False}))\n\
+        \nASSBOX_REVIEWED_CONTROLLER\n"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      if: always()
       with:
-        name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
-        path: '${{ runner.temp }}/assbox-verification
-
-          ${{ runner.temp }}/assbox/verification/*/summary.json
-
-          ${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json
-
-          ${{ runner.temp }}/assbox/verification/*/canonical-summary.json
-
-          '
-        if-no-files-found: warn
+        name: native-arm-diagnostics-${{ matrix.system }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/assbox-candidate-diagnostics/
+        if-no-files-found: error
         retention-days: 14
