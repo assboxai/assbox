@@ -78,8 +78,13 @@ let
     }
     chain local_ipc {
       type filter hook input priority -150; policy accept;
-      # On ingress the socket lookup identifies the receiving listener. This
-      # permits dynamic provider IPC ports without authorizing root brokers.
+      # Approve TCP only after looking up its receiving listener. During the
+      # handshake, request sockets do not retain the listener's cgroup identity;
+      # remember that approval for subsequent established TCP packets. Outbound
+      # UID policy still checks every packet, so revocation remains effective.
+      # UDP always rechecks the receiver, including after a listener is replaced.
+      iifname "lo" meta mark 0x41534258 meta l4proto tcp ct state established ct mark 0x41534258 accept
+      iifname "lo" meta mark 0x41534258 meta l4proto tcp socket cgroupv2 level 2 "user.slice/user-1000.slice" ct mark set 0x41534258 accept
       iifname "lo" meta mark 0x41534258 socket cgroupv2 level 2 "user.slice/user-1000.slice" accept
       iifname "lo" meta mark 0x41534258 reject
     }

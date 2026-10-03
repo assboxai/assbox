@@ -225,6 +225,10 @@
             inherit module;
             inherit (p) pkgs;
           };
+          execution-loopback-vm = import ./tests/nix/execution-loopback-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
           computer-use-vm = import ./tests/nix/computer-use-vm.nix {
             inherit module;
             inherit (p) pkgs;
