@@ -1,0 +1,151 @@
+{
+  "reviewed_local_date": "2026-10-02",
+  "scope": "Dated upstream Linux capability evidence; not installed Assbox qualification or installer policy.",
+  "rows": [
+    {
+      "id": "CU01",
+      "path": "ChatGPT Desktop (Linux native app)",
+      "browser": "Documented browser actions in the Linux preview.",
+      "desktop": "Other desktop-app control is not yet supported in the reviewed release entry.",
+      "scope": "Native product on its documented Linux distributions; NixOS and exact client/policy still require qualification.",
+      "implementation": "Keep kiosk browser consent separate from local Work/Codex execution. No Xvfb workaround is advertised as enabling native screen control.",
+      "sources": [
+        "S18",
+        "S53"
+      ],
+      "requirements": [
+        "A089",
+        "A112",
+        "A114"
+      ],
+      "reviewed_local_date": "2026-10-02",
+      "assbox_status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "CU02",
+      "path": "Claude Desktop / Cowork (Linux beta)",
+      "browser": "Built-in browser rollout includes Linux beta; account/rollout dependent.",
+      "desktop": "Reviewed native screen-control support lists macOS/Windows, not Linux.",
+      "scope": "Native Desktop browser bridge can be needed even when Cowork runs in the cloud; it must remain open/online.",
+      "implementation": "Qualify private browser state and selected local authority. Do not equate cloud Cowork with a remote browser or import personal cookies automatically.",
+      "sources": [
+        "S56",
+        "S57"
+      ],
+      "requirements": [
+        "A062",
+        "A063",
+        "A068",
+        "A114"
+      ],
+      "reviewed_local_date": "2026-10-02",
+      "assbox_status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "CU03",
+      "path": "Claude Code built-in computer-use feature",
+      "browser": "Separate browser integrations are outside this native screen-control feature.",
+      "desktop": "Not supported on Linux by the reviewed CLI documentation; interactive macOS preview.",
+      "scope": "Native CLI feature, not Claude models used through OpenClaw/Hermes/OMP or another Linux-capable tool.",
+      "implementation": "Do not present a Linux virtual display as enabling this feature. A separately selected harness needs separate authentication, tools and evidence.",
+      "sources": [
+        "S17"
+      ],
+      "requirements": [
+        "A070",
+        "A114"
+      ],
+      "reviewed_local_date": "2026-10-02",
+      "assbox_status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "CU04",
+      "path": "Cursor self-hosted worker",
+      "browser": "Documented with installed Chrome/Chromium.",
+      "desktop": "Documented Linux X11 capture/input; headless TigerVNC/XFCE path.",
+      "scope": "Explicit computer-use opt-in; desktop sharing is separate. Agent loop/tool placement follows the self-hosted contract.",
+      "implementation": "Use pinned cursor-agent, required packages and provider-owned display lifecycle; scrub inherited DISPLAY and qualify viewer/cleanup behavior.",
+      "sources": [
+        "S22",
+        "S40"
+      ],
+      "requirements": [
+        "A069",
+        "A071",
+        "A074",
+        "A114"
+      ],
+      "reviewed_local_date": "2026-10-02",
+      "assbox_status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "CU05",
+      "path": "OpenClaw Gateway",
+      "browser": "Documented managed browser path.",
+      "desktop": "Labs/opt-in Linux managed desktop and separately enabled computer tool.",
+      "scope": "TigerVNC/XFCE with private D-Bus; enabling a Desktop panel is not enabling CUA.",
+      "implementation": "Pin helper dependencies and require separate tool consent. Reject unrelated RFB listener selection; keep human viewing and active tool control distinct.",
+      "sources": [
+        "S23"
+      ],
+      "requirements": [
+        "A068",
+        "A069",
+        "A072",
+        "A075",
+        "A114"
+      ],
+      "reviewed_local_date": "2026-10-02",
+      "assbox_status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "CU06",
+      "path": "Hermes browser / Cua Driver / Bot Screen",
+      "browser": "Documented local and cloud backends; inspect any local sidecar behavior.",
+      "desktop": "Documented Linux X11/Wayland paths with display, AT-SPI and capture prerequisites.",
+      "scope": "Current upstream feature docs; exact Hermes/Cua pin required. Native Wayland is opt-in, with documented capture/XWayland caveats. Bot Screen is provider-owned headless Xfce/TigerVNC.",
+      "implementation": "Prefer a qualified upstream Bot Screen when included in the pin; otherwise qualify the selected existing-display path. Preserve private egress and do not infer same-UID isolation.",
+      "sources": [
+        "S12",
+        "S58",
+        "S59"
+      ],
+      "requirements": [
+        "A039",
+        "A068",
+        "A070",
+        "A071",
+        "A114"
+      ],
+      "reviewed_local_date": "2026-10-02",
+      "assbox_status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "CU07",
+      "path": "OMP v18.1.19 computer prelude / selected Nix build",
+      "browser": "Separate browser prelude is documented; browser runtime/helper still needs its own test.",
+      "desktop": "Versioned docs describe Linux X11 input/capture and conditional Wayland support.",
+      "scope": "Upstream release-binary capture limits differ from the baseline-referenced Nix build enabling wayland-pipewire. Neither establishes compositor/portal success.",
+      "implementation": "Qualify exact compiled features, permissions and capabilities on each display backend. Keep computer use off until selected; no generic Wayland pass from X11 results.",
+      "sources": [
+        "S29",
+        "S33"
+      ],
+      "requirements": [
+        "A068",
+        "A070",
+        "A071",
+        "A114"
+      ],
+      "reviewed_local_date": "2026-10-02",
+      "assbox_status": "not_run",
+      "evidence": null
+    }
+  ]
+}

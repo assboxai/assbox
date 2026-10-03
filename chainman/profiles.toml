@@ -1,0 +1,15 @@
+[profiles.default]
+flake = "nix/dev#default"
+inputs = ["nix/dev/*.nix"]
+allowed_modes = ["host-nix"]
+allowed_platforms = ["Linux"]
+[profiles.formatter]
+flake = "nix/dev#formatter"
+inputs = ["rustfmt.toml", "nix/dev/*.nix"]
+allowed_modes = ["host-nix"]
+allowed_platforms = ["Linux"]
+[profiles.repair]
+flake = "nix/dev#repair"
+inputs = ["nix/dev/*.nix"]
+allowed_modes = ["host-nix"]
+allowed_platforms = ["Linux"]

@@ -1,0 +1,340 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Fixed native schedule and inputless manual recovery share the full release gates.
+# Restrict release-automation to master; independent telemetry observes liveness.
+name: Authenticated dependency releases
+'on':
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch: null
+permissions:
+  contents: read
+concurrency:
+  group: assbox-official-release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: true
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - name: Discover repository history in an isolated read-token step
+      run: python3 scripts/release.py discover "$RUNNER_TEMP/assbox-discovery.json"
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - name: Resolve from the authenticated history head without API credentials
+      run: 'set -euo pipefail
+
+        test -f flake.lock
+
+        nix develop .#release-check --no-update-lock-file --no-write-lock-file --command python3 scripts/release.py prepare "$RUNNER_TEMP/assbox-plan"
+        "$RUNNER_TEMP/assbox-discovery.json"'
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-plan
+        path: ${{ runner.temp }}/assbox-plan/plan.json
+        if-no-files-found: error
+        retention-days: 14
+  probe:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: antigravity
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: chatgpt
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: claude-code
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: claude-desktop
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: codex
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: cursor
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: grok
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: openclaw
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: opencode
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: happier
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: hermes
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: pi
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+          application: omp
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: antigravity
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: chatgpt
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: claude-code
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: claude-desktop
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: codex
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: cursor
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: grok
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: openclaw
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: opencode
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: happier
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: hermes
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: pi
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+          application: omp
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: release-plan
+        path: ${{ runner.temp }}/assbox-release/plan
+    - name: Test one advancing application with current OS dependencies
+      run: nix develop .#release-check --no-update-lock-file --no-write-lock-file --command python3 scripts/release.py probe "$RUNNER_TEMP/assbox-release/plan/plan.json"
+        "$APPLICATION" "$SYSTEM" "$RUNNER_TEMP/assbox-probe/probe-$APPLICATION-$SYSTEM.json"
+      env:
+        APPLICATION: ${{ matrix.application }}
+        SYSTEM: ${{ matrix.system }}
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: probe-${{ matrix.application }}-${{ matrix.system }}
+        path: ${{ runner.temp }}/assbox-probe/
+        if-no-files-found: error
+        retention-days: 14
+  select:
+    needs: probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      publish: ${{ steps.finalize.outputs.publish }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: true
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: release-plan
+        path: ${{ runner.temp }}/assbox-release/plan
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        pattern: probe-*
+        path: ${{ runner.temp }}/assbox-release/reports
+    - name: Compose exact tested pins and frozen source payload
+      run: nix develop .#release-check --no-update-lock-file --no-write-lock-file --command python3 scripts/release.py finalize "$RUNNER_TEMP/assbox-release/plan/plan.json"
+        "$RUNNER_TEMP/assbox-release/reports" "$RUNNER_TEMP/assbox-release/assets"
+      id: finalize
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-assets
+        path: ${{ runner.temp }}/assbox-release/assets/
+        if-no-files-found: error
+        retention-days: 14
+  native:
+    needs: select
+    if: needs.select.outputs.publish == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: release-assets
+        path: ${{ runner.temp }}/assbox-release/assets
+    - name: Run the complete release gate for the final dependency combination
+      run: nix develop .#release-check --no-update-lock-file --no-write-lock-file --command python3 scripts/release.py native "$RUNNER_TEMP/assbox-release/assets"
+        "$SYSTEM" "$RUNNER_TEMP/assbox-native/native-$SYSTEM.json"
+      env:
+        SYSTEM: ${{ matrix.system }}
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: native-${{ matrix.system }}
+        path: ${{ runner.temp }}/assbox-native/
+        if-no-files-found: error
+        retention-days: 14
+  publish:
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release-automation
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
+      release_id: ${{ steps.publish.outputs.release_id }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: release-assets
+        path: ${{ runner.temp }}/assbox-release/assets
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        pattern: native-*
+        path: ${{ runner.temp }}/assbox-release/reports
+    - name: Validate artifact bytes and native evidence without executing candidate code
+      run: python3 scripts/release.py attest-ready "$RUNNER_TEMP/assbox-release/assets" "$RUNNER_TEMP/assbox-release/reports"
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+      id: attest
+      with:
+        subject-path: ${{ runner.temp }}/assbox-release/assets/release.json
+    - name: Attach the public provenance bundle
+      run: cp -- "$BUNDLE" "$RUNNER_TEMP/assbox-release/assets/release.sigstore.json"
+      env:
+        BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+    - name: Publish immutable assets without advertising latest
+      run: python3 scripts/release.py publish "$RUNNER_TEMP/assbox-release/assets" "$RUNNER_TEMP/assbox-release/reports"
+      id: publish
+      env:
+        GH_TOKEN: ${{ github.token }}
+  live-verify:
+    needs: publish
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - name: Verify with bootstrap then authenticated candidate, both tokenless
+      run: >-
+        python3 scripts/release.py live-verify "$RELEASE_TAG" "$SYSTEM"
+        "/var/lib/assbox-public-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$SYSTEM"
+      env:
+        RELEASE_TAG: ${{ needs.publish.outputs.tag }}
+        SYSTEM: ${{ matrix.system }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+  advertise:
+    needs:
+    - publish
+    - live-verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release-automation
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - name: Advance only the human-facing latest discovery hint
+      run: python3 scripts/release.py promote "$RELEASE_TAG" "$RELEASE_ID"
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ needs.publish.outputs.tag }}
+        RELEASE_ID: ${{ needs.publish.outputs.release_id }}

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "kind": "synthetic-candidate-snapshot-test-vector",
+  "not_runtime_evidence": true,
+  "files": [
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "content_base64": "VG95IHNvdXJjZSBpZGVudGl0eSBmaXh0dXJlLgo="
+    },
+    {
+      "path": "a.b",
+      "mode": "100644",
+      "content_base64": "ZmlsZSBiZWZvcmUgZGlyZWN0b3J5IGluIEdpdCBvcmRlcgo="
+    },
+    {
+      "path": "a/nested.txt",
+      "mode": "100644",
+      "content_base64": "bmVzdGVkAGJ5dGVzCg=="
+    },
+    {
+      "path": "docs/café.md",
+      "mode": "100644",
+      "content_base64": "VVRGLTggZml4dHVyZQo="
+    },
+    {
+      "path": "scripts/check",
+      "mode": "100755",
+      "content_base64": "IyEvYmluL3NoCmV4aXQgMAo="
+    }
+  ],
+  "expected_identity": {
+    "schema": 1,
+    "kind": "candidate-snapshot-identity",
+    "protocol": "assbox-candidate-snapshot-v1",
+    "policy_sha256": "1b378e9d1e643946a35636e431c53472d8ea9476125267c43936a2216cb6ad45",
+    "source_content_sha256": "593281642cb7b9d0ab5f0b431118e9c75d66cbb63c006bfb682423f563da7b80",
+    "git_tree_oid": "2e430cf4dbf3f79f6ea8093dfb03b3fa144342b5",
+    "synthetic_commit_oid": "1d9af806e9cdfcecd2f0381d29befda6b8195190",
+    "git_object_format": "sha1",
+    "parents": [],
+    "publishable": false
+  },
+  "expected_raw_commit_base64": "dHJlZSAyZTQzMGNmNGRiZjNmNzlmNmVhODA5M2RmYjAzYjNmYTE0NDM0MmI1CmF1dGhvciBBc3Nib3ggQ2FuZGlkYXRlIDxjYW5kaWRhdGVAYXNzYm94LmludmFsaWQ+IDk0NjY4NDgwMCArMDAwMApjb21taXR0ZXIgQXNzYm94IENhbmRpZGF0ZSA8Y2FuZGlkYXRlQGFzc2JveC5pbnZhbGlkPiA5NDY2ODQ4MDAgKzAwMDAKCkFzc2JveCB2ZXJpZmljYXRpb24gc25hcHNob3QgdjEK"
+}

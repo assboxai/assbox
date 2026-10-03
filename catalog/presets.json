@@ -1,0 +1,191 @@
+[
+  {
+    "id": "assistant-hermes",
+    "purpose": "assistant",
+    "revision": 1,
+    "components": [
+      "antigravity-cli",
+      "claude-code",
+      "codex",
+      "cursor-agent",
+      "grok",
+      "hermes",
+      "hermes-gateway",
+      "omp",
+      "opencode",
+      "pi"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "assistant-openclaw",
+    "purpose": "assistant",
+    "revision": 1,
+    "components": [
+      "antigravity-cli",
+      "claude-code",
+      "codex",
+      "cursor-agent",
+      "grok",
+      "omp",
+      "openclaw",
+      "openclaw-gateway",
+      "opencode",
+      "pi"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "coder-antigravity",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "antigravity-cli",
+      "antigravity-remote"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "coder-claude-native",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "claude-code",
+      "claude-code-remote"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "coder-claude-ssh",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "claude-code"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": true,
+    "webApps": []
+  },
+  {
+    "id": "coder-codex-ssh",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "codex"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": true,
+    "webApps": []
+  },
+  {
+    "id": "coder-cursor",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "cursor-agent",
+      "cursor-worker"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "coder-happier",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "antigravity-cli",
+      "claude-code",
+      "codex",
+      "cursor-agent",
+      "grok",
+      "happier",
+      "happier-daemon",
+      "omp",
+      "opencode",
+      "pi"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "coder-opencode",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "opencode",
+      "opencode-server"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "coder-ssh",
+    "purpose": "coder",
+    "revision": 1,
+    "components": [
+      "codex"
+    ],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": true,
+    "webApps": []
+  },
+  {
+    "id": "custom",
+    "purpose": "custom",
+    "revision": 1,
+    "components": [],
+    "presentation": "headless",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "kiosk-native",
+    "purpose": "kiosk",
+    "revision": 1,
+    "components": [
+      "chatgpt-desktop",
+      "claude-desktop"
+    ],
+    "presentation": "x11",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": []
+  },
+  {
+    "id": "kiosk-web",
+    "purpose": "kiosk",
+    "revision": 1,
+    "components": [
+      "chromium"
+    ],
+    "presentation": "x11",
+    "tailscale": true,
+    "workloadSsh": false,
+    "webApps": [
+      "chatgpt",
+      "claude"
+    ]
+  }
+]

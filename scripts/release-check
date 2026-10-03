@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+if [[ $# == 2 && "$1" == --candidate ]]; then
+  # release.py has compared every candidate byte/mode with frozen master, allowing
+  # only the lock and generated release context to differ. No Git commit is made.
+  [[ "$2" == /* && -d "$2" && -f "$2/release-context.json" ]] || exit 1
+  cd "$2"
+elif [[ $# == 2 && "$1" == --bootstrap ]]; then
+  # bootstrap.py has validated the exact frozen master source and candidate lock.
+  [[ "$2" == /* && -d "$2" && -f "$2/flake.lock" && ! -e "$2/release-context.json" ]] || exit 1
+  cd "$2"
+elif [[ $# == 0 ]]; then
+  cd "$root"
+  [[ -z $(git status --porcelain) ]] || { echo "Release checks require clean committed core." >&2; exit 1; }
+else
+  echo "Usage: scripts/release-check [--candidate|--bootstrap /absolute/source]" >&2; exit 1
+fi
+python3 scripts/release.py check-lock .
+architecture=$(nix eval --impure --raw --expr builtins.currentSystem)
+check_names=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#checks.$architecture" --apply builtins.attrNames)
+family_checks_text=$(python3 -c 'import sys; sys.path.insert(0, "scripts"); from component_families import FAMILIES; print("\n".join("application-" + family + "-vm" for family in FAMILIES))')
+mapfile -t family_checks <<< "$family_checks_text"
+for required in "${family_checks[@]}" worker-tools worker-policy worker-artifact worker-boot-gate-vm worker-sshd-policy-vm worker-network-vm worker-lifecycle-vm remote-lifecycle-vm editor-vm desktop-services-vm computer-use-vm radio-policy-vm access-lan-vm access-tailscale-vm install-boot-vm activation-recovery-vm authenticated-release-vm application-chatgpt-vm application-opencode-vm application-openclaw-vm; do
+  if ! jq -e --arg required "$required" 'index($required) != null' <<< "$check_names" >/dev/null; then
+    echo "Release promotion blocked: checks.$architecture.$required must be implemented and pass." >&2
+    echo "Plan-only storage and fixture tests do not replace full installation, activation, application or authenticated-release acceptance." >&2
+    exit 1
+  fi
+done
+scripts/verify
+mkdir -p reports
+cargo llvm-cov --package assbox-domain --package assbox-policy --package assbox-config \
+  --all-targets --locked --fail-under-lines 90 --json --output-path reports/core-coverage.json
+cargo audit --file Cargo.lock
+mapfile -t systems < <(nix eval --json --no-update-lock-file --no-write-lock-file .#nixosConfigurations --apply builtins.attrNames | jq -r --arg prefix "$architecture-" '.[] | select(startswith($prefix))')
+((${#systems[@]} > 0))
+for system in "${systems[@]}"; do
+  path=$(nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file ".#nixosConfigurations.$system.config.system.build.toplevel")
+  # Held application pins must pass the same scan. No fallback skips a finding.
+  vulnix "$path" --json > "reports/vulnix-$system.json"
+  worker_enabled=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#nixosConfigurations.$system.config.assbox.worker.enable")
+  if [[ "$worker_enabled" == true ]]; then
+    worker_audit=$(nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file ".#nixosConfigurations.$system.config.system.build.assboxWorkerAudit")
+    vulnix "$worker_audit" --json > "reports/vulnix-$system-worker.json"
+  elif [[ "$worker_enabled" != false ]]; then
+    echo "Invalid worker audit selection for $system" >&2; exit 1
+  fi
+done
+# The runtime artifact intentionally has no guest closure references. Scan the
+# independently evaluated guest closure even when the host matrix has no worker.
+audit_expr='let f = builtins.getFlake (toString ./.); s = f.inputs.nixpkgs.lib.nixosSystem { system = builtins.currentSystem; modules = [ f.nixosModules.default ./tests/nix/fixture.nix { assbox.updates.enable = false; assbox.worker = { enable = true; components = [ "codex" ]; egress = "offline"; nameservers = [ ]; }; } ]; }; in s.config.system.build.assboxWorkerAudit'
+guest_audit=$(nix build --impure --no-link --print-out-paths --no-update-lock-file --no-write-lock-file --expr "$audit_expr")
+vulnix "$guest_audit" --json > reports/vulnix-worker-codex.json
+if [[ $# == 0 ]]; then
+  [[ -z $(git status --porcelain) ]] || { echo "Verification changed tracked source; do not publish." >&2; exit 1; }
+fi

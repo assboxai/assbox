@@ -1,0 +1,17 @@
+/target/
+/result
+/result-*
+/reports/
+/.direnv/
+__pycache__/
+*.pyc
+
+# Monitor deployment state and secrets are never source.
+**/.wrangler/
+**/.dev.vars
+**/.dev.vars.*
+**/node_modules/
+*.pem
+
+/.chainman/
+/.cache/toolchain/

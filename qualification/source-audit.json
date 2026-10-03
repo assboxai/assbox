@@ -1,0 +1,2413 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-02T15:07:43.638784+00:00",
+  "reviewedSourceCommit": "680c779e42023f44b1304588db765822ce110279",
+  "lockSha256": "cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86",
+  "scope": "Source candidate audit of all 23 work packages and 116 acceptance requirements. Full testing is deferred at owner request.",
+  "disposition": "candidate_with_explicit_qualification_holds",
+  "meaning": "Source traceability and implementation intent only. References and a covered row are not evidence that runtime behavior passed. No acceptance result was changed.",
+  "sourceFindingsResolved": [
+    "Configured Happier/Hermes state homes were missing from checkpoints.",
+    "Direct Codex relay could compete with Happier daemon without coexistence qualification.",
+    "Claude autostart had an unguarded duplicate editor launcher.",
+    "Web-kiosk/GUI lifecycle, resource limits and managed browser checkpoints were incomplete.",
+    "Plan-only VM input and acceptance prose retained obsolete installer/native/desktop assumptions.",
+    "Raw Nix Hermes public-origin validation diverged from guided validation."
+  ],
+  "remainingSourceOmissionsIdentified": [],
+  "mechanisms": {
+    "baseline": {
+      "behavior": "The exported 244-file baseline and provenance are recorded; source changes preserve the original tree rather than replacing it.",
+      "source": [
+        "docs/implementation-status.md",
+        "docs/decisions/0001-product-contract.md",
+        "qualification/candidate-checks.json"
+      ],
+      "qualificationPaths": [
+        "qualification/acceptance.json"
+      ],
+      "remaining": "A release must bind its own source/lock; this audit is not a published release."
+    },
+    "identity": {
+      "behavior": "Canonical Ed25519 keys are bounded, structurally parsed, noninteractively checked as a complete set before provisioning side effects; damaged persistent identity is refused.",
+      "source": [
+        "scripts/worker/worker.py",
+        "modules/worker/identities.nix"
+      ],
+      "qualificationPaths": [
+        "tests/worker/test_identity_continuity.py",
+        "tests/worker/test_controller_contract.py",
+        "tests/nix/worker-lifecycle-vm.nix"
+      ],
+      "remaining": "Real disk, permission and VM fault qualification is deferred."
+    },
+    "storage": {
+      "behavior": "Sparse home and disposable-root behavior, exact private disk modes, create-only metadata, seed permissions and QEMU read/write error stops are retained.",
+      "source": [
+        "scripts/worker/worker.py",
+        "modules/worker/default.nix",
+        "modules/worker/guest.nix"
+      ],
+      "qualificationPaths": [
+        "tests/worker/test_seed_permissions.py",
+        "tests/worker/test_sparse_storage.py",
+        "tests/worker/test_state_lifecycle.py",
+        "tests/nix/worker-artifact.nix"
+      ],
+      "remaining": "Native ISO, actual sparse allocation and QEMU fault qualification remains unrun."
+    },
+    "ssh-worker": {
+      "behavior": "Dedicated controller/health OpenSSH configuration and accumulated-setting checks protect the managed worker alias; ordinary owner SSH configuration is not universally audited.",
+      "source": [
+        "scripts/worker/worker.py",
+        "modules/worker/default.nix",
+        "modules/worker/guest.nix"
+      ],
+      "qualificationPaths": [
+        "tests/worker/native-ssh-policy.py",
+        "tests/worker/native-sshd-policy.py",
+        "tests/nix/worker-sshd-policy-vm.nix"
+      ],
+      "remaining": "Real client channels and Desktop helper invocation require route-specific evidence."
+    },
+    "presets": {
+      "behavior": "Four purposes and 13 data presets resolve once to frozen ordinary settings, explicit exclusions, dependencies and placement; eight-agent suggestions do not become runtime subscriptions.",
+      "source": [
+        "catalog/presets.json",
+        "crates/functional-core/assbox-domain/src/instances.rs",
+        "crates/functional-core/assbox-policy/src/instances.rs",
+        "crates/functional-core/assbox-config/src/instances.rs",
+        "modules/instances.nix"
+      ],
+      "qualificationPaths": [
+        "crates/functional-core/assbox-policy/src/instances.rs",
+        "crates/functional-core/assbox-domain/tests/catalog.rs",
+        "tests/tooling/test_component_catalog.py"
+      ],
+      "remaining": "Installation and later update behavior still require real system qualification."
+    },
+    "selection": {
+      "behavior": "The shared purpose-first selection routine handles explicit dependency/authority consent, independent removals, nested Back, cancellation and per-app native status without authentication or activation.",
+      "source": [
+        "crates/imperative-shell/assbox-cli/src/wizard.rs",
+        "crates/imperative-shell/assbox-cli/src/user.rs"
+      ],
+      "qualificationPaths": [
+        "crates/imperative-shell/assbox-cli/src/wizard/selection_tests.rs",
+        "tests/fixtures/selection_transcripts.txt",
+        "tests/nix/policy-vm.nix"
+      ],
+      "remaining": "29 scripted scenarios pass; the real PTY/installer/system fixture is deferred."
+    },
+    "configure": {
+      "behavior": "Configure previews a bounded settings diff, evaluates effective overrides, preserves local.nix and worker resources, builds/admit before publication and refuses routine persistent topology conversion.",
+      "source": [
+        "crates/imperative-shell/assbox-engine/src/manage.rs",
+        "crates/functional-core/assbox-config/src/settings_diff.rs",
+        "crates/functional-core/assbox-config/src/worker.rs",
+        "crates/functional-core/assbox-policy/src/worker.rs"
+      ],
+      "qualificationPaths": [
+        "crates/imperative-shell/assbox-engine/tests/rendered_settings.rs",
+        "tests/nix/management-vm.nix",
+        "tests/nix/activation-recovery-vm.nix"
+      ],
+      "remaining": "Build/activation failure injection and real local override qualification are deferred."
+    },
+    "installer": {
+      "behavior": "Prepared storage, disk identity, explicit pre-write authorization, release authentication, power/boot contracts and worker image admission remain authoritative around the new selection flow.",
+      "source": [
+        "crates/imperative-shell/assbox-engine/src/install.rs",
+        "crates/imperative-shell/assbox-cli/src/wizard.rs",
+        "crates/functional-core/assbox-policy/src/lib.rs",
+        "crates/imperative-shell/assbox-engine/src/boot_guard.rs"
+      ],
+      "qualificationPaths": [
+        "tests/nix/install-boot-vm.nix",
+        "tests/nix/activation-recovery-vm.nix",
+        "tests/nix/policy-vm.nix"
+      ],
+      "remaining": "No real installation, destructive disk action or hardware preflight was run."
+    },
+    "catalog": {
+      "behavior": "Retired IDs fail actionably, raw selections stay opt-in, nano/tmux remain base, exact commands and independently removable component metadata are generated from one catalog.",
+      "source": [
+        "catalog/components.json",
+        "scripts/component_catalog.py",
+        "scripts/component_families.py",
+        "modules/components.nix",
+        "modules/base.nix",
+        "crates/functional-core/assbox-domain/src/component_ids.rs"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "tests/tooling/test_contracts.py",
+        "tests/nix/component-closure.nix"
+      ],
+      "remaining": "Actual all-curated command resolution and closure builds remain unrun."
+    },
+    "packages": {
+      "behavior": "Happier artifacts and Hermes/Pi/OMP recipes are independently held/pinned; Hermes optional voice/model dependencies are pruned, Grok aliases contained and managed vendor installers/updaters guarded.",
+      "source": [
+        "flake.nix",
+        "flake.lock",
+        "nix/happier.nix",
+        "nix/happier-source.json",
+        "nix/hermes.nix",
+        "nix/managed-cli.nix",
+        "modules/components.nix"
+      ],
+      "qualificationPaths": [
+        "tests/nix/component-family-vm.nix",
+        "tests/nix/component-closure.nix",
+        "tests/tooling/test_release_lock.py"
+      ],
+      "remaining": "Both architectures, old CPU instructions, helper identity and offline activation need actual build/runtime evidence."
+    },
+    "native-package": {
+      "behavior": "Selected native clients use guarded public commands/desktop entries and guarded autostart; normal portal/keyring prerequisites are independent of Code/Cowork qualification.",
+      "source": [
+        "nix/native-client.nix",
+        "modules/components.nix",
+        "modules/applications.nix",
+        "modules/presentation.nix"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "tests/tooling/test_application_launchers.py",
+        "tests/nix/desktop-services-vm.nix",
+        "tests/nix/application-vm.nix"
+      ],
+      "remaining": "No native/account enforcement contract ships qualified; opaque/client-managed helpers need exact-build review."
+    },
+    "egress": {
+      "behavior": "Standalone execution-UID IPv4/IPv6 rules run after destination translation, allow inbound reply direction, deny private/local brokers by default, scope DNS/receiving-socket IPC and revoke execution when rules stop.",
+      "source": [
+        "modules/network-policy.nix",
+        "modules/access.nix",
+        "modules/worker/default.nix",
+        "crates/functional-core/assbox-domain/src/access.rs"
+      ],
+      "qualificationPaths": [
+        "tests/nix/access-vm.nix",
+        "tests/nix/worker-network-vm.nix",
+        "tests/nix/worker-policy.nix"
+      ],
+      "remaining": "Real IPv6/NAT/overlay, namespaces, DNS/proxies, receiver cgroups, reload and failure behavior is deferred; no internet-exfiltration or hostile-root claim."
+    },
+    "tailscale": {
+      "behavior": "Guided Tailscale support is optional and unenrolled; authority stays root-only, route acceptance/Tailscale SSH are off, and deselection omits the Serve backend package and timer.",
+      "source": [
+        "modules/access.nix",
+        "modules/serve.nix",
+        "crates/imperative-shell/assbox-cli/src/wizard.rs"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "tests/nix/access-vm.nix"
+      ],
+      "remaining": "Real enrollment/grants/overlay access is an owner qualification step; simulated tailscale0 is not an authenticated overlay pass."
+    },
+    "serve": {
+      "behavior": "Only explicit selected dashboard paths are reconciled against a durable root-owned ownership journal; retirement withdraws owned routes before stopping a backend and preserves foreign mappings.",
+      "source": [
+        "modules/serve.nix",
+        "scripts/access/serve.py",
+        "scripts/access/service.py",
+        "modules/service-control.nix"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_serve.py",
+        "tests/nix/access-vm.nix",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Real Serve enrollment, HTTPS/native auth, forged headers, revocation and ownership recovery require owner-run evidence."
+    },
+    "lifecycle": {
+      "behavior": "Nix declares one foreground provider supervisor with runtime/config/permission-bound setup markers, private bounded diagnostics, durable disable, bounded backoff and permanent-refusal stops.",
+      "source": [
+        "modules/remotes.nix",
+        "modules/applications.nix",
+        "modules/diagnostics/remote.sh",
+        "modules/service-control.nix",
+        "scripts/access/service.py",
+        "crates/imperative-shell/assbox-cli/src/user.rs",
+        "crates/imperative-shell/assbox-system/src/services.rs"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_remote_lifecycle.py",
+        "tests/tooling/test_remote_diagnostics.py",
+        "tests/nix/remote-lifecycle-vm.nix"
+      ],
+      "remaining": "Harmless substitute programs do not qualify actual provider auth, daemon behavior, task recovery or paid inference."
+    },
+    "happier": {
+      "behavior": "The declared start-sync supervisor, scoped home/relay/E2EE environment and exact selected agent executable paths are checked against the pinned upstream dry-run/path oracle; URL auth is the integrated setup route.",
+      "source": [
+        "modules/remotes.nix",
+        "scripts/providers/happier_contract.py",
+        "nix/happier.nix",
+        "docs/applications.md"
+      ],
+      "qualificationPaths": [
+        "tests/nix/component-family-vm.nix",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Real E2EE, auth/scope, adapters, expiry/revocation, approval/cancel/resume and pairing effects remain unrun. SSH pair-remote is a trusted-client procedure requiring side-effect qualification, not an enabled Assbox onboarding path; Pi/OMP built-in adapters are not asserted."
+    },
+    "openclaw": {
+      "behavior": "OpenClaw keeps its upstream gateway/onboard/node interfaces, loopback UI and private dashboard profile; agent/plugin authority and selected dependencies stay in the execution domain.",
+      "source": [
+        "modules/applications.nix",
+        "modules/remotes.nix",
+        "crates/imperative-shell/assbox-cli/src/user.rs",
+        "docs/applications.md"
+      ],
+      "qualificationPaths": [
+        "tests/nix/application-vm.nix",
+        "tests/nix/remote-lifecycle-vm.nix",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Channel allowlists, selected ACP/plugin provisioning, tool policy and actual delegation must be established with upstream configuration and authenticated tasks; no universal Assbox adapter is invented."
+    },
+    "hermes": {
+      "behavior": "Hermes CLI/gateway/dashboard share the pinned family, explicit persistent service home and lazy-install deny; dashboard uses loopback binding plus an exact non-loopback HTTPS origin or separately consented tunnel-only profile.",
+      "source": [
+        "nix/hermes.nix",
+        "modules/remotes.nix",
+        "modules/serve.nix",
+        "crates/functional-core/assbox-domain/src/instances.rs"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "tests/nix/component-family-vm.nix",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Gateway allowlists, dashboard fail-closed auth, cookies/origins/WebSocket/PTY and upstream delegation need exact-release authenticated tests. URL syntax is not an auth pass."
+    },
+    "native-routes": {
+      "behavior": "Claude relay, Cursor worker, OpenClaw node, OpenCode and VS Code tunnel keep distinct lifecycles, consent and credentials; Antigravity/direct Codex require reviewed immutable foreground argv or remain staged.",
+      "source": [
+        "modules/remotes.nix",
+        "modules/applications.nix",
+        "crates/imperative-shell/assbox-cli/src/user.rs",
+        "catalog/presets.json",
+        "docs/product/coder-options.md"
+      ],
+      "qualificationPaths": [
+        "tests/nix/component-family-vm.nix",
+        "tests/nix/remote-lifecycle-vm.nix",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Provider-specific client/auth/runtime tests remain unrun. Direct relay stays experimental and active coexistence with Happier is rejected; ordinary SSH launches no Assbox Codex daemon."
+    },
+    "opencode": {
+      "behavior": "OpenCode uses a private execution-owned credential loader for its loopback server and explicit frontend; private exposure is separately selected.",
+      "source": [
+        "crates/imperative-shell/assbox-cli/src/opencode.rs",
+        "modules/applications.nix",
+        "modules/serve.nix"
+      ],
+      "qualificationPaths": [
+        "tests/nix/application-vm.nix",
+        "tests/tooling/test_application_launchers.py"
+      ],
+      "remaining": "Authenticated remote browser behavior and actual exposure require qualification."
+    },
+    "native-policy": {
+      "behavior": "Immutable exact client/platform/account contracts, complete independent surface inventories, bounded root probes and boot/monotonic freshness authorize a supervised native client; absence/conflict/staleness keeps only the affected app inactive.",
+      "source": [
+        "modules/controller.nix",
+        "scripts/native/policy.py",
+        "nix/native-client.nix",
+        "modules/applications.nix",
+        "crates/functional-core/assbox-policy/src/instances.rs"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_native_policy.py",
+        "tests/tooling/test_component_catalog.py",
+        "tests/fixtures/selection_transcripts.txt",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Native probes must actually establish all selected account/helper/policy surfaces. Synthetic receipts cannot qualify enforcement, safe login, Work/cloud transitions, no fallback, preview/plugins or Linux mobile hosting."
+    },
+    "cowork": {
+      "behavior": "Cloud task authority is an explicit native feature; eligible local Cowork requires its own exact provider-VM contract, current entitlement/isolation probe and conditional helper closure without automatic device groups.",
+      "source": [
+        "modules/controller.nix",
+        "scripts/native/policy.py",
+        "docs/product/architecture.md",
+        "docs/product/lifecycle.md"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_native_policy.py",
+        "tests/tooling/test_component_catalog.py",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Post-6-October rollout/topology is observed per account/build; local device/share/storage/resource qualification is conditional and unrun. No pre-transition migration or Code-SSH equivalence is asserted."
+    },
+    "presentation": {
+      "behavior": "X11/Openbox and optional Wayland retain portals, keyring and autologin/session recovery; explicit protected native Code selects a worker, not controller-local arbitrary execution.",
+      "source": [
+        "modules/presentation.nix",
+        "modules/sessions/x11.sh",
+        "modules/sessions/wayland.sh",
+        "modules/controller.nix"
+      ],
+      "qualificationPaths": [
+        "tests/nix/desktop-services-vm.nix",
+        "tests/tooling/test_x11_session.py",
+        "tests/tooling/test_wayland_session.py"
+      ],
+      "remaining": "Real native windows, keyring lock/reboot, GUI coexistence, crash and physical device qualification are deferred."
+    },
+    "web-kiosk": {
+      "behavior": "Explicit web kiosks have separate protected browser profiles/policies, durable Chromium service control, resource limits and checkpoint quiescence; they are not implicit native fallbacks.",
+      "source": [
+        "modules/kiosk-web.nix",
+        "modules/resources.nix",
+        "modules/service-control.nix",
+        "modules/state.nix",
+        "crates/imperative-shell/assbox-cli/src/wizard.rs"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "tests/fixtures/selection_transcripts.txt"
+      ],
+      "remaining": "Real browser policy and native-product feature equivalence is not claimed; graphical provider login and network behavior require their own tests."
+    },
+    "computer-use": {
+      "behavior": "Opt-in resources omit desktop closure by default, scrub physical state, serialize leases, manage private Xauthority/D-Bus and provide ephemeral sandboxed Chromium with loopback debugging under bounded user scopes.",
+      "source": [
+        "modules/computer-use.nix",
+        "scripts/computer-use/desktop.py",
+        "modules/remotes.nix"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_computer_use.py",
+        "tests/nix/computer-use-vm.nix",
+        "tests/fixtures/computer_resource.py"
+      ],
+      "remaining": "The substrate VM is wired but unrun. Cursor provider-managed and Hermes/OMP existing-display tool paths, cleanup and collision behavior need exact-provider tests. Optional viewing remains an upstream private authenticated feature requiring separate qualification; no viewer or broad listener is provisioned by default."
+    },
+    "resources": {
+      "behavior": "Managed native, provider, web-kiosk and autostart GUI services account and bound memory/CPU; manual computer-use scopes and background Nix/zram policy have separate limits.",
+      "source": [
+        "modules/resources.nix",
+        "modules/computer-use.nix",
+        "modules/worker/default.nix"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "tests/nix/resources-vm.nix",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Pressure/peak memory, old CPU, provider VM and real hardware behavior are unmeasured; limits are not reservations or guaranteed minimums."
+    },
+    "state": {
+      "behavior": "Root-private bounded checkpoints quiesce declared services, include configured Happier/Hermes homes and managed browser profiles; explicit local restore checks identity/integrity and leaves a recovery journal and execution stopped.",
+      "source": [
+        "modules/state.nix",
+        "scripts/state/snapshot.py",
+        "modules/worker/guest.nix",
+        "docs/resources.md"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Provider DB migration, restore, rollback and power-loss tests remain unrun. Direct sessions need owner quiescence; links and custom editor/project paths need explicit export/selection; no cross-instance credential migration."
+    },
+    "maintenance": {
+      "behavior": "Existing authenticated staging, journal recovery, boot receipt compatibility, bounded scheduling/retry/power/grace and conservative retention are preserved; liveness is local and non-billable.",
+      "source": [
+        "modules/maintenance.nix",
+        "crates/imperative-shell/assbox-engine/src/manage.rs",
+        "crates/imperative-shell/assbox-engine/src/acceptance.rs",
+        "modules/worker/default.nix"
+      ],
+      "qualificationPaths": [
+        "tests/nix/management-vm.nix",
+        "tests/nix/activation-recovery-vm.nix",
+        "tests/tooling/test_maintenance_lifecycle.py"
+      ],
+      "remaining": "No provider recovery/replay semantics or database rollback is inferred from OS lifecycle; actual outage and pressure tests remain deferred."
+    },
+    "release": {
+      "behavior": "New held families participate in graph composition, both-architecture checks, immutable source/lock authentication and existing numeric publication authority; coverage/security/system gates are retained.",
+      "source": [
+        "scripts/release.py",
+        "scripts/release_data.py",
+        "scripts/release-check",
+        "scripts/component_families.py",
+        ".github/workflows/release.yml",
+        "release/policy.json"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_release_lock.py",
+        "tests/tooling/test_release_data.py",
+        "tests/tooling/test_authenticated_release.py",
+        "tests/nix/authenticated-release-vm.nix"
+      ],
+      "remaining": "No release promotion/publication was performed. Build/security gates and owner-authenticated feature results are distinct; no unrun feature is promoted to qualified."
+    },
+    "documentation": {
+      "behavior": "One product contract, generated catalog/preset tables, scoped operational examples and separate execution/credential/graphical authority guides replace contradictory global assumptions.",
+      "source": [
+        "README.md",
+        "docs/product/index.md",
+        "docs/decisions/0001-product-contract.md",
+        "scripts/product_docs.py",
+        "docs/applications.md",
+        "docs/parallels.md",
+        "docs/resources.md"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_documentation.py",
+        "tests/tooling/test_contracts.py"
+      ],
+      "remaining": "Provider facts stay dated and external owner responsibilities remain explicit; source documents do not attest to actual deployments."
+    },
+    "evidence": {
+      "behavior": "Dated Linux computer-use rows distinguish native product/harness/auth/build scope and upstream evidence from exact Assbox result; Mac, mobile-through-Mac, Linux worker and experimental relay remain separate.",
+      "source": [
+        "qualification/linux-computer-use.json",
+        "qualification/acceptance.json",
+        "docs/product/linux-computer-use-support.md",
+        "docs/product/coder-options.md",
+        "scripts/product_docs.py"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_documentation.py",
+        "qualification/README.md"
+      ],
+      "remaining": "All 116 release requirements remain not_run with null evidence. Evidence updates never change resolver rules or installed selection."
+    },
+    "external-coder": {
+      "behavior": "Minimal external Desktop SSH presets select standalone guest tools/workload SSH, exact login-shell runtime and deliberate access; macOS/hypervisor sharing and availability remain owner responsibilities.",
+      "source": [
+        "catalog/presets.json",
+        "modules/access.nix",
+        "modules/base.nix",
+        "crates/functional-core/assbox-config/src/lib.rs",
+        "docs/parallels.md",
+        "docs/product/coder-options.md"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_component_catalog.py",
+        "tests/worker/native-ssh-policy.py",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Real Mac/Desktop app-server lifetime/channels, guest auth/egress, host sharing, matching CPU, Claude helper and both Tailscale variants remain unrun. Generic SSH tests are not a Desktop pass."
+    },
+    "external-fixture": {
+      "behavior": "Source-bound owner-run host/guest canaries and non-idempotent counters detect selected-path fallback/replay across initial/disconnected/reconnected tasks without automating Desktop or network control.",
+      "source": [
+        "tests/fixtures/external_coder.py",
+        "docs/external-coder-fixture.md"
+      ],
+      "qualificationPaths": [
+        "tests/tooling/test_external_coder.py",
+        "qualification/acceptance.json"
+      ],
+      "remaining": "Temporary-directory self-checks pass; actual native route/mobile/handoff tests remain unrun. The fixture explicitly reports routeQualification not_established even when its observed canary sequence passes."
+    },
+    "qualification": {
+      "behavior": "The complete work/acceptance ledgers and wired release/native/system fixtures preserve the full testing handoff; commands and scoped lightweight results are recorded independently.",
+      "source": [
+        "qualification/work-items.json",
+        "qualification/acceptance.json",
+        "qualification/candidate-checks.json",
+        "qualification/README.md",
+        "docs/verification.md"
+      ],
+      "qualificationPaths": [
+        "scripts/release-check",
+        "tests/worker/kvm-acceptance.py",
+        "docs/component-acceptance.md",
+        "docs/intel-mac-acceptance.md"
+      ],
+      "remaining": "Full W21/W22 static/system/security/auth/hardware execution is deferred at owner request; unavailable prerequisites and conditional applicability need explicit future records."
+    }
+  },
+  "workPackages": [
+    {
+      "id": "W01",
+      "title": "Bind the baseline and publish the product contract",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "baseline",
+        "documentation"
+      ]
+    },
+    {
+      "id": "W02",
+      "title": "Remove obsolete IDs and retain supported product scope",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "catalog"
+      ]
+    },
+    {
+      "id": "W03",
+      "title": "Add pinned application and helper closures",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "packages",
+        "catalog"
+      ]
+    },
+    {
+      "id": "W04",
+      "title": "Refresh native desktop packaging and prerequisites",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "native-package",
+        "native-policy",
+        "cowork"
+      ]
+    },
+    {
+      "id": "W05",
+      "title": "Implement pure preset resolution and policy",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "presets",
+        "native-policy"
+      ]
+    },
+    {
+      "id": "W06",
+      "title": "Build the category-first installer and explicit reconfiguration",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "selection",
+        "configure",
+        "installer"
+      ]
+    },
+    {
+      "id": "W07",
+      "title": "Extend the execution network boundary to standalone",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "egress"
+      ]
+    },
+    {
+      "id": "W08",
+      "title": "Make Tailscale the guided default without automatic enrollment",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "tailscale",
+        "serve",
+        "hermes"
+      ]
+    },
+    {
+      "id": "W09",
+      "title": "Generalize existing service onboarding only as needed",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "W10",
+      "title": "Integrate Happier and its selected agent bridges",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "happier",
+        "packages"
+      ]
+    },
+    {
+      "id": "W11",
+      "title": "Refresh OpenClaw as an Assistant integration",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "openclaw",
+        "computer-use"
+      ]
+    },
+    {
+      "id": "W12",
+      "title": "Add Hermes as an Assistant integration",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "hermes",
+        "state",
+        "computer-use"
+      ]
+    },
+    {
+      "id": "W13",
+      "title": "Integrate provider-native Coder routes and separately gate experiments",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "native-routes",
+        "opencode"
+      ]
+    },
+    {
+      "id": "W14",
+      "title": "Implement native chat/cloud and protected coding kiosks",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "native-policy",
+        "native-package",
+        "presentation",
+        "web-kiosk"
+      ]
+    },
+    {
+      "id": "W15",
+      "title": "Implement post-6-October Cowork topology and conditional local modes",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "cowork"
+      ]
+    },
+    {
+      "id": "W16",
+      "title": "Implement optional browser and virtual desktop support",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "computer-use"
+      ]
+    },
+    {
+      "id": "W17",
+      "title": "Port canonical identity hardening without storage regressions",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "identity",
+        "storage",
+        "ssh-worker"
+      ]
+    },
+    {
+      "id": "W18",
+      "title": "Extend release-family and feature qualification wiring",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "release",
+        "packages",
+        "evidence"
+      ]
+    },
+    {
+      "id": "W19",
+      "title": "Complete lifecycle, resource and state integration",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "resources",
+        "state",
+        "maintenance",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "W20",
+      "title": "Refresh every affected document and remove conflicting authorities",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "documentation",
+        "evidence"
+      ]
+    },
+    {
+      "id": "W21",
+      "title": "Execute static and native system qualification",
+      "disposition": "execution_deferred_by_owner",
+      "mechanisms": [
+        "qualification",
+        "release",
+        "installer"
+      ]
+    },
+    {
+      "id": "W22",
+      "title": "Execute authenticated feature and hardware acceptance",
+      "disposition": "execution_deferred_by_owner",
+      "mechanisms": [
+        "qualification",
+        "external-fixture",
+        "evidence"
+      ]
+    },
+    {
+      "id": "W23",
+      "title": "Implement external Desktop SSH Coder and Parallels reference path",
+      "disposition": "source_candidate_with_qualification_holds",
+      "mechanisms": [
+        "external-coder",
+        "external-fixture",
+        "tailscale",
+        "egress"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "A001",
+      "title": "Exact baseline",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "baseline",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A002",
+      "title": "Patch provenance",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "baseline",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A003",
+      "title": "Seed permissions",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "storage",
+        "identity"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A004",
+      "title": "Sparse storage and QEMU error behavior",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "storage",
+        "identity"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A005",
+      "title": "Canonical key admission",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "identity"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A006",
+      "title": "Persistent-state damage",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "storage",
+        "identity"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A007",
+      "title": "Derived-state recovery",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "storage",
+        "identity"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A008",
+      "title": "SSH accumulated settings",
+      "work": [
+        "W01",
+        "W17"
+      ],
+      "mechanisms": [
+        "ssh-worker"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A009",
+      "title": "Four purpose branches",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A010",
+      "title": "Assistant defaults",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A011",
+      "title": "Coder defaults",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A012",
+      "title": "Kiosk defaults",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A013",
+      "title": "Explicit web kiosk",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "web-kiosk"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A014",
+      "title": "Custom parity",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A015",
+      "title": "Bundle deselection",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A016",
+      "title": "Preset stability",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A017",
+      "title": "Pure policy",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "presets",
+        "selection",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A018",
+      "title": "Safe reconfiguration",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "configure",
+        "installer"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A019",
+      "title": "Hardware preflight",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "installer",
+        "packages",
+        "presets"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A020",
+      "title": "Installation invariants",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "installer",
+        "packages",
+        "presets"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A021",
+      "title": "Consent/version changes",
+      "work": [
+        "W05",
+        "W06"
+      ],
+      "mechanisms": [
+        "configure",
+        "lifecycle",
+        "native-policy"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A022",
+      "title": "Removed selection cleanup",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A023",
+      "title": "Generated metadata",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A024",
+      "title": "Family isolation",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "packages",
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A025",
+      "title": "All-curated closure",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "packages",
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A026",
+      "title": "Command resolution",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "packages",
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A027",
+      "title": "Offline activation",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "packages",
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A028",
+      "title": "CPU/runtime support",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "packages",
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A029",
+      "title": "Desktop provenance",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "native-package",
+        "presentation"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A030",
+      "title": "Bridge identity",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "packages",
+        "catalog",
+        "release"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A031",
+      "title": "Release/auth authority",
+      "work": [
+        "W02",
+        "W03",
+        "W04",
+        "W18"
+      ],
+      "mechanisms": [
+        "release",
+        "installer"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A032",
+      "title": "Default unauthenticated overlay",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "tailscale",
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A033",
+      "title": "Overlay opt-out",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "tailscale",
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A034",
+      "title": "Root-only tailnet authority",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "tailscale",
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A035",
+      "title": "Private authenticated Serve",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "serve",
+        "hermes",
+        "opencode",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A036",
+      "title": "Overlay directionality",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "tailscale",
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A037",
+      "title": "Complete UID coverage",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A038",
+      "title": "IPv4/IPv6 private ranges",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A039",
+      "title": "Resolver/proxy boundary",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A040",
+      "title": "Policy lifecycle",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A041",
+      "title": "Exposure retirement",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "serve",
+        "hermes",
+        "opencode",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A042",
+      "title": "Network modes",
+      "work": [
+        "W07",
+        "W08"
+      ],
+      "mechanisms": [
+        "egress"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A043",
+      "title": "Single supervisor",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A044",
+      "title": "Onboarding state machine",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A045",
+      "title": "Happier hosted pairing",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "happier",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A046",
+      "title": "Happier top-level agents",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "happier",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A047",
+      "title": "Happier subagents",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "happier",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A048",
+      "title": "Happier account boundary",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "happier",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A049",
+      "title": "OpenClaw channels",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "openclaw",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A050",
+      "title": "OpenClaw coding delegation",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "openclaw",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A051",
+      "title": "Hermes gateway",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "hermes",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A052",
+      "title": "Hermes dashboard",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "hermes",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A053",
+      "title": "Hermes delegation",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "hermes",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A054",
+      "title": "Native Claude Remote",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "native-routes",
+        "opencode",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A055",
+      "title": "Native Antigravity Remote",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "native-routes",
+        "opencode",
+        "lifecycle"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A056",
+      "title": "Advanced interfaces",
+      "work": [
+        "W09",
+        "W10",
+        "W11",
+        "W12",
+        "W13"
+      ],
+      "mechanisms": [
+        "native-routes",
+        "opencode",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A057",
+      "title": "Kiosk shell",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "presentation",
+        "native-package",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A058",
+      "title": "Credential/keyring boundary",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "presentation",
+        "native-package",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A059",
+      "title": "Linux ChatGPT managed-worker routing",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "native-package",
+        "selection"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A060",
+      "title": "Claude SSH Code policy",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "native-package",
+        "selection"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A061",
+      "title": "Desktop helper mutation",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "native-package",
+        "selection"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A062",
+      "title": "Connector/MCP exposure",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "native-package",
+        "selection"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A063",
+      "title": "Cowork mode distinction",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "cowork",
+        "native-policy",
+        "resources"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A064",
+      "title": "Local Cowork VM",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "cowork",
+        "native-policy",
+        "resources"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A065",
+      "title": "Unqualified native feature",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "native-package",
+        "selection"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A066",
+      "title": "GUI coexistence",
+      "work": [
+        "W14",
+        "W15"
+      ],
+      "mechanisms": [
+        "presentation",
+        "native-package",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A067",
+      "title": "No graphical opt-in",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A068",
+      "title": "Browser-only path",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A069",
+      "title": "Provider virtual desktop",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A070",
+      "title": "OMP/Hermes display path",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A071",
+      "title": "Physical display isolation",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A072",
+      "title": "Existing listener collision",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A073",
+      "title": "Input concurrency",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A074",
+      "title": "Human viewing",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A075",
+      "title": "Desktop cleanup",
+      "work": [
+        "W16"
+      ],
+      "mechanisms": [
+        "computer-use",
+        "resources"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A076",
+      "title": "OS vs provider health",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "maintenance",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A077",
+      "title": "Unattended service recovery",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "maintenance",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A078",
+      "title": "Bounded maintenance",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "maintenance",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A079",
+      "title": "Data migration and rollback",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "state",
+        "maintenance"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A080",
+      "title": "Revocation/retirement",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "lifecycle",
+        "serve",
+        "state"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A081",
+      "title": "Resource pressure",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "resources",
+        "computer-use",
+        "state"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A082",
+      "title": "Native system gates",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "qualification",
+        "installer",
+        "release"
+      ],
+      "disposition": "qualification_deferred"
+    },
+    {
+      "id": "A083",
+      "title": "Physical hardware",
+      "work": [
+        "W19",
+        "W21",
+        "W22"
+      ],
+      "mechanisms": [
+        "qualification",
+        "installer",
+        "release"
+      ],
+      "disposition": "qualification_deferred"
+    },
+    {
+      "id": "A084",
+      "title": "One architectural authority",
+      "work": [
+        "W20",
+        "W22"
+      ],
+      "mechanisms": [
+        "documentation",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A085",
+      "title": "Selection/doc consistency",
+      "work": [
+        "W20",
+        "W22"
+      ],
+      "mechanisms": [
+        "documentation",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A086",
+      "title": "Claim/evidence separation",
+      "work": [
+        "W20",
+        "W22"
+      ],
+      "mechanisms": [
+        "evidence",
+        "qualification"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A087",
+      "title": "Safe operational examples",
+      "work": [
+        "W20",
+        "W22"
+      ],
+      "mechanisms": [
+        "documentation",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A088",
+      "title": "Documentation navigation",
+      "work": [
+        "W20",
+        "W22"
+      ],
+      "mechanisms": [
+        "documentation",
+        "catalog"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A089",
+      "title": "Native kiosk without virtualization",
+      "work": [
+        "W04",
+        "W05",
+        "W14"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "presets",
+        "cowork",
+        "web-kiosk"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A090",
+      "title": "Protected kiosk capability transition",
+      "work": [
+        "W05",
+        "W06",
+        "W14"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "presets",
+        "cowork",
+        "web-kiosk"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A091",
+      "title": "Cowork deployment-floor contract",
+      "work": [
+        "W05",
+        "W15",
+        "W20"
+      ],
+      "mechanisms": [
+        "cowork",
+        "documentation"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A092",
+      "title": "Happier daemon identity and supervisor",
+      "work": [
+        "W03",
+        "W09",
+        "W10"
+      ],
+      "mechanisms": [
+        "happier",
+        "lifecycle"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A093",
+      "title": "Hermes public URL fail-closed gate",
+      "work": [
+        "W08",
+        "W12"
+      ],
+      "mechanisms": [
+        "hermes",
+        "serve",
+        "selection"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A094",
+      "title": "Explicit Hermes tunnel-only exception",
+      "work": [
+        "W08",
+        "W12",
+        "W20"
+      ],
+      "mechanisms": [
+        "hermes",
+        "serve",
+        "selection"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A095",
+      "title": "Visible per-agent integration maturity",
+      "work": [
+        "W05",
+        "W06",
+        "W10",
+        "W20"
+      ],
+      "mechanisms": [
+        "selection",
+        "happier",
+        "evidence"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A096",
+      "title": "External Codex SSH minimal closure",
+      "work": [
+        "W05",
+        "W23"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "egress",
+        "tailscale"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A097",
+      "title": "Codex remote login-shell contract",
+      "work": [
+        "W03",
+        "W23"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "egress",
+        "tailscale"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A098",
+      "title": "External SSH identity and channel policy",
+      "work": [
+        "W23"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "egress",
+        "tailscale"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A099",
+      "title": "Parallels guest-only execution",
+      "work": [
+        "W23",
+        "W22"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "external-fixture"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A100",
+      "title": "Parallels reachability versus egress",
+      "work": [
+        "W07",
+        "W08",
+        "W23"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "egress",
+        "tailscale"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A101",
+      "title": "External client outage and explicit handoff",
+      "work": [
+        "W23",
+        "W22"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "external-fixture"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A102",
+      "title": "Mobile continuation through external Mac",
+      "work": [
+        "W23",
+        "W22"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "external-fixture"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A103",
+      "title": "Claude Desktop SSH helper ownership",
+      "work": [
+        "W13",
+        "W23"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "egress",
+        "tailscale"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A104",
+      "title": "Codex direct relay experiment",
+      "work": [
+        "W13",
+        "W22"
+      ],
+      "mechanisms": [
+        "native-routes",
+        "lifecycle",
+        "external-coder"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A105",
+      "title": "Multiple Codex entry-point ownership",
+      "work": [
+        "W09",
+        "W13",
+        "W23"
+      ],
+      "mechanisms": [
+        "native-routes",
+        "lifecycle",
+        "external-coder"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A106",
+      "title": "Provider-native execution-location disclosures",
+      "work": [
+        "W13",
+        "W20",
+        "W22"
+      ],
+      "mechanisms": [
+        "native-routes",
+        "documentation",
+        "evidence"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A107",
+      "title": "Native Coder services remain separable",
+      "work": [
+        "W05",
+        "W06",
+        "W13",
+        "W23"
+      ],
+      "mechanisms": [
+        "native-routes",
+        "lifecycle",
+        "external-coder"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A108",
+      "title": "Codex SSH with Tailscale deselected",
+      "work": [
+        "W05",
+        "W08",
+        "W23"
+      ],
+      "mechanisms": [
+        "external-coder",
+        "egress",
+        "tailscale"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A109",
+      "title": "Kiosk policy-gate transitions",
+      "work": [
+        "W04",
+        "W05",
+        "W06",
+        "W14"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "selection",
+        "evidence"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A110",
+      "title": "Kiosk evidence invalidation and activation",
+      "work": [
+        "W04",
+        "W09",
+        "W14",
+        "W18"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "selection",
+        "evidence"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A111",
+      "title": "Controller-platform evidence separation",
+      "work": [
+        "W14",
+        "W20",
+        "W22",
+        "W23"
+      ],
+      "mechanisms": [
+        "evidence",
+        "documentation"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A112",
+      "title": "Independent ChatGPT local-execution surfaces",
+      "work": [
+        "W04",
+        "W05",
+        "W14",
+        "W22"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "selection",
+        "evidence"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A113",
+      "title": "Work Cloud execution-location transitions",
+      "work": [
+        "W14",
+        "W20",
+        "W22",
+        "W23"
+      ],
+      "mechanisms": [
+        "native-policy",
+        "selection",
+        "evidence"
+      ],
+      "disposition": "contract_gated"
+    },
+    {
+      "id": "A114",
+      "title": "Dated Linux computer-use evidence matrix",
+      "work": [
+        "W16",
+        "W20",
+        "W22"
+      ],
+      "mechanisms": [
+        "evidence",
+        "documentation"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A115",
+      "title": "Happier headless URL pairing",
+      "work": [
+        "W09",
+        "W10",
+        "W22"
+      ],
+      "mechanisms": [
+        "happier",
+        "lifecycle",
+        "external-coder"
+      ],
+      "disposition": "source_present_qualification_pending"
+    },
+    {
+      "id": "A116",
+      "title": "Happier owner-initiated SSH pairing",
+      "work": [
+        "W08",
+        "W09",
+        "W10",
+        "W22"
+      ],
+      "mechanisms": [
+        "happier",
+        "lifecycle",
+        "external-coder"
+      ],
+      "disposition": "source_present_qualification_pending"
+    }
+  ],
+  "runtimeQualification": {
+    "ledger": "acceptance.json",
+    "requirements": 116,
+    "passedByThisAudit": 0
+  },
+  "limitations": [
+    "No Nix package/system/image build, VM, native/provider login, real network, disk or hardware test ran during this audit.",
+    "Exact native account/helper enforcement and conditional provider-VM contracts are absent until qualified; affected clients stay inactive.",
+    "Antigravity and direct Codex service argv remain staged by default, pending supported pinned foreground contracts.",
+    "Provider CUA, optional authenticated viewing, ACP/plugin configuration and SSH pairing side effects require upstream-specific qualification; generic resources or a CLI install cannot supply it.",
+    "Release promotion is separate from these source commits and remains subject to the existing full gates."
+  ]
+}

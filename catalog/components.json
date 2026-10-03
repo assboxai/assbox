@@ -1,0 +1,645 @@
+[
+  {
+    "id": "antigravity-cli",
+    "package": "antigravity-cli",
+    "family": "antigravity",
+    "command": "agy",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": true,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "antigravity-remote",
+    "package": "",
+    "family": "antigravity",
+    "command": "",
+    "dependencies": [
+      "antigravity-cli"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "Remote runtime is supplied by a pinned, reviewed foreground service contract; setup remains unavailable without that contract.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "chatgpt-desktop",
+    "package": "chatgpt",
+    "family": "chatgpt",
+    "command": "chatgpt",
+    "dependencies": [],
+    "presentations": [
+      "x11"
+    ],
+    "unfree": true,
+    "mutableCode": true,
+    "blocked": "",
+    "codeNotes": "Native activation requires an applicable local-execution policy contract. Client-managed helpers require separate consent; Work and Codex are independently gated.",
+    "controllerAllowed": true,
+    "workerAllowed": false,
+    "requiresWorker": false
+  },
+  {
+    "id": "chatgpt-remote",
+    "package": "",
+    "family": "chatgpt",
+    "command": "",
+    "dependencies": [
+      "chatgpt-desktop"
+    ],
+    "presentations": [
+      "x11"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": true,
+    "workerAllowed": false,
+    "requiresWorker": false
+  },
+  {
+    "id": "chromium",
+    "package": "chromium",
+    "family": "nixpkgs",
+    "command": "chromium",
+    "dependencies": [],
+    "presentations": [
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "Standalone graphical browser. Installing it does not enable remote browser or desktop automation.",
+    "controllerAllowed": true,
+    "workerAllowed": false,
+    "requiresWorker": false
+  },
+  {
+    "id": "claude-code",
+    "package": "claude-code",
+    "family": "claude-code",
+    "command": "claude",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": true,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "claude-code-remote",
+    "package": "",
+    "family": "claude-code",
+    "command": "",
+    "dependencies": [
+      "claude-code"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "claude-desktop",
+    "package": "claude-desktop",
+    "family": "claude-desktop",
+    "command": "claude-desktop",
+    "dependencies": [],
+    "presentations": [
+      "x11",
+      "wayland"
+    ],
+    "unfree": true,
+    "mutableCode": true,
+    "blocked": "",
+    "codeNotes": "May download Claude Code and other executable helpers; includes Cowork VM helpers. Chromium is provided for login.",
+    "controllerAllowed": true,
+    "workerAllowed": false,
+    "requiresWorker": false
+  },
+  {
+    "id": "codex",
+    "package": "codex",
+    "family": "codex",
+    "command": "codex",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "codex-relay",
+    "package": "",
+    "family": "codex",
+    "command": "",
+    "dependencies": [
+      "codex"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "Advanced experimental direct Codex relay. Requires a reviewed pinned foreground command and independent account/client qualification. It is not enabled by Codex over SSH presets.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "cursor-agent",
+    "package": "cursor-agent",
+    "family": "cursor",
+    "command": "cursor-agent",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": true,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "cursor-worker",
+    "package": "",
+    "family": "cursor",
+    "command": "",
+    "dependencies": [
+      "cursor-agent"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "emacs",
+    "package": "emacs-nox",
+    "family": "nixpkgs",
+    "command": "emacs",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "grok",
+    "package": "grok",
+    "family": "grok",
+    "command": "grok",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": true,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "happier",
+    "package": "happier",
+    "family": "happier",
+    "command": "happier",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "Bundles upstream adapters and SDK code. Agent availability and authentication are independent; Nix owns the runtime.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "happier-daemon",
+    "package": "",
+    "family": "happier",
+    "command": "",
+    "dependencies": [
+      "happier"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "hermes",
+    "package": "hermes-agent",
+    "family": "hermes",
+    "command": "hermes",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "hermes-dashboard",
+    "package": "",
+    "family": "hermes",
+    "command": "",
+    "dependencies": [
+      "hermes"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "hermes-gateway",
+    "package": "",
+    "family": "hermes",
+    "command": "",
+    "dependencies": [
+      "hermes"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "omp",
+    "package": "omp",
+    "family": "omp",
+    "command": "omp",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "openclaw",
+    "package": "openclaw",
+    "family": "openclaw",
+    "command": "openclaw",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "openclaw-gateway",
+    "package": "",
+    "family": "openclaw",
+    "command": "",
+    "dependencies": [
+      "openclaw"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "openclaw-node",
+    "package": "",
+    "family": "openclaw",
+    "command": "",
+    "dependencies": [
+      "openclaw"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": true,
+    "blocked": "",
+    "codeNotes": "Optional session hosting executes worker artifacts provisioned and validated by the paired Gateway.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "opencode",
+    "package": "opencode",
+    "family": "opencode",
+    "command": "opencode",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "opencode-server",
+    "package": "",
+    "family": "opencode",
+    "command": "",
+    "dependencies": [
+      "opencode"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "pi",
+    "package": "pi",
+    "family": "pi",
+    "command": "pi",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "vim",
+    "package": "vim",
+    "family": "nixpkgs",
+    "command": "vim",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "vscode",
+    "package": "vscode",
+    "family": "nixpkgs",
+    "command": "code",
+    "dependencies": [],
+    "presentations": [
+      "x11",
+      "wayland"
+    ],
+    "unfree": true,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "Includes upstream AI features; Assbox installs no extra AI extensions or standalone agents.",
+    "controllerAllowed": false,
+    "workerAllowed": false,
+    "requiresWorker": false
+  },
+  {
+    "id": "vscode-cli",
+    "package": "vscode-cli",
+    "family": "nixpkgs",
+    "command": "assbox-vscode",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": true,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "vscode-remote-host",
+    "package": "",
+    "family": "nixpkgs",
+    "command": "",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": true,
+    "blocked": "",
+    "codeNotes": "The connecting client provisions server, extensions and tooling. Enables a NixOS compatibility loader on this machine.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "vscode-tunnel",
+    "package": "",
+    "family": "nixpkgs",
+    "command": "",
+    "dependencies": [
+      "vscode-cli"
+    ],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": true,
+    "blocked": "",
+    "codeNotes": "Microsoft provisions server code after interactive account and license acceptance. Enables the NixOS compatibility loader.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  },
+  {
+    "id": "zed",
+    "package": "zed-editor",
+    "family": "nixpkgs",
+    "command": "zeditor",
+    "dependencies": [],
+    "presentations": [
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": false,
+    "blocked": "",
+    "codeNotes": "Includes upstream AI integration; Assbox installs no ACP agent implicitly.",
+    "controllerAllowed": false,
+    "workerAllowed": false,
+    "requiresWorker": false
+  },
+  {
+    "id": "zed-remote-host",
+    "package": "",
+    "family": "nixpkgs",
+    "command": "",
+    "dependencies": [],
+    "presentations": [
+      "headless",
+      "x11",
+      "wayland"
+    ],
+    "unfree": false,
+    "mutableCode": true,
+    "blocked": "",
+    "codeNotes": "The connecting client provisions its matching remote server and project/language tools.",
+    "controllerAllowed": false,
+    "workerAllowed": true,
+    "requiresWorker": false
+  }
+]

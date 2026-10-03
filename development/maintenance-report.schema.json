@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assbox maintenance native report v1",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "kind": {
+      "const": "development-maintenance-native-report"
+    },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "candidate_content_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "production_lock_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "dev_lock_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "chainman_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gate_set_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "oracle_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "producer": {
+      "type": "object",
+      "properties": {
+        "repository_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "workflow_path": {
+          "const": ".github/workflows/maintenance.yml"
+        },
+        "run_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "run_attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "job_id": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "repository_id",
+        "owner_id",
+        "workflow_path",
+        "run_id",
+        "run_attempt",
+        "job_id"
+      ],
+      "additionalProperties": false
+    },
+    "system": {
+      "enum": [
+        "x86_64-linux",
+        "aarch64-linux"
+      ]
+    },
+    "accelerator": {
+      "enum": [
+        "kvm",
+        "tcg"
+      ]
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "blocked",
+        "error",
+        "cancelled"
+      ]
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "enum": [
+              "verify-lite",
+              "verify-mutations",
+              "verify-production-candidate",
+              "verify-canonical"
+            ]
+          },
+          "status": {
+            "const": "passed"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "canonical_summary_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "candidate_snapshot": {
+      "$ref": "candidate-snapshot.schema.json"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema",
+    "kind",
+    "base_commit",
+    "candidate_content_sha256",
+    "production_lock_sha256",
+    "dev_lock_sha256",
+    "chainman_revision",
+    "policy_sha256",
+    "gate_set_sha256",
+    "oracle_sha256",
+    "producer",
+    "system",
+    "accelerator",
+    "status",
+    "gates",
+    "canonical_summary_sha256",
+    "candidate_snapshot",
+    "started_at",
+    "finished_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "passed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "gates": {
+            "items": {
+              "properties": {
+                "status": {
+                  "const": "passed"
+                }
+              }
+            }
+          },
+          "canonical_summary_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  ]
+}

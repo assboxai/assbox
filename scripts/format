@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -euo pipefail
+cd "$(dirname "$0")/.."
+cargo fmt --all
+mapfile -d '' nix_sources < <(find . -type d \( -name .git -o -name target -o -name reports -o -name .chainman -o -name .cache \) -prune -o -type f -name '*.nix' -print0)
+((${#nix_sources[@]} > 0))
+nixfmt "${nix_sources[@]}"

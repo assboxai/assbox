@@ -1,0 +1,15 @@
+{
+  "version": "0.2.14",
+  "sourceRevision": "df8241c8b1068aa964ec7723000ff356ba3a00ef",
+  "systems": {
+    "aarch64-linux": {
+      "url": "https://github.com/happier-dev/happier/releases/download/cli-v0.2.14/happier-v0.2.14-linux-arm64.tar.gz",
+      "hash": "sha256-scOc/pZHSwat/SjK+R9YMbgCwJfGhI662A0VdUk6vI8="
+    },
+    "x86_64-linux": {
+      "url": "https://github.com/happier-dev/happier/releases/download/cli-v0.2.14/happier-v0.2.14-linux-x64.tar.gz",
+      "hash": "sha256-uLKQq8gIA2Kz9RhZCt+5YSRoFeVYUIEci2pGoEGszkU="
+    }
+  },
+  "reviewedPackageRecipeRevision": "7bba6197505fbc7e138a4922ac97061d2ec11b42"
+}

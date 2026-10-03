@@ -1,0 +1,142 @@
+name: Verified development maintenance
+'on':
+  schedule:
+  - cron: 17 7 * * 2
+  workflow_dispatch: null
+permissions: {}
+concurrency:
+  group: assbox-development-maintenance
+  cancel-in-progress: false
+jobs:
+  prepare:
+    name: Prepare candidate
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch') && vars.ASSBOX_DEVELOPMENT_MAINTENANCE == 'enabled'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 360
+    outputs:
+      changed: ${{ steps.candidate.outputs.changed }}
+    steps:
+    - &id001
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: true
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - run: python3 scripts/development_maintenance.py discover "$RUNNER_TEMP/assbox-maintenance/discovery.json" "Prepare candidate"
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - id: candidate
+      run: python3 scripts/development_maintenance.py prepare "$RUNNER_TEMP/assbox-maintenance/discovery.json" "$RUNNER_TEMP/assbox-maintenance/candidate.json"
+    - if: steps.candidate.outputs.changed == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: maintenance-candidate-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/assbox-maintenance/candidate.json
+        if-no-files-found: error
+        retention-days: 14
+  native:
+    name: Native ${{ matrix.system }}
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - system: x86_64-linux
+          runner: ubuntu-24.04
+        - system: aarch64-linux
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    steps:
+    - *id001
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - run: python3 scripts/development_maintenance.py discover "$RUNNER_TEMP/assbox-maintenance/discovery.json" "Native $SYSTEM"
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SYSTEM: ${{ matrix.system }}
+    - run: python3 scripts/development_maintenance.py native "$RUNNER_TEMP/assbox-maintenance/discovery.json" "$RUNNER_TEMP/assbox-maintenance/candidate.json"
+        "$RUNNER_TEMP/assbox-maintenance/report.json" "$SYSTEM"
+      env:
+        SYSTEM: ${{ matrix.system }}
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: maintenance-native-${{ matrix.system }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/assbox-maintenance/report.json
+        if-no-files-found: error
+        retention-days: 14
+  write:
+    needs:
+    - prepare
+    - native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    environment: development-maintenance
+    steps:
+    - run: "/usr/bin/python3 -I -B <<'ASSBOX_WRITER'\n# SPDX-License-Identifier: GPL-3.0-or-later\n# Copied verbatim into\
+        \ maintenance.yml's only writer step. No checkout or Action.\nimport base64\nimport hashlib\nimport json\nimport os\n\
+        import re\nimport tempfile\nimport urllib.request\n\nif os.environ.get('MAINTENANCE_READY') != 'provisioned-v1':\n\
+        \    raise SystemExit('administration-required: Environment readiness unavailable')\nif (os.environ.get('MAINTENANCE_ENABLED')\
+        \ != 'enabled'\n        or os.environ.get('REPOSITORY') != 'assboxai/assbox'\n        or os.environ.get('REF') !=\
+        \ 'refs/heads/master'\n        or os.environ.get('EVENT') not in ('schedule', 'workflow_dispatch')):\n    raise SystemExit('workflow\
+        \ admission refused')\nbase = os.environ['BASE']\nif not re.fullmatch('[0-9a-f]{40}', base):\n    raise SystemExit('invalid\
+        \ workflow base')\n\nclass RejectRedirect(urllib.request.HTTPRedirectHandler):\n    def redirect_request(self, *args,\
+        \ **kwargs):\n        return None\n\ndef pairs(items):\n    result = {}\n    for key, value in items:\n        if\
+        \ key in result:\n            raise ValueError('duplicate API key')\n        result[key] = value\n    return result\n\
+        \ndef request(path):\n    req = urllib.request.Request('https://api.github.com/repos/assboxai/assbox/git/' + path,\n\
+        \        headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],\n                 'Accept': 'application/vnd.github+json',\
+        \ 'X-GitHub-Api-Version': '2022-11-28'})\n    with urllib.request.build_opener(RejectRedirect()).open(req, timeout=30)\
+        \ as response:\n        raw = response.read(4194305)\n    if len(raw) > 4194304:\n        raise ValueError('API response\
+        \ exceeds bound')\n    return json.loads(raw.decode('utf-8'), object_pairs_hook=pairs)\n\ncommit = request('commits/'\
+        \ + base)\nif commit['sha'] != base:\n    raise ValueError('workflow commit mismatch')\n\ndef trusted_blob(path):\n\
+        \    tree = commit['tree']['sha']\n    parts = path.split('/')\n    for index, part in enumerate(parts):\n       \
+        \ entries = request('trees/' + tree)\n        if entries.get('truncated'):\n            raise ValueError('truncated\
+        \ trusted tree')\n        matches = [entry for entry in entries['tree'] if entry['path'] == part]\n        if len(matches)\
+        \ != 1:\n            raise ValueError('trusted path unavailable')\n        item = matches[0]\n        if index < len(parts)\
+        \ - 1:\n            if item['mode'] != '040000' or item['type'] != 'tree':\n                raise ValueError('trusted\
+        \ directory mode')\n            tree = item['sha']\n        else:\n            if item['mode'] != '100644' or item['type']\
+        \ != 'blob':\n                raise ValueError('trusted controller mode')\n            blob = request('blobs/' + item['sha'])\n\
+        \            if blob['encoding'] != 'base64':\n                raise ValueError('trusted blob encoding')\n       \
+        \     raw = base64.b64decode(''.join(blob['content'].split()), validate=True)\n            oid = hashlib.sha1(b'blob\
+        \ ' + str(len(raw)).encode() + b'\\0' + raw).hexdigest()\n            if oid != item['sha'] or len(raw) != blob['size']\
+        \ or len(raw) > 1048576:\n                raise ValueError('trusted blob identity')\n            return raw\n\ncontroller\
+        \ = trusted_blob('scripts/development_maintenance_writer.py')\ntrusted_blob('development/maintenance-policy.json')\n\
+        os.umask(0o077)\nprivate = tempfile.mkdtemp(prefix='assbox-trusted-writer-', dir='/tmp')\nos.chdir(private)\n# Only\
+        \ the verified workflow-base source is executable. Artifacts remain JSON.\nexec(compile(controller, 'trusted-base/development_maintenance_writer.py',\
+        \ 'exec'),\n     {'__name__': '__main__'})\nASSBOX_WRITER"
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BASE: ${{ github.sha }}
+        RUN_ID: ${{ github.run_id }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
+        REPOSITORY: ${{ github.repository }}
+        REF: ${{ github.ref }}
+        EVENT: ${{ github.event_name }}
+        MAINTENANCE_ENABLED: ${{ vars.ASSBOX_DEVELOPMENT_MAINTENANCE }}
+        MAINTENANCE_READY: ${{ vars.ASSBOX_DEVELOPMENT_MAINTENANCE_READY }}

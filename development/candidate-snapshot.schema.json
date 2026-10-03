@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assbox candidate snapshot identity v1",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "kind": {
+      "const": "candidate-snapshot-identity"
+    },
+    "protocol": {
+      "const": "assbox-candidate-snapshot-v1"
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_content_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "git_tree_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "synthetic_commit_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "git_object_format": {
+      "const": "sha1"
+    },
+    "parents": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "publishable": {
+      "const": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "kind",
+    "protocol",
+    "policy_sha256",
+    "source_content_sha256",
+    "git_tree_oid",
+    "synthetic_commit_oid",
+    "git_object_format",
+    "parents",
+    "publishable"
+  ]
+}

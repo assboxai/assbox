@@ -1,0 +1,22 @@
+[package]
+name = "assbox-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+assbox-domain = { path = "../../functional-core/assbox-domain" }
+assbox-policy = { path = "../../functional-core/assbox-policy" }
+assbox-config = { path = "../../functional-core/assbox-config" }
+assbox-system = { path = "../assbox-system" }
+assbox-engine = { path = "../assbox-engine" }
+
+[[bin]]
+name = "assbox"
+path = "src/main.rs"

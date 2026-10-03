@@ -1,0 +1,111 @@
+[tasks.build]
+profile = "default"
+commands = [["cargo", "build", "--workspace", "--locked"]]
+
+[tasks.test]
+profile = "default"
+commands = [["cargo", "test", "--workspace", "--all-targets", "--locked"]]
+
+[tasks.generate]
+profile = "default"
+commands = [["python3", "scripts/development_check.py", "generate"]]
+
+[tasks.format-write]
+profile = "default"
+commands = [["bash", "scripts/format"]]
+
+[tasks.format-check]
+profile = "default"
+commands = [["python3", "scripts/development_check.py", "format-check"]]
+
+[tasks.verify-lite]
+profile = "default"
+commands = [["python3", "scripts/verify_prepare.py", "--lite"]]
+
+[tasks.verify-prepare]
+profile = "default"
+commands = [["python3", "scripts/verify_prepare.py"]]
+
+[tasks.verify]
+profile = "default"
+commands = [["python3", "scripts/verify_candidate.py"]]
+
+[tasks.verify-production]
+profile = "default"
+commands = [["python3", "scripts/verify_candidate.py", "--production-only"]]
+
+[tasks.verify-production-candidate]
+profile = "default"
+commands = [["python3", "scripts/verify_candidate.py", "--production-only"]]
+
+[tasks.verify-canonical]
+profile = "repair"
+commands = [["python3", "scripts/repair_loop.py", "canonical"]]
+
+[tasks.clean]
+profile = "default"
+commands = [["python3", "scripts/development_check.py", "clean"]]
+
+[tasks.maintenance-inspect]
+profile = "default"
+commands = [["python3", "scripts/development_maintenance_inspect.py"]]
+
+[tasks.verify-static]
+profile = "default"
+commands = [["python3", "scripts/verify_observed.py", "static", "--entered"]]
+
+[tasks.verify-rust]
+profile = "default"
+commands = [["python3", "scripts/verify_observed.py", "rust", "--entered"]]
+
+[tasks.verify-mutations]
+profile = "default"
+commands = [["python3", "scripts/verify_observed.py", "mutations", "--entered"]]
+
+[tasks.verify-nix]
+profile = "default"
+commands = [["python3", "scripts/verify_observed.py", "nix", "--entered"]]
+
+[tasks.vm-install-boot]
+profile = "repair"
+commands = [["python3", "scripts/development_check.py", "vm-check", "install-boot-vm"]]
+
+[tasks.vm-activation-recovery]
+profile = "repair"
+commands = [["python3", "scripts/development_check.py", "vm-check", "activation-recovery-vm"]]
+
+[tasks.vm-authenticated-release]
+profile = "repair"
+commands = [["python3", "scripts/development_check.py", "vm-check", "authenticated-release-vm"]]
+
+[tasks.repair-init]
+profile = "repair"
+commands = [["python3", "scripts/repair_loop.py", "init"]]
+
+[tasks.repair-preflight]
+profile = "repair"
+commands = [["python3", "scripts/repair_loop.py", "preflight"]]
+
+[tasks.repair-build]
+profile = "repair"
+commands = [["python3", "scripts/repair_loop.py", "build"]]
+
+[tasks.repair-once]
+profile = "repair"
+commands = [["python3", "scripts/repair_loop.py", "once"]]
+
+[tasks.repair-status]
+profile = "repair"
+commands = [["python3", "scripts/repair_loop.py", "status"]]
+
+[tasks.repair-finalize]
+profile = "repair"
+commands = [["python3", "scripts/repair_loop.py", "finalize"]]
+
+[recipes]
+generate = ["generate"]
+format-write = ["format-write"]
+format-check = ["format-check"]
+verify = ["verify"]
+verify-lite = ["verify-lite"]
+clean = ["clean"]

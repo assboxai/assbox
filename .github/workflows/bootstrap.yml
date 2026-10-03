@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Weekly native verification precedes a lock-only or empty direct-to-master commit.
+name: Verified bootstrap maintenance
+'on':
+  schedule:
+  - cron: 41 3 * * 0
+  workflow_dispatch: null
+permissions:
+  contents: read
+concurrency:
+  group: assbox-bootstrap-maintenance
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule'
+      || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+    - &id001
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: true
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - run: python3 scripts/bootstrap.py discover "$RUNNER_TEMP/assbox-bootstrap-discovery.json"
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - run: python3 scripts/bootstrap.py prepare "$RUNNER_TEMP/assbox-bootstrap-discovery.json" "$RUNNER_TEMP/assbox-bootstrap/assets"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: bootstrap-locks
+        path: ${{ runner.temp }}/assbox-bootstrap/assets
+        if-no-files-found: error
+        retention-days: 14
+  native:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - variant: candidate
+          system: x86_64-linux
+          runner: ubuntu-24.04
+        - variant: candidate
+          system: aarch64-linux
+          runner: ubuntu-24.04-arm
+        - variant: current
+          system: x86_64-linux
+          runner: ubuntu-24.04
+        - variant: current
+          system: aarch64-linux
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    steps:
+    - *id001
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+        extra_nix_config: 'experimental-features = nix-command flakes
+
+          accept-flake-config = false
+
+          '
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: bootstrap-locks
+        path: ${{ runner.temp }}/assbox-bootstrap/assets
+    - run: python3 scripts/bootstrap.py native "$RUNNER_TEMP/assbox-bootstrap/assets" "$VARIANT" "$SYSTEM" "$RUNNER_TEMP/assbox-bootstrap-report/report-$VARIANT-$SYSTEM.json"
+      env:
+        SYSTEM: ${{ matrix.system }}
+        VARIANT: ${{ matrix.variant }}
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: bootstrap-native-${{ matrix.variant }}-${{ matrix.system }}
+        path: ${{ runner.temp }}/assbox-bootstrap-report/
+        if-no-files-found: error
+        retention-days: 14
+  write:
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: bootstrap-maintenance
+    permissions:
+      contents: write
+    steps:
+    - *id001
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: bootstrap-locks
+        path: ${{ runner.temp }}/assbox-bootstrap/assets
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        pattern: bootstrap-native-*
+        path: ${{ runner.temp }}/assbox-bootstrap/reports
+    - run: python3 scripts/bootstrap.py write "$RUNNER_TEMP/assbox-bootstrap/assets" "$RUNNER_TEMP/assbox-bootstrap/reports"
+      env:
+        GH_TOKEN: ${{ github.token }}

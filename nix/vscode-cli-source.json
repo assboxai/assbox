@@ -1,0 +1,14 @@
+{
+  "revision": "8b640eef5a6c6089c029249d48efa5c99adf7d51",
+  "version": "1.119.0",
+  "sources": {
+    "x86_64-linux": {
+      "url": "https://update.code.visualstudio.com/commit:8b640eef5a6c6089c029249d48efa5c99adf7d51/cli-linux-x64/stable",
+      "hash": "sha256-AZAfbUiFGK7kAthAXiz3mGidn1auQiVZAMYXoFM+4vc="
+    },
+    "aarch64-linux": {
+      "url": "https://update.code.visualstudio.com/commit:8b640eef5a6c6089c029249d48efa5c99adf7d51/cli-linux-arm64/stable",
+      "hash": "sha256-xEzkeSCOdxYGoj6QlGE+kZgAqgerZf9PbDX7Y4Zrw3g="
+    }
+  }
+}

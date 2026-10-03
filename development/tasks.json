@@ -1,0 +1,479 @@
+{
+  "schema": 1,
+  "kind": "assbox-task-inventory",
+  "authority": "Assbox task admission metadata; not extra Chainman configuration keys",
+  "default_execution_mode": "host-nix",
+  "default_supported_systems": [
+    "x86_64-linux",
+    "aarch64-linux"
+  ],
+  "profiles": {
+    "default": "nix/dev#default",
+    "formatter": "nix/dev#formatter",
+    "repair": "nix/dev#repair",
+    "production": ".#release-check"
+  },
+  "recipe_verify": [
+    "verify"
+  ],
+  "updates_verify_task": "verify",
+  "indirect_effect_rule": "Aggregate effects include every dependency, setup phase, hook, wrapper and invoked builder; unclassified execution is blocked in preparation.",
+  "tasks": [
+    {
+      "name": "setup",
+      "semantic_owner": "Chainman environment/setup and owned hook installation",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "git-administration",
+      "remote_write_effect": "none",
+      "notes": "CI uses --no-hooks; no application installs or VM setup."
+    },
+    {
+      "name": "shell",
+      "semantic_owner": "Chainman shell entry",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Interactive arbitrary execution is not itself an admitted no-VM test."
+    },
+    {
+      "name": "explain",
+      "semantic_owner": "Chainman explain TASK --json",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "doctor",
+      "semantic_owner": "Chainman diagnostics plus read-only Assbox host checks",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "chainman",
+      "semantic_owner": "Pinned consumer bootstrap",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Generic dispatcher; classify its selected subcommand, not this unrestricted entrypoint."
+    },
+    {
+      "name": "build",
+      "semantic_owner": "Locked native Cargo development build",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "test",
+      "semantic_owner": "Locked native Cargo workspace tests",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "generate",
+      "semantic_owner": "Existing component/preset/document generators",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "declared-generated-source",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "format-write",
+      "semantic_owner": "scripts/format with pinned project tools",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "declared-source-formatting",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "format-check",
+      "semantic_owner": "Existing Rust and Nix formatter checks",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "format-staged",
+      "semantic_owner": "Chainman staged-format transaction",
+      "profile": "formatter",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "index-and-fully-staged-files",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "hooks",
+      "semantic_owner": "Chainman hook administration",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "git-administration",
+      "remote_write_effect": "none",
+      "notes": "Inspect/install/uninstall are separate checked operations; refuses foreign hook ownership."
+    },
+    {
+      "name": "verify-static",
+      "semantic_owner": "scripts/verify static; environment entered once",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "verify-rust",
+      "semantic_owner": "scripts/verify rust; development compiler",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "verify-mutations",
+      "semantic_owner": "scripts/verify mutations",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "verify-lite",
+      "semantic_owner": "Aggregate small gate",
+      "profile": "default",
+      "depends_on": [
+        "verify-static",
+        "verify-rust"
+      ],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "verify-prepare",
+      "semantic_owner": "Assbox no-VM admission plus configuration and contract tests",
+      "profile": "default",
+      "depends_on": [
+        "verify-lite",
+        "verify-mutations"
+      ],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Additional audited evaluation/compile steps are enumerated; no generic build or update preview."
+    },
+    {
+      "name": "verify-nix",
+      "semantic_owner": "scripts/verify nix",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "verify-production",
+      "semantic_owner": "Forwarding alias to verify-production-candidate",
+      "profile": "default",
+      "depends_on": [
+        "verify-production-candidate"
+      ],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Never run direct production release-check against caller dirty source."
+    },
+    {
+      "name": "verify-production-candidate",
+      "semantic_owner": "scripts/verify_candidate.py production stage using shared clean synthetic snapshot",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Enters frozen snapshot root release-check shell in scrubbed child; no-argument original release-check retains clean source, coverage/scanners and VM checks. Private snapshot Git metadata only; no caller or Chainman Git writes."
+    },
+    {
+      "name": "verify-canonical",
+      "semantic_owner": "Frozen-oracle one-shot canonical runner",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Fresh driver execution, never a cached successful derivation result. Consumes supplied frozen snapshot/oracle from full gate or creates one explicit standalone snapshot; never calls full verify/finalize recursively."
+    },
+    {
+      "name": "verify",
+      "semantic_owner": "scripts/verify_candidate.py finite freeze-once native coordinator",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Same task selected by recipe verify and updates.verify_task. Freeze once before any stage, validate development config/hygiene, match content before/after each internal stage; no eager Chainman dependencies or cross-root reentry.",
+      "required_gates": [
+        "verify-lite",
+        "verify-mutations",
+        "verify-production-candidate",
+        "verify-canonical"
+      ]
+    },
+    {
+      "name": "vm-install-boot",
+      "semantic_owner": "Existing full installer fault-injection matrix",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "vm-activation-recovery",
+      "semantic_owner": "Existing activation-recovery-vm check",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "vm-authenticated-release",
+      "semantic_owner": "Existing authenticated-release-vm real-verifier check",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "repair-init",
+      "semantic_owner": "scripts/repair_loop.py session creation",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "Freeze transitive oracle, budgets and policy; never build or start a VM."
+    },
+    {
+      "name": "repair-preflight",
+      "semantic_owner": "scripts/repair_loop.py read-only admission",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "repair-build",
+      "semantic_owner": "scripts/repair_loop.py frozen driver build",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "potential-indirect",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "May be separately admitted only after the exact dependency graph is audited no-VM. Not in default preparation gate."
+    },
+    {
+      "name": "repair-once",
+      "semantic_owner": "scripts/repair_loop.py one pristine run",
+      "profile": "repair",
+      "depends_on": [
+        "repair-preflight"
+      ],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "repair-status",
+      "semantic_owner": "scripts/repair_loop.py ledger/status inspection",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "repair-finalize",
+      "semantic_owner": "scripts/repair_loop.py same-source complete native finalization",
+      "profile": "repair",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "May invoke full verify; session identity is retained. No commit, publication or enablement. Reuses same candidate content/tree/synthetic commit; does not recapture a later worktree."
+    },
+    {
+      "name": "deps-check",
+      "semantic_owner": "Chainman configured adapter/target validation",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "deps-coverage",
+      "semantic_owner": "Chainman dependency ownership inventory",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "deps-policy-report",
+      "semantic_owner": "Chainman effective selection/holds report",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": ""
+    },
+    {
+      "name": "deps-update",
+      "semantic_owner": "Chainman verified dependency update",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "declared-verified-update-outputs",
+      "remote_write_effect": "none",
+      "notes": "May auto-commit; mode=dry-run still verifies and can execute VMs. Default automatic class has exactly two lock outputs."
+    },
+    {
+      "name": "chainman-update",
+      "semantic_owner": "Chainman runtime candidate update",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "executes",
+      "preparation_allowed": false,
+      "source_write_effect": "chainman.lock",
+      "remote_write_effect": "none",
+      "notes": "Candidate runtime executes the full gate; preview is not no-VM."
+    },
+    {
+      "name": "deps-propose-rust",
+      "semantic_owner": "Explicit reviewed Cargo proposal wrapper",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "potential-indirect",
+      "preparation_allowed": false,
+      "source_write_effect": "disposable-proposal-only",
+      "remote_write_effect": "none",
+      "notes": "Explicit host recipe: verified preview may execute VMs."
+    },
+    {
+      "name": "deps-propose-actions",
+      "semantic_owner": "Explicit reviewed Actions proposal wrapper",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "potential-indirect",
+      "preparation_allowed": false,
+      "source_write_effect": "disposable-proposal-only",
+      "remote_write_effect": "none",
+      "notes": "Explicit host recipe: verified preview may execute VMs."
+    },
+    {
+      "name": "maintenance-inspect",
+      "semantic_owner": "Strict read-only envelope/report/policy validation",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": true,
+      "source_write_effect": "none",
+      "remote_write_effect": "none",
+      "notes": "No credentials, candidate programs, Nix, write or workflow dispatch."
+    },
+    {
+      "name": "clean",
+      "semantic_owner": "Scoped inactive build-output cleanup",
+      "profile": "default",
+      "depends_on": [],
+      "vm_effect": "none",
+      "preparation_allowed": false,
+      "source_write_effect": "owned-build-outputs",
+      "remote_write_effect": "none",
+      "notes": "Never default-delete evidence, disks, recovery transactions, unrelated worktrees or host Nix store."
+    }
+  ]
+}

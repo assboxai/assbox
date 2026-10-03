@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Verify locked source
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+          enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = false
+      - name: Require committed input lock
+        run: test -f flake.lock && git ls-files --error-unmatch flake.lock
+      - name: Set up Chainman without Git hooks
+        run: nix run path:./nix/dev#just -- setup --no-hooks
+      - name: Full native Chainman verification
+        run: nix run path:./nix/dev#just -- verify
+        env:
+          XDG_STATE_HOME: ${{ runner.temp }}
+      - name: Retain verification diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/assbox-verification
+            ${{ runner.temp }}/assbox/verification/*/summary.json
+            ${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json
+            ${{ runner.temp }}/assbox/verification/*/canonical-summary.json
+          if-no-files-found: warn
+          retention-days: 14

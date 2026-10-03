@@ -1,0 +1,13 @@
+[hooks]
+enabled = true
+[formatters.rust]
+paths = ["**/*.rs"]
+profile = "formatter"
+stdin = true
+write = ["rustfmt", "--edition", "2024", "--config-path", "rustfmt.toml", "--emit", "stdout"]
+check = ["rustfmt", "--edition", "2024", "--config-path", "rustfmt.toml", "--check"]
+[formatters.nix]
+paths = ["**/*.nix"]
+profile = "formatter"
+write = ["nixfmt", "--"]
+check = ["nixfmt", "--check", "--"]

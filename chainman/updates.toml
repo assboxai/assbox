@@ -1,0 +1,22 @@
+[updates]
+minimum_age_days = 30
+verify_task = "verify"
+outputs = ["nix/dev/flake.lock"]
+[updates.adapters.dev-nix]
+adapter = "nix"
+inputs = [{ directory = "nix/dev", input = "nixpkgs", repository = "NixOS/nixpkgs", branch = "nixos-26.05" }]
+[updates.adapters.rust]
+adapter = "rust"
+explicit_only = true
+profile = "default"
+[updates.adapters.actions]
+adapter = "actions"
+files = [".github/workflows/*.yml"]
+explicit_only = true
+profile = "default"
+[[updates.steps]]
+resolve = "dev-nix"
+[[updates.steps]]
+resolve = "rust"
+[[updates.steps]]
+resolve = "actions"

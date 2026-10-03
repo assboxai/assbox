@@ -1,0 +1,282 @@
+{
+  "schema": 1,
+  "kind": "assbox-canonical-scenario",
+  "id": "minimal-headless-uefi",
+  "systems": [
+    "x86_64-linux",
+    "aarch64-linux"
+  ],
+  "firmware": "UEFI",
+  "partition_table": "GPT",
+  "prompt_state_contract": "Exact reviewed labels are in tests/fixtures/installer_cli_terminal.py; partitions resolve verified synthetic by-id devices to observed kernel paths.",
+  "prompt_states": [
+    {
+      "id": "W01",
+      "field": "root-partition",
+      "response_source": "inventory:prepared-root"
+    },
+    {
+      "id": "W02",
+      "field": "existing-esp",
+      "response_source": "inventory:prepared-esp"
+    },
+    {
+      "id": "W03",
+      "field": "external-backup",
+      "response_source": "inventory:backup-partition"
+    },
+    {
+      "id": "W04",
+      "field": "hostname",
+      "response_source": "assbox-repair-vm"
+    },
+    {
+      "id": "W05",
+      "field": "timezone",
+      "response_source": "UTC"
+    },
+    {
+      "id": "W06",
+      "field": "platform",
+      "response_source": "generic"
+    },
+    {
+      "id": "W07",
+      "field": "purpose",
+      "response_source": "custom"
+    },
+    {
+      "id": "W08",
+      "field": "components",
+      "response_source": "none"
+    },
+    {
+      "id": "W09",
+      "field": "all-agents",
+      "response_source": "n"
+    },
+    {
+      "id": "W10",
+      "field": "managed-worker",
+      "response_source": "n"
+    },
+    {
+      "id": "W11",
+      "field": "presentation",
+      "response_source": "headless"
+    },
+    {
+      "id": "W12",
+      "field": "tailscale",
+      "response_source": "n"
+    },
+    {
+      "id": "W13",
+      "field": "execution-egress",
+      "response_source": "internet"
+    },
+    {
+      "id": "W14",
+      "field": "computer-use",
+      "response_source": "none"
+    },
+    {
+      "id": "W15",
+      "field": "selection-confirm",
+      "response_source": "y"
+    },
+    {
+      "id": "W16",
+      "field": "wifi",
+      "response_source": "n"
+    },
+    {
+      "id": "W17",
+      "field": "audio",
+      "response_source": "n"
+    },
+    {
+      "id": "W18",
+      "field": "camera",
+      "response_source": "n"
+    },
+    {
+      "id": "W19",
+      "field": "bluetooth",
+      "response_source": "n"
+    },
+    {
+      "id": "W20",
+      "field": "suspend",
+      "response_source": "n"
+    },
+    {
+      "id": "W21",
+      "field": "proprietary-packages",
+      "response_source": "n"
+    },
+    {
+      "id": "W22",
+      "field": "admin-ssh-key",
+      "response_source": "generated:disposable-public-key"
+    },
+    {
+      "id": "W23",
+      "field": "workload-access",
+      "response_source": "n"
+    },
+    {
+      "id": "W24",
+      "field": "ssh-exposure",
+      "response_source": "lan"
+    },
+    {
+      "id": "W25",
+      "field": "ssh-interface",
+      "response_source": "eth1"
+    },
+    {
+      "id": "W26",
+      "field": "ssh-source",
+      "response_source": "192.168.1.1/32"
+    },
+    {
+      "id": "W27",
+      "field": "additional-packages",
+      "response_source": "none"
+    },
+    {
+      "id": "W28",
+      "field": "destructive-confirmation",
+      "response_source": "derived:exact-intended-disk-confirmation"
+    }
+  ],
+  "root_disk_gib": 64,
+  "backup_disk_gib": 2,
+  "installer_disk_gib": 64,
+  "fresh_state": [
+    "target",
+    "backup",
+    "installer",
+    "efi-variables",
+    "fixture-state",
+    "attempt-nonce",
+    "disposable-ssh-key"
+  ],
+  "install_command": [
+    "assbox",
+    "install",
+    "--apply",
+    "--release",
+    "r-1"
+  ],
+  "transport_adapters": [
+    "curl",
+    "gh",
+    "timedatectl",
+    "systemd-ask-password"
+  ],
+  "password_helper_expected_calls": 2,
+  "timedatectl_queries": [
+    [
+      "show",
+      "--property=NTPSynchronized",
+      "--value"
+    ],
+    [
+      "show",
+      "--property=Timezone",
+      "--value"
+    ]
+  ],
+  "postboot": [
+    {
+      "id": "P01",
+      "requirement": "Installed disk boots through bootloader to multi-user.target",
+      "required": true
+    },
+    {
+      "id": "P02",
+      "requirement": "Install record complete and /etc/NIXOS present",
+      "required": true
+    },
+    {
+      "id": "P03",
+      "requirement": "Installed root active; /iso and live-installer mounts absent",
+      "required": true
+    },
+    {
+      "id": "P04",
+      "requirement": "Private root-owned /var/lib/assbox and valid nonempty release-state",
+      "required": true
+    },
+    {
+      "id": "P05",
+      "requirement": "Private root-owned mode-0600 admin-password.hash; contents not exported",
+      "required": true
+    },
+    {
+      "id": "P06",
+      "requirement": "assbox status exits successfully",
+      "required": true
+    },
+    {
+      "id": "P07",
+      "requirement": "SSH active and no failed system units",
+      "required": true
+    },
+    {
+      "id": "P08",
+      "requirement": "Disposable admin-key SSH from the fixture server succeeds",
+      "required": true
+    },
+    {
+      "id": "P09",
+      "requirement": "Root/workload-key SSH fails and password SSH remains disabled",
+      "required": true
+    },
+    {
+      "id": "P10",
+      "requirement": "Workload cannot sudo, read target raw block device or password hash",
+      "required": true
+    },
+    {
+      "id": "P11",
+      "requirement": "No components, headless, no Tailscale and no managed worker",
+      "required": true
+    },
+    {
+      "id": "P12",
+      "requirement": "Installed CLI uses unmodified production tools, no fixture adapters",
+      "required": true
+    },
+    {
+      "id": "P13",
+      "requirement": "Only declared machine-local instrumentation and network overrides",
+      "required": true
+    },
+    {
+      "id": "P14",
+      "requirement": "Installation/backup metadata match intended distinct devices and candidate",
+      "required": true
+    }
+  ],
+  "excluded_claims": [
+    "real-release-cryptography",
+    "provider-authentication",
+    "hardware-and-Parallels",
+    "production-egress-enforcement",
+    "managed-worker",
+    "all-components"
+  ],
+  "budgets": {
+    "max_attempts": 8,
+    "repeated_failure_limit": 3,
+    "cumulative_driver_seconds": 21600,
+    "per_run_seconds": 10800,
+    "boot_seconds": 600,
+    "postboot_seconds": 600
+  },
+  "execution_authorization_required": false,
+  "instrumentation_application": "After successful normal CLI installation, apply the declared machine-local module with real nixos-install; record original and instrumented system identities."
+}

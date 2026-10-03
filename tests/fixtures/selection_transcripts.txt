@@ -1,0 +1,620 @@
+=== assistant-openclaw ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: assistant
+Assistant: openclaw / hermes / back [openclaw]: openclaw
+Transport: OpenClaw gateway | controller: selected external channel/client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: antigravity-cli,claude-code,codex,cursor-agent,grok,omp,openclaw,openclaw-gateway,opencode,pi
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [antigravity-cli,claude-code,codex,cursor-agent,grok,omp,openclaw,openclaw-gateway,opencode,pi]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: antigravity-cli,claude-code,codex,cursor-agent,grok,omp,openclaw,openclaw-gateway,opencode,pi | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: assistant-openclaw | host antigravity-cli,claude-code,codex,cursor-agent,grok,omp,openclaw,openclaw-gateway,opencode,pi | worker  | exclusions  | workload SSH false
+
+=== assistant-hermes ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: assistant
+Assistant: openclaw / hermes / back [openclaw]: hermes
+Transport: Hermes gateway | controller: selected external channel/client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: assistant-hermes | host antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi | worker  | exclusions  | workload SSH false
+
+=== coder-happier ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: happier
+Transport: Happier provider connection | controller: external Happier client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: antigravity-cli,claude-code,codex,cursor-agent,grok,happier,happier-daemon,omp,opencode,pi
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [antigravity-cli,claude-code,codex,cursor-agent,grok,happier,happier-daemon,omp,opencode,pi]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: antigravity-cli,claude-code,codex,cursor-agent,grok,happier,happier-daemon,omp,opencode,pi | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-happier | host antigravity-cli,claude-code,codex,cursor-agent,grok,happier,happier-daemon,omp,opencode,pi | worker  | exclusions  | workload SSH false
+
+=== coder-codex-ssh ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: codex
+Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (Mac to Parallels is supported topology)
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: codex
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [codex]: <enter>
+Add all eight curated coding agents? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: codex | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-codex-ssh | host codex | worker  | exclusions  | workload SSH true
+
+=== coder-claude-native ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: claude
+Claude access: relay / ssh / back [relay]: relay
+Transport: Claude native Remote Control relay | controller: external Claude client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: claude-code,claude-code-remote
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [claude-code,claude-code-remote]: <enter>
+Add all eight curated coding agents? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: claude-code,claude-code-remote | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-claude-native | host claude-code,claude-code-remote | worker  | exclusions  | workload SSH false
+
+=== coder-claude-ssh ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: claude
+Claude access: relay / ssh / back [relay]: ssh
+Transport: SSH; native helper behavior requires qualification | controller: external Claude Desktop
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: claude-code
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [claude-code]: <enter>
+Add all eight curated coding agents? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: claude-code | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-claude-ssh | host claude-code | worker  | exclusions  | workload SSH true
+
+=== coder-cursor ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: more
+Native route: cursor / antigravity / opencode / back [cursor]: cursor
+Transport: Cursor native self-hosted worker connection | controller: external Cursor client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: cursor-agent,cursor-worker
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [cursor-agent,cursor-worker]: <enter>
+Add all eight curated coding agents? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: cursor-agent,cursor-worker | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-cursor | host cursor-agent,cursor-worker | worker  | exclusions  | workload SSH false
+
+=== coder-antigravity ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: more
+Native route: cursor / antigravity / opencode / back [cursor]: antigravity
+Transport: reviewed Antigravity foreground contract; otherwise staged | controller: external Antigravity client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: antigravity-cli,antigravity-remote
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [antigravity-cli,antigravity-remote]: <enter>
+Add all eight curated coding agents? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: antigravity-cli,antigravity-remote | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-antigravity | host antigravity-cli,antigravity-remote | worker  | exclusions  | workload SSH false
+
+=== coder-opencode ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: more
+Native route: cursor / antigravity / opencode / back [cursor]: opencode
+Transport: OpenCode loopback server; private access selected separately | controller: external browser/client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: opencode,opencode-server
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [opencode,opencode-server]: <enter>
+Add all eight curated coding agents? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: opencode,opencode-server | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-opencode | host opencode,opencode-server | worker  | exclusions  | workload SSH false
+
+=== coder-ssh ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: ssh
+Transport: plain SSH | controller: external terminal/editor
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: codex
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [codex]: <enter>
+Add all eight curated coding agents? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: codex | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-ssh | host codex | worker  | exclusions  | workload SSH true
+
+=== kiosk-native ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: <enter>
+Select protected local Code in the managed worker? [n]: <enter>
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate pending | exact installed client/account/platform must be qualified after installation
+claude-desktop: requested none | gate pending | exact installed client/account/platform must be qualified after installation
+Native policy action: stage / back (deselect apps after Back) [stage]: <enter>
+Host: chatgpt-desktop,claude-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: kiosk-native | host chatgpt-desktop,claude-desktop | worker  | exclusions  | workload SSH false
+
+=== kiosk-web ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: web
+Transport: browser HTTPS | controller: local browser kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chromium
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chromium]: <enter>
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Web kiosk sites: chatgpt,claude (remove either if desired) [chatgpt,claude]: <enter>
+Host: chromium | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: kiosk-web | host chromium | worker  | exclusions  | workload SSH false
+
+=== custom ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: custom
+Transport: explicit component choices | controller: chosen by the owner
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Advanced experimental Codex relay is available as codex,codex-relay. It remains staged without a reviewed immutable foreground contract; it is separate from the normal Codex SSH route.
+Initially checked components: 
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back []: codex
+Add all eight curated coding agents? [n]: <enter>
+Use a managed worker for execution components? [n]: <enter>
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: codex | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: custom | host codex | worker  | exclusions  | workload SSH false
+
+=== coder-desktop-protected ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: desktop
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: <enter>
+Select protected local Code in the managed worker? [y]: <enter>
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested managed-worker | gate pending | exact installed client/account/platform must be qualified after installation
+claude-desktop: requested managed-worker | gate pending | exact installed client/account/platform must be qualified after installation
+Native policy action: stage / back (deselect apps after Back) [stage]: <enter>
+Host: chatgpt-desktop,claude-desktop | worker: claude-code,codex | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: managed worker | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: kiosk-native | host chatgpt-desktop,claude-desktop | worker claude-code,codex | exclusions  | workload SSH false
+
+=== custom-worker ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: custom
+Transport: explicit component choices | controller: chosen by the owner
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Advanced experimental Codex relay is available as codex,codex-relay. It remains staged without a reviewed immutable foreground contract; it is separate from the normal Codex SSH route.
+Initially checked components: 
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back []: chromium,codex
+Add all eight curated coding agents? [n]: n
+Use a managed worker for execution components? [n]: y
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: chromium | worker: codex | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: managed worker | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: custom | host chromium | worker codex | exclusions  | workload SSH false
+
+=== nested-back-and-selection-back ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: claude
+Claude access: relay / ssh / back [relay]: back
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: more
+Native route: cursor / antigravity / opencode / back [cursor]: back
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: assistant
+Assistant: openclaw / hermes / back [openclaw]: hermes
+Transport: Hermes gateway | controller: selected external channel/client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi]: back
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: codex
+Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (Mac to Parallels is supported topology)
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: codex
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [codex]: <enter>
+Add all eight curated coding agents? [n]: n
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: codex | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: coder-codex-ssh | host codex | worker  | exclusions  | workload SSH true
+
+=== independent-agent-deselection ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: assistant
+Assistant: openclaw / hermes / back [openclaw]: hermes
+Transport: Hermes gateway | controller: selected external channel/client
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [antigravity-cli,claude-code,codex,cursor-agent,grok,hermes,hermes-gateway,omp,opencode,pi]: codex,hermes,hermes-gateway
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: codex,hermes,hermes-gateway | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: assistant-hermes | host codex,hermes,hermes-gateway | worker  | exclusions antigravity-cli,claude-code,cursor-agent,grok,omp,opencode,pi | workload SSH false
+
+=== dependency-consent-refusal ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: custom
+Transport: explicit component choices | controller: chosen by the owner
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Advanced experimental Codex relay is available as codex,codex-relay. It remains staged without a reviewed immutable foreground contract; it is separate from the normal Codex SSH route.
+Initially checked components: 
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back []: cursor-worker
+Add all eight curated coding agents? [n]: n
+Required dependencies: cursor-agent,cursor-worker
+Accept the required dependencies? [n]: n
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: <EOF>
+CANCELLED/REFUSED: input closed; installation cancelled
+
+=== cancel-before-selection ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: <EOF>
+CANCELLED/REFUSED: input closed; installation cancelled
+
+=== cancel-before-confirmation ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: codex
+Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (Mac to Parallels is supported topology)
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: codex
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [codex]: <enter>
+Add all eight curated coding agents? [n]: n
+Presentation: headless / x11 / wayland [headless]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Host: codex | worker:  | presentation: headless | setup/auth/integration qualification remains separate
+Execution location: standalone host | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <EOF>
+CANCELLED/REFUSED: input closed; installation cancelled
+
+=== native-verified ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: chatgpt-desktop
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate verified | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: y
+Host: chatgpt-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: y
+RESULT: kiosk-native | host chatgpt-desktop | worker  | exclusions claude-desktop | workload SSH false
+
+=== native-pending ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: chatgpt-desktop
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate pending | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: y
+Host: chatgpt-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: y
+RESULT: kiosk-native | host chatgpt-desktop | worker  | exclusions claude-desktop | workload SSH false
+
+=== native-unavailable ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: chatgpt-desktop
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate unavailable | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: y
+Host: chatgpt-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: y
+RESULT: kiosk-native | host chatgpt-desktop | worker  | exclusions claude-desktop | workload SSH false
+
+=== native-ineffective ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: chatgpt-desktop
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate ineffective | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: y
+Host: chatgpt-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: y
+RESULT: kiosk-native | host chatgpt-desktop | worker  | exclusions claude-desktop | workload SSH false
+
+=== native-stale ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: chatgpt-desktop
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate stale | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: y
+Host: chatgpt-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: y
+RESULT: kiosk-native | host chatgpt-desktop | worker  | exclusions claude-desktop | workload SSH false
+
+=== mixed-native-outcomes ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: <enter>
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate verified | fixture installed observations
+claude-desktop: requested none | gate ineffective | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: y
+Host: chatgpt-desktop,claude-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: y
+RESULT: kiosk-native | host chatgpt-desktop,claude-desktop | worker  | exclusions  | workload SSH false
+
+=== declined-native-staging-and-explicit-web ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: <enter>
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate unavailable | fixture installed observations
+claude-desktop: requested none | gate stale | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: n
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: web
+Transport: browser HTTPS | controller: local browser kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chromium
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chromium]: <enter>
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Web kiosk sites: chatgpt,claude (remove either if desired) [chatgpt,claude]: <enter>
+Host: chromium | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: <enter>
+RESULT: kiosk-web | host chromium | worker  | exclusions  | workload SSH false
+
+=== native-back-and-deselection ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: <enter>
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested none | gate unavailable | fixture installed observations
+claude-desktop: requested none | gate ineffective | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: back
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: kiosk
+Kiosk: native / web / back [native]: native
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: claude-desktop
+Select protected local Code in the managed worker? [n]: n
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+claude-desktop: requested none | gate verified | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: stage
+Host: claude-desktop | worker:  | presentation: x11 | setup/auth/integration qualification remains separate
+Execution location: no local execution requested | computer use: none | egress: internet | Tailscale support: true (enrollment unobserved here)
+Use this selection? [y]: y
+RESULT: kiosk-native | host claude-desktop | worker  | exclusions chatgpt-desktop | workload SSH false
+
+=== protected-worker-does-not-bypass-unavailable-native-policy ===
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
+Coder: happier / codex / claude / more / ssh / desktop / back [happier]: desktop
+Transport: native client; optional independently qualified worker SSH | controller: local native kiosk
+Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
+Initially checked components: chatgpt-desktop,claude-desktop
+Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
+Selected components, comma-separated; remove unwanted entries, none, or back [chatgpt-desktop,claude-desktop]: <enter>
+Select protected local Code in the managed worker? [y]: y
+Presentation: headless / x11 / wayland [x11]: <enter>
+Install Tailscale support (enrollment happens separately)? [y]: <enter>
+Execution egress: internet / normal / offline [internet]: <enter>
+Execution computer use: none / browser / virtual-desktop [none]: <enter>
+Native policy: None requested unless protected Code is selected. Each selected app remains inactive until its exact release/account/platform policy contract is verified. A worker does not override this gate. Web mode is a separate explicit choice.
+chatgpt-desktop: requested managed-worker | gate unavailable | fixture installed observations
+claude-desktop: requested managed-worker | gate unavailable | fixture installed observations
+Native policy action: stage / back (deselect apps after Back) [stage]: back
+Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
+What will this Assbox primarily do? assistant / coder / kiosk / custom: <EOF>
+CANCELLED/REFUSED: input closed; installation cancelled
+

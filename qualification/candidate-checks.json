@@ -1,0 +1,447 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-02T08:11:03.540831+00:00",
+  "testedCommit": "8d14c2a28cbe3a6881d68bbf379d2690f058ae95",
+  "baselineCommit": "3ca0032cf026c9883a60fa03425a1c9bf2ef4b76",
+  "baselineFilesMatched": 244,
+  "lockSha256": "cad32dd620f1dc0a379bf03746816e0d91f3b874a9bef8e6e94eb535836f3b86",
+  "profile": "lightweight candidate checks; full testing deferred at owner request",
+  "checks": [
+    {
+      "name": "Rust workspace compile",
+      "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo check --workspace --all-targets --offline -j 1",
+      "status": "passed",
+      "scope": "Compilation only; temporary check tool path is not the release tool closure."
+    },
+    {
+      "name": "Rust Clippy",
+      "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+      "status": "passed"
+    },
+    {
+      "name": "Deterministic Rust core",
+      "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-domain -p assbox-policy -p assbox-config --all-targets --offline -j 1",
+      "status": "passed",
+      "passed": 101
+    },
+    {
+      "name": "Cached component/substrate module fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+      "status": "passed",
+      "passed": 20,
+      "scope": "Inert package values and cached module library; no NixOS system or kernel evaluation."
+    },
+    {
+      "name": "Application launcher fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_application_launchers.py",
+      "status": "passed",
+      "passed": 6
+    },
+    {
+      "name": "Remote lifecycle/diagnostic fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p 'test_remote_*.py'",
+      "status": "passed",
+      "passed": 9
+    },
+    {
+      "name": "Native policy fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_native_policy.py",
+      "status": "passed",
+      "passed": 6,
+      "scope": "Synthetic contract and bounded observer fixtures; not native or account enforcement evidence."
+    },
+    {
+      "name": "Canonical identity continuity fixtures",
+      "command": "python3 -m unittest discover -s tests/worker -p test_identity_continuity.py",
+      "status": "passed",
+      "passed": 9
+    },
+    {
+      "name": "Controller contract fixtures",
+      "command": "python3 -m unittest discover -s tests/worker -p test_controller_contract.py",
+      "status": "passed_with_skip",
+      "passed": 19,
+      "skipped": 1,
+      "scope": "The privilege-drop case was skipped because this is not a root disposable test environment."
+    },
+    {
+      "name": "Architecture/product surface fixtures",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_contracts.py",
+      "status": "passed",
+      "passed": 13
+    },
+    {
+      "name": "Documentation navigation",
+      "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+      "status": "passed",
+      "passed": 1
+    },
+    {
+      "name": "Source syntax",
+      "status": "passed",
+      "pythonFiles": 69,
+      "nixFiles": 74,
+      "scope": "Python AST parsing and nix-instantiate --parse only."
+    },
+    {
+      "name": "Formatting and static guards",
+      "status": "passed",
+      "scope": "cargo fmt, nixfmt, ShellCheck, actionlint, architecture.py, workflow_policy.py, generated component/preset metadata, git diff --check."
+    },
+    {
+      "name": "Exact resolved source lock",
+      "command": "python3 scripts/release.py check-lock .",
+      "status": "passed",
+      "scope": "Offline graph normalization preserved all baseline held-input identities."
+    }
+  ],
+  "notRun": [
+    "Nix package/system/image builds",
+    "full release tool-closure and static/coverage/mutation/security gates",
+    "booted VM and hardware tests",
+    "native account/build policy qualification",
+    "authenticated provider tasks and pairing",
+    "real IPv4/IPv6/NAT/overlay/loopback enforcement",
+    "Serve enrollment/authentication/exposure lifecycle",
+    "real desktop resource cleanup",
+    "state schema/update/restore/power-loss qualification",
+    "production activation or publication"
+  ],
+  "releaseQualification": {
+    "requirements": 116,
+    "status": "not_run",
+    "ledger": "acceptance.json"
+  },
+  "publication": {
+    "remote": "https://github.com/buu700/assbox-dev.git",
+    "branch": "master",
+    "status": "pushed",
+    "verifiedThroughCommit": "680c779e42023f44b1304588db765822ce110279",
+    "verifiedAt": "2026-10-02T15:12:21.193061+00:00"
+  },
+  "followups": [
+    {
+      "recordedAt": "2026-10-02T13:37:39.162537+00:00",
+      "testedCommit": "f5e90cd4e37d416f0e8b94713ed648b7ae238c3c",
+      "scope": "Continued source scope audit, with cached deterministic checks only.",
+      "changes": [
+        {
+          "commit": "59bb99a",
+          "work": [
+            "W16",
+            "W19"
+          ],
+          "result": "Desktop closure opt-in; bounded manual user scopes, native GUI memory limits, foreground private bus and cleanup."
+        },
+        {
+          "commit": "d47a9b6",
+          "work": [
+            "W06"
+          ],
+          "result": "Bounded settings diff preview; unchanged context omitted and sensitive changes redacted."
+        },
+        {
+          "commit": "b7ec572",
+          "work": [
+            "W06",
+            "W07"
+          ],
+          "result": "Purpose-flow egress reaches the managed worker and is checked against effective configuration."
+        },
+        {
+          "commit": "563ed8c",
+          "work": [
+            "W20"
+          ],
+          "result": "Preset/catalog tables and dated Linux evidence generated from reviewed data with drift checks."
+        },
+        {
+          "commit": "f5e90cd",
+          "work": [
+            "W06",
+            "W14"
+          ],
+          "result": "Read-only per-app native policy states, route/authority summaries and nested Back choices."
+        }
+      ],
+      "checks": [
+        {
+          "name": "Deterministic Rust core",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-domain -p assbox-policy -p assbox-config --all-targets --offline -j 1",
+          "status": "passed"
+        },
+        {
+          "name": "Workspace Clippy",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+          "status": "passed"
+        },
+        {
+          "name": "Inert component/substrate fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+          "status": "passed",
+          "passed": 21
+        },
+        {
+          "name": "Display lease protocol fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_computer_use.py",
+          "status": "passed",
+          "passed": 4
+        },
+        {
+          "name": "Native policy fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_native_policy.py",
+          "status": "passed",
+          "passed": 7
+        },
+        {
+          "name": "Documentation navigation and generated artifacts",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+          "status": "passed",
+          "passed": 2
+        },
+        {
+          "name": "Focused static checks",
+          "status": "passed",
+          "scope": "Rust formatting, changed Nix formatting, ShellCheck scripts/verify, architecture graph, preset and product-documentation drift, git diff --check."
+        }
+      ],
+      "notRun": "All previously listed runtime, build, account, hardware and release qualification remains deferred.",
+      "remainingAudit": "Requirement-level source audit continues, including purpose-flow terminal transcripts, provider-private browser integration and external SSH qualification fixture coverage."
+    },
+    {
+      "recordedAt": "2026-10-02T14:41:56.354828+00:00",
+      "testedCommit": "5cf4c693a10bd82e7bdd4064828119c2971f27d5",
+      "scope": "Continued requirement-level source audit; cached deterministic fixtures only.",
+      "changes": [
+        {
+          "commit": "1b51e7d",
+          "work": [
+            "W16",
+            "W18",
+            "W19"
+          ],
+          "result": "Ephemeral private Chromium resource and a wired, unrun display/browser substrate VM gate."
+        },
+        {
+          "commit": "dadc4d5",
+          "work": [
+            "W05",
+            "W06",
+            "W14"
+          ],
+          "result": "29 reviewed scripted purpose-selection scenarios, including native gate states, Back, exclusions and cancellation."
+        },
+        {
+          "commit": "5f473cc",
+          "work": [
+            "W08",
+            "W23"
+          ],
+          "result": "Deselected Tailscale no longer enters the Serve runtime closure; unresolved ownership is retained for recovery."
+        },
+        {
+          "commit": "43254fd",
+          "work": [
+            "W14",
+            "W19"
+          ],
+          "result": "Native stop and checkpoint controls refer to the actual declared desktop units."
+        },
+        {
+          "commit": "5cf4c69",
+          "work": [
+            "W22",
+            "W23"
+          ],
+          "result": "Owner-run external Coder canary, disconnect and reconnect fixture; route qualification is explicitly separate."
+        }
+      ],
+      "checks": [
+        {
+          "name": "Inert component/substrate fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+          "status": "passed",
+          "passed": 23
+        },
+        {
+          "name": "Scripted purpose-selection transcripts",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-cli purpose_flow_matches --offline -j 1",
+          "status": "passed",
+          "scenarios": 29,
+          "scope": "The actual shared selection routine with scripted input and observations; no terminal, account, hardware or installation run."
+        },
+        {
+          "name": "Workspace Clippy",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+          "status": "passed"
+        },
+        {
+          "name": "Private browser and display lease fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_computer_use.py",
+          "status": "passed",
+          "passed": 6
+        },
+        {
+          "name": "External Coder fixture self-checks",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_external_coder.py",
+          "status": "passed",
+          "passed": 4,
+          "scope": "Temporary directories and injected process/platform facts; no real desktop, SSH or route qualification."
+        },
+        {
+          "name": "Missing Serve backend refusal",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_serve.py",
+          "status": "passed",
+          "passed": 1
+        },
+        {
+          "name": "Documentation navigation and generated artifacts",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+          "status": "passed",
+          "passed": 2
+        },
+        {
+          "name": "Focused static checks",
+          "status": "passed",
+          "scope": "Rust formatting, changed Nix formatting, release-check ShellCheck, architecture graph, product-documentation drift, git diff --check."
+        }
+      ],
+      "notRun": "All previously listed runtime, build, account, hardware and release qualification remains deferred; the new substrate VM and external native fixture are unrun.",
+      "remainingAudit": "Requirement-level source audit continues. Provider-specific browser integration and complete deliverable-to-source coverage remain under review."
+    },
+    {
+      "recordedAt": "2026-10-02T15:12:21.193061+00:00",
+      "testedCommit": "680c779e42023f44b1304588db765822ce110279",
+      "scope": "Final requirement-level source candidate audit; full qualification deferred at owner request.",
+      "changes": [
+        {
+          "commit": "fe7c1cd",
+          "work": [
+            "W12",
+            "W19"
+          ],
+          "result": "Configured provider state homes enter checkpoints; selected homes are normalized and scoped."
+        },
+        {
+          "commit": "8facd28",
+          "work": [
+            "W09",
+            "W13",
+            "W23"
+          ],
+          "result": "Active direct Codex relay/Happier coexistence is refused until separately qualified."
+        },
+        {
+          "commit": "cd4b58e",
+          "work": [
+            "W04",
+            "W14"
+          ],
+          "result": "Removed the unguarded duplicate Claude editor autostart; both native autostarts use the policy supervisor."
+        },
+        {
+          "commit": "cf39dca",
+          "work": [
+            "W14",
+            "W19"
+          ],
+          "result": "Web-kiosk and autostart GUI durable controls, resource bounds, managed profile checkpoints and quiescence."
+        },
+        {
+          "commit": "9fcbec4",
+          "work": [
+            "W06",
+            "W20",
+            "W21"
+          ],
+          "result": "Plan-only VM input and acceptance documentation match current purpose/native/desktop behavior."
+        },
+        {
+          "commit": "680c779",
+          "work": [
+            "W05",
+            "W08",
+            "W12"
+          ],
+          "result": "Guided and raw Nix Hermes public-origin validation agree on loopback, ambiguous host and port refusal."
+        }
+      ],
+      "checks": [
+        {
+          "name": "Deterministic Rust core",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-domain -p assbox-policy -p assbox-config --all-targets --offline -j 1",
+          "status": "passed",
+          "passed": 106
+        },
+        {
+          "name": "Scripted purpose-selection transcripts",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo test -p assbox-cli purpose_flow_matches --offline -j 1",
+          "status": "passed",
+          "scenarios": 29
+        },
+        {
+          "name": "Workspace Clippy",
+          "command": "ASSBOX_TOOL_PATH=/nix/var/nix/profiles/default/bin CARGO_TARGET_DIR=/tmp/assbox-rc-target cargo clippy --workspace --all-targets --offline -j 1 -- -D warnings",
+          "status": "passed"
+        },
+        {
+          "name": "Inert component/substrate fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_component_catalog.py",
+          "status": "passed",
+          "passed": 28
+        },
+        {
+          "name": "Application launcher fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_application_launchers.py",
+          "status": "passed",
+          "passed": 6
+        },
+        {
+          "name": "Architecture/product surface fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_contracts.py",
+          "status": "passed",
+          "passed": 13
+        },
+        {
+          "name": "Remote lifecycle and diagnostics fixtures",
+          "command": "python3 -m unittest discover -s tests/tooling -p 'test_remote_*.py'",
+          "status": "passed",
+          "passed": 9
+        },
+        {
+          "name": "Documentation navigation and generated artifacts",
+          "command": "python3 -m unittest discover -s tests/tooling -p test_documentation.py",
+          "status": "passed",
+          "passed": 2
+        },
+        {
+          "name": "Source syntax",
+          "status": "passed",
+          "pythonFiles": 75,
+          "nixFiles": 72,
+          "scope": "Python AST and Nix parsing in scripts/tests/modules/nix plus flake.nix; no system evaluation or build."
+        },
+        {
+          "name": "Focused static checks",
+          "status": "passed",
+          "scope": "Rust and changed Nix formatting, ShellCheck verify/release-check, actionlint, architecture/workflow guards, catalog/preset/product-documentation drift, exact offline lock, git diff --check."
+        },
+        {
+          "name": "Authored source traceability integrity",
+          "status": "passed",
+          "scope": "All 23 work packages and 116 requirements mapped to 34 reviewed mechanisms with source paths, gates and remaining limits. This is coverage bookkeeping, not runtime proof."
+        }
+      ],
+      "notRun": "All previously listed build, runtime, network, account, hardware and full release qualification remains deferred. No acceptance requirement was promoted.",
+      "sourceAudit": {
+        "path": "source-audit.json",
+        "status": "candidate_with_explicit_qualification_holds",
+        "workPackages": 23,
+        "requirements": 116,
+        "mechanisms": 34,
+        "remainingSourceOmissionsIdentified": []
+      },
+      "remainingAudit": "No remaining obvious source-scope omission identified in this pass. The separately listed qualification holds, W21/W22 execution and production release gates remain outstanding."
+    }
+  ]
+}

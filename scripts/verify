@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -euo pipefail
+cd "$(dirname "$0")/.."
+if [[ $# == 0 ]]; then
+  for stage in static rust mutations nix; do
+    scripts/verify "$stage"
+  done
+  exit 0
+fi
+if [[ $# != 1 ]]; then
+  echo "Usage: scripts/verify [static|rust|mutations|nix]" >&2
+  exit 2
+fi
+stage=$1
+case "$stage" in
+  static) tools=(python3 node cargo rustfmt nix nixfmt shellcheck actionlint jq systemd-analyze) ;;
+  rust) tools=(cargo rustc python3) ;;
+  mutations) tools=(python3 cargo rustc) ;;
+  nix) tools=(nix jq python3) ;;
+  *) echo "Unknown verification stage: $stage" >&2; exit 2 ;;
+esac
+for tool in "${tools[@]}"; do
+  command -v "$tool" >/dev/null || { echo "Required tool unavailable: $tool" >&2; exit 1; }
+done
+[[ -f flake.lock ]] || { echo "Missing genuine flake.lock. Complete the bootstrap workflow first." >&2; exit 1; }
+echo "Verification stage: $stage"
+case "$stage" in
+  static)
+    python3 scripts/component_catalog.py --check
+    python3 scripts/preset_catalog.py --check
+    python3 scripts/product_docs.py --check
+    python3 scripts/architecture.py
+    python3 -m unittest discover -s tests/worker -v
+    python3 scripts/workflow_policy.py
+    python3 -m unittest discover -s tests/tooling -v
+    python3 scripts/model_check.py
+    node --test infra/release-monitor/tests/*.test.mjs
+    cargo fmt --all --check
+    mapfile -d '' nix_sources < <(find . -type d \( -name .git -o -name target -o -name reports -o -name .chainman -o -name .cache \) -prune -o -type f -name '*.nix' -print0)
+    ((${#nix_sources[@]} > 0))
+    nixfmt --check "${nix_sources[@]}"
+    shellcheck scripts/format scripts/verify scripts/release-check modules/sessions/x11.sh modules/sessions/wayland.sh modules/sessions/wayland-ready.sh modules/diagnostics/remote.sh
+    for script in modules/sessions/*.sh; do bash -n "$script"; done
+    while IFS= read -r -d '' script; do bash -n "$script"; done < <(find scripts -maxdepth 1 -type f ! -name '*.py' -print0)
+    actionlint .github/workflows/*.yml
+    systemd-analyze calendar '*-*-* 18:00:00' hourly >/dev/null
+    ;;
+  rust)
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+    cargo build --workspace --locked
+    cargo test --workspace --all-targets --locked
+    ;;
+  mutations)
+    python3 scripts/mutations.py
+    ;;
+  nix)
+    python3 scripts/release.py check-lock .
+    # Separate evaluator lifetimes keep the expanded matrix from accumulating
+    # every system in one process. Each check retains normal Nix build parallelism.
+    system=$(nix eval --raw --impure --expr builtins.currentSystem)
+    checks_json=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#checks.$system" --apply builtins.attrNames)
+    check_names=$(jq -er 'if type == "array" and length > 0 then .[] else error("empty native check matrix") end' <<< "$checks_json")
+    status=0
+    while IFS= read -r check; do
+      echo "Nix check: $system.$check"
+      nix build --no-link --no-update-lock-file --no-write-lock-file --keep-going ".#checks.$system.$check" || status=$?
+    done <<< "$check_names"
+    ((status == 0)) || exit "$status"
+    ;;
+esac
+echo "Verification stage passed: $stage"

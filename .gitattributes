@@ -1,0 +1,4 @@
+# Unified-diff context markers precede upstream tab indentation.
+nix/*.patch whitespace=-space-before-tab
+
+chainman.lock text eol=lf
