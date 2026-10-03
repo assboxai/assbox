@@ -127,7 +127,9 @@ let
       networking.useDHCP = lib.mkForce false;
       networking.interfaces.eth1.ipv4.addresses = lib.mkForce [{ address = "192.168.1.3"; prefixLength = 24; }];
       networking.hosts."192.168.1.1" = [ "github.com" "api.github.com" ];
-      security.pki.certificateFiles = [ ${ca} ];
+      # This module is copied into a new flake. Embed the same public test CA
+      # instead of introducing an absolute path outside that flake's inputs.
+      ${import ./fixture-certificate.nix { certificate = ca; }}
       nix.settings.substituters = lib.mkForce [];
       nix.settings.builders = lib.mkForce "";
       systemd.timers.assbox-maintenance.enable = lib.mkForce false;
