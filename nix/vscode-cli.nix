@@ -19,6 +19,13 @@ stdenv.mkDerivation {
     stdenv.cc.cc.lib
     openssl
   ];
+  # The immutable download URL ends in /stable, so stdenv cannot infer the
+  # archive format from its name. The pinned upstream artifact is a tar.gz.
+  unpackPhase = ''
+    runHook preUnpack
+    tar -xzf "$src"
+    runHook postUnpack
+  '';
   installPhase = ''
     runHook preInstall
     install -Dm755 code "$out/bin/assbox-vscode"

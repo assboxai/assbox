@@ -122,7 +122,7 @@ pkgs.testers.runNixOSTest {
         modes = ${builtins.toJSON modes}
         for mode in modes:
             # Resolve by node name rather than assuming test-driver machine ordering.
-            machine = next(node for node in machines if node.name == mode)
+            machine = next(node for node in machines_qemu if node.name == mode)
             machine.start()
             machine.wait_for_unit("multi-user.target")
             uid = machine.succeed("id -u agent").strip()
