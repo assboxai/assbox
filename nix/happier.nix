@@ -37,6 +37,12 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
     mkdir -p "$out/lib/happier" "$out/bin"
     cp -a . "$out/lib/happier/"
+    # Assbox's Node runtime uses glibc. ARM archives also bundle alternate
+    # musl native modules, which cannot load into that interpreter and make
+    # autoPatchelf require an unrelated libc. Keep their glibc counterparts.
+    find "$out/lib/happier" -type f -name '*.musl.node' -delete
+    find "$out/lib/happier" -type d -name '*-linuxmusl-*' -prune \
+      -exec rm -rf -- {} +
     # Upstream archives carry a complete runtime. Refuse an unexpected layout.
     binary=$(find "$out/lib/happier" -type f -name happier -perm /111 -print -quit)
     test -n "$binary"
