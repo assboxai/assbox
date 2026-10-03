@@ -266,7 +266,7 @@ pkgs.testers.runNixOSTest {
     };
   };
   testScript = ''
-    import json, shlex, subprocess
+    import subprocess
     from pathlib import Path
     mode = ${builtins.toJSON mode}
     sector_size = ${toString sectorSize}

@@ -111,6 +111,9 @@ def main():
     except subprocess.CalledProcessError as error:
         code = error.returncode if error.returncode > 0 else 128 - error.returncode
         raise
+    except KeyboardInterrupt:
+        status, code = 'cancelled', 130
+        raise
     finally:
         (state / 'summary.json').write_bytes(canonical(dict(schema=1, status=status, exit_code=code,
             candidate_snapshot=receipt, stages=stages, canonical_summary_sha256=canonical_hash, finished_at=time.time())))
