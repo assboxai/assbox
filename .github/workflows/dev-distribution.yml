@@ -1,0 +1,102 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Explicit development transport probe; this does not qualify Assbox installation.
+name: Assbox development distribution probe
+'on':
+  workflow_dispatch: null
+permissions: {}
+concurrency:
+  group: assbox-development-distribution-probe
+  cancel-in-progress: false
+jobs:
+  produce:
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+    - name: Produce bounded public probe bytes without credentials
+      shell: bash
+      run: |
+        set -euo pipefail
+        /usr/bin/python3 -I -B - <<'PYTHON'
+        import hashlib, json, os, pathlib, re
+        assert os.environ['GITHUB_REPOSITORY'] == 'assboxai/assbox'
+        assert os.environ['GITHUB_REPOSITORY_ID'] == '1402455771'
+        assert os.environ['GITHUB_REPOSITORY_OWNER_ID'] == '327835666'
+        assert os.environ['GITHUB_REF'] == 'refs/heads/master'
+        assert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'
+        assert re.fullmatch('[0-9a-f]{40}', os.environ['GITHUB_SHA'])
+        output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'assbox-dev-probe'
+        output.mkdir(mode=0o700)
+        payload = b'Assbox development artifact transport probe. No installation qualification.\n'
+        (output / 'payload.txt').write_bytes(payload)
+        manifest = dict(schema=1, kind='assbox-development-transport-probe', channel='development',
+                        repository='assboxai/assbox', repository_id=1402455771, owner_id=327835666,
+                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/master',
+                        run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
+                        payload_name='payload.txt', payload_size=len(payload), payload_sha256=hashlib.sha256(payload).hexdigest(),
+                        kernel_built=False, vm_executed=False, installation_qualified=False)
+        (output / 'dev-manifest.json').write_bytes((json.dumps(manifest,sort_keys=True,separators=(',',':'))+'\n').encode())
+        PYTHON
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: development-transport-probe
+        path: ${{ runner.temp }}/assbox-dev-probe/
+        if-no-files-found: error
+        retention-days: 14
+  publish:
+    needs: produce
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: development-transport-probe
+        path: ${{ runner.temp }}/assbox-dev-probe
+    - name: Validate exact probe bytes before attestation
+      shell: bash
+      run: |
+        set -euo pipefail
+        /usr/bin/python3 -I -B - <<'PYTHON'
+        import hashlib, json, os, pathlib, stat
+        output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'assbox-dev-probe'
+        assert {p.name for p in output.iterdir()} == {'payload.txt','dev-manifest.json'}
+        for name in ('payload.txt','dev-manifest.json'):
+            p = output / name
+            assert stat.S_ISREG(p.lstat().st_mode) and p.stat().st_size <= 4096
+        payload = (output / 'payload.txt').read_bytes()
+        assert payload == b'Assbox development artifact transport probe. No installation qualification.\n'
+        expected = dict(schema=1, kind='assbox-development-transport-probe', channel='development',
+                        repository='assboxai/assbox', repository_id=1402455771, owner_id=327835666,
+                        source_commit=os.environ['GITHUB_SHA'], source_ref='refs/heads/master',
+                        run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
+                        payload_name='payload.txt', payload_size=len(payload), payload_sha256=hashlib.sha256(payload).hexdigest(),
+                        kernel_built=False, vm_executed=False, installation_qualified=False)
+        assert (output / 'dev-manifest.json').read_bytes() == (json.dumps(expected,sort_keys=True,separators=(',',':'))+'\n').encode()
+        PYTHON
+    - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+      id: attest
+      with:
+        subject-path: ${{ runner.temp }}/assbox-dev-probe/dev-manifest.json
+    - name: Attach provenance and publish the development prerelease
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+      run: |
+        set -euo pipefail
+        test "$(gh api repos/assboxai/assbox/git/ref/heads/master --jq '.object.sha')" = "$GITHUB_SHA"
+        cp -- "$BUNDLE" "$RUNNER_TEMP/assbox-dev-probe/dev-manifest.sigstore.json"
+        tag="transport-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-dev"
+        gh release create "$tag" \
+          "$RUNNER_TEMP/assbox-dev-probe/dev-manifest.json" \
+          "$RUNNER_TEMP/assbox-dev-probe/dev-manifest.sigstore.json" \
+          "$RUNNER_TEMP/assbox-dev-probe/payload.txt" \
+          --repo assboxai/assbox --target "$GITHUB_SHA" --prerelease --latest=false \
+          --title "Assbox development artifact transport probe" \
+          --notes "Development transport experiment: exact bounded bytes and real GitHub/Sigstore provenance. No kernel build, VM execution or Assbox installation qualification."
