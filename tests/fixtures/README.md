@@ -15,6 +15,14 @@ public, disposable test TLS material, trusted only by this isolated test closure
 They are not release signing keys or production credentials. Never trust this CA
 on a real machine or expose this fixture server outside the test network.
 
+`nix-cache-test.key` and `nix-cache-test.pub` are also public disposable fixtures.
+Only the test installer guest signs its harness dependency closure, and only the
+disposable installed guest trusts that public key. This lets Nix enforce signatures
+while the harness copies test dependencies into the target store. The fixture key
+is never a production release key or host-store signing key; never add it to a real
+machine's trusted keys. The fixture module embeds the public key in machine-local
+configuration so pure evaluation does not need an unrelated source-store path.
+
 `installed_cases.py` installs and boots a real disk. `activation_cases.py` runs on
 that installed disk. Their destructive commands address disposable guest devices.
 The injected local NixOS module supplies the normal test-driver console and

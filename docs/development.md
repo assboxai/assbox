@@ -127,7 +127,9 @@ builds the bootstrap client from the reviewed master lock, authenticates the exa
 published tag, then builds the candidate client from that authenticated store tree
 and its release lock. The candidate must independently verify the same public
 release in a new directory and agree on manifest/lock/source identity before latest
-can be advertised. No GitHub token is available to either client's child commands.
+can be advertised. The candidate also imports the public default kernel into a
+fresh isolated store on each native architecture before advertising. No GitHub
+token is available to any client's child commands.
 
 The bootstrap maintenance workflow does not configure rulesets, environments, numeric
 IDs or immutable releases. Those are explicit cold-administrator tasks. Do not

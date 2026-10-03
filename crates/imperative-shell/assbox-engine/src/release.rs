@@ -141,6 +141,54 @@ pub(crate) fn record_floor(value: &ReleaseFloor) -> Result<()> {
     files::atomic_write(Path::new(FLOOR), value.encode().as_bytes(), 0o600)
 }
 
+pub(crate) fn prefetch_default_kernel(
+    c: &Commands,
+    release: &AuthenticatedRelease,
+    directory: &Path,
+    architecture: assbox_domain::Architecture,
+    target_store: Option<&Path>,
+    force_download: bool,
+) -> Result<()> {
+    // This controller is embedded in the trusted installer binary. Neither an
+    // archive asset nor a downloaded cache can replace its validation code.
+    const CONTROLLER: &str = include_str!("../../../../scripts/kernel_cache.py");
+    files::create_private(directory)?;
+    let manifest = directory.join("release.json");
+    files::atomic_write(&manifest, &release.manifest_bytes, 0o600)?;
+    let controller = directory.join("kernel-cache.py");
+    files::atomic_write(&controller, CONTROLLER.as_bytes(), 0o600)?;
+    let download = directory.join("download");
+    let policy = trust()?;
+    let repository_id = policy.repository_id.to_string();
+    let owner_id = policy.owner_id.to_string();
+    let mut arguments = vec![
+        "-I",
+        "-B",
+        files::path_text(&controller)?,
+        "consume",
+        files::path_text(&release.source_path)?,
+        files::path_text(&manifest)?,
+        files::path_text(&download)?,
+        architecture.nix_system(),
+        &repository_id,
+        &owner_id,
+    ];
+    if let Some(store) = target_store {
+        arguments.extend(["--store", files::path_text(store)?]);
+    }
+    if force_download {
+        arguments.push("--force-download");
+    }
+    if target_store.is_some() {
+        // Installation holds mount leases. Reap the whole copy/download cgroup
+        // on cancellation before releasing those leases, like the system build.
+        assbox_system::cancellation::run(c, "python3", &arguments, &directory.join("logs"))?;
+    } else {
+        c.capture("python3", &arguments)?;
+    }
+    Ok(())
+}
+
 fn manifest_from_bytes(c: &Commands, path: &Path) -> Result<(ReleaseManifest, Vec<u8>)> {
     let bytes = io(fs::read(path))?;
     // The canonical byte check rejects duplicate JSON keys and alternate encodings

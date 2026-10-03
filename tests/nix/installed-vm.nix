@@ -120,6 +120,9 @@ let
       assbox
       assbox.drvPath
       assbox.cargoDeps
+      seed.config.boot.kernelPackages.kernel.out
+      seed.config.boot.kernelPackages.kernel.modules
+      seed.config.boot.kernelPackages.kernel.dev
     ]
     ++ buildTools;
   };

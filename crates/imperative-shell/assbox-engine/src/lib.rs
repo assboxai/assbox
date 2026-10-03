@@ -87,3 +87,31 @@ pub fn inspect_release(tag: &str, directory: &std::path::Path, historical: bool)
     );
     Ok(())
 }
+
+/// Authenticate and import the published default kernel into a fresh isolated
+/// store. Existing host paths cannot substitute for public cache availability.
+pub fn inspect_release_kernel(tag: &str, directory: &std::path::Path) -> Result<()> {
+    assbox_system::files::require_root()?;
+    let authenticated = release::fetch(&Commands, Some(tag), directory, None, false)?;
+    let store = directory.join("kernel-store");
+    assbox_system::files::create_private(&store)?;
+    assbox_system::cancellation::install_handlers()?;
+    release::prefetch_default_kernel(
+        &Commands,
+        &authenticated,
+        &directory.join("kernel-cache"),
+        assbox_system::probe::architecture(&Commands)?,
+        Some(&store),
+        true,
+    )?;
+    assbox_system::files::atomic_write(
+        &directory.join("verified-source-path"),
+        assbox_system::files::path_text(&authenticated.source_path)?.as_bytes(),
+        0o600,
+    )?;
+    println!(
+        "Authenticated and imported the default kernel for {}.",
+        authenticated.manifest.tag.as_str()
+    );
+    Ok(())
+}

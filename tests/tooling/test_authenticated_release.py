@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import release as publisher
 import release_data as data
+from test_kernel_cache import publication_fixture
 
 
 class AuthenticatedReleaseTests(unittest.TestCase):
@@ -84,6 +85,14 @@ class AuthenticatedReleaseTests(unittest.TestCase):
     def test_publication_checks_immutability_and_never_sets_latest(self):
         with tempfile.TemporaryDirectory() as temp:
             assets=Path(temp); (assets/'release.sigstore.json').write_text('{}')
+            # Extend the inputs for mandatory kernel publication; keep all
+            # existing immutability/latest assertions below intact.
+            manifest_bytes = data.json_bytes(self.manifest)
+            (assets/'release.json').write_bytes(manifest_bytes)
+            (assets/'flake.lock').write_bytes(b'contract-only lock')
+            (assets/'assbox-source.tar.gz').write_bytes(b'contract-only source')
+            for system in data.SYSTEMS:
+                publication_fixture(assets, manifest_bytes, system)
             calls=[]
             def api(path, payload=None, **kwargs):
                 calls.append((path,payload))
@@ -103,6 +112,25 @@ class AuthenticatedReleaseTests(unittest.TestCase):
                  patch.object(publisher,'run'), patch.object(publisher,'output') as output:
                 with self.assertRaises(ValueError): publisher.publish(assets,Path(temp))
                 output.assert_not_called()
+
+    def test_changed_kernel_asset_blocks_every_publication_write(self):
+        with tempfile.TemporaryDirectory() as temp:
+            assets=Path(temp)
+            manifest_bytes=data.json_bytes(self.manifest)
+            for name, content in [('release.json', manifest_bytes), ('release.sigstore.json', b'{}'),
+                                  ('flake.lock', b'fixture'), ('assbox-source.tar.gz', b'fixture')]:
+                (assets/name).write_bytes(content)
+            for system in data.SYSTEMS:
+                publication_fixture(assets, manifest_bytes, system)
+            nar=next(assets.glob('kernel-x86_64-linux-*.nar.xz'))
+            nar.write_bytes(nar.read_bytes()[:-1]+b'!')
+            with patch.object(publisher, 'ready', return_value=self.manifest), \
+                 patch.object(publisher, 'check_repository'), patch.object(publisher, 'write_api') as write, \
+                 patch.object(publisher, 'run') as command:
+                with self.assertRaisesRegex(ValueError, 'changed after attestation'):
+                    publisher.publish(assets, assets)
+                write.assert_not_called()
+                command.assert_not_called()
 
     def test_promotion_requires_same_immutable_tag(self):
         for candidate in [{'immutable':False, 'tag_name':'r-1000','draft':False,'prerelease':False},

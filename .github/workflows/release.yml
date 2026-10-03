@@ -558,7 +558,10 @@ jobs:
     - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
       id: attest
       with:
-        subject-path: ${{ runner.temp }}/assbox-release/assets/release.json
+        subject-path: |
+          ${{ runner.temp }}/assbox-release/assets/release.json
+          ${{ runner.temp }}/assbox-release/assets/kernel-aarch64-linux.json
+          ${{ runner.temp }}/assbox-release/assets/kernel-x86_64-linux.json
     - name: Attach the public provenance bundle
       run: cp -- "$BUNDLE" "$RUNNER_TEMP/assbox-release/assets/release.sigstore.json"
       env:

@@ -381,6 +381,14 @@ fn stage_locked() -> Result<String> {
             &["flake", "lock", "--no-update-lock-file", &reference],
         )?;
         crate::source::verify_local_lock(&Commands, &candidate, &fetched.release.manifest)?;
+        crate::release::prefetch_default_kernel(
+            &Commands,
+            &fetched.release,
+            &marker("kernel-cache"),
+            probe::architecture(&Commands)?,
+            None,
+            false,
+        )?;
         let system = build(&Commands)?;
         commit(
             &Commands,

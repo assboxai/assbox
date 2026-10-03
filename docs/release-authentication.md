@@ -54,8 +54,9 @@ the core commit/version and lock digest. The publisher independently compares al
 archive members with the frozen Git commit before attesting or uploading. It never
 executes Nix or candidate programs in a job with write/OIDC privileges.
 
-A release has four assets: `release.json`, `release.sigstore.json`, `flake.lock` and
-`assbox-source.tar.gz`. The manifest binds schema/protocol, stable channel, monotonic
+A release has four core assets: `release.json`, `release.sigstore.json`, `flake.lock` and
+`assbox-source.tar.gz`, plus a signed default-kernel cache for each architecture.
+The manifest binds schema/protocol, stable channel, monotonic
 `r-<sequence>` tag, core version/commit, issue/expiry times, both architectures,
 source archive SHA-256, source NAR hash, lock SHA-256, held application inputs,
 and the exact predecessor tag and manifest SHA-256.
@@ -71,16 +72,53 @@ Only its root-owned `verified-source-path` authorizes the candidate build: Nix b
 `assbox` from that immutable store tree with the **release's own lock**, without
 updating inputs. The candidate client then independently verifies the same tag in
 a second, previously nonexistent directory. Manifest bytes, lock bytes and verified
-store path must agree. The candidate may equal the bootstrap binary for an unchanged
+store path must agree. The candidate also authenticates the published kernel index
+and imports its complete closure into a fresh isolated store; existing runner store
+paths cannot stand in for public cache availability. The candidate may equal the bootstrap binary for an unchanged
 authorization renewal; a different output is not a correctness requirement.
 
-Both processes are tokenless. This tests the actual release verifier and its Nix/gh
+These processes are tokenless. This tests the actual release verifier and its Nix/gh
 dependencies, not just the bootstrap verifier. It establishes a current public
 round trip when executed, not proof against every future API change or a substitute
 for installed-floor/lineage failure injection. Only success of both stages on both
 architectures permits the fresh contents-write job to set the latest discovery hint. Release tags
 point to the core commit; many dependency releases can share that commit. There is
 no push to `master` or `stable`, no PAT and no daily manual environment approval.
+
+## Default kernel distribution
+
+The default appliance kernel disables `CONFIG_RFKILL_INPUT`, so radio keys cannot
+override administrative radio policy. Native release builders build this kernel
+once for the final release lock and export its `out`, `modules` and `dev` outputs,
+including their complete references. Clients evaluate the expected derivation and
+all three output paths from the authenticated release source before accepting a cache.
+Installing or updating the default configuration imports these prebuilt outputs,
+or reuses the exact already trusted outputs present in the installer store;
+the cache consumer has no source-build fallback. An unavailable or mismatched cache
+stops that operation with an error. A local administrator's different kernel can
+still require its own build.
+
+Each architecture has an independently attested `kernel-SYSTEM.json` index and a
+`kernel-SYSTEM.sigstore.json` proof bundle. The index binds the exact release manifest
+digest, core commit, lock digest, derivation, output paths, configuration hash and
+complete NAR metadata. Every compressed asset has a bounded size and SHA-256 digest.
+Asset names are fixed basenames under the exact immutable release tag. The consumer
+authenticates the index before it selects any NAR downloads, verifies all compressed
+bytes, then lets Nix verify every NAR and signature during import. The imported
+configuration must still disable `CONFIG_RFKILL_INPUT`.
+
+The native builder generates an ephemeral Nix cache key only after the build. It
+deletes the private key before exporting public artifacts. The attested public key
+is trusted only for the one cache-copy command and is never added to machine-wide
+Nix configuration. The write/OIDC publisher parses and hashes the complete native
+artifacts without evaluating Nix or executing candidate code. Its existing fixed
+provenance action attests the manifest and both kernel indices together.
+
+`assbox release verify-kernel TAG DIRECTORY` exercises public authentication and
+import into a new private store, without touching installed replay state or disks.
+The release workflow requires this cold-cache check on both native architectures
+before advertising the release. Unit fixtures and local cache imports do not
+replace that live gate.
 
 ## Manifest encoding, genesis and authenticated history
 

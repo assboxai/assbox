@@ -15,6 +15,7 @@ import release as publisher
 import release_data as data
 from test_release_data import lock
 from test_release_lineage import manifest
+from test_kernel_cache import publication_fixture
 
 BOOT = "/nix/store/" + "a" * 32 + "-assbox-bootstrap"
 CANDIDATE = "/nix/store/" + "b" * 32 + "-assbox-candidate"
@@ -55,6 +56,12 @@ class PublicVerifierTests(unittest.TestCase):
                 expected = BOOT if suffix == "bootstrap" or same_binary else CANDIDATE
                 self.assertEqual(args[1], f"{expected}/bin/assbox")
                 return b"deliberately non-authoritative console output"
+            if args[0] == "sudo" and args[2:4] == ("release", "verify-kernel"):
+                self.assertEqual(args[4], "r-1")
+                self.assertEqual(args[1], f"{BOOT if same_binary else CANDIDATE}/bin/assbox")
+                self.assertTrue(args[-1].endswith("-kernel"))
+                self.assertEqual(len([old for old in effects[:-1] if "verify" in old]), 2)
+                return b"deliberately non-authoritative kernel console output"
             raise AssertionError(args)
         with patch.object(publisher, "API_TOKEN", None), patch.object(publisher, "run", side_effect=run), patch.object(publisher, "api") as api, patch("builtins.print"):
             try:
@@ -74,6 +81,18 @@ class PublicVerifierTests(unittest.TestCase):
 
     def test_unchanged_renewal_may_produce_the_same_binary(self):
         self.exercise(same_binary=True)
+
+    def test_cold_kernel_failure_and_receipt_disagreement_are_fatal(self):
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.exercise(fail=lambda args: "verify-kernel" in args)
+        def change(args):
+            if args[:3] == ("sudo", "cat", "--") and "-kernel/" in args[-1] and args[-1].endswith("verified-source-path"):
+                return ("/nix/store/" + "d" * 32 + "-source").encode()
+            return None
+        with self.assertRaises(ValueError):
+            self.exercise(change=change)
+        calls=self.exercise()
+        self.assertEqual(len([call for call in calls if "verify-kernel" in call]), 1)
 
     def test_bootstrap_failure_never_builds_or_executes_candidate(self):
         seen = []
@@ -133,9 +152,17 @@ class PublicVerifierTests(unittest.TestCase):
 class PublicationRecheckTests(unittest.TestCase):
     def test_attestation_guard_requires_evidence_then_current_master(self):
         calls = []
-        with patch.object(publisher, "ready", side_effect=lambda *a: calls.append("evidence")), \
-             patch.object(publisher, "check_repository", side_effect=lambda **k: calls.append("head")):
-            publisher.attestation_ready(Path("assets"), Path("reports"))
+        with tempfile.TemporaryDirectory() as temp:
+            assets=Path(temp)/"assets"; assets.mkdir()
+            reports=Path(temp)/"reports"; reports.mkdir()
+            release_bytes=data.json_bytes(manifest())
+            (assets/"release.json").write_bytes(release_bytes)
+            for system in data.SYSTEMS:
+                directory=reports/("kernel-"+system); directory.mkdir()
+                publication_fixture(directory, release_bytes, system)
+            with patch.object(publisher, "ready", side_effect=lambda *a: calls.append("evidence")), \
+                 patch.object(publisher, "check_repository", side_effect=lambda **k: calls.append("head")):
+                publisher.attestation_ready(assets, reports)
         self.assertEqual(calls, ["evidence", "head"])
         with patch.object(publisher, "ready", side_effect=ValueError("bad evidence")), patch.object(publisher, "check_repository") as head:
             with self.assertRaises(ValueError): publisher.attestation_ready(Path("assets"), Path("reports"))
@@ -164,6 +191,12 @@ class PublicationRecheckTests(unittest.TestCase):
     def test_mid_publication_master_change_prevents_every_subsequent_effect(self):
         with tempfile.TemporaryDirectory() as temp:
             assets = Path(temp); (assets / "release.sigstore.json").write_bytes(b"{}")
+            release_bytes=data.json_bytes(manifest())
+            for name, raw in [("release.json", release_bytes), ("flake.lock", b"contract-only lock"),
+                              ("assbox-source.tar.gz", b"contract-only archive")]:
+                (assets/name).write_bytes(raw)
+            for system in data.SYSTEMS:
+                publication_fixture(assets, release_bytes, system)
             # Entry, tag, draft, upload, finalization. Refuse at every boundary.
             for boundary in range(1, 6):
                 checks = 0; effects = []

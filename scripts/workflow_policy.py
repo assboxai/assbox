@@ -41,6 +41,8 @@ NIX = "cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24"
 UPLOAD = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 DOWNLOAD = "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
 ATTEST = "actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32"
+ATTEST_SUBJECTS = "\n".join("${{ runner.temp }}/assbox-release/assets/" + name for name in (
+    "release.json", "kernel-aarch64-linux.json", "kernel-x86_64-linux.json")) + "\n"
 READ = {"contents": "read"}
 RUNNERS = {"ubuntu-24.04", "ubuntu-24.04-arm"}
 
@@ -462,7 +464,7 @@ def check_document(name, document):
                                 {"name": "release-assets", "path": "${{ runner.temp }}/assbox-release/assets"},
                                 {"pattern": "native-*", "path": "${{ runner.temp }}/assbox-release/reports"},
                             ],
-                            ATTEST: [{"subject-path": "${{ runner.temp }}/assbox-release/assets/release.json"}],
+                            ATTEST: [{"subject-path": ATTEST_SUBJECTS}],
                         }
                         if (step["uses"] not in allowed_actions or "run" in step or "env" in step
                                 or options not in approved_options.get(step["uses"], [])):

@@ -612,6 +612,17 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
         files::path_text(&installed_config)?
     );
+    write_phase(&c, &root.point, &record, "building", None)?;
+    recheck(&plan, &c, &mounts)?;
+    crate::release::check_freshness(&c, &fetched.release.manifest)?;
+    crate::release::prefetch_default_kernel(
+        &c,
+        &fetched.release,
+        &build_dir.join("kernel-cache"),
+        plan.inventory().architecture,
+        Some(&root.point),
+        false,
+    )?;
     // Both the provisional sizing build and the final build use the same
     // cancellation, retry and revalidation path. The snapshot changes only
     // after sizing resolves, never while retrying a particular build.
