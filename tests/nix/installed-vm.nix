@@ -230,7 +230,13 @@ pkgs.testers.runNixOSTest {
         "sr_mod"
       ];
       virtualisation.diskSize = 65536;
-      virtualisation.emptyDiskImages = [ 2048 ]; # Independent backup disk.
+      # Identify the independent backup disk even when a store image adds a drive.
+      virtualisation.emptyDiskImages = [
+        {
+          size = 2048;
+          driveConfig.deviceExtraOpts.serial = "assbox-backup";
+        }
+      ];
       virtualisation.useEFIBoot = efi;
       # Direct kernel boot through the EFI firmware keeps real firmware
       # observation without baking the complete offline build closure into an

@@ -127,9 +127,9 @@ else:
 write(installer, '/tmp/layout', layout)
 installer.succeed('sfdisk ' + disk + ' < /tmp/layout; udevadm settle')
 root = disk + str(root_number)
-# The first extra disk is backup; the target has an explicit serial.
-installer.succeed("printf 'label: gpt\ntype=L\n' | sfdisk /dev/vdb; udevadm settle; mkfs.ext4 -F /dev/vdb1")
-request = {'root': root, 'esp': esp or '', 'backup': '/dev/vdb1',
+# Both writable fixture disks have stable serials independent of drive order.
+installer.succeed("printf 'label: gpt\ntype=L\n' | sfdisk /dev/disk/by-id/virtio-assbox-backup; udevadm settle; mkfs.ext4 -F /dev/disk/by-id/virtio-assbox-backup-part1")
+request = {'root': root, 'esp': esp or '', 'backup': '/dev/disk/by-id/virtio-assbox-backup-part1',
            'platform': 'macbookpro12-1' if mode == 'apple-refind' else 'generic',
            'key': installer.succeed('cat ' + key).strip()}
 write(installer, CASE + '/install.json', json.dumps(request))
@@ -176,15 +176,15 @@ if scenario == 'install':
     wait_install_exit()
     installer.succeed('grep "external backup read-back failed" /tmp/install.log')
     assert_target_unchanged(before)
-    installer.succeed('mkdir -p /mnt/damaged-backup; mount /dev/vdb1 /mnt/damaged-backup; rm -rf ' + shlex.quote('/mnt/damaged-backup/' + damaged.rsplit('/', 1)[1]) + '; umount /mnt/damaged-backup')
+    installer.succeed('mkdir -p /mnt/damaged-backup; mount /dev/disk/by-id/virtio-assbox-backup-part1 /mnt/damaged-backup; rm -rf ' + shlex.quote('/mnt/damaged-backup/' + damaged.rsplit('/', 1)[1]) + '; umount /mnt/damaged-backup')
     format_target()
     # A real exhausted backup filesystem must refuse before any target write.
-    installer.succeed('mkdir -p /mnt/full-backup; mount /dev/vdb1 /mnt/full-backup')
+    installer.succeed('mkdir -p /mnt/full-backup; mount /dev/disk/by-id/virtio-assbox-backup-part1 /mnt/full-backup')
     installer.succeed('fallocate -l "$(df -B1 --output=avail /mnt/full-backup | tail -1)" /mnt/full-backup/filler; umount /mnt/full-backup')
     before = snapshot_target()
     assert 'backup lacks room' in installer.fail(INSTALL + ' 2>&1', timeout=1800)
     assert_target_unchanged(before)
-    installer.succeed('mount /dev/vdb1 /mnt/full-backup; rm /mnt/full-backup/filler; umount /mnt/full-backup')
+    installer.succeed('mount /dev/disk/by-id/virtio-assbox-backup-part1 /mnt/full-backup; rm /mnt/full-backup/filler; umount /mnt/full-backup')
     format_target()
     # Cancellation also interrupts the password client and reaps it without ever
     # putting its output in logs or waiting for user input to release the mounts.
@@ -302,7 +302,7 @@ else:
 assert root_phase() == 'complete'
 if retained_digest:
     assert installer.succeed('sha256sum ' + disk + '2').split()[0] == retained_digest
-installer.succeed('mkdir -p /mnt/backup; mount -o ro /dev/vdb1 /mnt/backup')
+installer.succeed('mkdir -p /mnt/backup; mount -o ro /dev/disk/by-id/virtio-assbox-backup-part1 /mnt/backup')
 installer.succeed('for manifest in /mnt/backup/assbox-*/SHA256SUMS; do (cd "$(dirname "$manifest")"; sha256sum -c SHA256SUMS); done')
 installer.succeed('umount /mnt/backup')
 installer.succeed('mount ' + root + ' /mnt/inspect')
