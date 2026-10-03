@@ -213,7 +213,9 @@ class WorkflowPolicyTests(unittest.TestCase):
             doc["on"] = {event: options}
             # Other workflows retain the general read-only commands, without
             # borrowing verify.yml's narrowly scoped diagnostic exceptions.
-            doc['jobs']['verify']['steps'] = doc['jobs']['verify']['steps'][:3] + [
+            steps = doc['jobs']['verify']['steps']
+            install = next(i for i, step in enumerate(steps) if step.get('uses') == policy.NIX)
+            doc['jobs']['verify']['steps'] = steps[:install + 2] + [
                 {'run': 'nix develop .#release-check --command scripts/verify'}]
             yield event, doc
 

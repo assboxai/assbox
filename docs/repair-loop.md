@@ -37,7 +37,7 @@ included. A judge or policy correction requires a separately reviewed new sessio
 
 Preflight and status never build a driver or start QEMU. Preflight checks native
 architecture, available tools, KVM access, available memory/cgroup headroom, and
-state/store free bytes and inodes. Shared storage is identified rather than counted
+state/store/driver-state free bytes and inodes. Shared storage is identified rather than counted
 twice. The initial 10-GiB memory and 100-GiB storage guardrails are conservative
 configuration, not measured minimum requirements. It does not run sudo, repair
 permissions, collect credentials or garbage-collect the Nix store.
@@ -105,6 +105,11 @@ Private session state defaults to `$XDG_STATE_HOME/assbox/repair` (or
 deterministic candidate receipt, runtime/preflight facts, build/driver logs,
 guest artifacts, cleanup record and final summary. A ledger start without a final
 summary is incomplete. Inspection marks an older success stale if source changed.
+The driver gets fresh mode-0700 physical state under `/var/tmp`, whose capacity and
+persistent filesystem are checked in preflight. Its short path avoids Unix socket
+limits, including virtual-switch libraries that resolve symlinks. Each run's
+`driver-state.json` records the exact directory. Firmware and diagnostic state stay
+private there; large images follow the recorded disk-retention policy.
 Do not upload VM disks, private keys, password hashes or full guest state.
 Disposable qcow2 images are removed after the owned group drains. Explicit
 `repair-init --retain-disks` retains images privately for diagnosis; they remain

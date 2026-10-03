@@ -21,6 +21,53 @@ jobs:
       with:
         ref: ${{ github.sha }}
         persist-credentials: false
+    - name: Clear unused SDKs on the ephemeral hosted runner
+      run: "sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP\
+        \ /usr/bin/python3 -I -B <<'ASSBOX_RUNNER_CLEARANCE'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
+        \ GPL-3.0-or-later\n\"\"\"Reclaim fixed unused SDK directories on an ephemeral GitHub-hosted Linux\
+        \ runner.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\nimport\
+        \ shutil\nimport stat\nimport time\n\nPATHS = tuple(Path(name) for name in (\n    '/usr/local/lib/android',\
+        \ '/usr/share/dotnet',\n    '/opt/hostedtoolcache', '/usr/local/.ghcup'))\n\n\ndef validate_environment(environment):\n\
+        \    if (os.geteuid() != 0 or platform.system() != 'Linux'\n            or environment.get('GITHUB_ACTIONS')\
+        \ != 'true'\n            or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'\n           \
+        \ or environment.get('GITHUB_EVENT_NAME') not in (\n                'workflow_dispatch', 'schedule',\
+        \ 'push', 'pull_request', 'workflow_run', 'workflow_call')):\n        raise ValueError('Clearance\
+        \ requires an ephemeral hosted Linux workflow runner')\n    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',\
+        \ environment.get('GITHUB_REPOSITORY', '')):\n        raise ValueError('Missing workflow repository\
+        \ identity')\n    for name in ('GITHUB_REPOSITORY_ID', 'GITHUB_REPOSITORY_OWNER_ID', 'GITHUB_RUN_ID',\
+        \ 'GITHUB_RUN_ATTEMPT'):\n        if not re.fullmatch(r'[1-9][0-9]*', environment.get(name, '')):\n\
+        \            raise ValueError('Missing numeric workflow identity')\n    if not re.fullmatch(r'[0-9a-f]{40}',\
+        \ environment.get('GITHUB_SHA', '')):\n        raise ValueError('Missing workflow source identity')\n\
+        \    temporary = Path(environment.get('RUNNER_TEMP', ''))\n    if not temporary.is_absolute() or temporary.resolve()\
+        \ != temporary:\n        raise ValueError('Unexpected runner temporary path')\n    metadata = temporary.lstat()\n\
+        \    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid == 0:\n        raise ValueError('Unexpected\
+        \ runner temporary ownership')\n    return temporary, metadata.st_uid\n\n\ndef mount_points():\n \
+        \   points = []\n    for line in Path('/proc/self/mountinfo').read_text().splitlines():\n        value\
+        \ = line.split()[4]\n        value = re.sub(r'\\\\([0-7]{3})', lambda match: chr(int(match[1], 8)),\
+        \ value)\n        points.append(Path(value))\n    return points\n\n\ndef clear_directories(paths,\
+        \ runner_uid, root_device, mounts):\n    if not shutil.rmtree.avoids_symlink_attacks:\n        raise\
+        \ ValueError('Symlink-resistant directory deletion is required')\n    admitted = []\n    for path\
+        \ in paths:\n        if path.is_symlink() or path.resolve() != path:\n            raise ValueError('Refusing\
+        \ a redirected toolchain directory')\n        if not path.exists():\n            continue\n      \
+        \  metadata = path.lstat()\n        if (not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid not\
+        \ in (0, runner_uid)\n                or metadata.st_dev != root_device):\n            raise ValueError('Unexpected\
+        \ toolchain directory type, owner or volume')\n        if any(mount == path or path in mount.parents\
+        \ for mount in mounts):\n            raise ValueError('Refusing a mounted toolchain directory')\n\
+        \        admitted.append(path)\n    # Admit the entire fixed set before removing anything.\n    for\
+        \ path in admitted:\n        shutil.rmtree(path)\n        if path.exists():\n            raise ValueError('Toolchain\
+        \ clearance was incomplete')\n    return [str(path) for path in admitted]\n\n\ndef main():\n    temporary,\
+        \ runner_uid = validate_environment(os.environ)\n    before = shutil.disk_usage('/')\n    started\
+        \ = time.monotonic()\n    removed = clear_directories(PATHS, runner_uid, Path('/').stat().st_dev,\
+        \ mount_points())\n    after = shutil.disk_usage('/')\n    facts = dict(schema=1, kind='hosted-runner-toolchain-clearance',\n\
+        \                 system=platform.machine() + '-linux', source_commit=os.environ['GITHUB_SHA'],\n\
+        \                 run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n\
+        \                 removed_directories=removed, before_available_bytes=before.free,\n             \
+        \    after_available_bytes=after.free, observed_free_bytes_increase=after.free - before.free,\n  \
+        \               seconds=round(time.monotonic() - started, 2))\n    output = temporary / 'assbox-runner-clearance.json'\n\
+        \    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)\n    with os.fdopen(fd,\
+        \ 'w') as stream:\n        stream.write(json.dumps(facts, sort_keys=True, separators=(',', ':')) +\
+        \ '\\n')\n    print(json.dumps(facts, sort_keys=True))\n\n\nif __name__ == '__main__':\n    main()\n\
+        ASSBOX_RUNNER_CLEARANCE"
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
       with:
         install_url: https://releases.nixos.org/nix/nix-2.35.2/install
@@ -86,6 +133,53 @@ jobs:
     timeout-minutes: 360
     steps:
     - *id001
+    - name: Clear unused SDKs on the ephemeral hosted runner
+      run: "sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP\
+        \ /usr/bin/python3 -I -B <<'ASSBOX_RUNNER_CLEARANCE'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
+        \ GPL-3.0-or-later\n\"\"\"Reclaim fixed unused SDK directories on an ephemeral GitHub-hosted Linux\
+        \ runner.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\nimport\
+        \ shutil\nimport stat\nimport time\n\nPATHS = tuple(Path(name) for name in (\n    '/usr/local/lib/android',\
+        \ '/usr/share/dotnet',\n    '/opt/hostedtoolcache', '/usr/local/.ghcup'))\n\n\ndef validate_environment(environment):\n\
+        \    if (os.geteuid() != 0 or platform.system() != 'Linux'\n            or environment.get('GITHUB_ACTIONS')\
+        \ != 'true'\n            or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'\n           \
+        \ or environment.get('GITHUB_EVENT_NAME') not in (\n                'workflow_dispatch', 'schedule',\
+        \ 'push', 'pull_request', 'workflow_run', 'workflow_call')):\n        raise ValueError('Clearance\
+        \ requires an ephemeral hosted Linux workflow runner')\n    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',\
+        \ environment.get('GITHUB_REPOSITORY', '')):\n        raise ValueError('Missing workflow repository\
+        \ identity')\n    for name in ('GITHUB_REPOSITORY_ID', 'GITHUB_REPOSITORY_OWNER_ID', 'GITHUB_RUN_ID',\
+        \ 'GITHUB_RUN_ATTEMPT'):\n        if not re.fullmatch(r'[1-9][0-9]*', environment.get(name, '')):\n\
+        \            raise ValueError('Missing numeric workflow identity')\n    if not re.fullmatch(r'[0-9a-f]{40}',\
+        \ environment.get('GITHUB_SHA', '')):\n        raise ValueError('Missing workflow source identity')\n\
+        \    temporary = Path(environment.get('RUNNER_TEMP', ''))\n    if not temporary.is_absolute() or temporary.resolve()\
+        \ != temporary:\n        raise ValueError('Unexpected runner temporary path')\n    metadata = temporary.lstat()\n\
+        \    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid == 0:\n        raise ValueError('Unexpected\
+        \ runner temporary ownership')\n    return temporary, metadata.st_uid\n\n\ndef mount_points():\n \
+        \   points = []\n    for line in Path('/proc/self/mountinfo').read_text().splitlines():\n        value\
+        \ = line.split()[4]\n        value = re.sub(r'\\\\([0-7]{3})', lambda match: chr(int(match[1], 8)),\
+        \ value)\n        points.append(Path(value))\n    return points\n\n\ndef clear_directories(paths,\
+        \ runner_uid, root_device, mounts):\n    if not shutil.rmtree.avoids_symlink_attacks:\n        raise\
+        \ ValueError('Symlink-resistant directory deletion is required')\n    admitted = []\n    for path\
+        \ in paths:\n        if path.is_symlink() or path.resolve() != path:\n            raise ValueError('Refusing\
+        \ a redirected toolchain directory')\n        if not path.exists():\n            continue\n      \
+        \  metadata = path.lstat()\n        if (not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid not\
+        \ in (0, runner_uid)\n                or metadata.st_dev != root_device):\n            raise ValueError('Unexpected\
+        \ toolchain directory type, owner or volume')\n        if any(mount == path or path in mount.parents\
+        \ for mount in mounts):\n            raise ValueError('Refusing a mounted toolchain directory')\n\
+        \        admitted.append(path)\n    # Admit the entire fixed set before removing anything.\n    for\
+        \ path in admitted:\n        shutil.rmtree(path)\n        if path.exists():\n            raise ValueError('Toolchain\
+        \ clearance was incomplete')\n    return [str(path) for path in admitted]\n\n\ndef main():\n    temporary,\
+        \ runner_uid = validate_environment(os.environ)\n    before = shutil.disk_usage('/')\n    started\
+        \ = time.monotonic()\n    removed = clear_directories(PATHS, runner_uid, Path('/').stat().st_dev,\
+        \ mount_points())\n    after = shutil.disk_usage('/')\n    facts = dict(schema=1, kind='hosted-runner-toolchain-clearance',\n\
+        \                 system=platform.machine() + '-linux', source_commit=os.environ['GITHUB_SHA'],\n\
+        \                 run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n\
+        \                 removed_directories=removed, before_available_bytes=before.free,\n             \
+        \    after_available_bytes=after.free, observed_free_bytes_increase=after.free - before.free,\n  \
+        \               seconds=round(time.monotonic() - started, 2))\n    output = temporary / 'assbox-runner-clearance.json'\n\
+        \    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)\n    with os.fdopen(fd,\
+        \ 'w') as stream:\n        stream.write(json.dumps(facts, sort_keys=True, separators=(',', ':')) +\
+        \ '\\n')\n    print(json.dumps(facts, sort_keys=True))\n\n\nif __name__ == '__main__':\n    main()\n\
+        ASSBOX_RUNNER_CLEARANCE"
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
       with:
         install_url: https://releases.nixos.org/nix/nix-2.35.2/install

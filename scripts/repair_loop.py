@@ -238,6 +238,38 @@ def memory_available():
     return available
 
 
+def driver_state_parent():
+    root = Path('/var/tmp')
+    if not root.is_dir() or root.resolve() != root or len(os.fsencode(root)) > 40:
+        raise ValueError('short physical driver-state parent unavailable')
+    mounts = []
+    for line in Path('/proc/self/mountinfo').read_text().splitlines():
+        fields, filesystem = line.split(' - ', 1)
+        name = fields.split()[4]
+        for encoded, character in [('\\040', ' '), ('\\011', '\t'), ('\\012', '\n'), ('\\134', '\\')]:
+            name = name.replace(encoded, character)
+        point = Path(name)
+        if point == root or point in root.parents:
+            mounts.append((len(str(point)), filesystem.split()[0]))
+    if not mounts or max(mounts)[1] in ('tmpfs', 'ramfs'):
+        raise ValueError('driver state requires persistent storage')
+    if not os.access(root, os.W_OK | os.X_OK):
+        raise ValueError('driver-state parent is not writable')
+    return root
+
+
+def fresh_driver_state(run):
+    root = Path(tempfile.mkdtemp(prefix='asbx-vm-', dir=driver_state_parent()))
+    os.chmod(root, 0o700)
+    try:
+        atomic(run / 'driver-state.json', dict(schema=1, path=str(root), fresh=True,
+                                             purpose='private socket, disk and firmware state'))
+    except OSError:
+        root.rmdir()
+        raise
+    return root
+
+
 def capabilities(path, session):
     host = platform.machine()
     system = {'x86_64': 'x86_64-linux', 'aarch64': 'aarch64-linux', 'arm64': 'aarch64-linux'}.get(host)
@@ -250,7 +282,12 @@ def capabilities(path, session):
     memory = memory_available()
     if memory < session['resource_policy']['available_memory_bytes']: issues.append('available memory below frozen guardrail')
     volumes = {}
-    for name, root in [('state', path), ('store', Path('/nix/store'))]:
+    roots = [('state', path), ('store', Path('/nix/store'))]
+    try:
+        roots.append(('driver_state', driver_state_parent()))
+    except (OSError, ValueError) as error:
+        issues.append(str(error))
+    for name, root in roots:
         if not root.exists(): issues.append('Nix store unavailable'); continue
         info = os.statvfs(root)
         # Dynamic-inode filesystems such as Btrfs report both inode counts as
@@ -295,16 +332,18 @@ def budget(path, session):
     return len(results) + 1
 
 
-def environment(run):
+def environment(run, driver_state=None):
     env = {key: os.environ[key] for key in ('PATH', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'NIX_SSL_CERT_FILE') if key in os.environ}
     for name in ('home', 'tmp', 'cache'):
         (run / name).mkdir(mode=0o700, exist_ok=True)
     env.update(HOME=str(run / 'home'), TMPDIR=str(run / 'tmp'), XDG_CACHE_HOME=str(run / 'cache'))
+    if driver_state is not None:
+        env['XDG_RUNTIME_DIR'] = str(driver_state)
     return env
 
 
-def process(command, run, logfile, timeout, cleanup):
-    child = subprocess.Popen(command, cwd=run, env=environment(run), stdin=subprocess.DEVNULL,
+def process(command, run, logfile, timeout, cleanup, driver_state=None):
+    child = subprocess.Popen(command, cwd=run, env=environment(run, driver_state), stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True, start_new_session=True)
     start = time.monotonic()
     retained = 0
@@ -381,7 +420,7 @@ def once(path, session, additions=(), build_only=False):
     atomic(run / 'runtime.json', runtime)
     event(path, dict(event='attempt-start', attempt_id=run.name, candidate_snapshot=receipt,
                     resource_policy_sha256=session['resource_policy_sha256'], time=time.time()))
-    start = time.monotonic(); driver_start = None; status = 'error'; failure = None
+    start = time.monotonic(); driver_start = None; driver_state = None; status = 'error'; failure = None
     cleanup = {'owned_group_drained': False, 'daemon_builder_cancellation_proven': False}
     summary = dict(schema=1, kind='assbox-canonical-run', attempt_id=run.name, nonce=uuid.uuid4().hex,
         candidate_snapshot=receipt, candidate_content_sha256=receipt['source_content_sha256'],
@@ -413,8 +452,11 @@ def once(path, session, additions=(), build_only=False):
             return run
         phase = 'driver-execution'; driver_start = time.monotonic()
         (run / 'driver-output').mkdir(mode=0o700)
+        driver_state = fresh_driver_state(run)
+        summary['driver_state_directory'] = str(driver_state)
         code, elapsed = process([str(program), '--output_directory', str(run / 'driver-output')],
-            run, run / 'driver.log', session['budgets']['per_run_seconds'] - (time.monotonic() - start), cleanup)
+            run, run / 'driver.log', session['budgets']['per_run_seconds'] - (time.monotonic() - start), cleanup,
+            driver_state=driver_state)
         summary['driver_exit_code'] = code
         summary['vm_executed'] = (run / 'driver-output/vm-started.json').is_file()
         summary['driver_seconds'] = elapsed
@@ -441,16 +483,22 @@ def once(path, session, additions=(), build_only=False):
         if (run / 'driver-output/vm-started.json').is_file(): summary['vm_executed'] = True
         cleanup['disk_retention_requested'] = session['retain_disks']
         cleanup['disks_removed'] = 0
+        cleanup['driver_state_directory'] = str(driver_state) if driver_state is not None else None
+        # Keep private firmware and diagnostic state, referenced by the run's
+        # record. Large images follow the same scoped retention policy as before.
+        cleanup['driver_state_metadata_retained'] = driver_state is not None
         if cleanup['owned_group_drained'] and not session['retain_disks']:
-            for image in (run / 'tmp').rglob('*.qcow2'):
-                if image.is_file() and not image.is_symlink():
-                    try:
-                        image.unlink(); cleanup['disks_removed'] += 1
-                    except OSError:
-                        cleanup['disk_cleanup_incomplete'] = True
-                        if status == 'passed': status, failure = 'error', 'disposable disk cleanup incomplete'
+            roots = [run / 'tmp'] + ([driver_state] if driver_state is not None else [])
+            for root in roots:
+                for image in root.rglob('*.qcow2'):
+                    if image.is_file() and not image.is_symlink():
+                        try:
+                            image.unlink(); cleanup['disks_removed'] += 1
+                        except OSError:
+                            cleanup['disk_cleanup_incomplete'] = True
+                            if status == 'passed': status, failure = 'error', 'disposable disk cleanup incomplete'
         if driver_start is not None: summary['driver_seconds'] = time.monotonic() - driver_start
-        artifact_names = ['build.log', 'driver.log', 'runtime.json', 'source-manifest.json', 'candidate-snapshot.json',
+        artifact_names = ['build.log', 'driver.log', 'driver-state.json', 'runtime.json', 'source-manifest.json', 'candidate-snapshot.json',
             'driver-output/vm-started.json', 'driver-output/installer/installer-transcript.txt',
             'driver-output/installer/phase-events.jsonl', 'driver-output/installer/fixture-calls.jsonl',
             'driver-output/installer/fixture-release.json', 'driver-output/installer/instrumentation.json',

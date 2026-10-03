@@ -185,6 +185,12 @@ Every installation immediately runs the reviewed inline cleanup, restarts the
 daemon and checks that the effective access-token setting is empty before running
 candidate code. Child environment scrubbing alone does not remove that file.
 
+Before installing Nix, hosted Linux jobs reclaim the unused Android, .NET,
+hosted-tool-cache and GHCup directories. The fixed inline controller refuses local
+and self-hosted contexts, redirected directories and nested mounts, and validates
+the entire set before deletion. It records actual free bytes before and after;
+these observations do not waive the frozen canonical resource guardrails.
+
 `nix/dev` is self-contained with a genuine independent lock and default, formatter
 and repair profiles. It initially shares the production Nixpkgs revision. The root
 flake has explicit `release-tools` and `release-check` shells and no default

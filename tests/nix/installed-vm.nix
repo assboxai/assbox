@@ -208,8 +208,12 @@ pkgs.testers.runNixOSTest {
       virtualisation.diskSize = 65536;
       virtualisation.emptyDiskImages = [ 2048 ]; # Independent backup disk.
       virtualisation.useEFIBoot = efi;
-      virtualisation.useBootLoader = efi;
-      boot.loader.systemd-boot.enable = lib.mkForce efi;
+      # Direct kernel boot through the EFI firmware keeps real firmware
+      # observation without baking the complete offline build closure into an
+      # installer image. The produced target still boots its real bootloader.
+      virtualisation.useBootLoader = false;
+      virtualisation.efi.keepVariables = false;
+      boot.loader.systemd-boot.enable = lib.mkForce false;
       boot.loader.grub.enable = lib.mkForce false;
       virtualisation.qemu.options =
         lib.optionals apple [

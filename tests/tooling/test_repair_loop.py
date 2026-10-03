@@ -150,7 +150,7 @@ class Sessions(unittest.TestCase):
             (driver / 'bin').mkdir(parents=True)
             (driver / 'bin/nixos-test-driver').write_text('fixture only\n')
             runtime = dict(issues=[], host_system='x86_64-linux', guest_system='x86_64-linux', accelerator='kvm')
-            def fake_process(command, run, logfile, timeout, cleanup):
+            def fake_process(command, run, logfile, timeout, cleanup, driver_state=None):
                 cleanup.update(owned_group_drained=True, daemon_builder_cancellation_proven=False)
                 if command[0] == 'nix':
                     self.assertEqual(command[1], 'build')
@@ -165,6 +165,7 @@ class Sessions(unittest.TestCase):
                 return 7, 0.2
             with mock.patch.object(repair_loop, 'capabilities', return_value=runtime), \
                  mock.patch.object(repair_loop, 'process', side_effect=fake_process), \
+                 mock.patch.object(repair_loop, 'fresh_driver_state', side_effect=lambda run: run / 'tmp'), \
                  mock.patch.object(repair_loop, 'Path', side_effect=lambda name: driver if name == store_path else Path(name)):
                 run = repair_loop.once(path, session)
             result = json.loads((run / 'summary.json').read_bytes())

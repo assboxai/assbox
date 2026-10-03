@@ -60,11 +60,26 @@ def credential_cleanup_step():
             'run': credential_cleanup_command()}
 
 
+def runner_clearance_command():
+    body = Path(__file__).with_name('clear_unused_runner_tools.py').read_text()
+    context = ('GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,'
+               'GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,'
+               'GITHUB_RUN_ATTEMPT,RUNNER_TEMP')
+    return ("sudo --preserve-env=" + context + " /usr/bin/python3 -I -B <<'ASSBOX_RUNNER_CLEARANCE'\n"
+            + body + 'ASSBOX_RUNNER_CLEARANCE')
+
+
+def runner_clearance_step():
+    return {'name': 'Clear unused SDKs on the ephemeral hosted runner',
+            'run': runner_clearance_command()}
+
+
 # This is an effect-entrypoint allowlist, not a blacklist of dangerous shell words.
 READ_COMMANDS = {
     'test -f flake.lock && git ls-files --error-unmatch flake.lock',
     'nix develop .#release-check --command scripts/verify',
     credential_cleanup_command(),
+    runner_clearance_command(),
 }
 VERIFY_COMMANDS = ['nix run path:./nix/dev#just -- verify']
 VERIFY_UPLOAD = {
@@ -118,7 +133,7 @@ def development_document():
             'prepare': {'name': 'Prepare candidate', 'if': DEVELOPMENT_GUARD, 'runs-on': 'ubuntu-24.04',
                 'permissions': {'contents': 'read', 'actions': 'read'}, 'timeout-minutes': 360,
                 'outputs': {'changed': '${{ steps.candidate.outputs.changed }}'},
-                'steps': [checkout, nix(), credential_cleanup_step(), {'run': DEVELOPMENT_DISCOVER, 'env': tokens[('prepare', DEVELOPMENT_DISCOVER)]},
+                'steps': [checkout, runner_clearance_step(), nix(), credential_cleanup_step(), {'run': DEVELOPMENT_DISCOVER, 'env': tokens[('prepare', DEVELOPMENT_DISCOVER)]},
                     {'id': 'candidate', 'run': DEVELOPMENT_PREPARE},
                     {'if': "steps.candidate.outputs.changed == 'true'", **upload('maintenance-candidate-${{ github.run_attempt }}', '${{ runner.temp }}/assbox-maintenance/candidate.json')}]},
             'native': {'name': 'Native ${{ matrix.system }}', 'needs': 'prepare',
@@ -127,7 +142,7 @@ def development_document():
                     {'system': 'x86_64-linux', 'runner': 'ubuntu-24.04'},
                     {'system': 'aarch64-linux', 'runner': 'ubuntu-24.04-arm'}]}},
                 'runs-on': '${{ matrix.runner }}', 'timeout-minutes': 360,
-                'steps': [checkout, nix(True), credential_cleanup_step(),
+                'steps': [checkout, runner_clearance_step(), nix(True), credential_cleanup_step(),
                     {'run': DEVELOPMENT_NATIVE_DISCOVER, 'env': tokens[('native', DEVELOPMENT_NATIVE_DISCOVER)]},
                     {'run': DEVELOPMENT_NATIVE, 'env': {'SYSTEM': '${{ matrix.system }}'}},
                     upload('maintenance-native-${{ matrix.system }}-${{ github.run_attempt }}', '${{ runner.temp }}/assbox-maintenance/report.json')]},
@@ -176,11 +191,11 @@ def bootstrap_document():
         "permissions": READ, "concurrency": {"group": "assbox-bootstrap-maintenance", "cancel-in-progress": False},
         "jobs": {
             "prepare": {"if": MAINTENANCE_GUARD, "runs-on": "ubuntu-24.04", "timeout-minutes": 90, "steps": [
-                checkout, nix(), credential_cleanup_step(), {"run": BOOTSTRAP_DISCOVER, "env": {"GH_TOKEN": "${{ github.token }}"}},
+                checkout, runner_clearance_step(), nix(), credential_cleanup_step(), {"run": BOOTSTRAP_DISCOVER, "env": {"GH_TOKEN": "${{ github.token }}"}},
                 {"run": BOOTSTRAP_PREPARE}, upload("bootstrap-locks", "${{ runner.temp }}/assbox-bootstrap/assets")]},
             "native": {"needs": "prepare", "strategy": {"fail-fast": False, "matrix": {"include": matrix}},
                 "runs-on": "${{ matrix.runner }}", "timeout-minutes": 360, "steps": [
-                    checkout, nix(True), credential_cleanup_step(), download(name="bootstrap-locks"),
+                    checkout, runner_clearance_step(), nix(True), credential_cleanup_step(), download(name="bootstrap-locks"),
                     {"run": BOOTSTRAP_NATIVE, "env": {"SYSTEM": "${{ matrix.system }}", "VARIANT": "${{ matrix.variant }}"}},
                     upload("bootstrap-native-${{ matrix.variant }}-${{ matrix.system }}", "${{ runner.temp }}/assbox-bootstrap-report/")]},
             "write": {"needs": "native", "runs-on": "ubuntu-24.04", "timeout-minutes": 15,
@@ -342,7 +357,7 @@ def check_document(name, document):
             steps = []
         runs = [step.get('run', '').strip() for step in steps
                 if isinstance(step, dict) and isinstance(step.get('run'), str)]
-        if runs != [credential_cleanup_command(), 'test -f flake.lock && git ls-files --error-unmatch flake.lock',
+        if runs != [runner_clearance_command(), credential_cleanup_command(), 'test -f flake.lock && git ls-files --error-unmatch flake.lock',
                     'nix run path:./nix/dev#just -- setup --no-hooks', *VERIFY_COMMANDS]:
             refuse('verification must execute every reviewed stage exactly once in order')
         if (not steps or not isinstance(steps[-1], dict)
@@ -393,8 +408,13 @@ def check_document(name, document):
         cleanups = sum(isinstance(step, dict) and step.get('run') == credential_cleanup_command() for step in steps)
         if cleanups != installers:
             refuse(f"Each Nix installation requires exactly one credential cleanup in {job_name}")
+        clearances = sum(isinstance(step, dict) and step.get('run') == runner_clearance_command() for step in steps)
+        if clearances != installers:
+            refuse(f"Each Nix installation requires exactly one hosted runner clearance in {job_name}")
         for index, step in enumerate(steps):
             if isinstance(step, dict) and step.get('uses') == NIX:
+                if index == 0 or steps[index - 1] != runner_clearance_step():
+                    refuse(f"Nix installation must immediately follow fixed runner clearance in {job_name}")
                 expected_cleanup = credential_cleanup_step()
                 if index + 1 >= len(steps) or steps[index + 1] != expected_cleanup:
                     refuse(f"Nix installation must immediately clear persisted credentials in {job_name}")
@@ -477,7 +497,7 @@ def check_document(name, document):
                 {"system": "aarch64-linux", "runner": "ubuntu-24.04-arm"},
             ]
             run_steps = [s for s in live.get("steps", []) if "run" in s
-                         and s.get('run') != credential_cleanup_command()]
+                         and s.get('run') not in (credential_cleanup_command(), runner_clearance_command())]
             if (live.get("needs") != "publish" or live.get("strategy") != {"fail-fast": False, "matrix": {"include": expected_matrix}}
                     or len(run_steps) != 1 or run_steps[0]["run"].strip() != LIVE_VERIFY
                     or run_steps[0].get("env") != {"RELEASE_TAG": "${{ needs.publish.outputs.tag }}", "SYSTEM": "${{ matrix.system }}"}):
