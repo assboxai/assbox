@@ -55,7 +55,7 @@ pkgs.testers.runNixOSTest {
     import json
     import shlex
 
-    cases = ${builtins.toJSON cases}
+    cases = json.loads(${builtins.toJSON (builtins.toJSON cases)})
     for name, case in cases.items():
         machine = next(node for node in machines if node.name == name)
         machine.start()

@@ -82,9 +82,19 @@ pkgs.testers.runNixOSTest {
   nodes.machine = { config, lib, ... }: {
     imports = [
       ../../modules/options.nix
+      ../../modules/instances.nix
       ../../modules/base.nix
       ../../modules/access.nix
       ({ lib, ... }: {
+        # This adapter fixture exercises standalone components. Define its
+        # absent managed-worker interface for the real controller calculation.
+        options.assbox.worker = {
+          enable = lib.mkEnableOption "the fixture's unused managed worker";
+          components = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            default = [ ];
+          };
+        };
         options.assbox.computerUse = lib.mkOption {
           type = lib.types.attrs;
           default = {
@@ -94,6 +104,7 @@ pkgs.testers.runNixOSTest {
           };
         };
       })
+      (adapter ../../modules/controller.nix)
       (adapter ../../modules/components.nix)
       (adapter ../../modules/remotes.nix)
       (adapter ../../modules/editors.nix)
