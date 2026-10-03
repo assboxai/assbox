@@ -18,7 +18,9 @@ then error("unsupported or unauthenticated release input graph") else . end |
     )
   else . end
 )) as $nodes |
-($nodes | .[$lock.root] += {locked: $metadata.locked, original: $metadata.original}) as $bound |
+# Metadata exposes the fetcher's internal final marker. Nix lock files imply
+# final inputs and reject that marker when reading an otherwise valid graph.
+($nodes | .[$lock.root] += {locked: ($metadata.locked | del(.__final)), original: $metadata.original}) as $bound |
 {version: 7, root: "_assbox_machine", nodes: ($bound + {
   "_assbox_machine": {inputs: {assbox: $lock.root, nixpkgs: ["assbox", "nixpkgs"]}}
 })}

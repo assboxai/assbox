@@ -284,6 +284,7 @@ pkgs.testers.runNixOSTest {
     qemu_img = "${pkgs.qemu}/bin/qemu-img"
     target_image = str(installer.shared_dir / "assbox-target.qcow2")
     subprocess.run([qemu_img, "create", "-f", "qcow2", target_image, "64G"], check=True)
-    exec(Path("${../fixtures/installed_cases.py}").read_text())
+    case_script = "${../fixtures/installed_cases.py}"
+    exec(compile(Path(case_script).read_text(), case_script, "exec"))
   '';
 }

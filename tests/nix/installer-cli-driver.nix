@@ -267,7 +267,8 @@ let
       release_script = "${../fixtures/installer_cli_release.py}"
       terminal_script = "${../fixtures/installer_cli_terminal.py}"
       qemu_img = "${pkgs.qemu}/bin/qemu-img"
-      exec(Path("${../fixtures/installer_cli_cases.py}").read_text())
+      case_script = "${../fixtures/installer_cli_cases.py}"
+      exec(compile(Path(case_script).read_text(), case_script, "exec"))
     '';
   };
 in

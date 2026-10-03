@@ -331,6 +331,6 @@ if mode == 'apple-refind':
     target.succeed('grep "unrelated EFI payload" /boot/efi/EFI/APPLE/retained')
     assert target.succeed('sha256sum /boot/efi/EFI/refind/refind_x64.efi').split()[0] == refind_digest
 if scenario == 'activation':
-    exec(Path(activation_script).read_text())
+    exec(compile(Path(activation_script).read_text(), activation_script, 'exec'))
 target.shutdown()
 server.shutdown()
