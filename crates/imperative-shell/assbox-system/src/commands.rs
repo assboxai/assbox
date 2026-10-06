@@ -2,7 +2,7 @@
 use assbox_domain::{Error, Result};
 use std::{
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{Command, ExitStatus, Stdio},
 };
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -110,12 +110,14 @@ impl Commands {
     pub fn input(&self, name: &str, args: &[&str], input: &[u8]) -> Result<Vec<u8>> {
         crate::command_output::capture(&mut self.command(name, args)?, name, Some(input))
     }
-    pub fn run(&self, name: &str, args: &[&str]) -> Result<()> {
-        let status = self
-            .command(name, args)?
+    pub fn status(&self, name: &str, args: &[&str]) -> Result<ExitStatus> {
+        self.command(name, args)?
             .stdin(Stdio::null())
             .status()
-            .map_err(|e| Error::new(e.to_string()))?;
+            .map_err(|e| Error::new(e.to_string()))
+    }
+    pub fn run(&self, name: &str, args: &[&str]) -> Result<()> {
+        let status = self.status(name, args)?;
         if status.success() {
             Ok(())
         } else {

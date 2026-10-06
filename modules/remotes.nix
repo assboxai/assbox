@@ -499,11 +499,9 @@ in
       lib.concatMap (id: [
         (lib.nameValuePair "assbox/onboarding/${id}" {
           source = onboard id;
-          mode = "0755";
         })
         (lib.nameValuePair "assbox/diagnostics/${id}" {
           source = diagnostic id;
-          mode = "0755";
         })
       ]) (builtins.filter enabled ids)
     );
@@ -561,7 +559,10 @@ in
               77
               78
             ];
-            Restart = "on-failure"; # Clean intentional exits and permanent refusals stay stopped.
+            # Remote providers are persistent servers. Recover both clean and
+            # failed exits; explicit stops remain stopped, and the declared
+            # permanent refusal statuses above still suppress restart.
+            Restart = "always";
             RestartSec = 20;
             RestartSteps = 5;
             RestartMaxDelaySec = 300;

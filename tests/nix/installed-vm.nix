@@ -139,6 +139,10 @@ let
   };
 in
 pkgs.testers.runNixOSTest {
+  # Installation copies a full offline build closure before activation and the
+  # recovery scenario then exercises many real builds and reboots. Keep the
+  # outer harness above its existing bounded per-operation timeouts.
+  globalTimeout = 2 * 60 * 60;
   name = "assbox-${scenario}-${mode}-${toString sectorSize}";
   node.pkgsReadOnly = false;
   requiredFeatures.kvm = !arm;
@@ -172,7 +176,7 @@ pkgs.testers.runNixOSTest {
     installer = { lib, ... }: {
       imports = [
         common
-        ./fixture-store-compression.nix
+        ./fixture-store-image.nix
         (import ./fixture-cache-signing.nix {
           inherit pkgs;
           roots = [
@@ -226,9 +230,14 @@ pkgs.testers.runNixOSTest {
       virtualisation.useNixStoreImage = true;
       virtualisation.writableStore = true;
       # The optical fixture is attached through a modular virtio SCSI driver.
+      # The live fixture also creates and mounts an ESP before the target
+      # configuration exists, so retain the FAT modules in its system closure.
       boot.kernelModules = [
         "virtio_scsi"
         "sr_mod"
+        "vfat"
+        "nls_cp437"
+        "nls_iso8859-1"
       ];
       virtualisation.diskSize = 65536;
       # Identify the independent backup disk even when a store image adds a drive.
@@ -311,6 +320,7 @@ pkgs.testers.runNixOSTest {
     release_script = "${../fixtures/install_release.py}"
     terminal_script = "${../fixtures/installer_terminal.py}"
     test_ca = "${ca}"
+    test_ca_pem = ${builtins.toJSON (builtins.readFile ca)}
     refind = "${if apple then "${pkgs.refind}/share/refind/refind_x64.efi" else ""}"
     qemu_img = "${pkgs.qemu}/bin/qemu-img"
     target_image = str(installer.shared_dir / "assbox-target.qcow2")

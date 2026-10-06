@@ -47,8 +47,15 @@ class ApplicationLauncherTests(unittest.TestCase):
 
     def test_wayland_keeps_foot_and_other_selections_do_not_add_st(self):
         result = self.evaluate('wayland', ['opencode-attach'])
-        self.assertTrue(result['services']['assbox-opencode-ui']['serviceConfig']['ExecStart'].startswith('/inert/foot/bin/foot '))
+        service = result['services']['assbox-opencode-ui']['serviceConfig']
+        self.assertTrue(service['ExecStart'].startswith('/inert/foot/bin/foot '))
+        self.assertEqual(service['SuccessExitStatus'], [230])
+        self.assertEqual(service['RestartForceExitStatus'], [230])
         self.assertNotIn('/inert/st', result['packages'])
+        x11_service = self.evaluate('x11', ['opencode-attach'])['services'][
+            'assbox-opencode-ui']['serviceConfig']
+        self.assertEqual(x11_service['SuccessExitStatus'], [])
+        self.assertEqual(x11_service['RestartForceExitStatus'], [])
         for mode in ('headless', 'x11', 'wayland'):
             with self.subTest(mode=mode):
                 result = self.evaluate(mode, [])
@@ -66,6 +73,9 @@ class ApplicationLauncherTests(unittest.TestCase):
                     '--user-data-dir=%h/.local/share/assbox/openclaw-browser',
                     '--app=http://127.0.0.1:18789/'])
                 self.assertEqual(service['UMask'], '0077')
+                self.assertEqual(service['Environment'], [
+                    'PATH=/run/current-system/sw/bin:/run/wrappers/bin',
+                    'FLATPAK_SANDBOX_DIR=/run/assbox-managed-chromium'])
                 self.assertEqual(service['Restart'], 'on-failure')
                 self.assertEqual(service['ExitType'], 'main')
                 self.assertEqual(service['KillMode'], 'control-group')
@@ -121,6 +131,18 @@ class ApplicationLauncherTests(unittest.TestCase):
                                         capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 ast.parse(json.loads(result.stdout))
+
+    def test_application_driver_queues_every_reboot_with_pid_one(self):
+        for relative in [
+                'tests/nix/application-vm.nix',
+                'tests/nix/desktop-services-vm.nix']:
+            with self.subTest(source=relative):
+                source = (ROOT / relative).read_text()
+                self.assertGreater(source.count('machine.reboot()'), 0)
+                self.assertEqual(
+                    source.count('machine.reboot()'),
+                    source.count(
+                        'machine.succeed("systemctl reboot --no-block")'))
 
 
 if __name__ == '__main__':

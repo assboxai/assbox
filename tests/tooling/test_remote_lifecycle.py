@@ -41,6 +41,10 @@ class RemoteLifecycleContracts(unittest.TestCase):
     def test_permission_changes_with_settings_and_runtime_contract(self):
         selection = {'claude-code': {'enable': True}, 'claude-code-remote': {'enable': True}}
         first = self.evaluator.evaluate(selection)
+        self.assertEqual(first['scriptModes'], {
+            'assbox/diagnostics/claude-code-remote': 'symlink',
+            'assbox/onboarding/claude-code-remote': 'symlink',
+        })
         updated = self.evaluator.evaluate(selection, package_revision='updated')
         name = 'assbox-claude-code-remote'
         first_unit = first['services']['user']['services'][name]
@@ -67,7 +71,8 @@ class RemoteLifecycleContracts(unittest.TestCase):
                 unit = result['services']['user']['services']['assbox-' + id]
                 self.assertEqual(unit['partOf'], [] if id=='cursor-worker' else ['graphical-session.target'])
                 self.assertEqual(unit['unitConfig']['StartLimitIntervalSec'], 0)
-                self.assertEqual(unit['serviceConfig']['Restart'], 'on-failure')
+                self.assertEqual(unit['serviceConfig']['Restart'],
+                                 'always' if id == 'cursor-worker' else 'on-failure')
                 self.assertEqual(unit['serviceConfig']['RestartSec'], 20)
                 self.assertEqual(unit['serviceConfig']['RestartMaxDelaySec'], 300)
                 self.assertEqual(unit['serviceConfig']['KillMode'], 'control-group')

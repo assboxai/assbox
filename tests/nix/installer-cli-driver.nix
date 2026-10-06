@@ -184,7 +184,7 @@ let
       installer = { lib, ... }: {
         imports = [
           common
-          ./fixture-store-compression.nix
+          ./fixture-store-image.nix
           (import ./fixture-cache-signing.nix {
             inherit pkgs;
             roots = [
@@ -227,9 +227,14 @@ let
         virtualisation.useNixStoreImage = true;
         virtualisation.writableStore = true;
         # The optical fixture is attached through a modular virtio SCSI driver.
+        # The live fixture also creates and mounts an ESP before the target
+        # configuration exists, so retain the FAT modules in its system closure.
         boot.kernelModules = [
           "virtio_scsi"
           "sr_mod"
+          "vfat"
+          "nls_cp437"
+          "nls_iso8859-1"
         ];
         virtualisation.diskSize = 65536;
         virtualisation.useEFIBoot = true;

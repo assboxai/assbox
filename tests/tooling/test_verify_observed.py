@@ -80,7 +80,10 @@ class ObservedVerificationTests(unittest.TestCase):
             nix = tools / 'nix'
             nix.write_text('#!' + sys.executable + '\nimport json, os, pathlib, signal, sys, time\n'
                            'signal.signal(signal.SIGINT, signal.SIG_IGN)\n'
-                           'pathlib.Path(os.environ["READY"]).write_text(json.dumps([os.getpid(), sys.argv[1:]]))\n'
+                           'ready = pathlib.Path(os.environ["READY"])\n'
+                           'pending = ready.with_suffix(".pending")\n'
+                           'pending.write_text(json.dumps([os.getpid(), sys.argv[1:]]))\n'
+                           'pending.replace(ready)\n'
                            'time.sleep(30)\n')
             nix.chmod(0o755)
             env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ['PATH'], RUNNER_TEMP=str(root),

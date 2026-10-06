@@ -362,7 +362,7 @@ fn stage_locked() -> Result<String> {
         // Durable before candidate Nix metadata/evaluation. Deliberately outside
         // source/activation rollback: failed builds permit exact retries, not replay.
         crate::release::record_floor(&release.floor)?;
-        let fetched = crate::source::bind(&Commands, release)?;
+        let fetched = crate::source::bind(&Commands, release, &marker("release-download"))?;
         let candidate = marker("candidate");
         let flake = assbox_config::retarget_flake(
             &files::text(&candidate.join("flake.nix"))?,

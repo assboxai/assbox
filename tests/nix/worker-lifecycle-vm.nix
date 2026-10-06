@@ -42,6 +42,12 @@ pkgs.testers.runNixOSTest {
     users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPassword = lib.mkForce "!";
+    # This gate switches between controller roles to exercise system account,
+    # service, network and retained-state activation. Keep the unrelated agent
+    # user manager inactive: switch-to-configuration-ng snapshots linger users
+    # before the old network policy terminates them, then attempts per-user
+    # activation after /run/user/1000 has been removed.
+    users.users.agent.linger = lib.mkForce false;
     environment.systemPackages = [
       pkgs.python3
       pkgs.jq
@@ -73,6 +79,7 @@ pkgs.testers.runNixOSTest {
 
     def assert_disabled():
         assert identities() == expected_ids
+        machine.succeed("systemctl is-active user-1000.slice")
         for name in names:
             assert "kvm" not in machine.succeed("id -nG " + name).split()
             machine.fail("pgrep -u " + name)
@@ -91,6 +98,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("test ! -e /var/lib/assbox-worker-data; test ! -e /var/lib/assbox-worker-identity")
     switch(enabled)
     assert identities() == expected_ids
+    machine.succeed("systemctl is-active user-1000.slice")
     assert "kvm" in machine.succeed("id -nG assbox-vmm").split()
     machine.fail("systemctl is-active assbox-worker.service")
     policy = json.loads(machine.succeed("cat /run/current-system/assbox-worker-policy.json"))

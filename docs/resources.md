@@ -31,8 +31,8 @@ from five to sixty seconds. The OpenClaw Gateway also restarts after a successfu
 exit because its configuration-reload restart path hands control to systemd this way.
 Remote servers and editor launchers back off from twenty
 to three hundred seconds over five restart steps, without a start-count lockout.
-Remote adapters restart after transient failures; clean exits and declared permanent
-refusals remain stopped. Closing a graphical editor normally leaves it closed. Explicit service stop,
+Remote adapters restart after transient failures and ordinary clean exits; declared
+permanent refusals remain stopped. Closing a graphical editor normally leaves it closed. Explicit service stop,
 disablement and graphical-session teardown do not trigger automatic restarts.
 Managed graphical launchers use foreground application entry points. Zed's public
 CLI and VS Code's public CLI may detach and hide the application exit status, so

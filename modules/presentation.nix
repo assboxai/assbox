@@ -7,16 +7,55 @@
 }:
 let
   cfg = config.assbox;
+  graphicalUnits = lib.mapAttrsToList (name: _: "${name}.service") (
+    lib.filterAttrs (
+      name: unit:
+      lib.hasPrefix "assbox-" name && builtins.elem "graphical-session.target" (unit.partOf or [ ])
+    ) config.systemd.user.services
+  );
+  sessionSystemctl = pkgs.writeShellScript "assbox-session-systemctl" ''
+    set -e
+    if [[ $# -eq 4 && "$1" == --user && "$2" == stop \
+      && "$3" == assbox-graphical-session.target && "$4" == graphical-session.target ]]; then
+      ${pkgs.systemd}/bin/systemctl "$@"
+      # The target is fully stopped. GUI processes can report an X-disconnect
+      # error during logout; retire only this session's Assbox service state.
+      # Crashes in an active session retain their restart policy and counters.
+      ${lib.optionalString (graphicalUnits != [ ]) ''
+        for unit in ${lib.escapeShellArgs graphicalUnits}; do
+          if ${pkgs.systemd}/bin/systemctl --user is-failed --quiet "$unit"; then
+            ${pkgs.systemd}/bin/systemctl --user reset-failed "$unit"
+          fi
+        done
+      ''}
+      exit 0
+    fi
+    exec ${pkgs.systemd}/bin/systemctl "$@"
+  '';
+  stopGraphicalSession = pkgs.writeShellScript "assbox-stop-graphical-session" ''
+    set -eu
+    runtime=/run/user/1000
+    # A display-manager stop can terminate its entire control group before the
+    # session shell's EXIT trap runs. If the lingering user manager is present,
+    # enforce the same narrowly scoped graphical cleanup from the system unit.
+    [[ -S "$runtime/bus" ]] || exit 0
+    exec ${pkgs.util-linux}/bin/runuser -u agent -- \
+      ${pkgs.coreutils}/bin/env \
+        XDG_RUNTIME_DIR="$runtime" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus" \
+        ${sessionSystemctl} --user stop \
+          assbox-graphical-session.target graphical-session.target
+  '';
   x11Session = pkgs.writeShellScript "assbox-x11-session" (
     builtins.replaceStrings
       [ "@systemctl@" "@xset@" "@openbox@" ]
-      [ "${pkgs.systemd}/bin/systemctl" "${pkgs.xset}/bin/xset" "${pkgs.openbox}/bin/openbox-session" ]
+      [ "${sessionSystemctl}" "${pkgs.xset}/bin/xset" "${pkgs.openbox}/bin/openbox-session" ]
       (builtins.readFile ./sessions/x11.sh)
   );
   session = pkgs.writeShellScript "assbox-wayland-session" (
     builtins.replaceStrings
       [ "@systemctl@" "@labwc@" ]
-      [ "${pkgs.systemd}/bin/systemctl" "${pkgs.labwc}/bin/labwc" ]
+      [ "${sessionSystemctl}" "${pkgs.labwc}/bin/labwc" ]
       (builtins.readFile ./sessions/wayland.sh)
   );
   waylandReady = pkgs.writeShellScript "assbox-wayland-ready" (
@@ -44,6 +83,18 @@ in
         # Use the normal Secret Service and first-use GNOME prompt. Never seed,
         # rewrite or unlock an existing collection with an Assbox-held password.
         services.gnome.gnome-keyring.enable = true;
+        # Secret Service is D-Bus activated, so its first-use files inherit the
+        # systemd transient unit's default umask. Patch the selector write itself
+        # so its non-secret name cannot weaken the private keyring directory.
+        nixpkgs.overlays = [
+          (_final: previous: {
+            gnome-keyring = previous.gnome-keyring.overrideAttrs (old: {
+              patches = (old.patches or [ ]) ++ [
+                ../nix/patches/gnome-keyring-private-default.patch
+              ];
+            });
+          })
+        ];
         xdg.portal.config.${
           if cfg.presentation == "x11" then "openbox" else "labwc"
         }."org.freedesktop.impl.portal.Secret" =
@@ -100,6 +151,7 @@ in
             RestartSec = lib.mkForce 5;
             RestartSteps = 5;
             RestartMaxDelaySec = 60;
+            ExecStopPost = [ stopGraphicalSession ];
           };
         };
         services.xserver.displayManager.sessionCommands = ''
@@ -145,6 +197,7 @@ in
             RestartSec = lib.mkForce 5;
             RestartSteps = 5;
             RestartMaxDelaySec = 60;
+            ExecStopPost = [ stopGraphicalSession ];
           };
         };
         environment.systemPackages = [

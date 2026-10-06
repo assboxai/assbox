@@ -38,6 +38,7 @@ in
 {
   rules = result.config.services.udev.packages;
   radioStartup = result.config.systemd.services.NetworkManager.postStart;
+  radioHotplug = result.config.systemd.services."assbox-radio-hotplug" or null;
   radioInput = kernelConfig.config.settings.RFKILL_INPUT;
   unmanaged = result.config.networking.networkmanager.unmanaged;
 }

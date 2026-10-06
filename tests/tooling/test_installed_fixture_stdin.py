@@ -14,6 +14,17 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class InstalledFixtureStdin(unittest.TestCase):
+    def test_retry_ca_is_a_target_store_dependency(self):
+        case = (ROOT / 'tests/fixtures/installed_cases.py').read_text()
+        driver = (ROOT / 'tests/nix/installed-vm.nix').read_text()
+        self.assertIn(
+            'test_ca_pem = ${builtins.toJSON (builtins.readFile ca)}', driver
+        )
+        self.assertIn(
+            '${pkgs.writeText "assbox-disposable-build-ca.pem" ', case
+        )
+        self.assertNotIn("curlOpts = \"--cacert ''' + test_ca", case)
+
     def test_ordinary_install_closes_inherited_tty(self):
         tree = ast.parse((ROOT / 'tests/fixtures/installed_cases.py').read_text())
         assignments = [node for node in tree.body if isinstance(node, ast.Assign)

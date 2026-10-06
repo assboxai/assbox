@@ -9,6 +9,7 @@ use assbox_system::{
 };
 use std::{
     fs,
+    io::ErrorKind,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -124,6 +125,74 @@ fn download(c: &Commands, url: &str, path: &Path, limit: u64) -> Result<()> {
         return Err(Error::new("release asset exceeds size limit"));
     }
     Ok(())
+}
+
+fn valid_release_source_store_path(path: &str) -> bool {
+    let Some(name) = path.strip_prefix("/nix/store/") else {
+        return false;
+    };
+    let Some(hash) = name.strip_suffix("-assbox-source.tar.gz") else {
+        return false;
+    };
+    hash.len() == 32
+        && hash
+            .bytes()
+            .all(|b| b"0123456789abcdfghijklmnpqrsvwxyz".contains(&b))
+}
+
+fn prefetch_source(
+    c: &Commands,
+    archive: &Path,
+    expected: &str,
+    prefetch_command: &str,
+) -> Result<PathBuf> {
+    let url = format!("file://{}", files::path_text(archive)?);
+    for attempt in 0..2 {
+        let fetched = c.capture(
+            "nix",
+            &["store", prefetch_command, "--unpack", "--json", &url],
+        )?;
+        let source = c.jq_fields(&fetched, r#"[.hash,.storePath] | .[] | . + "\u0000""#)?;
+        if source.len() != 2 || source[0] != expected {
+            return Err(Error::new("unpacked release NAR mismatch"));
+        }
+        let raw = &source[1];
+        if !valid_release_source_store_path(raw) {
+            return Err(Error::new(
+                "unpacked release source has an invalid store path",
+            ));
+        }
+        match fs::canonicalize(raw) {
+            Ok(path) => {
+                if !path.starts_with("/nix/store") {
+                    return Err(Error::new(
+                        "unpacked release source is outside the Nix store",
+                    ));
+                }
+                return Ok(path);
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound && attempt == 0 => {
+                match fs::symlink_metadata(raw) {
+                    Err(missing) if missing.kind() == ErrorKind::NotFound => {}
+                    Ok(_) => {
+                        return Err(Error::new(
+                            "unpacked release source is an unresolved store entry",
+                        ));
+                    }
+                    Err(observation) => return io(Err(observation)),
+                }
+                // Live media can preserve Nix's validity database while its
+                // dynamically populated store layer is recreated after power
+                // loss. Remove only this absent, hash-shaped release-source
+                // registration and retry the already authenticated archive once.
+                c.run("nix", &["store", "delete", "--ignore-liveness", raw])?;
+            }
+            Err(error) => return io(Err(error)),
+        }
+    }
+    Err(Error::new(
+        "unpacked release source remained absent after a bounded store repair",
+    ))
 }
 pub(crate) fn read_floor() -> Result<Option<ReleaseFloor>> {
     let path = Path::new(FLOOR);
@@ -422,27 +491,41 @@ pub(crate) fn fetch(
     }
     // The file fetcher unpacks the authenticated archive without evaluating Nix
     // or consulting flake registries. Verify its NAR and lock before evaluation.
-    let fetched = c.capture(
-        "nix",
+    let source_path = prefetch_source(c, &archive, &manifest.source_nar_hash, "prefetch-file")?;
+    // Keep the authenticated source alive for the complete transaction. The
+    // live store can be close enough to its automatic-GC threshold that a
+    // later Nix invocation otherwise removes this unrooted import between
+    // authentication and evaluation. The indirect root is confined to this
+    // fresh private download directory and becomes stale after /run is cleared.
+    let source_root = directory.join("authenticated-source");
+    c.run(
+        "nix-store",
         &[
-            "store",
-            "prefetch-file",
-            "--unpack",
-            "--json",
-            &format!("file://{}", files::path_text(&archive)?),
+            "--add-root",
+            files::path_text(&source_root)?,
+            "--indirect",
+            "--realise",
+            files::path_text(&source_path)?,
         ],
     )?;
-    let source = c.jq_fields(&fetched, r#"[.hash,.storePath] | .[] | . + "\u0000""#)?;
-    if source.len() != 2 || source[0] != manifest.source_nar_hash {
-        return Err(Error::new("unpacked release NAR mismatch"));
-    }
-    let source_path = io(fs::canonicalize(&source[1]))?;
-    if !source_path.starts_with("/nix/store")
-        || io(fs::read(source_path.join("flake.lock")))? != io(fs::read(lock))?
-    {
+    if io(fs::canonicalize(&source_root))? != source_path {
         return Err(Error::new(
-            "unpacked release dependency graph differs from authenticated lock asset",
+            "authenticated release source GC root resolved unexpectedly",
         ));
+    }
+    // A successful Nix import can become visible before all store filesystem
+    // data is stable across sudden power loss. The management transaction may
+    // deliberately advance its durable release floor and later crash at a
+    // source-publication boundary, so flush the filesystem containing this
+    // authenticated object before returning it to that transaction.
+    c.run("sync", &["-f", files::path_text(&source_path)?])?;
+    let source_lock = source_path.join("flake.lock");
+    if io(fs::read(&source_lock))? != io(fs::read(&lock))? {
+        return Err(Error::new(format!(
+            "unpacked release dependency graph differs from authenticated lock asset (source {}, asset {})",
+            sha256(c, &source_lock)?.as_str(),
+            sha256(c, &lock)?.as_str(),
+        )));
     }
     Ok(AuthenticatedRelease {
         manifest,
@@ -450,4 +533,25 @@ pub(crate) fn fetch(
         floor: accepted,
         source_path,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::valid_release_source_store_path;
+
+    #[test]
+    fn live_store_repair_is_limited_to_the_release_source_shape() {
+        assert!(valid_release_source_store_path(
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-assbox-source.tar.gz"
+        ));
+        for path in [
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-nixos-system-assbox",
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxy-assbox-source.tar.gz",
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyE-assbox-source.tar.gz",
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-assbox-source.tar.gz/child",
+            "/tmp/0123456789abcdfghijklmnpqrsvwxyz-assbox-source.tar.gz",
+        ] {
+            assert!(!valid_release_source_store_path(path), "{path}");
+        }
+    }
 }

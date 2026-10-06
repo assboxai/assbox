@@ -87,7 +87,12 @@
           };
           omp = omp-packages.packages.${pkgs.stdenv.hostPlatform.system};
           grok = grok-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
+            openclaw = import ./nix/openclaw.nix {
+              inherit pkgs;
+              raw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system}.openclaw;
+            };
+          };
           opencode = opencode-packages.packages.${pkgs.stdenv.hostPlatform.system};
 
         };

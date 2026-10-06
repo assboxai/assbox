@@ -157,14 +157,14 @@ in
       family = "inet";
       content = table;
     };
-    # nft resolves the receiver cgroup when loading the rules, before logins.
-    systemd.slices."user-1000" = {
-      before = [ "nftables.service" ];
-    };
+    # nft resolves the persistent receiver cgroup before loading the rules.
     systemd.services.nftables = {
       requires = [ "user-1000.slice" ];
       after = [ "user-1000.slice" ];
-      serviceConfig.ExecStopPre = [ revoke ];
+      # Terminate execution-owned processes before the firewall removes its
+      # policy. Prepend this to the NixOS nftables module's existing deletion
+      # and cleanup commands so the ordering uses valid service directives.
+      serviceConfig.ExecStop = lib.mkBefore [ revoke ];
     };
     services.resolved.enable = true;
     # A root-owned build daemon is otherwise a proxy for private-network access.

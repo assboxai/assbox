@@ -33,7 +33,7 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_unit("multi-user.target")
     machine.wait_for_unit("user@1000.service")
     user = "runuser -u agent -- env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus "
-    probe = "assbox-computer-use display -- ${pkgs.python3}/bin/python3 ${../fixtures/computer_resource.py} ${pkgs.xdotool}/bin/xdotool ${pkgs.ffmpeg}/bin/ffmpeg ${pkgs.xorg.xmessage}/bin/xmessage"
+    probe = "assbox-computer-use display -- ${pkgs.python3}/bin/python3 ${../fixtures/computer_resource.py} ${pkgs.xdotool}/bin/xdotool /run/current-system/sw/bin/ffmpeg ${pkgs.xorg.xmessage}/bin/xmessage"
     machine.succeed(user + "env DISPLAY=:0 WAYLAND_DISPLAY=wayland-physical SSH_AUTH_SOCK=/sensitive " + probe + " >/home/agent/lease.log 2>&1 &")
     machine.wait_until_succeeds("test -s /home/agent/display-result.json")
     result = json.loads(machine.succeed("cat /home/agent/display-result.json"))

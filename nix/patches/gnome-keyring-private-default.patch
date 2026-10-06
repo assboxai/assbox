@@ -1,0 +1,14 @@
+--- a/daemon/dbus/gkd-secret-service.c
++++ b/daemon/dbus/gkd-secret-service.c
+@@ -217,7 +217,10 @@ store_default (GkdSecretService *self)
+ 	if (!identifier)
+ 		return;
+ 
+-	if (!g_file_set_contents (self->default_path, identifier, -1, &error))
++	if (!g_file_set_contents_full (self->default_path, identifier, -1,
++	                               G_FILE_SET_CONTENTS_CONSISTENT,
++	                               0600,
++	                               &error))
+ 		g_message ("couldn't store default keyring: %s", egg_error_message (error));
+ }
+ 

@@ -97,6 +97,13 @@ in
           };
           serviceConfig = common // {
             ExitType = "main";
+            # foot returns its internal -26 sentinel as status 230 when its
+            # SIGTERM handler ends the event loop before the terminal shutdown
+            # callback records a child status. Treat that exact status as clean
+            # for an explicit systemd stop, while forcing a restart if foot
+            # returns it on its own during an active graphical session.
+            SuccessExitStatus = lib.optionals (cfg.presentation == "wayland") [ 230 ];
+            RestartForceExitStatus = lib.optionals (cfg.presentation == "wayland") [ 230 ];
             ExecStart = "${terminal} ${assboxPackage}/bin/assbox internal opencode attach";
             WorkingDirectory = "%h";
           };
@@ -138,6 +145,14 @@ in
             ];
           };
           serviceConfig = common // {
+            # Chromium asks systemd to move itself into a new app-* scope while
+            # registering with XDG portals. This unit already supplies the
+            # application identity and owns the complete browser process tree;
+            # the upstream sandbox marker suppresses that redundant migration.
+            Environment = [
+              common.Environment
+              "FLATPAK_SANDBOX_DIR=/run/assbox-managed-chromium"
+            ];
             ExitType = "main";
             # The fixed public loopback URL has no token, password or secret fragment.
             # A separate persistent profile keeps Chromium from handing the window

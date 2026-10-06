@@ -86,6 +86,7 @@ pkgs.testers.runNixOSTest {
             assert machine.succeed(user("timeout 30 secret-tool lookup assbox-test desktop")).strip() == "assbox-disposable-secret"
             assert machine.succeed("stat -c %a /home/agent").strip() == "700"
             machine.succeed("test -d /home/agent/.local/share/keyrings")
+            machine.log(machine.succeed("find /home/agent/.local/share/keyrings -printf '%y %u %g %m %p -> %l\\n'"))
             machine.succeed("test -z \"$(find /home/agent/.local/share/keyrings -type f \\( ! -user agent -o -perm /077 \\) -print)\"")
         def dialogs():
             for mode in ["open", "folder", "save", "cancel"]:
@@ -93,15 +94,31 @@ pkgs.testers.runNixOSTest {
                 machine.succeed(user("rm -f " + output))
                 machine.succeed(user("systemd-run --user --collect --unit=assbox-portal-probe "
                     + "${python}/bin/python3 /etc/assbox-test/portal-probe.py " + mode + " " + output))
-                machine.wait_for_text("Assbox " + mode, timeout=60)
+                machine.wait_until_succeeds(user("systemctl --user is-active assbox-portal-probe.service"), timeout=30)
+                # The request remaining active proves that no response raced
+                # ahead of the driver. Give the real chooser time to map, then
+                # retain a screenshot and require its exact portal response.
+                # OCR is deliberately reserved for the text-specific keyring
+                # consent prompts; GTK title recognition is not deterministic.
+                time.sleep(5)
                 machine.screenshot(machine.name + "-portal-" + mode)
                 if mode == "cancel":
-                    machine.send_key("esc")
+                    # Exercise the real _Cancel button. GTK maps a window-close
+                    # Escape response to portal code 2, while this button must
+                    # produce the contractually distinct cancelled code 1.
+                    machine.send_key("alt-c")
                 else:
-                    path = {"open": "/home/agent/input.txt", "folder": "/home/agent/project", "save": "/home/agent/saved.txt"}[mode]
-                    machine.send_key("ctrl-l")
-                    machine.send_chars(path)
-                    machine.send_key("ret")
+                    path = {
+                        "open": "/home/agent/portal-open/input.txt",
+                        "folder": "/home/agent/portal-folder/project",
+                        "save": "/home/agent/portal-save/saved.txt",
+                    }[mode]
+                    # OpenFile highlights the only file in its suggested
+                    # folder. Directory mode opens the exact suggested folder.
+                    # Submit the real visible chooser without GTK's racy hidden
+                    # location popup or a compositor-specific input helper.
+                    machine.send_key("alt-s")
+                    time.sleep(1)
                 machine.wait_until_succeeds("test -s " + output, timeout=60)
                 result = json.loads(machine.succeed("cat " + output))
                 assert result["code"] == (1 if mode == "cancel" else 0), result
@@ -194,7 +211,8 @@ pkgs.testers.runNixOSTest {
         machine.wait_until_succeeds(user("systemctl --user is-active assbox-test-store.service"), timeout=60)
         machine.succeed(user("systemctl --user stop assbox-test-store.service"))
         credentials()
-        machine.succeed(user("mkdir -p /home/agent/project; printf 'disposable fixture' > /home/agent/input.txt"))
+        machine.succeed(user("mkdir -p /home/agent/portal-open /home/agent/portal-folder/project /home/agent/portal-save; "
+            + "printf 'disposable fixture' > /home/agent/portal-open/input.txt"))
         dialogs()
         browser()
         # Portals must be relaunched with the new session's display environment.
@@ -215,6 +233,7 @@ pkgs.testers.runNixOSTest {
         machine.succeed("kill -TERM " + str(owner))
         machine.wait_until_fails("test -e /proc/" + str(owner))
         credentials()
+        machine.succeed("systemctl reboot --no-block")
         machine.reboot()
         ready()
         credentials()

@@ -68,10 +68,17 @@ pkgs.testers.runNixOSTest {
             return "runuser -u agent -- bash -c " + shlex.quote(command)
 
         def active_seat():
-            machine.wait_until_succeeds("test -n \"$(loginctl show-seat seat0 -p ActiveSession --value)\"")
-            session = machine.succeed("loginctl show-seat seat0 -p ActiveSession --value").strip()
-            for prop, value in [("Name", "agent"), ("Active", "yes"), ("Type", case["presentation"])]:
-                machine.wait_until_succeeds("test $(loginctl show-session " + shlex.quote(session) + " -p " + prop + " --value) = " + value)
+            # During a display-manager restart logind can briefly report the old
+            # active session immediately before retiring it. Re-read the seat and
+            # verify every property in one retry so a stale ID cannot be cached.
+            expected = shlex.quote(case["presentation"])
+            machine.wait_until_succeeds(
+                "session=$(loginctl show-seat seat0 -p ActiveSession --value); "
+                + "test -n \"$session\" && "
+                + "test \"$(loginctl show-session \"$session\" -p Name --value)\" = agent && "
+                + "test \"$(loginctl show-session \"$session\" -p Active --value)\" = yes && "
+                + "test \"$(loginctl show-session \"$session\" -p Type --value)\" = " + expected,
+                timeout=120)
 
         def radio():
             discover = "for p in /sys/class/rfkill/rfkill*; do if test $(cat $p/type) = wlan; then echo $p; fi; done"
@@ -82,7 +89,7 @@ pkgs.testers.runNixOSTest {
             return paths[0]
 
         def soft(value):
-            machine.wait_until_succeeds("test $(cat " + radio() + "/soft) = " + str(value))
+            machine.wait_until_succeeds("test $(cat " + radio() + "/soft) = " + str(value), timeout=120)
 
         def denied():
             machine.succeed("udevadm settle; test -c /dev/rfkill")

@@ -164,12 +164,15 @@ class ComponentCatalogTests(unittest.TestCase):
         disabled=self.evaluate({},substrate=True)
         self.assertIsNone(disabled['substrate']['computerUse'])
         self.assertNotIn('/nix/store/test-chromium',disabled['packages'])
+        self.assertNotIn('/nix/store/test-ffmpeg-x11',disabled['packages'])
         browser=self.evaluate({},substrate=True,instance={'computerUse':{'mode':'browser'}})
         self.assertEqual(browser['substrate']['computerUse'],{'modes':['browser','chromium'],'browser':'/nix/store/test-chromium/bin/chromium'})
         self.assertNotIn('/nix/store/test-xorgserver',browser['packages'])
+        self.assertNotIn('/nix/store/test-ffmpeg-x11',browser['packages'])
         desktop=self.evaluate({},substrate=True,instance={'computerUse':{'mode':'virtual-desktop'}})
         self.assertIn('display',desktop['substrate']['computerUse']['modes'])
         self.assertIn('/nix/store/test-xorgserver',desktop['packages'])
+        self.assertIn('/nix/store/test-ffmpeg-x11',desktop['packages'])
 
     def test_substrate_rejects_controller_execution_and_overlapping_restore_paths(self):
         result=self.evaluate({'chatgpt-desktop':{'enable':True,'allowMutableCode':True},'codex':{'enable':True}},
@@ -245,7 +248,7 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertIn('/bin/cursor-agent', unit['serviceConfig']['ExecStart'])
         self.assertTrue(any('onboarded/cursor-worker-' in p for p in unit['unitConfig']['ConditionPathExists']))
         self.assertEqual(unit['unitConfig']['StartLimitIntervalSec'], 0)
-        self.assertEqual(unit['serviceConfig']['Restart'], 'on-failure')
+        self.assertEqual(unit['serviceConfig']['Restart'], 'always')
         self.assertEqual(unit['serviceConfig']['RestartSteps'], 5)
         self.assertEqual(unit['serviceConfig']['RestartMaxDelaySec'], 300)
         self.assertEqual(unit['serviceConfig']['StandardOutput'], 'null')

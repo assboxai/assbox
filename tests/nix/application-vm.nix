@@ -159,6 +159,7 @@ pkgs.testers.runNixOSTest {
                     if invalid == "":
                         # Lingering/default.target must also refuse an empty file
                         # after reboot, without an explicit start or setup command.
+                        machine.succeed("systemctl reboot --no-block")
                         machine.reboot()
                         machine.wait_for_unit("multi-user.target")
                         machine.wait_for_unit("user@" + uid + ".service")
@@ -248,7 +249,7 @@ pkgs.testers.runNixOSTest {
                         # No profile override: this exercises the user's ordinary
                         # Chromium profile and its real singleton/handoff behavior.
                         machine.wait_until_succeeds(user("systemctl --user show " + ordinary + " -p LoadState --value | grep -x not-found"), timeout=90)
-                        machine.succeed(user("systemd-run --user --unit=" + ordinary + " --collect --service-type=exec --property=KillMode=control-group chromium --no-first-run --no-default-browser-check about:blank"))
+                        machine.succeed(user("systemd-run --user --unit=" + ordinary + " --collect --service-type=exec --property=KillMode=control-group --setenv=FLATPAK_SANDBOX_DIR=/run/assbox-managed-chromium chromium --no-first-run --no-default-browser-check about:blank"))
                         active(ordinary)
                         machine.wait_until_succeeds("test -L /home/agent/.config/chromium/SingletonLock", timeout=180)
                         if mode == "x11":
@@ -413,6 +414,12 @@ pkgs.testers.runNixOSTest {
                 assert machine.succeed(user("systemctl --user show " + unit + " -p ActiveState --value")).strip() == "inactive"
                 assert machine.succeed(user("systemctl --user show " + unit + " -p NRestarts --value")).strip() == count
             assert machine.succeed(user("systemctl --user show " + unit + " -p MainPID --value")).strip() == "0"
+            # The graphical session may consume the synthetic Ctrl+Alt+Delete
+            # used by the Nix test driver's reboot helper after the display
+            # manager has been restarted. Queue the reboot with PID 1 first;
+            # the helper still resets the driver's shell connection and waits
+            # for the same guest to boot again.
+            machine.succeed("systemctl reboot --no-block")
             machine.reboot()
             machine.wait_for_unit("multi-user.target")
             active(unit)

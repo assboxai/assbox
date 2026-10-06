@@ -18,6 +18,8 @@ let
   pkgs =
     lib.genAttrs [
       "systemd"
+      "coreutils"
+      "util-linux"
       "xset"
       "openbox"
       "labwc"
@@ -39,7 +41,7 @@ let
       ../../modules/presentation.nix
       {
         options =
-          lib.genAttrs [ "services" "systemd" "environment" "programs" ] (
+          lib.genAttrs [ "services" "systemd" "environment" "programs" "nixpkgs" ] (
             _:
             lib.mkOption {
               type = lib.types.attrsOf lib.types.anything;

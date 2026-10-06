@@ -45,7 +45,17 @@ def start_cut(operation_name, cut):
     write(target, CASE + '/cut', 'pause:' + cut)
     target.succeed('systemd-run --collect --unit=acceptance-operation --service-type=exec '
                    'env ASSBOX_TEST_OPERATION=' + operation_name + ' ' + MANAGE)
-    target.wait_until_succeeds('test -f ' + CASE + '/reached', timeout=3600)
+    # A cut operation normally remains active until the driver removes its
+    # control file. If it exits first, surface its journal immediately instead
+    # of waiting for the outer NixOS test timeout.
+    target.wait_until_succeeds(
+        'test -f ' + CASE + '/reached || ! systemctl is-active --quiet acceptance-operation.service',
+        timeout=3600,
+    )
+    target.succeed(
+        'test -f ' + CASE + '/reached || '
+        '{ journalctl --no-pager -u acceptance-operation.service; false; }'
+    )
     assert target.succeed('cat ' + CASE + '/reached') == cut
 
 

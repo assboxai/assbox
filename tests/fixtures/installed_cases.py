@@ -40,9 +40,15 @@ def clear_work():
 
 def format_target():
     clear_work()
-    installer.succeed('mkfs.ext4 -F ' + root)
+    # Every case begins with a distinct filesystem identity. Erase any bounded
+    # ENOSPC signature and wait for udev to publish the new UUID before the
+    # installer captures an inventory that it will later revalidate.
+    installer.succeed(
+        'wipefs --all --force ' + root + '; mkfs.ext4 -F ' + root
+        + '; udevadm trigger --action=change --settle --name-match=' + root
+    )
     if esp:
-        installer.succeed('mkfs.fat -F32 ' + esp + '; mkdir -p /mnt/esp; mount ' + esp + ' /mnt/esp')
+        installer.succeed('mkfs.fat -F32 ' + esp + '; mkdir -p /mnt/esp; mount -t vfat ' + esp + ' /mnt/esp')
         if mode == 'apple-refind':
             # Real rEFInd and a preserved unrelated payload; this does NOT boot macOS.
             installer.succeed('mkdir -p /mnt/esp/EFI/refind /mnt/esp/EFI/BOOT /mnt/esp/EFI/APPLE')
@@ -81,12 +87,19 @@ def assert_target_unchanged(snapshot):
     Path(snapshot).unlink()
 
 
-def start_install(cut=None):
+def start_install(cut=None, timeout=3600):
     if cut:
         write(installer, CASE + '/cut', 'pause:' + cut)
     installer.succeed(INSTALL + ' > /tmp/install.log 2>&1 & echo $! > /tmp/install.pid')
     if cut:
-        installer.wait_until_succeeds('test -f ' + CASE + '/reached', timeout=3600)
+        installer.succeed(
+            'timeout ' + str(timeout) + " sh -c 'while test ! -f " + CASE
+            + '/reached && kill -0 "$(cat /tmp/install.pid)" 2>/dev/null; '
+            + "do sleep 1; done' || true; test -f " + CASE
+            + '/reached || { tail -200 /tmp/install.log >&2; false; }',
+            timeout=timeout + 60,
+        )
+        assert installer.succeed('cat ' + CASE + '/reached') == cut
 
 
 def wait_install_exit():
@@ -129,7 +142,8 @@ installer.succeed('sfdisk ' + disk + ' < /tmp/layout; udevadm settle')
 root = disk + str(root_number)
 # Both writable fixture disks have stable serials independent of drive order.
 installer.succeed("printf 'label: gpt\ntype=L\n' | sfdisk /dev/disk/by-id/virtio-assbox-backup; udevadm settle; mkfs.ext4 -F /dev/disk/by-id/virtio-assbox-backup-part1")
-request = {'root': root, 'esp': esp or '', 'backup': '/dev/disk/by-id/virtio-assbox-backup-part1',
+backup = installer.succeed('readlink -f /dev/disk/by-id/virtio-assbox-backup-part1').strip()
+request = {'root': root, 'esp': esp or '', 'backup': backup,
            'platform': 'macbookpro12-1' if mode == 'apple-refind' else 'generic',
            'key': installer.succeed('cat ' + key).strip()}
 write(installer, CASE + '/install.json', json.dumps(request))
@@ -211,7 +225,8 @@ if scenario == 'install':
     assert root_phase() == 'building'
     assert before_boot_bytes() == boot_before
     clear_work()
-    assert 'installation record' in installer.fail(INSTALL + ' 2>&1', timeout=900)
+    refusal = installer.fail(INSTALL + ' 2>&1', timeout=900)
+    assert 'installation record' in refusal, refusal
     format_target()
     # Kill an installer with an actual sandbox grandchild still running. The
     # supervised cgroup, not only the immediate nix client, must be drained.
@@ -238,7 +253,14 @@ if scenario == 'install':
         if change == 'configuration':
             installer.succeed('echo "# concurrent edit" >> /run/assbox-install/target/etc/nixos/local.nix')
         else:
-            installer.succeed('mkdir -p /mnt/alias; mount -o ro ' + root + ' /mnt/alias')
+            # The installer deliberately owns a writable mount at this checkpoint.
+            # A second device mount with `-o ro` is rejected by modern mount before
+            # Assbox can observe it, so create a real alias of the owned mount and
+            # prove that it still resolves to the selected root block device.
+            installer.succeed(
+                'mkdir -p /mnt/alias; mount --bind /run/assbox-install/target /mnt/alias; '
+                'test "$(findmnt -nr -o SOURCE --mountpoint /mnt/alias)" = ' + root
+            )
         installer.succeed('rm ' + CASE + '/cut')
         wait_install_exit()
         installer.succeed('grep -E "configuration changed|mount" /tmp/install.log')
@@ -249,8 +271,10 @@ if scenario == 'install':
         format_target()
 
     # Limit the test filesystem (not its device) and consume its free blocks.
+    # Eight GiB admits the authenticated kernel closure and preflight work before
+    # the checkpoint, while remaining bounded for the deliberate ENOSPC build.
     # A genuine ENOSPC build failure retains the phase and untouched boot region.
-    installer.succeed('mkfs.ext4 -F -b4096 ' + root + ' 524288')
+    installer.succeed('mkfs.ext4 -F -b4096 ' + root + ' 2097152')
     boot_before = before_boot_bytes()
     start_install('install-building')
     installer.succeed('fallocate -l "$(df -B1 --output=avail /run/assbox-install/target | tail -1)" /run/assbox-install/target/filler')
@@ -262,9 +286,7 @@ if scenario == 'install':
     format_target()
     # Abrupt VM power loss exercises durable state rather than a returned error.
     for cut in ['install-target-writes', 'install-built', 'install-activating', 'install-completing']:
-        write(installer, CASE + '/cut', 'pause:' + cut)
-        installer.succeed(INSTALL + ' > /tmp/install.log 2>&1 &')
-        installer.wait_until_succeeds('test -f ' + CASE + '/reached', timeout=3600)
+        start_install(cut, timeout=1800 if cut == 'install-target-writes' else 3600)
         installer.crash()
         installer.start()
         installer.wait_for_unit('multi-user.target')
@@ -274,7 +296,8 @@ if scenario == 'install':
         installer.succeed('mkdir -p /mnt/replay; mount ' + root + ' /mnt/replay; umount /mnt/replay')
         assert root_phase() != 'complete'
         installer.succeed('rm -f ' + CASE + '/cut ' + CASE + '/reached')
-        assert 'installation record' in installer.fail(INSTALL + ' 2>&1', timeout=900)
+        refusal = installer.fail(INSTALL + ' 2>&1', timeout=900)
+        assert 'installation record' in refusal, refusal
         format_target()
 
 if scenario == 'install':
@@ -284,7 +307,9 @@ if scenario == 'install':
     temporary_local('''system.systemBuilderCommands = lib.mkAfter ''
       cp ${pkgs.fetchurl { url = "https://github.com/acceptance/build-token";
         hash = "''' + token_hash + '''";
-        curlOpts = "--cacert ''' + test_ca + ''' --retry 0";
+        # The target store is independent of the installer store. Preserve Nix
+        # string context so this disposable CA is copied into that target store.
+        curlOpts = "--cacert ${pkgs.writeText "assbox-disposable-build-ca.pem" ''' + json.dumps(test_ca_pem) + '''} --retry 0";
       }} "$out/acceptance-token"
     '';''')
     server.succeed('touch ' + CASE + '/block-build-token')

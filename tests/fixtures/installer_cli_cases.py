@@ -122,7 +122,7 @@ try:
     # CLI completed. This is a second real build/install, explicitly recorded.
     # No alternate OS, privileged resolver or test CLI is put on the target.
     original_system = installer.succeed('readlink -f /mnt/installed/nix/var/nix/profiles/system').strip()
-    installer.succeed('mount ' + esp + ' /mnt/installed/boot/efi')
+    installer.succeed('mount -t vfat ' + esp + ' /mnt/installed/boot/efi')
     installer.succeed('cp ' + instrumentation + ' /mnt/installed/etc/nixos/local.nix')
     installer.succeed('nixos-install --root /mnt/installed --flake path:/mnt/installed/etc/nixos#assbox --no-root-password --no-channel-copy', timeout=7200)
     effective_system = installer.succeed('readlink -f /mnt/installed/nix/var/nix/profiles/system').strip()

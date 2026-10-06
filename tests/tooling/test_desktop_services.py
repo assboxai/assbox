@@ -58,6 +58,12 @@ class DesktopServicesTests(unittest.TestCase):
                 self.assertEqual(config['xdg']['portal']['config'][desktop]
                                  ['org.freedesktop.impl.portal.Secret'], 'gnome-keyring')
         self.assertEqual(self.evaluate('headless')['services'], {})
+        module = (ROOT / 'modules/presentation.nix').read_text()
+        patch = (ROOT / 'nix/patches/gnome-keyring-private-default.patch').read_text()
+        self.assertIn('../nix/patches/gnome-keyring-private-default.patch', module)
+        self.assertIn('g_file_set_contents_full', patch)
+        self.assertIn('G_FILE_SET_CONTENTS_CONSISTENT', patch)
+        self.assertIn('0600', patch)
 
     def test_both_display_managers_recover_crashes_without_permanent_lockout(self):
         for mode, manager in [('x11', 'display-manager'), ('wayland', 'greetd')]:
@@ -67,6 +73,7 @@ class DesktopServicesTests(unittest.TestCase):
                 self.assertEqual(unit['serviceConfig'], {
                     'Restart': 'always', 'RestartSec': 5,
                     'RestartSteps': 5, 'RestartMaxDelaySec': 60,
+                    'ExecStopPost': ['/inert/assbox-stop-graphical-session'],
                 })
         self.assertEqual(self.evaluate('headless')['systemd'].get('services', {}), {})
 
