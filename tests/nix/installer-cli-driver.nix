@@ -13,6 +13,10 @@ let
   lib = pkgs.lib;
   arm = system == "aarch64-linux";
   assbox = candidate.packages.${system}.assbox;
+  releasedPackage = import ./fixture-release-package.nix {
+    inherit pkgs assbox;
+    revision = candidateRevision;
+  };
   module = candidate.nixosModules.default;
   tools = import ../../nix/tool-environment.nix { inherit pkgs; };
   ca = ../fixtures/mirror-cert.crt;
@@ -107,6 +111,8 @@ let
       assbox
       assbox.drvPath
       assbox.cargoDeps
+      releasedPackage
+      releasedPackage.drvPath
       seed.config.boot.kernelPackages.kernel.out
       seed.config.boot.kernelPackages.kernel.modules
       seed.config.boot.kernelPackages.kernel.dev

@@ -23,6 +23,9 @@ let
     inherit pkgs assbox;
     testCa = ca;
   };
+  releasedPackage = import ./fixture-release-package.nix {
+    inherit pkgs assbox;
+  };
   mirror = import ./source-mirror.nix { inherit pkgs inputs; };
   keys = pkgs.runCommand "assbox-disposable-ssh-key" { nativeBuildInputs = [ pkgs.openssh ]; } ''
     mkdir "$out"
@@ -120,6 +123,8 @@ let
       assbox
       assbox.drvPath
       assbox.cargoDeps
+      releasedPackage
+      releasedPackage.drvPath
       seed.config.boot.kernelPackages.kernel.out
       seed.config.boot.kernelPackages.kernel.modules
       seed.config.boot.kernelPackages.kernel.dev

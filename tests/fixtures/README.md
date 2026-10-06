@@ -15,6 +15,27 @@ public, disposable test TLS material, trusted only by this isolated test closure
 They are not release signing keys or production credentials. Never trust this CA
 on a real machine or expose this fixture server outside the test network.
 
+The disposable installer reads the entire offline Nix closure from a compressed
+SquashFS block image. `store_image.py` adapts only the pinned QEMU module's exact
+image-builder invocation to the real pinned `mksquashfs` tool. The guest mounts
+that actual filesystem read-only by the declared virtio serial and keeps the
+normal independent writable store overlay. The complete tar stream, source,
+derivations and locked build inputs are retained. Additional content de-duplication
+in the image writer is disabled; tar hardlinks retain their normal semantics. The
+adapter removes Nix's inherited `SOURCE_DATE_EPOCH` before invoking `mksquashfs`
+because the reviewed command already fixes both filesystem and file timestamps.
+Compression does not replace
+any installation, boot, interruption or recovery assertion.
+
+`fixture-release-package.nix` also seeds the exact ordinary package compiled from
+the fixture's complete source plus generated `release-context.json`. The compiler
+revision and normalized source path match the real runtime release evaluation.
+This avoids a redundant offline CLI compilation; the guest still evaluates and
+builds the actual target configuration. The canonical fixture uses its actual
+candidate revision, while the engine fixture keeps its declared disposable
+revision. Source assembly uses the native host's production-pinned tools and does
+not invoke a VM. Building that package remains a native target operation.
+
 `nix-cache-test.key` and `nix-cache-test.pub` are also public disposable fixtures.
 Only the test installer guest signs its harness dependency closure, and only the
 disposable installed guest trusts that public key. This lets Nix enforce signatures
