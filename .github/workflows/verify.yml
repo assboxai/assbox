@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Verify locked source
+# Capability probe only; no canonical policy, driver build, VM or physical-device format.
+name: Assbox native canonical storage capability qualification without a VM
 'on':
   workflow_dispatch: null
 permissions:
   contents: read
 concurrency:
-  group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: assbox-native-canonical-storage-overlay-v45
+  cancel-in-progress: false
 jobs:
-  verify:
+  probe:
+    if: github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/test-native-canonical-storage-overlay-v45'
     strategy:
       fail-fast: false
       matrix:
@@ -18,21 +20,26 @@ jobs:
         - system: aarch64-linux
           runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 360
+    timeout-minutes: 20
+    env:
+      ASSBOX_CANDIDATE_SYSTEM: ${{ matrix.system }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
+        repository: assboxai/assbox
+        ref: 4e4362b7f27c0898589f4898684c8d627598cfa9
+        path: product
         persist-credentials: false
     - name: Clear unused SDKs on the ephemeral hosted runner
       run: "sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP\
         \ /usr/bin/python3 -I -B <<'ASSBOX_RUNNER_CLEARANCE'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
         \ GPL-3.0-or-later\n\"\"\"Reclaim fixed unused SDK directories on an ephemeral GitHub-hosted Linux\
-        \ runner.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\nimport\
-        \ shutil\nimport stat\nimport time\n\nPATHS = tuple(Path(name) for name in (\n    '/usr/local/lib/android',\
+        \ runner.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\n\
+        import shutil\nimport stat\nimport time\n\nPATHS = tuple(Path(name) for name in (\n    '/usr/local/lib/android',\
         \ '/usr/share/dotnet',\n    '/opt/hostedtoolcache', '/usr/local/.ghcup'))\n\n\ndef validate_environment(environment):\n\
         \    if (os.geteuid() != 0 or platform.system() != 'Linux'\n            or environment.get('GITHUB_ACTIONS')\
-        \ != 'true'\n            or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'\n           \
-        \ or environment.get('GITHUB_EVENT_NAME') not in (\n                'workflow_dispatch', 'schedule',\
+        \ != 'true'\n            or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'\n       \
+        \     or environment.get('GITHUB_EVENT_NAME') not in (\n                'workflow_dispatch', 'schedule',\
         \ 'push', 'pull_request', 'workflow_run', 'workflow_call')):\n        raise ValueError('Clearance\
         \ requires an ephemeral hosted Linux workflow runner')\n    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',\
         \ environment.get('GITHUB_REPOSITORY', '')):\n        raise ValueError('Missing workflow repository\
@@ -40,36 +47,89 @@ jobs:
         \ 'GITHUB_RUN_ATTEMPT'):\n        if not re.fullmatch(r'[1-9][0-9]*', environment.get(name, '')):\n\
         \            raise ValueError('Missing numeric workflow identity')\n    if not re.fullmatch(r'[0-9a-f]{40}',\
         \ environment.get('GITHUB_SHA', '')):\n        raise ValueError('Missing workflow source identity')\n\
-        \    temporary = Path(environment.get('RUNNER_TEMP', ''))\n    if not temporary.is_absolute() or temporary.resolve()\
-        \ != temporary:\n        raise ValueError('Unexpected runner temporary path')\n    metadata = temporary.lstat()\n\
-        \    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid == 0:\n        raise ValueError('Unexpected\
-        \ runner temporary ownership')\n    return temporary, metadata.st_uid\n\n\ndef mount_points():\n \
-        \   points = []\n    for line in Path('/proc/self/mountinfo').read_text().splitlines():\n        value\
-        \ = line.split()[4]\n        value = re.sub(r'\\\\([0-7]{3})', lambda match: chr(int(match[1], 8)),\
-        \ value)\n        points.append(Path(value))\n    return points\n\n\ndef clear_directories(paths,\
-        \ runner_uid, root_device, mounts):\n    if not shutil.rmtree.avoids_symlink_attacks:\n        raise\
-        \ ValueError('Symlink-resistant directory deletion is required')\n    admitted = []\n    for path\
-        \ in paths:\n        if path.is_symlink() or path.resolve() != path:\n            raise ValueError('Refusing\
-        \ a redirected toolchain directory')\n        if not path.exists():\n            continue\n      \
-        \  metadata = path.lstat()\n        if (not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid not\
-        \ in (0, runner_uid)\n                or metadata.st_dev != root_device):\n            raise ValueError('Unexpected\
-        \ toolchain directory type, owner or volume')\n        if any(mount == path or path in mount.parents\
-        \ for mount in mounts):\n            raise ValueError('Refusing a mounted toolchain directory')\n\
-        \        admitted.append(path)\n    # Admit the entire fixed set before removing anything.\n    for\
-        \ path in admitted:\n        shutil.rmtree(path)\n        if path.exists():\n            raise ValueError('Toolchain\
-        \ clearance was incomplete')\n    return [str(path) for path in admitted]\n\n\ndef main():\n    temporary,\
-        \ runner_uid = validate_environment(os.environ)\n    before = shutil.disk_usage('/')\n    started\
-        \ = time.monotonic()\n    removed = clear_directories(PATHS, runner_uid, Path('/').stat().st_dev,\
-        \ mount_points())\n    after = shutil.disk_usage('/')\n    facts = dict(schema=1, kind='hosted-runner-toolchain-clearance',\n\
-        \                 system=platform.machine() + '-linux', source_commit=os.environ['GITHUB_SHA'],\n\
-        \                 run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n\
-        \                 removed_directories=removed, before_available_bytes=before.free,\n             \
-        \    after_available_bytes=after.free, observed_free_bytes_increase=after.free - before.free,\n  \
-        \               seconds=round(time.monotonic() - started, 2))\n    output = temporary / 'assbox-runner-clearance.json'\n\
-        \    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)\n    with os.fdopen(fd,\
-        \ 'w') as stream:\n        stream.write(json.dumps(facts, sort_keys=True, separators=(',', ':')) +\
-        \ '\\n')\n    print(json.dumps(facts, sort_keys=True))\n\n\nif __name__ == '__main__':\n    main()\n\
-        ASSBOX_RUNNER_CLEARANCE"
+        \    temporary = Path(environment.get('RUNNER_TEMP', ''))\n    if not temporary.is_absolute()\
+        \ or temporary.resolve() != temporary:\n        raise ValueError('Unexpected runner temporary\
+        \ path')\n    metadata = temporary.lstat()\n    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid\
+        \ == 0:\n        raise ValueError('Unexpected runner temporary ownership')\n    return temporary,\
+        \ metadata.st_uid\n\n\ndef mount_points():\n    points = []\n    for line in Path('/proc/self/mountinfo').read_text().splitlines():\n\
+        \        value = line.split()[4]\n        value = re.sub(r'\\\\([0-7]{3})', lambda match: chr(int(match[1],\
+        \ 8)), value)\n        points.append(Path(value))\n    return points\n\n\ndef clear_directories(paths,\
+        \ runner_uid, root_device, mounts):\n    if not shutil.rmtree.avoids_symlink_attacks:\n      \
+        \  raise ValueError('Symlink-resistant directory deletion is required')\n    admitted = []\n \
+        \   for path in paths:\n        if path.is_symlink() or path.resolve() != path:\n            raise\
+        \ ValueError('Refusing a redirected toolchain directory')\n        if not path.exists():\n   \
+        \         continue\n        metadata = path.lstat()\n        if (not stat.S_ISDIR(metadata.st_mode)\
+        \ or metadata.st_uid not in (0, runner_uid)\n                or metadata.st_dev != root_device):\n\
+        \            raise ValueError('Unexpected toolchain directory type, owner or volume')\n      \
+        \  if any(mount == path or path in mount.parents for mount in mounts):\n            raise ValueError('Refusing\
+        \ a mounted toolchain directory')\n        admitted.append(path)\n    # Admit the entire fixed\
+        \ set before removing anything.\n    for path in admitted:\n        shutil.rmtree(path)\n    \
+        \    if path.exists():\n            raise ValueError('Toolchain clearance was incomplete')\n \
+        \   return [str(path) for path in admitted]\n\n\ndef main():\n    temporary, runner_uid = validate_environment(os.environ)\n\
+        \    before = shutil.disk_usage('/')\n    started = time.monotonic()\n    removed = clear_directories(PATHS,\
+        \ runner_uid, Path('/').stat().st_dev, mount_points())\n    after = shutil.disk_usage('/')\n \
+        \   facts = dict(schema=1, kind='hosted-runner-toolchain-clearance',\n                 system=platform.machine()\
+        \ + '-linux', source_commit=os.environ['GITHUB_SHA'],\n                 run_id=int(os.environ['GITHUB_RUN_ID']),\
+        \ run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n                 removed_directories=removed,\
+        \ before_available_bytes=before.free,\n                 after_available_bytes=after.free, observed_free_bytes_increase=after.free\
+        \ - before.free,\n                 seconds=round(time.monotonic() - started, 2))\n    output =\
+        \ temporary / 'assbox-runner-clearance.json'\n    fd = os.open(output, os.O_WRONLY | os.O_CREAT\
+        \ | os.O_EXCL | os.O_NOFOLLOW, 0o644)\n    with os.fdopen(fd, 'w') as stream:\n        stream.write(json.dumps(facts,\
+        \ sort_keys=True, separators=(',', ':')) + '\\n')\n    print(json.dumps(facts, sort_keys=True))\n\
+        \n\nif __name__ == '__main__':\n    main()\nASSBOX_RUNNER_CLEARANCE"
+    - name: Create a four-GiB compressed regular-file probe volume
+      shell: bash
+      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_FIXED_STORAGE_PROBE'\n\"\"\"Create a compressed\
+        \ Nix/build volume from one new regular file on hosted CI.\n\nThe virtual volume is smaller than\
+        \ currently available underlying storage, with\n16 GiB reserved for runner logs/source/state.\
+        \ It cannot invent extra capacity.\nNo physical device is formatted. This volume lasts for this\
+        \ ephemeral job only.\n\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\n\
+        import re\nimport shutil\nimport stat\nimport subprocess\nimport time\n\nassert os.geteuid() !=\
+        \ 0\nassert os.environ['GITHUB_ACTIONS'] == 'true' and os.environ['RUNNER_ENVIRONMENT'] == 'github-hosted'\n\
+        assert os.environ['GITHUB_REPOSITORY'] == 'assboxai/assbox'\nassert os.environ['GITHUB_REPOSITORY_ID']\
+        \ == '1402455771'\nassert os.environ['GITHUB_REPOSITORY_OWNER_ID'] == '327835666'\nassert os.environ['GITHUB_EVENT_NAME']\
+        \ == 'workflow_dispatch'\nassert os.environ['GITHUB_REF'] == 'refs/heads/test-native-canonical-storage-overlay-v45'\n\
+        system = os.environ['ASSBOX_CANDIDATE_SYSTEM']\nassert system in ('x86_64-linux', 'aarch64-linux')\n\
+        assert platform.system() == 'Linux' and platform.machine() == system.removesuffix('-linux')\n\
+        temporary = Path(os.environ['RUNNER_TEMP'])\nassert temporary.is_absolute() and temporary.resolve()\
+        \ == temporary\nassert temporary.is_dir() and temporary.stat().st_uid == os.getuid()\nenvironment\
+        \ = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8', 'HOME': str(temporary)}\nfor\
+        \ name in ('mkfs.btrfs', 'mount', 'findmnt', 'sudo'):\n    assert shutil.which(name, path=environment['PATH']),\
+        \ 'Required volume tool unavailable: ' + name\nmountpoint = Path('/nix')\nassert not mountpoint.exists()\
+        \ and not mountpoint.is_symlink(), 'Refuse to hide or replace an existing Nix installation'\n\
+        state = temporary / 'assbox-compressed-nix-volume'\nstate.mkdir(mode=0o700)\nimage = state / 'volume.btrfs'\n\
+        underlying = os.statvfs(state)\navailable = underlying.f_bavail * underlying.f_frsize\nreserve\
+        \ = 16 * 1024**3\nvolume_bytes = 4 * 1024**3\nassert volume_bytes <= available - reserve\nassert\
+        \ volume_bytes <= 160 * 1024**3\nrecord = dict(schema=1, kind='ephemeral-compressed-file-backed-nix-volume',\
+        \ system=system,\n              run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n\
+        \              workflow_commit=os.environ['GITHUB_SHA'], started_at=time.time(),\n           \
+        \   backing_file=str(image), underlying_device=state.stat().st_dev,\n              underlying_available_bytes_before=available,\
+        \ reserved_underlying_bytes=reserve,\n              virtual_volume_bytes=volume_bytes, physical_device_formatted=False,\n\
+        \              vm_executed=False, full_gate_pass_claimed=False, actual_exit=1,\n             \
+        \ cleanup='Retained for the ephemeral job lifetime; runner teardown not independently observed')\n\
+        \n\ndef call(*arguments):\n    result = subprocess.run(arguments, env=environment, stdin=subprocess.DEVNULL,\n\
+        \                            capture_output=True, timeout=60)\n    assert result.returncode ==\
+        \ 0, 'Volume command failed: ' + Path(arguments[0]).name\n    return result.stdout.decode().strip()\n\
+        \n\ntry:\n    with image.open('xb') as output:\n        output.truncate(volume_bytes)\n    image.chmod(0o600)\n\
+        \    metadata = image.lstat()\n    assert stat.S_ISREG(metadata.st_mode) and metadata.st_uid ==\
+        \ os.getuid() and metadata.st_nlink == 1\n    call('mkfs.btrfs', '--force', str(image))\n    call('sudo',\
+        \ '-n', 'mkdir', '--mode=0755', str(mountpoint))\n    call('sudo', '-n', 'mount', '-t', 'btrfs',\
+        \ '-o', 'loop,compress-force=zstd:3', str(image), str(mountpoint))\n    mounted = json.loads(call('findmnt',\
+        \ '--json', '--target', str(mountpoint), '--output', 'TARGET,SOURCE,FSTYPE,OPTIONS'))['filesystems']\n\
+        \    assert len(mounted) == 1 and mounted[0]['target'] == '/nix' and mounted[0]['fstype'] == 'btrfs'\n\
+        \    assert re.fullmatch(r'/dev/loop[0-9]+', mounted[0]['source'])\n    assert 'compress-force=zstd:3'\
+        \ in mounted[0]['options'].split(',')\n    assert mountpoint.stat().st_dev != state.stat().st_dev\n\
+        \    call('sudo', '-n', 'mkdir', '--mode=0755', '/nix/assbox-build')\n    capacity = os.statvfs(mountpoint)\n\
+        \    record.update(actual_exit=0, compression='zstd:3', mountpoint='/nix',\n                 \
+        \ build_directory='/nix/assbox-build', mounted_device=mountpoint.stat().st_dev,\n            \
+        \      observed_volume_total_bytes=capacity.f_blocks * capacity.f_frsize,\n                  observed_volume_available_bytes=capacity.f_bavail\
+        \ * capacity.f_frsize,\n                  backing_allocated_bytes_after_setup=image.stat().st_blocks\
+        \ * 512)\nexcept BaseException as error:\n    record.update(failure_type=type(error).__name__,\
+        \ failure=str(error),\n                  cleanup='Setup failed; private backing state retained\
+        \ without assuming mount cleanup')\n    raise\nfinally:\n    record['finished_at'] = time.time()\n\
+        \    (temporary / 'assbox-compressed-nix-volume.json').write_text(json.dumps(record, sort_keys=True)\
+        \ + '\\n')\n    print(json.dumps(record, sort_keys=True))\nassert record['actual_exit'] == 0\n\
+        \nASSBOX_FIXED_STORAGE_PROBE\n"
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
       with:
         install_url: https://releases.nixos.org/nix/nix-2.35.2/install
@@ -78,52 +138,149 @@ jobs:
 
           accept-flake-config = false
 
+          max-jobs = 1
+
+          build-dir = /nix/assbox-build
+
           '
     - name: Remove installer credentials before candidate execution
       run: "sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
         \ GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials before candidate execution.\"\
-        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG = 256 *\
-        \ 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise ValueError('Nix\
-        \ configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
-        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\\
-        s+', line):\n            raise ValueError('Indirect Nix configuration requires separate cleanup review')\n\
-        \        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or continuation:\n\
-        \            continuation = line.rstrip().endswith('\\\\')\n            continue\n        result.append(line)\n\
-        \    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path,\
-        \ owner):\n    path = Path(path)\n    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd,\
-        \ 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
-        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise ValueError('Unexpected\
-        \ Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n\
-        \    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n    \
-        \    with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
-        \            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n            stream.write(contents)\n\
-        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n\
-        \    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\n\nif __name__\
-        \ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential cleanup requires the trusted\
-        \ runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl\
-        \ restart nix-daemon.service\nnix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert\
-        \ json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
-    - name: Require committed input lock
-      run: test -f flake.lock && git ls-files --error-unmatch flake.lock
-    - name: Set up Chainman without Git hooks
-      run: nix run path:./nix/dev#just -- setup --no-hooks
-    - name: Full native Chainman verification
-      run: nix run path:./nix/dev#just -- verify
-      env:
-        XDG_STATE_HOME: ${{ runner.temp }}
-    - name: Retain verification diagnostics
+        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG\
+        \ = 256 * 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise\
+        \ ValueError('Nix configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
+        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\\
+        s*!?include\\s+', line):\n            raise ValueError('Indirect Nix configuration requires separate\
+        \ cleanup review')\n        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n\
+        \        if credential or continuation:\n            continuation = line.rstrip().endswith('\\\
+        \\')\n            continue\n        result.append(line)\n    return (''.join(result).rstrip('\\\
+        n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path, owner):\n    path = Path(path)\n\
+        \    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd, 'rb') as stream:\n\
+        \        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
+        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise\
+        \ ValueError('Unexpected Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG\
+        \ + 1))\n    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n\
+        \    try:\n        with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(),\
+        \ stat.S_IMODE(metadata.st_mode))\n            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n\
+        \            stream.write(contents)\n            stream.flush()\n            os.fsync(stream.fileno())\n\
+        \        os.replace(temporary, path)\n    finally:\n        if os.path.exists(temporary):\n  \
+        \          os.unlink(temporary)\n\n\nif __name__ == '__main__':\n    if os.geteuid() != 0:\n \
+        \       raise SystemExit('Credential cleanup requires the trusted runner administrator')\n   \
+        \ rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl restart nix-daemon.service\n\
+        nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)[\"\
+        access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
+    - name: Qualify canonical state and short driver paths, then prove owned mount cleanup
+      run: "set -euo pipefail\n/usr/bin/python3 -I -B <<'ASSBOX_CANONICAL_STORAGE_CAPABILITY_PROBE'\n\"\
+        \"\"Qualify private state and short driver paths on one disposable CI file volume.\n\nThis capability\
+        \ test never builds or executes an Assbox VM, changes a canonical\npolicy, or touches a physical\
+        \ device. It preserves existing /var/tmp entries through a read-only lower layer.\n\"\"\"\nimport\
+        \ hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport socket\n\
+        import stat\nimport subprocess\nimport tempfile\nimport time\n\nBRANCH = 'test-native-canonical-storage-overlay-v45'\n\
+        assert os.geteuid() != 0\nassert os.environ['GITHUB_ACTIONS'] == 'true' and os.environ['RUNNER_ENVIRONMENT']\
+        \ == 'github-hosted'\nassert os.environ['GITHUB_REPOSITORY'] == 'assboxai/assbox'\nassert os.environ['GITHUB_REPOSITORY_ID']\
+        \ == '1402455771'\nassert os.environ['GITHUB_REPOSITORY_OWNER_ID'] == '327835666'\nassert os.environ['GITHUB_REF']\
+        \ == 'refs/heads/' + BRANCH and os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'\nsystem\
+        \ = os.environ['ASSBOX_CANDIDATE_SYSTEM']\nassert system in ('x86_64-linux', 'aarch64-linux')\n\
+        assert platform.system() == 'Linux' and platform.machine() == system.removesuffix('-linux')\n\
+        temporary = Path(os.environ['RUNNER_TEMP'])\nassert temporary.is_absolute() and temporary.resolve()\
+        \ == temporary and temporary.stat().st_uid == os.getuid()\nimage = temporary / 'assbox-compressed-nix-volume/volume.btrfs'\n\
+        image_metadata = image.lstat()\nassert stat.S_ISREG(image_metadata.st_mode) and image_metadata.st_nlink\
+        \ == 1 and image_metadata.st_uid == os.getuid()\nassert image_metadata.st_size == 4 * 1024**3\n\
+        nix_root = Path('/nix')\ndriver_parent = Path('/var/tmp')\nprivate_parent = Path('/nix/assbox-native-state')\n\
+        compressed_driver_parent = Path('/nix/assbox-driver-tmp')\noverlay_work = Path('/nix/assbox-driver-work')\n\
+        environment = dict(PATH='/nix/var/nix/profiles/default/bin:/usr/sbin:/usr/bin:/sbin:/bin', LANG='C.UTF-8',\n\
+        \                   HOME=str(temporary), NIX_USER_CONF_FILES='/dev/null')\nrecord = dict(schema=1,\
+        \ kind='native-canonical-storage-overlay-capability-probe', system=system,\n              run_id=int(os.environ['GITHUB_RUN_ID']),\
+        \ run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n              workflow_commit=os.environ['GITHUB_SHA'],\
+        \ started_at=time.time(), actual_exit=1,\n              vm_executed=False, driver_build_invoked=False,\
+        \ full_gate_pass_claimed=False,\n              canonical_policy_changed=False, physical_device_formatted=False,\n\
+        \              ephemeral_runner_teardown_independently_observed=False, mount_cleanup_proven=False)\n\
+        bind_mounted = False\nprivate_test = None\nshort_state = None\n\n\ndef call(*args, require_success=True):\n\
+        \    result = subprocess.run(args, env=environment, stdin=subprocess.DEVNULL, capture_output=True,\
+        \ timeout=60)\n    if require_success:\n        assert result.returncode == 0, 'Capability command\
+        \ failed: ' + Path(args[0]).name\n    return result\n\n\ndef mounts(path):\n    result = call('findmnt',\
+        \ '--json', '--mountpoint', str(path), '--output', 'TARGET,SOURCE,FSTYPE,OPTIONS', require_success=False)\n\
+        \    if result.returncode == 1:\n        return []\n    assert result.returncode == 0\n    return\
+        \ json.loads(result.stdout)['filesystems']\n\n\ndef visible_entries():\n    # Inspect names/type/permissions\
+        \ only. Never read existing file contents.\n    values = []\n    for entry in driver_parent.iterdir():\n\
+        \        observed = entry.lstat()\n        values.append((entry.name, observed.st_mode, observed.st_uid,\
+        \ observed.st_gid))\n    return sorted(values)\n\n\ntry:\n    config = json.loads(call('nix',\
+        \ 'config', 'show', '--json').stdout)\n    assert config['access-tokens']['value'] == {} and config['require-sigs']['value']\
+        \ is True\n    assert driver_parent.is_dir() and driver_parent.resolve() == driver_parent and\
+        \ not driver_parent.is_symlink()\n    assert driver_parent.stat().st_uid == 0 and stat.S_IMODE(driver_parent.stat().st_mode)\
+        \ == 0o1777\n    assert not mounts(driver_parent), 'Refuse an existing /var/tmp mount'\n    prior_entries\
+        \ = visible_entries()\n    before_device = driver_parent.stat().st_dev\n    assert not private_parent.exists()\
+        \ and not private_parent.is_symlink()\n    assert not compressed_driver_parent.exists() and not\
+        \ compressed_driver_parent.is_symlink()\n    assert not overlay_work.exists() and not overlay_work.is_symlink()\n\
+        \    call('sudo', '-n', 'install', '-d', '--mode=0700', '--owner=' + str(os.getuid()), '--group='\
+        \ + str(os.getgid()), str(private_parent))\n    call('sudo', '-n', 'install', '-d', '--mode=01777',\
+        \ '--owner=0', '--group=0', str(compressed_driver_parent))\n    call('sudo', '-n', 'install',\
+        \ '-d', '--mode=0700', '--owner=0', '--group=0', str(overlay_work))\n    assert private_parent.stat().st_uid\
+        \ == os.getuid() and stat.S_IMODE(private_parent.stat().st_mode) == 0o700\n    assert not mounts(driver_parent)\
+        \ and visible_entries() == prior_entries\n    options = 'lowerdir=/var/tmp,upperdir=' + str(compressed_driver_parent)\
+        \ + ',workdir=' + str(overlay_work)\n    call('sudo', '-n', 'mount', '-t', 'overlay', '-o', options,\
+        \ 'assbox-owned-probe', str(driver_parent))\n    bind_mounted = True\n    observed = mounts(driver_parent)\n\
+        \    assert len(observed) == 1 and observed[0]['fstype'] == 'overlay' and observed[0]['target']\
+        \ == str(driver_parent)\n    assert visible_entries() == prior_entries, 'Existing temporary entries\
+        \ became inaccessible or changed metadata'\n    assert ('upperdir=' + str(compressed_driver_parent))\
+        \ in observed[0]['options'].split(',')\n    nix_mount = mounts(nix_root)\n    assert len(nix_mount)\
+        \ == 1 and nix_mount[0]['fstype'] == 'btrfs'\n    assert 'compress-force=zstd:3' in nix_mount[0]['options'].split(',')\n\
+        \    assert driver_parent.resolve() == driver_parent and driver_parent.stat().st_dev != before_device\n\
+        \    assert private_parent.stat().st_dev == compressed_driver_parent.stat().st_dev == (nix_root\
+        \ / 'store').stat().st_dev\n    assert stat.S_IMODE(driver_parent.stat().st_mode) == 0o1777 and\
+        \ driver_parent.stat().st_uid == 0\n    private_test = Path(tempfile.mkdtemp(prefix='profile-',\
+        \ dir=private_parent))\n    short_state = Path(tempfile.mkdtemp(prefix='asbx-sp-', dir=driver_parent))\n\
+        \    short_state.chmod(0o700)\n    assert private_test.resolve() == private_test and short_state.resolve()\
+        \ == short_state\n    assert short_state.stat().st_uid == os.getuid() and stat.S_IMODE(short_state.stat().st_mode)\
+        \ == 0o700\n    sockpath = short_state / 'control.sock'\n    with socket.socket(socket.AF_UNIX,\
+        \ socket.SOCK_STREAM) as server:\n        server.bind(str(sockpath))\n        server.listen(1)\n\
+        \        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:\n            client.connect(str(sockpath))\n\
+        \            with server.accept()[0] as peer:\n                client.sendall(b'public storage\
+        \ capability probe')\n                assert peer.recv(128) == b'public storage capability probe'\n\
+        \    sockpath.unlink()\n    payload = (b'Assbox public compressed storage probe\\n' * 2048)[:65536]\n\
+        \    assert len(payload) == 65536\n    expected = hashlib.sha256(payload * 1024).hexdigest()\n\
+        \    output = short_state / 'public-roundtrip.bin'\n    with output.open('xb') as stream:\n  \
+        \      for _ in range(1024):\n            stream.write(payload)\n        stream.flush()\n    \
+        \    os.fsync(stream.fileno())\n    digest = hashlib.sha256()\n    with output.open('rb') as stream:\n\
+        \        for block in iter(lambda: stream.read(1024**2), b''):\n            digest.update(block)\n\
+        \    assert digest.hexdigest() == expected\n    allocated = output.stat().st_blocks * 512\n  \
+        \  assert 0 < allocated < 64 * 1024**2, 'The public file was not compressed'\n    assert private_parent.stat().st_uid\
+        \ == os.getuid(), 'Private ownership changed after setup'\n    info = os.statvfs(driver_parent)\n\
+        \    record.update(capability_passed=True, unix_socket_roundtrip_passed=True,\n              \
+        \    compressed_roundtrip_bytes=64 * 1024**2, compressed_roundtrip_sha256=expected,\n        \
+        \          compressed_roundtrip_file_allocated_bytes=allocated,\n                  private_state_owner_uid=private_parent.stat().st_uid,\
+        \ private_state_mode='0700',\n                  short_driver_state_path_bytes=len(os.fsencode(short_state)),\n\
+        \                  private_state_store_same_device=True,\n                  driver_overlay_upper_device=compressed_driver_parent.stat().st_dev,\n\
+        \                  driver_overlay_upper_is_compressed_store_filesystem=True,\n               \
+        \   existing_temporary_entries_preserved=len(prior_entries),\n                  existing_temporary_metadata_sha256=hashlib.sha256(json.dumps(prior_entries).encode()).hexdigest(),\n\
+        \                  mounted_device=driver_parent.stat().st_dev, mounted_filesystem='overlay',\n\
+        \                  available_bytes_after_roundtrip=info.f_bavail * info.f_frsize,\n          \
+        \        backing_allocated_bytes_after_roundtrip=image.stat().st_blocks * 512,\n             \
+        \     root_available_bytes_after_roundtrip=os.statvfs(temporary).f_bavail * os.statvfs(temporary).f_frsize,\n\
+        \                  access_tokens_empty=True, signatures_required=True)\n    output.unlink()\n\
+        \    short_state.rmdir()\n    short_state = None\n    private_test.rmdir()\n    private_test =\
+        \ None\n    code = call('sudo', '-n', 'umount', str(driver_parent)).returncode\n    bind_mounted\
+        \ = False\n    assert not mounts(driver_parent) and driver_parent.stat().st_dev == before_device\n\
+        \    assert visible_entries() == prior_entries, 'Temporary entry metadata changed across the probe'\n\
+        \    record['existing_temporary_entries_restored'] = True\n    record['driver_overlay_unmount_actual_exit']\
+        \ = code\n    # No Nix build or guest was started; stop only the daemon installed by this\n  \
+        \  # ephemeral probe before unmounting its own regular-file volume.\n    call('sudo', '-n', 'systemctl',\
+        \ 'stop', 'nix-daemon.socket', 'nix-daemon.service')\n    code = call('sudo', '-n', 'umount',\
+        \ str(nix_root)).returncode\n    assert not mounts(nix_root)\n    assert call('sudo', '-n', 'losetup',\
+        \ '-j', str(image)).stdout.strip() == b''\n    image.unlink()\n    call('sudo', '-n', 'rmdir',\
+        \ str(nix_root))\n    record.update(actual_exit=0, mount_cleanup_proven=True, nix_volume_unmount_actual_exit=code,\n\
+        \                  backing_file_removed=True, driver_overlay_mount_restored=True)\nexcept BaseException\
+        \ as error:\n    record.update(failure_type=type(error).__name__, failure=str(error),\n      \
+        \            cleanup='Owned ephemeral state retained on uncertainty; no unrelated processes killed')\n\
+        \    raise\nfinally:\n    record.update(finished_at=time.time(), bind_mount_present_at_finally=bind_mounted)\n\
+        \    path = temporary / 'assbox-native-canonical-storage-summary.json'\n    path.write_text(json.dumps(record,\
+        \ sort_keys=True) + '\\n')\n    path.chmod(0o600)\n    print(json.dumps(record, sort_keys=True))\n\
+        \nASSBOX_CANONICAL_STORAGE_CAPABILITY_PROBE\n"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
-        path: '${{ runner.temp }}/assbox-verification
-
-          ${{ runner.temp }}/assbox/verification/*/summary.json
-
-          ${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json
-
-          ${{ runner.temp }}/assbox/verification/*/canonical-summary.json
-
-          '
+        name: native-canonical-storage-overlay-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt
+          }}
+        path: ${{ runner.temp }}/assbox-native-canonical-storage-summary.json
         if-no-files-found: warn
         retention-days: 14
