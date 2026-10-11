@@ -98,6 +98,14 @@ the cache consumer has no source-build fallback. An unavailable or mismatched ca
 stops that operation with an error. A local administrator's different kernel can
 still require its own build.
 
+Native builders also include the default system's security-adjusted `nixfmt`
+output and its complete runtime closure in this cache. Its version, derivation and
+output path are checked against the authenticated source independently of the
+kernel. This avoids bootstrapping GHC on a fresh installation merely to obtain the
+formatter. Reusing a registered kernel does not skip a missing formatter, and the
+consumer has no formatter source-build fallback. Kernel-only index fixtures remain
+valid structure tests; they do not qualify a current public import.
+
 Each architecture has an independently attested `kernel-SYSTEM.json` index and a
 `kernel-SYSTEM.sigstore.json` proof bundle. The index binds the exact release manifest
 digest, core commit, lock digest, derivation, output paths, configuration hash and

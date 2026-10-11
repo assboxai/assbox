@@ -297,5 +297,131 @@ class KernelCache(unittest.TestCase):
             self.assertEqual(command.call_count, 1)
 
 
+def formatter_fixture(directory):
+    index = fixture(directory)
+    path = '/nix/store/' + '4' * 32 + '-nixfmt-1.5.0'
+    content = b'contract-only-formatter-NAR'
+    digest = hashlib.sha256(content).digest()
+    nar_hash = hashlib.sha256(b'contract-only-uncompressed-formatter').digest()
+    nar = 'nar-' + nix_hash(digest).removeprefix('sha256:') + '.nar.xz'
+    (directory / nar).write_bytes(content)
+    fields = {'StorePath': path, 'URL': nar, 'Compression': 'xz', 'FileHash': nix_hash(digest),
+              'FileSize': str(len(content)), 'NarHash': nix_hash(nar_hash), 'NarSize': '128',
+              'References': path.removeprefix('/nix/store/'),
+              'Sig': index['publicKey'].split(':')[0] + ':' + base64.b64encode(bytes(64)).decode()}
+    info = path.split('/')[3][:32] + '.narinfo'
+    (directory / info).write_text(''.join(name + ': ' + value + '\n' for name, value in fields.items()))
+    index['formatter'] = {'derivation': '/nix/store/' + '5' * 32 + '-nixfmt-1.5.0.drv',
+                          'version': '1.5.0', 'output': path}
+    index['closure'][path] = {'narHash': 'sha256-' + base64.b64encode(nar_hash).decode(),
+                            'narSize': 128, 'references': [path]}
+    for name in (nar, info):
+        p = directory / name
+        index['cacheAssets'][name] = {'size': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+    return index
+
+
+class DefaultFormatterCache(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='assbox-formatter-cache-contract-')
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name)
+        self.index = formatter_fixture(self.directory)
+
+    def validate(self, index=None, expected=None):
+        return cache.validate_index(cache.encoded(self.index if index is None else index),
+            release_sha='a' * 64, core='b' * 40, lock_sha='c' * 64,
+            system='x86_64-linux', expected_formatter=expected)
+
+    def test_formatter_and_its_runtime_closure_are_bound_to_the_same_signed_cache(self):
+        self.assertEqual(self.validate(expected=self.index['formatter']), self.index)
+        cache.validate_cache(self.directory, self.index)
+
+    def test_each_independent_formatter_identity_field_is_required(self):
+        for field in ('derivation', 'version', 'output'):
+            expected = copy.deepcopy(self.index['formatter'])
+            expected[field] += '1'
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'independently evaluated formatter'):
+                self.validate(expected=expected)
+        legacy = copy.deepcopy(self.index)
+        del legacy['formatter']
+        with self.assertRaisesRegex(ValueError, 'independently evaluated formatter'):
+            self.validate(legacy, self.index['formatter'])
+
+    def test_formatter_cannot_be_a_kernel_output_or_escape_the_store(self):
+        for value in (self.index['outputs']['out'], '/tmp/nixfmt', 'https://outside.invalid/nixfmt', True):
+            index = copy.deepcopy(self.index)
+            index['formatter']['output'] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.validate(index)
+        for value in (None, {}, {**self.index['formatter'], 'trusted': True}):
+            index = copy.deepcopy(self.index)
+            index['formatter'] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.validate(index)
+
+    def test_missing_formatter_closure_is_refused(self):
+        index = copy.deepcopy(self.index)
+        del index['closure'][index['formatter']['output']]
+        with self.assertRaises(ValueError):
+            self.validate(index)
+
+    def test_cached_kernel_cannot_skip_a_missing_formatter(self):
+        release = self.directory / 'release.json'
+        release.write_bytes(cache.encoded({'tag': 'r-1', 'coreCommit': 'b' * 40, 'lockSha256': 'c' * 64}))
+        expected = {key: self.index[key] for key in ('outputs', 'derivation', 'kernelVersion')}
+        downloads = []
+        def download(tag, name, destination, limit):
+            downloads.append(name)
+            destination.write_bytes(b'untrusted metadata')
+        with patch.object(cache, 'require_system'), patch.object(cache, 'kernel_identity', return_value=expected), \
+             patch.object(cache, 'formatter_identity', return_value=self.index['formatter']), \
+             patch.object(cache, 'registered', side_effect=[True, False]), \
+             patch.object(cache, 'download', side_effect=download), \
+             patch.object(cache, 'verify_provenance', side_effect=ValueError('public proof refused')), \
+             patch.object(cache, 'run') as command:
+            with self.assertRaisesRegex(ValueError, 'public proof refused'):
+                cache.consume(ROOT, release, self.directory / 'consumer', 'x86_64-linux', 10, 20)
+            command.assert_not_called()
+        self.assertEqual(downloads, ['kernel-x86_64-linux.json', 'kernel-x86_64-linux.sigstore.json'])
+
+    def test_complete_registered_kernel_and_formatter_need_no_download_or_build(self):
+        release = self.directory / 'release.json'
+        release.write_bytes(cache.encoded({'tag': 'r-1', 'coreCommit': 'b' * 40, 'lockSha256': 'c' * 64}))
+        expected = {key: self.index[key] for key in ('outputs', 'derivation', 'kernelVersion')}
+        with patch.object(cache, 'require_system'), patch.object(cache, 'kernel_identity', return_value=expected), \
+             patch.object(cache, 'formatter_identity', return_value=self.index['formatter']), \
+             patch.object(cache, 'registered', return_value=True) as registered, \
+             patch.object(cache, 'download') as download, patch.object(cache, 'run') as command:
+            result = cache.consume(ROOT, release, self.directory / 'consumer', 'x86_64-linux', 10, 20)
+            self.assertEqual(result['status'], 'already-registered')
+            self.assertFalse(result['kernelBuildInvoked'])
+            self.assertEqual(registered.call_args_list[1].args[1], [self.index['formatter']['output']])
+            download.assert_not_called()
+            command.assert_not_called()
+
+    def test_signed_other_formatter_cannot_select_archives_or_imports(self):
+        release = self.directory / 'release.json'
+        release_bytes = cache.encoded({'tag': 'r-1', 'coreCommit': 'b' * 40, 'lockSha256': 'c' * 64})
+        release.write_bytes(release_bytes)
+        self.index['releaseManifestSha256'] = hashlib.sha256(release_bytes).hexdigest()
+        expected = {key: self.index[key] for key in ('outputs', 'derivation', 'kernelVersion')}
+        formatter = {**self.index['formatter'], 'output': '/nix/store/' + '6' * 32 + '-other-nixfmt'}
+        downloads = []
+        def download(tag, name, destination, limit):
+            downloads.append(name)
+            destination.write_bytes(cache.encoded(self.index) if name.endswith('.json') else b'proof')
+        with patch.object(cache, 'require_system'), patch.object(cache, 'kernel_identity', return_value=expected), \
+             patch.object(cache, 'formatter_identity', return_value=formatter), \
+             patch.object(cache, 'registered', return_value=False), \
+             patch.object(cache, 'download', side_effect=download), patch.object(cache, 'verify_provenance'), \
+             patch.object(cache, 'run') as command:
+            with self.assertRaisesRegex(ValueError, 'independently evaluated formatter'):
+                cache.consume(ROOT, release, self.directory / 'consumer', 'x86_64-linux', 10, 20,
+                              force_download=True)
+            command.assert_not_called()
+        self.assertEqual(downloads, ['kernel-x86_64-linux.json', 'kernel-x86_64-linux.sigstore.json'])
+
+
 if __name__ == '__main__':
     unittest.main()

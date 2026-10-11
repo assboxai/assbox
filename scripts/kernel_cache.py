@@ -120,11 +120,11 @@ def index_name(system):
     return 'kernel-' + system + '.json'
 
 
-def validate_index(raw, *, release_sha, core, lock_sha, system, expected=None):
+def validate_index(raw, *, release_sha, core, lock_sha, system, expected=None, expected_formatter=None):
     value = decoded(raw)
     fields = {'schema', 'kind', 'releaseManifestSha256', 'coreCommit', 'lockSha256', 'system',
               'derivation', 'kernelVersion', 'outputs', 'publicKey', 'configSha256', 'closure', 'cacheAssets'}
-    if (not isinstance(value, dict) or set(value) != fields or encoded(value) != raw
+    if (not isinstance(value, dict) or set(value) not in (fields, fields | {'formatter'}) or encoded(value) != raw
             or type(value['schema']) is not int or value['schema'] != 1
             or value['kind'] != 'assbox-release-kernel-cache'
             or value['releaseManifestSha256'] != release_sha or value['coreCommit'] != core
@@ -142,13 +142,24 @@ def validate_index(raw, *, release_sha, core, lock_sha, system, expected=None):
         raise ValueError('Invalid kernel derivation or outputs')
     if expected is not None and any(value[name] != expected[name] for name in ('derivation', 'kernelVersion', 'outputs')):
         raise ValueError('Cached kernel differs from the independently evaluated kernel')
+    formatter = value.get('formatter')
+    if 'formatter' in value and (
+            not isinstance(formatter, dict) or set(formatter) != {'derivation', 'version', 'output'}
+            or not isinstance(formatter['derivation'], str) or not re.fullmatch(STORE + r'\.drv', formatter['derivation'])
+            or not isinstance(formatter['version'], str) or not re.fullmatch('[0-9][A-Za-z0-9.+_-]{0,79}', formatter['version'])
+            or not isinstance(formatter['output'], str) or not re.fullmatch(STORE, formatter['output'])
+            or formatter['output'] in value['outputs'].values()):
+        raise ValueError('Invalid default formatter identity')
+    if expected_formatter is not None and formatter != expected_formatter:
+        raise ValueError('Cached formatter differs from the independently evaluated formatter')
+    roots = list(value['outputs'].values()) + ([] if formatter is None else [formatter['output']])
     key = value['publicKey']
     if not isinstance(key, str) or not re.fullmatch(r'assbox-kernel-[A-Za-z0-9_-]{1,100}:[A-Za-z0-9+/]{43}=', key):
         raise ValueError('Invalid scoped Nix signing key')
     if len(base64.b64decode(key.split(':')[1], validate=True)) != 32:
         raise ValueError('Invalid Nix public key length')
     closure = value['closure']
-    if not isinstance(closure, dict) or not 3 <= len(closure) <= MAX_PATHS or not set(value['outputs'].values()) <= set(closure):
+    if not isinstance(closure, dict) or not 3 <= len(closure) <= MAX_PATHS or not set(roots) <= set(closure):
         raise ValueError('Incomplete or excessive kernel closure')
     for path, proof in closure.items():
         if (not isinstance(path, str) or not re.fullmatch(STORE, path) or not isinstance(proof, dict)
@@ -161,7 +172,7 @@ def validate_index(raw, *, release_sha, core, lock_sha, system, expected=None):
         sri_digest(proof['narHash'])
     if sum(proof['narSize'] for proof in closure.values()) > MAX_NAR_BYTES:
         raise ValueError('Kernel closure exceeds its unpacked size bound')
-    reachable, pending = set(), list(value['outputs'].values())
+    reachable, pending = set(), list(roots)
     while pending:
         path = pending.pop()
         if path not in reachable:
@@ -275,6 +286,15 @@ def kernel_identity(env, source, system):
                 outputs={name: evaluate(name + '.outPath') for name in OUTPUTS})
 
 
+def formatter_identity(env, source, system):
+    require_system(system)
+    selector = 'path:' + str(source) + '#nixosConfigurations.' + system + '-uefi-none-headless.pkgs.nixfmt'
+    flags = ('--no-update-lock-file', '--no-write-lock-file')
+    def evaluate(attribute):
+        return run(env, 'nix', 'eval', '--raw', *flags, selector + '.' + attribute).decode().strip()
+    return dict(derivation=evaluate('drvPath'), version=evaluate('version'), output=evaluate('outPath'))
+
+
 def registered(env, paths, store=None):
     flags = [] if store is None else ['--store', store]
     result = subprocess.run(['nix', 'path-info', *flags, '--json', '--json-format', '1', *paths], env=env,
@@ -360,7 +380,9 @@ def consume(source, release_path, directory, system, repository_id, owner_id, st
     expected = kernel_identity(env, source, system)
     paths = list(expected['outputs'].values())
     if not force_download and registered(env, paths, store):
-        return {'status': 'already-registered', 'kernelBuildInvoked': False, **expected}
+        formatter = formatter_identity(env, source, system)
+        if registered(env, [formatter['output']], store):
+            return {'status': 'already-registered', 'kernelBuildInvoked': False, **expected}
     if not force_download and store is not None and registered(env, paths):
         # Reuse complete, already trusted installer-store outputs when Nix can
         # import them with signature verification enabled. Unsigned local paths
@@ -372,7 +394,9 @@ def consume(source, release_path, directory, system, repository_id, owner_id, st
         else:
             if not registered(env, paths, store):
                 raise ValueError('Local kernel copy did not register all exact target outputs')
-            return {'status': 'copied-local-kernel', 'kernelBuildInvoked': False, **expected}
+            formatter = formatter_identity(env, source, system)
+            if registered(env, [formatter['output']], store):
+                return {'status': 'copied-local-kernel', 'kernelBuildInvoked': False, **expected}
     index_path = directory / index_name(system)
     bundle = directory / (index_name(system).removesuffix('.json') + '.sigstore.json')
     download(release['tag'], index_path.name, index_path, MAX_INDEX)
@@ -380,8 +404,15 @@ def consume(source, release_path, directory, system, repository_id, owner_id, st
     # Authenticate exact index bytes before they select any additional download.
     verify_provenance(env, index_path, bundle, tag=release['tag'], core=release['coreCommit'],
                       repository_id=repository_id, owner_id=owner_id)
+    # The security overlay can change the formatter's build-time dependencies.
+    # Ship its reviewed runtime output so a fresh installation does not have to
+    # bootstrap GHC just to obtain this small system tool. Evaluate its identity
+    # from authenticated source, after provenance and before selecting any NAR.
+    formatter = formatter_identity(env, source, system)
     index = validate_index(bounded(index_path, MAX_INDEX), release_sha=hashlib.sha256(release_bytes).hexdigest(),
-                           core=release['coreCommit'], lock_sha=release['lockSha256'], system=system, expected=expected)
+                           core=release['coreCommit'], lock_sha=release['lockSha256'], system=system,
+                           expected=expected, expected_formatter=formatter)
+    paths.append(formatter['output'])
     cache = directory / 'signed-cache'
     cache.mkdir(mode=0o700)
     for name, proof in index['cacheAssets'].items():
@@ -393,7 +424,7 @@ def consume(source, release_path, directory, system, repository_id, owner_id, st
     run(env, 'nix', 'copy', '--from', cache.as_uri(), *destination, '--option', 'trusted-public-keys', index['publicKey'],
         '--option', 'require-sigs', 'true', *paths)
     if not registered(env, paths, store):
-        raise ValueError('Kernel copy did not register all three exact outputs')
+        raise ValueError('Kernel copy did not register all three exact outputs and the formatter')
     store_flags = () if store is None else ('--store', store)
     actual = decoded(run(env, 'nix', 'path-info', *store_flags, '--recursive', '--json', '--json-format', '1', *paths))
     if set(actual) != set(index['closure']) or any(
@@ -426,7 +457,10 @@ def produce(source, release_path, directory, system):
         expected = kernel_identity(env, source, system)
         run(env, 'nix', 'build', '--no-link', '--no-update-lock-file', '--no-write-lock-file',
             expected['derivation'] + '^out,modules,dev')
-        paths = list(expected['outputs'].values())
+        formatter = formatter_identity(env, source, system)
+        run(env, 'nix', 'build', '--no-link', '--no-update-lock-file', '--no-write-lock-file',
+            formatter['derivation'] + '^out')
+        paths = [*expected['outputs'].values(), formatter['output']]
         closure = decoded(run(env, 'nix', 'path-info', '--recursive', '--json', '--json-format', '1', *paths))
         if not isinstance(closure, dict) or not 3 <= len(closure) <= MAX_PATHS:
             raise ValueError('Excessive default kernel closure')
@@ -461,12 +495,13 @@ def produce(source, release_path, directory, system):
         assets = {path.name: {'size': path.stat().st_size, 'sha256': file_digest(path)} for path in sorted(cache.iterdir())}
         index = dict(schema=1, kind='assbox-release-kernel-cache', releaseManifestSha256=hashlib.sha256(release_bytes).hexdigest(),
                      coreCommit=release['coreCommit'], lockSha256=release['lockSha256'], system=system,
-                     **expected, publicKey=key, configSha256=hashlib.sha256(config_bytes).hexdigest(),
+                     **expected, formatter=formatter, publicKey=key, configSha256=hashlib.sha256(config_bytes).hexdigest(),
                      closure={path: {field: proof[field] for field in ('narHash', 'narSize', 'references')}
                               for path, proof in closure.items()}, cacheAssets=assets)
         raw = encoded(index)
         index = validate_index(raw, release_sha=hashlib.sha256(release_bytes).hexdigest(), core=release['coreCommit'],
-                               lock_sha=release['lockSha256'], system=system, expected=expected)
+                               lock_sha=release['lockSha256'], system=system, expected=expected,
+                               expected_formatter=formatter)
         validate_cache(cache, index)
         for path in cache.iterdir():
             path.rename(directory / (prefix(system) + path.name))
