@@ -90,7 +90,9 @@ let
       writeShellScriptBin = name: _: pkg name;
       writeShellScript = name: text: (pkg name) // { scriptText = text; };
       writeText = name: text: (pkg name) // { scriptText = text; };
-      stdenv.cc.cc = pkg "cc";
+      stdenv.cc.cc = (pkg "cc") // {
+        lib = pkg "cc-lib";
+      };
       stdenv.hostPlatform = {
         system = "x86_64-linux";
         isx86_64 = true;

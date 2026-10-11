@@ -20,6 +20,11 @@ let
       presentation = "wayland";
       wifi = true;
     };
+    strict = {
+      presentation = "headless";
+      wifi = false;
+      strict = true;
+    };
   };
 in
 pkgs.testers.runNixOSTest {
@@ -35,8 +40,13 @@ pkgs.testers.runNixOSTest {
       updates.enable = false;
       components = { };
     };
-    boot.kernelModules = [ "mac80211_hwsim" ];
-    boot.extraModprobeConfig = "options mac80211_hwsim radios=1";
+    boot.kernelModules = lib.optional (!(case.strict or false)) "mac80211_hwsim";
+    boot.extraModprobeConfig = lib.optionalString (
+      !(case.strict or false)
+    ) "options mac80211_hwsim radios=1";
+    # This VM exercises the independent rfkill/hotplug backstop with a software
+    # radio. Remove the earlier module denial only inside this synthetic test.
+    _module.args.assboxDeviceModuleDeny = case.strict or false;
     boot.loader.systemd-boot.enable = lib.mkForce false;
     boot.loader.grub.enable = lib.mkForce false;
     systemd.services.assbox-boot-check.enable = lib.mkForce false;
@@ -63,6 +73,17 @@ pkgs.testers.runNixOSTest {
         # Verify the running kernel excludes the alternate evdev radio-hotkey
         # handler, not just that /dev/rfkill is inaccessible to the seat user.
         machine.succeed("zgrep -x '# CONFIG_RFKILL_INPUT is not set' /proc/config.gz")
+
+        if case.get("strict", False):
+            machine.wait_for_unit("assbox-device-policy-check.service")
+            machine.succeed("systemctl is-active assbox-device-policy-check.service")
+            machine.succeed("grep -q 'module_blacklist=.*cfg80211.*snd' /proc/cmdline")
+            machine.succeed("for interface in /sys/class/net/*; do test ! -d $interface/wireless; done")
+            machine.fail("test -e /sys/class/sound/card0")
+            machine.fail("test -e /dev/snd")
+            machine.fail("ip -o link | grep -Ev ': (lo|eth[0-9]+|en[^:]+):'")
+            machine.shutdown()
+            continue
 
         def user(command):
             return "runuser -u agent -- bash -c " + shlex.quote(command)

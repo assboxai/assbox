@@ -128,8 +128,14 @@ class IntegrationSourceContracts(unittest.TestCase):
             self.assertIn(text,s)
     def test_independent_guest_audit_and_native_acceptance_gates(self):
         s=(ROOT/'scripts/release-check').read_text()
-        for text in ('worker-artifact','worker-boot-gate-vm','vulnix-worker-codex.json','assboxWorkerAudit'):
+        for text in ('worker-artifact','worker-boot-gate-vm',
+                     'vulnix-$architecture-release-closures.json','assboxWorkerAudit'):
             self.assertIn(text,s)
+        self.assertIn('closure_targets+=("$guest_audit")',s)
+        self.assertIn('closure_targets+=("$path")',s)
+        self.assertIn('closure_targets+=("$worker_audit")',s)
+        self.assertIn('vulnix "$@" --closure --json',s)
+        self.assertIn('sort -u',s)
 
 
 class CancellationTests(unittest.TestCase):

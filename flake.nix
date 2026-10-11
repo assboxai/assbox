@@ -124,6 +124,78 @@
             ;
         }
       );
+      physicalCheckpoint =
+        system:
+        let
+          p = platform.${system};
+          checkpointSystemd = p.pkgs.systemd.override {
+            pname = "systemd-assbox-checkpoint";
+            withBootloader = false;
+            withCoredump = false;
+            withCryptsetup = false;
+            withEfi = false;
+            withFido2 = false;
+            withHomed = false;
+            withImportd = false;
+            withLibBPF = false;
+            withMachined = false;
+            withNspawn = false;
+            withPortabled = false;
+            withRemote = false;
+            withRepart = false;
+            withSysupdate = false;
+            withTpm2Tss = false;
+            withVmspawn = false;
+          };
+          # The live checkpoint cannot install or update a machine. Give its
+          # real Assbox binary only the immutable diagnostic tools available in
+          # the image instead of retaining the production installer/rebuild
+          # tool closure (including Nix and disk-management programs).
+          checkpointTools = with p.pkgs; [
+            curl
+            cacert
+            git
+            jq
+            checkpointSystemd
+            util-linux
+            coreutils
+            findutils
+            gnugrep
+            gnused
+            gnutar
+            iproute2
+            pciutils
+            usbutils
+            openssh
+          ];
+          checkpointAssbox = p.assbox.overrideAttrs (_old: {
+            ASSBOX_TOOL_PATH = p.pkgs.lib.makeBinPath checkpointTools;
+            # The full package is tested by the ordinary native gates. Avoid a
+            # second package-test closure in the published live image build.
+            doCheck = false;
+            nativeCheckInputs = [ ];
+            GI_TYPELIB_PATH = "";
+          });
+          recipes = happier-packages.packages.${system};
+          artifact = builtins.fromJSON (builtins.readFile ./nix/happier-source.json);
+          happier =
+            if recipes ? happier then
+              recipes.happier
+            else
+              assert happier-packages.rev == artifact.reviewedPackageRecipeRevision;
+              p.pkgs.callPackage ./nix/happier.nix { };
+        in
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            assboxPackage = checkpointAssbox;
+            assboxCodex = codex-packages.packages.${system}.codex;
+            assboxHappier = happier;
+            assboxCheckpointSystemd = checkpointSystemd;
+            inherit sourceRevision;
+          };
+          modules = [ ./nix/physical-checkpoint-iso.nix ];
+        };
     in
     {
       nixosModules.default = module;
@@ -136,6 +208,9 @@
           inherit (p) assbox;
           default = p.assbox;
         }
+        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          physical-checkpoint-iso = (physicalCheckpoint system).config.system.build.isoImage;
+        }
       );
       # Exposed data for trusted release jobs; no source mutation is required.
       assboxReleasePolicy = releasePolicy;
@@ -147,9 +222,11 @@
           inherit nixpkgs sourceRevision releasePolicy;
         }
       );
-      nixosConfigurations = nixpkgs.lib.foldl' (
-        all: system: all // platform.${system}.matrix.configurations
-      ) { } systems;
+      nixosConfigurations =
+        nixpkgs.lib.foldl' (all: system: all // platform.${system}.matrix.configurations) { } systems
+        // {
+          x86_64-linux-physical-checkpoint = physicalCheckpoint "x86_64-linux";
+        };
       checks = eachSystem (
         system:
         let
@@ -322,6 +399,20 @@
             inherit (p) pkgs;
             application = "openclaw";
           };
+        }
+        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          physical-checkpoint-iso = (physicalCheckpoint system).config.system.build.isoImage;
+          physical-checkpoint-boot =
+            let
+              checkpoint = physicalCheckpoint system;
+              kernel = checkpoint.config.boot.kernelPackages.kernel;
+            in
+            import ./tests/nix/physical-checkpoint-boot.nix {
+              inherit sourceRevision;
+              inherit (checkpoint.config.system.build) isoImage;
+              inherit (p) pkgs;
+              kernelConfig = "${kernel.dev}/lib/modules/${kernel.modDirVersion}/build/.config";
+            };
         }
       );
     };

@@ -158,6 +158,8 @@ assert !guestPolicy.passwordAuthentication;
 assert guestPolicy.permitRootLogin == "no";
 assert pkgs.lib.hasSuffix "/bin/assbox-health-shell" guestPolicy.healthShell;
 assert guestPolicy.healthHome == "/var/empty";
+assert guestPolicy.kernelDrv == good.config.boot.kernelPackages.kernel.drvPath;
+assert guestPolicy.builderKernelDrv == good.config.boot.kernelPackages.kernel.drvPath;
 assert builtins.any (a: pkgs.lib.hasInfix "execution components" a.message) (failed badHost);
 assert builtins.any (a: pkgs.lib.hasInfix "uplinkInterfaces" a.message) (failed badNetwork);
 assert unit.serviceConfig.User == "assbox-vmm";

@@ -352,7 +352,8 @@ class ComponentCatalogTests(unittest.TestCase):
                 loader = result['programs']['nix-ld']
                 self.assertTrue(loader['enable'])
                 self.assertEqual(set(loader['libraries']),
-                                 {'/nix/store/test-' + name for name in ['cc', 'zlib', 'openssl', 'curl']})
+                                 {'/nix/store/test-' + name
+                                  for name in ['cc-lib', 'zlib', 'openssl', 'curl']})
         for selection in [{}, {'vim': {'enable': True}}, {'vscode-cli': {'enable': True}}]:
             self.assertNotIn('nix-ld', self.evaluate(selection)['programs'])
 

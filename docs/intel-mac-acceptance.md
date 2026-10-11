@@ -33,7 +33,21 @@ to proprietary packages does not override this driver decision. Assbox adds no
 The generic `apple-intel` NixOS module remains an expert configuration building
 block. Selecting it in the guided installer cannot substitute for model support.
 Other features, such as camera access or suspend, need their own real-hardware
-acceptance if enabled. Start with the default disabled camera, Bluetooth and suspend.
+acceptance if enabled. For wired-only qualification, explicitly leave Wi-Fi,
+audio/microphone, camera, Bluetooth and suspend disabled. The installed policy blocks
+disabled radio, sound and camera modules before initialization, then blocks all
+rfkill radio classes when both Wi-Fi and Bluetooth are disabled. A failed early
+device-policy check prevents NetworkManager from starting. Verify that state, the
+absence of wireless interfaces and the absence of sound devices after every boot.
+Those settings begin with the installed Assbox system. A qualification that also
+requires the devices disabled in live media must separately disable and verify them
+before the live session performs release verification or installation.
+
+The Assbox [physical checkpoint](physical-checkpoint.md) supplies that live-media
+policy for early MacBookPro11,1 testing. Its guarantee begins when Linux takes
+control; use physical radio disconnection when the firmware interval is also in
+scope. The model has no built-in Ethernet port, so attach a supported Thunderbolt or
+USB Ethernet adapter before boot and retain its PCI/USB identity with the result.
 
 ## Release commissioning prerequisite
 
@@ -56,10 +70,13 @@ Use independent data backups, the required external boot-backup disk and working
 rescue media. Follow [installation](installation.md) and keep the
 [recovery procedure](install-recovery.md) available off the machine.
 
-1. **Live environment:** boot through the installed rEFInd, confirm the observed
-   model and physical storage identities, exercise keyboard/trackpad and the chosen
-   network connection, and check the retained macOS partition layout. Use the same
-   network adapter intended for the installed system.
+1. **Live environment:** boot the exact authenticated live image once by selecting
+   its EFI USB entry directly from Apple's Option boot menu and once through the
+   installed rEFInd. Record both results separately; neither boot path substitutes
+   for the other. In each run confirm the observed model and physical storage
+   identities, exercise keyboard/trackpad and the chosen network connection, and
+   check the retained macOS partition layout. Use the same network adapter intended
+   for the installed system.
 2. **Initial installation:** begin with `none`/headless. Save the exact source/release
    identities and installer outcome. Boot Assbox from rEFInd, log in as administrator
    and verify networking. Reboot into the actual macOS installation, then Assbox

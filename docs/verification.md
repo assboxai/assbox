@@ -99,6 +99,14 @@ Release checks require a clean committed core or a release candidate compared
 byte-for-byte with that core, allowing only generated lock/context changes. They
 additionally require measured core line
 coverage of at least 90%, Cargo dependency advisory review and NixOS closure scans.
+Vulnix reports remain raw and unwhitelisted. A separate reviewed policy binds the
+native architecture, exact package/version/CVE set and full vulnerability-description
+digests, and distinguishes reviewed false product matches from patched findings. Every
+patched finding must name the reviewed patch bytes and prove that each reported
+derivation actually received those patches. New, removed, changed or stale findings
+fail the release until the policy receives an independent review update. Exact
+durable decisions do not impose a periodic source commit on otherwise unattended
+releases; a fresh scanner result still has to match every reviewed byte binding.
 There is no measured shell-coverage floor. A mutation counts only when a passing
 native baseline becomes a real assertion failure, not a compiler error, missing
 tool or timeout. Crates.io advisory checks do not scan the compiler itself.
@@ -234,7 +242,9 @@ For every promoted profile, verify live-media and installed-target boot, storage
 identities, networking/credentials, TTY and graphical input, display policy, USB
 input/Ethernet, denied raw storage access, rescue boot and retained generations.
 Exercise scheduled updates while the GUI and agents are active, low/unknown power
-retries and disk-space pressure. On Intel Macs verify both rEFInd and macOS boot.
+retries and disk-space pressure. For the Intel Mac live-media milestone, verify the
+same image through direct Apple Option/EFI boot and through rEFInd and record the two
+results separately. For an installation that retains macOS, verify macOS boot too.
 On Parallels record guest architecture, firmware, virtual devices and GUI behavior
 separately from host architecture. Follow [the acceptance guide](parallels.md).
 For Intel Macs use the [model and networking acceptance procedure](intel-mac-acceptance.md).
@@ -243,6 +253,13 @@ external adapters and hardware drift. Sysfs adapter tests use local fixture tree
 The Apple install VM supplies a synthetic MacBookPro12,1 DMI identity through QEMU
 and exercises profile refusal before target writes; this remains no evidence about
 physical Mac firmware or wireless hardware.
+
+The development [physical x86 checkpoint](physical-checkpoint.md) builds one exact
+hybrid ISO and boots those bytes both as a legacy BIOS disk and as UEFI USB media.
+Each path must pass the early disabled-device gate and emit the source-bound serial
+readiness marker. This qualifies the live artifact's virtual boot paths; it does not
+replace the separate direct-Apple-firmware and rEFInd runs on the real Mac, or the
+real PC hardware observations above.
 
 For each application version/architecture, test actual onboarding/provider login,
 authenticated tasks, headed/headless client behavior, loopback binding, shutdown

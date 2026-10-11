@@ -5,6 +5,7 @@
     ./instances.nix
     ./network-policy.nix
     ./options.nix
+    ./security-overrides.nix
     ./base.nix
     ./access.nix
     ./serve.nix

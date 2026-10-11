@@ -31,6 +31,10 @@ The installer starts with purpose, then application, component exclusions, prese
 
 Retain generic x86-64 UEFI/BIOS, existing Intel Mac preservation profiles and generic AArch64 UEFI arrangements, including suitable VMs. This is not bare-metal Apple Silicon, 32-bit ARM or board-specific boot-image support. Consult [hardware acceptance](docs/intel-mac-acceptance.md) and [Parallels](docs/parallels.md). A VM without exposed KVM can be a standalone host even when native worker/provider-VM routes are unavailable.
 
+An immutable development [physical x86 checkpoint](docs/physical-checkpoint.md)
+provides a non-installing hybrid BIOS/UEFI live image for early wired-only testing.
+It is separate from the authenticated installation and update release line.
+
 The existing direct QEMU/KVM [managed worker](docs/worker/controller-model.md) has persistent home, disposable root, dedicated SSH identities and host-enforced policy. Preserve its [operations](docs/worker/operations.md), [scoped Git workflow](docs/worker/git-workflow.md), [client-routing checks](docs/worker/client-routing.md) and [qualification status](docs/worker/implementation-status.md). A VM does not reduce the provider-side authority of a credential placed inside it.
 
 

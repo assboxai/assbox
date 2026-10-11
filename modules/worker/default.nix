@@ -40,7 +40,14 @@ let
     modules = [
       ./guest.nix
       cfg.extraGuestConfig
-      { nixpkgs.pkgs = pkgs; }
+      {
+        nixpkgs.pkgs = pkgs;
+        # The worker is part of the same appliance release and needs only the
+        # generic virtio subset of its kernel. Reuse the host's authenticated
+        # default kernel so application/library overlays cannot create a second
+        # endpoint kernel build outside the published kernel cache.
+        boot.kernelPackages = config.boot.kernelPackages;
+      }
     ];
   };
   image = import ../../nix/worker-image.nix {

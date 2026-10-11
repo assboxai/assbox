@@ -107,6 +107,12 @@ authenticates the index before it selects any NAR downloads, verifies all compre
 bytes, then lets Nix verify every NAR and signature during import. The imported
 configuration must still disable `CONFIG_RFKILL_INPUT`.
 
+The isolated execution worker reuses that same default kernel package set. Its
+virtio guest image is still built and scanned separately, but application and
+library overlays cannot give it a second default-kernel derivation that falls
+outside the authenticated kernel cache. An administrator-selected custom host
+kernel remains an explicit local build decision for both host and worker.
+
 The native builder generates an ephemeral Nix cache key only after the build. It
 deletes the private key before exporting public artifacts. The attested public key
 is trusted only for the one cache-copy command and is never added to machine-wide
