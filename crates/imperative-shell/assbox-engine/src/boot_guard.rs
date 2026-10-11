@@ -13,6 +13,7 @@ pub(crate) struct BootGuard {
     firmware: Option<Vec<u8>>,
     unrelated_esp: Option<BTreeMap<String, String>>,
     esp_source: Option<String>,
+    esp_boot: BootKind,
 }
 pub(crate) fn read_binding(c: &Commands, system: &str) -> Result<BootReceipt> {
     if !assbox_system::commands::valid_store_system(system) {
@@ -95,6 +96,7 @@ impl BootGuard {
         let binding = read_binding(c, &current)?;
         let target = read_binding(c, target_system)?;
         assbox_policy::validate_boot_target(&binding, &target)?;
+        let esp_boot = binding.binding.mode;
         let boot = [
             binding.binding.mode.as_str().to_owned(),
             binding.binding.disk,
@@ -141,7 +143,7 @@ impl BootGuard {
         }
         let table = c.capture("sfdisk", &["--json", &disk])?;
         files::atomic_write(&destination.join("partition-table.json"), &table, 0o600)?;
-        let apple = boot[0] == "apple-refind";
+        let apple = esp_boot.is_apple();
         let (firmware, unrelated_esp, esp_source) = if apple {
             c.run("mountpoint", &["-q", "/boot/efi"])?;
             let source = c.text(
@@ -157,7 +159,8 @@ impl BootGuard {
             )?;
             let vars = c.capture("efibootmgr", &["-v"])?;
             files::atomic_write(&destination.join("firmware.txt"), &vars, 0o600)?;
-            let manifest = crate::install::esp_manifest(c, Path::new("/boot/efi"), true)?;
+            let manifest =
+                crate::install::esp_manifest_for_boot(c, Path::new("/boot/efi"), esp_boot)?;
             let text = manifest
                 .iter()
                 .map(|(name, hash)| format!("{hash}  {name}\n"))
@@ -189,6 +192,7 @@ impl BootGuard {
             firmware,
             unrelated_esp,
             esp_source,
+            esp_boot,
         })
     }
     pub(crate) fn verify(&self, c: &Commands) -> Result<()> {
@@ -215,7 +219,8 @@ impl BootGuard {
                 ],
             )?;
             if self.esp_source.as_ref() != Some(&source)
-                || crate::install::esp_manifest(c, Path::new("/boot/efi"), true)? != *expected
+                || crate::install::esp_manifest_for_boot(c, Path::new("/boot/efi"), self.esp_boot)?
+                    != *expected
             {
                 return Err(Error::new(
                     "Apple activation altered unrelated ESP files or mount ownership",

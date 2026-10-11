@@ -7,7 +7,13 @@
 }:
 let
   cfg = config.assbox;
-  apple = pkgs.stdenv.hostPlatform.system == "x86_64-linux" && cfg.boot.mode == "apple-refind";
+  apple =
+    pkgs.stdenv.hostPlatform.system == "x86_64-linux"
+    && builtins.elem cfg.boot.mode [
+      "apple-refind"
+      "apple-efi"
+    ];
+  directApple = apple && cfg.boot.mode == "apple-efi";
   bios = pkgs.stdenv.hostPlatform.system == "x86_64-linux" && lib.hasPrefix "bios-" cfg.boot.mode;
 in
 {
@@ -27,12 +33,37 @@ in
           }
           {
             assertion = (cfg.platform != "generic") == apple;
-            message = "Intel Apple preservation profiles require the Apple rEFInd boot strategy.";
+            message = "Intel Apple profiles require an Apple EFI boot strategy.";
+          }
+          {
+            assertion =
+              !directApple
+              || (
+                builtins.elem cfg.platform [
+                  "macbookpro11-1"
+                  "macbookpro12-1"
+                ]
+                && config.boot.loader.grub.efiInstallAsRemovable
+                && !config.boot.loader.efi.canTouchEfiVariables
+              );
+            message = "Direct Apple EFI requires a supported Intel Mac and the fallback loader without EFI variable writes.";
           }
         ];
         boot.loader.timeout = 8;
         boot.loader.efi.efiSysMountPoint = "/boot/efi";
         boot.loader.efi.canTouchEfiVariables = !apple && !bios;
+        # An external x86 root must remain bootable across the machine's USB
+        # ports, including legacy USB 1/2 controllers and USB 3/UAS bridges.
+        # Dependency modules are included by the normal NixOS initrd builder.
+        boot.initrd.availableKernelModules = lib.optionals pkgs.stdenv.hostPlatform.isx86_64 [
+          "uhci_hcd"
+          "ohci_pci"
+          "ehci_pci"
+          "xhci_pci"
+          "usb_storage"
+          "uas"
+          "sd_mod"
+        ];
       }
       (lib.mkIf (cfg.boot.mode == "uefi") {
         boot.loader.systemd-boot.enable = true;
@@ -54,7 +85,7 @@ in
         boot.loader.grub = {
           enable = true;
           efiSupport = true;
-          efiInstallAsRemovable = false;
+          efiInstallAsRemovable = directApple;
           useOSProber = false;
           copyKernels = false;
           configurationLimit = cfg.boot.generations;

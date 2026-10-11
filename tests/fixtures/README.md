@@ -51,6 +51,13 @@ The injected local NixOS module supplies the normal test-driver console and
 isolated network settings; it is not part of the installed product configuration.
 `installer_terminal.py` supplies explicit retry input through a test PTY.
 
+`laptop_installed_cases.py` adds external USB-root and MacBookPro11,1 direct/rEFInd
+installed-boot cases. The USB case preserves a separate writable internal image
+and compares all its bytes and partition geometry. Both Mac cases use the ordinary
+model checks; the direct route starts with an empty ESP and boots without rEFInd.
+These cases use the same controlled release transport and public fixture material,
+and do not establish physical Apple firmware behavior or public release acceptance.
+
 The system-adapter Cargo tests separately run `password_terminal.py` against the
 real password helper in a private PTY. They cover entry, cancellation, helper
 failure, terminal restoration and secret output; no password agent or VM is needed.

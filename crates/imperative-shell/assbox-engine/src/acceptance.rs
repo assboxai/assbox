@@ -149,3 +149,46 @@ fn management() {
     }
     .unwrap();
 }
+
+#[test]
+#[ignore = "requires a disposable supported Intel Mac EFI target and fixture release transport"]
+fn install_direct_apple_efi() {
+    use assbox_domain::*;
+    require_vm();
+    let values = Commands
+        .jq_fields(
+            &files::read(Path::new("/var/lib/assbox-acceptance/install.json")).unwrap(),
+            r#"[.root,.esp,.backup,.platform,.key] | .[] | . + "\u0000""#,
+        )
+        .unwrap();
+    assert_eq!(values.len(), 5);
+    let request = InstallRequest {
+        root: values[0].clone(),
+        esp: Some(values[1].clone()),
+        backup: values[2].clone(),
+        choices: Choices {
+            instance: Default::default(),
+            hostname: Hostname::parse("assbox-vm").unwrap(),
+            timezone: "UTC".into(),
+            components: Components::default(),
+            presentation: Presentation::Headless,
+            platform: values[3].parse().unwrap(),
+            devices: DevicePolicy::default(),
+            scale: 1,
+            allow_unfree: false,
+            allow_mutable_code: false,
+            autostart: Vec::new(),
+            admin_ssh_key: Some(values[4].clone()),
+            agent_ssh_key: None,
+            ssh_access: Default::default(),
+            additional_packages: Default::default(),
+            worker: None,
+        },
+    };
+    let plan =
+        assbox_policy::plan_install(assbox_system::probe::inventory(&Commands).unwrap(), request)
+            .unwrap()
+            .with_direct_apple_efi()
+            .unwrap();
+    crate::install::apply(plan, Some("r-1")).unwrap();
+}

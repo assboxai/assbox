@@ -516,3 +516,57 @@ fn bios_boot_partition_requires_raw_write_permission() {
     inv.partitions.last_mut().unwrap().read_only = true;
     assert!(plan_install(inv, req).is_err());
 }
+
+#[test]
+fn direct_apple_efi_is_an_explicit_dedicated_target_choice() {
+    for (model, platform) in [
+        ("MacBookPro11,1", Platform::Macbookpro11_1),
+        ("MacBookPro12,1", Platform::Macbookpro12_1),
+    ] {
+        let (mut inv, mut req) = base(Firmware::Uefi, Table::Gpt);
+        inv.hardware.model = model.into();
+        req.choices.platform = platform;
+        let preservation = plan_install(inv.clone(), req).unwrap();
+        assert_eq!(preservation.boot(), BootKind::AppleRefind);
+        let direct = preservation.with_direct_apple_efi().unwrap();
+        assert_eq!(direct.boot(), BootKind::AppleEfi);
+        assert!(direct.revalidate(&inv, &[]).is_ok());
+        let mut changed = inv;
+        changed.partitions.push(partition(
+            "/dev/sda3",
+            "/dev/sda",
+            FileSystem::Other,
+            "macos",
+        ));
+        assert!(direct.revalidate(&changed, &[]).is_err());
+    }
+}
+
+#[test]
+fn direct_apple_efi_refuses_shared_disks_and_other_boot_plans() {
+    let (mut inv, mut req) = base(Firmware::Uefi, Table::Gpt);
+    inv.hardware.model = "MacBookPro11,1".into();
+    req.choices.platform = Platform::Macbookpro11_1;
+    inv.partitions.push(partition(
+        "/dev/sda3",
+        "/dev/sda",
+        FileSystem::Other,
+        "7c3457ef-0000-11aa-aa11-00306543ecac",
+    ));
+    let shared = plan_install(inv, req).unwrap();
+    assert_eq!(shared.boot(), BootKind::AppleRefind);
+    assert!(shared.with_direct_apple_efi().is_err());
+    for (firmware, table) in [
+        (Firmware::Uefi, Table::Gpt),
+        (Firmware::Bios, Table::Gpt),
+        (Firmware::Bios, Table::Mbr),
+    ] {
+        let (inv, req) = base(firmware, table);
+        assert!(
+            plan_install(inv, req)
+                .unwrap()
+                .with_direct_apple_efi()
+                .is_err()
+        );
+    }
+}

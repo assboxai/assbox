@@ -38,6 +38,9 @@ let
           }) loader.grub.mirroredBoots;
           efiCanTouch = loader.efi.canTouchEfiVariables;
           efiMount = loader.efi.efiSysMountPoint;
+        }
+        // lib.optionalAttrs (cfg.boot.mode == "apple-efi") {
+          grubRemovable = loader.grub.efiInstallAsRemovable;
         };
       };
       policy.generations =

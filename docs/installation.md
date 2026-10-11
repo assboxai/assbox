@@ -9,8 +9,9 @@ Never use a source-only bootstrap candidate on valuable disks.
 ## End-user sequence
 
 1. Back up existing data. Prepare the supported empty Linux partition(s) and a
-   separate backup disk. On Intel Macs, do the partition preparation from macOS
-   and install/test rEFInd first.
+   separate backup disk. On Intel Macs retaining macOS, do partition preparation
+   from macOS and install/test rEFInd first. A dedicated Intel Mac target can
+   instead use the direct EFI route with an empty ESP.
 2. Boot matching-architecture NixOS live media and establish networking. Obtain
    the trusted native Assbox executable and select an authenticated release as
    described below. There is no separate minimal-NixOS installation step.
@@ -20,8 +21,9 @@ Never use a source-only bootstrap candidate on valuable disks.
 4. Leave the live session running while Assbox verifies the backup, builds on the
    target disk and installs the bootloader. Follow an explicit retry prompt only
    after correcting a build problem; interruptions have the limits described below.
-5. Disconnect the live medium and boot the installed disk (through rEFInd on an
-   Intel Mac). Log in as administrator and complete application onboarding.
+5. Disconnect the live medium and boot the installed disk, using the selected
+   direct EFI or rEFInd route on an Intel Mac. Log in as administrator and complete
+   application onboarding.
 
 The same flow applies to every supported machine. It produces an ordinary
 `/etc/nixos` configuration ready for normal NixOS administration; a copied Git
@@ -69,7 +71,7 @@ macOS control and its distinct qualification gates.
 
 The native executable and running kernel must agree: `x86_64` or `aarch64`.
 AArch64 requires generic UEFI and GPT. x86-64 additionally supports BIOS/GPT,
-BIOS/MBR and the separate Intel Apple/rEFInd profile. Unsupported architectures,
+BIOS/MBR and the separate Intel Apple direct-EFI/rEFInd profiles. Unsupported architectures,
 ARM BIOS and ARM Intel-Apple selections fail before installation writes.
 
 Use trusted matching-architecture NixOS live installation media. `/iso` must resolve
@@ -88,12 +90,19 @@ UUIDs/PARTUUIDs, read-only targets and hybrid partition tables are refused.
 | BIOS/GPT, x86-64 | ext4 root and one unformatted BIOS Boot Partition of at least 1 MiB |
 | BIOS/MBR, x86-64 | one primary Linux ext4 partition starting at or after 1 MiB |
 | Intel Apple/rEFInd | GPT; empty ext4 root; existing FAT ESP/rEFInd; retained partitions untouched |
+| Intel Apple/direct EFI | GPT; one empty ext4 root and one empty FAT ESP, no other partitions; no rEFInd prerequisite |
 
 BIOS and Intel Apple installation require an unambiguous whole-disk `/dev/disk/by-id`
 identity. UEFI may bind filesystems by UUID when the virtual disk lacks a stable
 by-id name. These are layout rules, not capacity recommendations: provide enough
 root space for installed packages, retained generations, builds and application data.
 ESP capacity must accommodate the configured boot-menu generations.
+
+An x86-64 target may be an external USB disk. Keep its stable whole-disk identity
+separate from the live medium and backup disk. The installed initrd includes the
+standard legacy/USB 3 controller and bulk-storage/UAS drivers. Qualification must
+cold-boot the installed USB root with the live medium removed and confirm that
+the internal disk's bytes and partition layout remained unchanged.
 
 The installer never creates a partition table, erases a filesystem, shrinks a volume
 or repairs filesystem damage. Prepare storage separately and inspect it before
@@ -203,7 +212,7 @@ parallelism, relative background weights and zram; see [resources](resources.md)
 Disk-backed builds reduce live-store pressure without guaranteeing that every
 workload will fit in RAM or preventing all OOM failures.
 
-## Intel Apple preservation
+## Intel Apple boot
 
 The guided installer accepts the observed models `MacBookPro11,1` and
 `MacBookPro12,1`, using their matching profiles. It refuses other Apple models,
@@ -224,7 +233,19 @@ writes; unplugging or changing adapters invalidates the plan. After target write
 follow the recovery procedure before attempting another installation. No SSID, password or
 MAC address is part of this hardware observation.
 
-Create actual physical free partitions using macOS tools beforehand. Adding an APFS
+Choose `direct` in the Mac boot prompt for a dedicated target containing only the
+prepared root and an empty ESP. Assbox installs GRUB at `EFI/BOOT/BOOTX64.EFI`,
+using the EFI fallback path without writing firmware variables. It does not need
+an existing rEFInd installation. Use Apple's Option startup menu to select the
+installed EFI volume; recognition and successful boot still require physical
+acceptance on the selected model. The immutable generation receipt binds the
+fallback-loader setting, and later activation preserves unrelated ESP files.
+
+Choose `refind` when preserving an existing macOS/shared disk. This remains a
+separate boot strategy: it requires the existing rEFInd loader and keeps Assbox's
+loader within `EFI/Assbox`.
+
+For this preservation route, create actual physical free partitions using macOS tools beforehand. Adding an APFS
 volume is not the same operation. Linux partition tools must not resize or repair
 APFS/HFS+/CoreStorage/Recovery/Boot Camp or replace the shared ESP. Retained partitions
 are not mounted. The prerequisite is an ordinary file at `EFI/refind/refind_x64.efi` with an

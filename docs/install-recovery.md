@@ -71,8 +71,12 @@ Alternatively, explicitly prepare the intended Linux root again after preserving
 anything needed. Assbox never does that preparation or authorizes it merely by
 finding a record. Do not delete only the marker and rerun.
 
-On Intel Macs, preserve rEFInd, unrelated ESP files and every retained macOS
+On Intel Macs, preserve any existing rEFInd, unrelated ESP files and every retained macOS
 partition. Do not blindly restore a whole disk header or ESP image: it may replace
 changes made after the backup. Compare the saved partition/firmware metadata and
 ESP archive first, repair only the inspected boot state, and verify both operating
 systems boot. The archive is a boot-state backup, not a backup of personal data.
+For a dedicated direct-EFI installation, inspect `EFI/BOOT/BOOTX64.EFI` and the
+generation's bound fallback-loader setting; an rEFInd installation is not required
+to recover that route. Do not replace the selected boot strategy during an Assbox
+update or recovery operation.

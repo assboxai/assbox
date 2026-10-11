@@ -28,6 +28,7 @@
       (builtins.elem config.assbox.boot.mode [
         "uefi"
         "apple-refind"
+        "apple-efi"
       ])
       {
         device = "/dev/disk/by-label/ASSBOX_CI_ESP";

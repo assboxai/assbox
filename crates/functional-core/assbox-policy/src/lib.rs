@@ -48,6 +48,32 @@ impl InstallPlan {
             .as_ref()
             .and_then(|s| self.inventory.partitions.iter().find(|p| &p.path == s))
     }
+    /// Direct Apple EFI owns the fallback loader on a dedicated target. The
+    /// existing rEFInd plan remains the only route for preserving shared disks.
+    pub fn with_direct_apple_efi(mut self) -> Result<Self> {
+        if self.boot != BootKind::AppleRefind
+            || !matches!(
+                self.request.choices.platform,
+                Platform::Macbookpro11_1 | Platform::Macbookpro12_1
+            )
+        {
+            return Err(Error::new(
+                "direct Apple EFI requires a validated supported Intel Mac UEFI plan",
+            ));
+        }
+        let esp = self
+            .esp()
+            .ok_or_else(|| Error::new("direct Apple EFI requires an ESP"))?;
+        if self.inventory.partitions.iter().any(|p| {
+            p.parent == self.root().parent && p.path != self.root().path && p.path != esp.path
+        }) {
+            return Err(Error::new(
+                "direct Apple EFI requires a dedicated target disk containing only root and ESP; use rEFInd preservation for shared disks",
+            ));
+        }
+        self.boot = BootKind::AppleEfi;
+        Ok(self)
+    }
     /// Re-observe before each consequential phase. Mounts are allowed only where
     /// this operation explicitly mounted the corresponding selected partition.
     pub fn revalidate(&self, now: &Inventory, allowed: &[(&str, &str)]) -> Result<()> {
@@ -624,6 +650,11 @@ pub fn validate_audit(a: &Audit) -> Result<()> {
     }
     if a.boot == BootKind::AppleRefind && a.efi_writes {
         return Err(Error::new("Apple rEFInd mode may not write EFI variables"));
+    }
+    if a.boot == BootKind::AppleEfi && a.efi_writes {
+        return Err(Error::new(
+            "direct Apple EFI mode may not write EFI variables",
+        ));
     }
     Ok(())
 }

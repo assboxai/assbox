@@ -254,6 +254,15 @@ The Apple install VM supplies a synthetic MacBookPro12,1 DMI identity through QE
 and exercises profile refusal before target writes; this remains no evidence about
 physical Mac firmware or wireless hardware.
 
+Additional installation cases use a synthetic MacBookPro11,1 identity and boot
+the installed disk separately through the direct fallback loader and real rEFInd.
+The external-USB BIOS case attaches the target through an emulated USB 2 controller
+in both installer and installed guests, retains a writable internal disk, and
+compares that internal disk's complete bytes and partition table before and after.
+It cold-boots without the live ISO or backup attached and verifies the root's USB
+transport. These are disposable acceptance cases requiring native execution;
+their definitions are not passing results or physical hardware certification.
+
 The development [physical x86 checkpoint](physical-checkpoint.md) builds one exact
 hybrid ISO and boots those bytes both as a legacy BIOS disk and as UEFI USB media.
 Each path must pass the early disabled-device gate and emit the source-bound serial

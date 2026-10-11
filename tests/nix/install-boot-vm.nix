@@ -27,6 +27,42 @@ let
     bios-gpt-512 = case "bios-gpt" 512;
     bios-mbr-512 = case "bios-mbr" 512;
     apple-refind-512 = case "apple-refind" 512;
+    apple-efi-11-1-512 = import ./installed-vm.nix {
+      inherit
+        pkgs
+        module
+        assbox
+        inputs
+        ;
+      mode = "apple-efi";
+      macbookModel = "MacBookPro11,1";
+      scenario = "install";
+      caseScript = ../fixtures/laptop_installed_cases.py;
+    };
+    apple-refind-11-1-512 = import ./installed-vm.nix {
+      inherit
+        pkgs
+        module
+        assbox
+        inputs
+        ;
+      mode = "apple-refind";
+      macbookModel = "MacBookPro11,1";
+      scenario = "install";
+      caseScript = ../fixtures/laptop_installed_cases.py;
+    };
+    bios-gpt-usb-512 = import ./installed-vm.nix {
+      inherit
+        pkgs
+        module
+        assbox
+        inputs
+        ;
+      mode = "bios-gpt";
+      targetTransport = "usb";
+      scenario = "install";
+      caseScript = ../fixtures/laptop_installed_cases.py;
+    };
   };
 in
 {

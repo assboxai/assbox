@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Structural boot preconditions, not signature or firmware-boot verification.
-use assbox_domain::{Error, Result};
+use assbox_domain::{BootKind, Error, Result};
+
+/// Loader files owned by the selected Apple boot strategy. Other ESP content
+/// must retain its identity through installation and later activation.
+pub fn owned_esp_path(boot: BootKind, path: &str) -> bool {
+    let lower = path.to_ascii_lowercase();
+    boot.is_apple()
+        && (lower == "efi/assbox"
+            || lower.starts_with("efi/assbox/")
+            || (boot == BootKind::AppleEfi && lower == "efi/boot/bootx64.efi"))
+}
 
 pub fn validate_refind_image(path: &str, bytes: &[u8]) -> Result<()> {
     if !path.eq_ignore_ascii_case("efi/refind/refind_x64.efi") {

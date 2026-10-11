@@ -5,9 +5,10 @@ are implementation targets, not a record of successful physical-hardware testing
 Keep results, serials and machine-specific configurations outside the repository.
 
 The MacBookPro11,1 installed-system milestone requires direct Apple EFI boot and
-rEFInd boot to work independently. The current guided installer implements the
-rEFInd preservation route. Direct Apple EFI installation remains to be implemented
-and qualified; direct boot of the live checkpoint alone does not establish it.
+rEFInd boot to work independently. The guided installer offers direct EFI on a
+dedicated target with an empty ESP, and rEFInd preservation on an existing shared
+target. Installed qualification remains required for each route; direct boot of
+the live checkpoint alone does not establish it.
 
 ## Hardware boundary
 
@@ -84,8 +85,10 @@ rescue media. Follow [installation](installation.md) and keep the
    for the installed system.
 2. **Initial installation:** begin with `none`/headless. Save the exact source/release
    identities and installer outcome. Boot Assbox from rEFInd, log in as administrator
-   and verify networking. Reboot into the actual macOS installation, then Assbox
-   again. Check that rescue media still boot and the external backup can be read.
+   and verify networking. Separately install/boot the direct EFI route without an
+   rEFInd loader. When retaining macOS, reboot into the actual macOS installation,
+   then Assbox again. Check that rescue media still boot and the external backup
+   can be read. A VM's EFI implementation does not qualify Apple's Option menu.
 3. **Application:** select the intended profile, complete real provider onboarding,
    and run a representative authenticated task. Reboot and verify that the GUI or
    service and its credentials work again. Test any requested USB, audio, camera,

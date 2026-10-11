@@ -112,6 +112,15 @@ pub(crate) fn esp_manifest(
     walk(c, root, root, apple, &mut out)?;
     Ok(out)
 }
+pub(crate) fn esp_manifest_for_boot(
+    c: &Commands,
+    root: &Path,
+    boot: BootKind,
+) -> Result<BTreeMap<String, String>> {
+    let mut manifest = esp_manifest(c, root, boot.is_apple())?;
+    manifest.retain(|path, _| !assbox_policy::efi::owned_esp_path(boot, path));
+    Ok(manifest)
+}
 fn write_backup_file(path: &Path, bytes: &[u8]) -> Result<()> {
     // The backup may be FAT/exFAT: Unix ownership is supplied by mount options.
     let mut opts = fs::OpenOptions::new();
@@ -216,7 +225,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     ] {
         c.executable(tool)?;
     }
-    if plan.boot() == BootKind::AppleRefind {
+    if plan.boot().is_apple() {
         c.executable("efibootmgr")?;
     }
     if plan.inventory().disk(&plan.root().parent)?.table == Table::Gpt {
@@ -298,17 +307,23 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     let fetched = crate::source::resolve(&c, release_tag, &point("release-download"))?;
     let flake = assbox_config::flake(&fetched.release.manifest, plan.inventory().architecture);
     assbox_policy::validate_prepared_root(&files::prepared_root_entries(&root_probe.point)?)?;
-    let apple = plan.boot() == BootKind::AppleRefind;
+    let apple = plan.boot().is_apple();
+    let refind = plan.boot() == BootKind::AppleRefind;
     let before_esp = match &esp_probe {
-        Some(esp) => esp_manifest(&c, &esp.point, apple)?,
+        Some(esp) => esp_manifest(&c, &esp.point, refind)?,
         None => BTreeMap::new(),
     };
+    if plan.boot() == BootKind::AppleEfi && !before_esp.is_empty() {
+        return Err(Error::new(
+            "direct Apple EFI installation requires an empty dedicated ESP; use rEFInd preservation for an existing shared ESP",
+        ));
+    }
     if !apple && !before_esp.is_empty() {
         return Err(Error::new(
             "generic UEFI installation requires an empty dedicated ESP; shared-ESP preservation is the Apple profile only",
         ));
     }
-    if apple {
+    if refind {
         let name = before_esp.keys().find(|p| p.eq_ignore_ascii_case("EFI/refind/refind_x64.efi"))
             .ok_or_else(|| Error::new("standard rEFInd EFI application not found; this installer does not install or replace rEFInd"))?;
         let image_path = esp_probe
@@ -793,7 +808,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     crate::boot_guard::verify_install_target_in_store(&c, &root.point, &system, &plan)?;
     crate::source::verify_local_lock(&c, &installed_config, &fetched.release.manifest)?;
     if let Some(e) = &esp
-        && esp_manifest(&c, &e.point, apple)? != before_esp
+        && esp_manifest(&c, &e.point, refind)? != before_esp
     {
         return Err(Error::new("ESP changed during build"));
     }
@@ -854,7 +869,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             return Err(Error::new("EFI firmware state changed unexpectedly"));
         }
         if let Some(e) = &esp
-            && esp_manifest(&c, &e.point, true)? != before_esp
+            && esp_manifest_for_boot(&c, &e.point, plan.boot())? != before_esp
         {
             return Err(Error::new("unrelated EFI files changed unexpectedly"));
         }

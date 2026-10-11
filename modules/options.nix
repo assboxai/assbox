@@ -99,6 +99,7 @@ in
           "bios-gpt"
           "bios-mbr"
           "apple-refind"
+          "apple-efi"
         ];
         default = "uefi";
         description = "Validated installation boot strategy.";

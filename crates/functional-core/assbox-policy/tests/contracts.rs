@@ -379,3 +379,25 @@ fn application_selection_never_implies_proprietary_package_consent() {
         }
     }
 }
+
+#[test]
+fn direct_apple_efi_forbids_nvram_writes_and_keeps_other_esp_files_unowned() {
+    let mut value = audit();
+    value.boot = BootKind::AppleEfi;
+    assert!(validate_audit(&value).is_ok());
+    value.efi_writes = true;
+    assert!(validate_audit(&value).is_err());
+    for boot in [BootKind::AppleRefind, BootKind::AppleEfi] {
+        assert!(efi::owned_esp_path(boot, "EFI/Assbox/grubx64.efi"));
+        assert!(!efi::owned_esp_path(boot, "EFI/refind/refind_x64.efi"));
+        assert!(!efi::owned_esp_path(boot, "EFI/APPLE/retained"));
+        assert!(!efi::owned_esp_path(boot, "EFI/BOOT/refind.conf"));
+        assert!(!efi::owned_esp_path(boot, "EFI/BOOT/BOOTX64.EFI.backup"));
+        assert!(!efi::owned_esp_path(boot, "EFI/Assbox-other/grubx64.efi"));
+        assert_eq!(
+            efi::owned_esp_path(boot, "EFI/BOOT/BOOTX64.EFI"),
+            boot == BootKind::AppleEfi
+        );
+    }
+    assert!(!efi::owned_esp_path(BootKind::Uefi, "EFI/BOOT/BOOTX64.EFI"));
+}

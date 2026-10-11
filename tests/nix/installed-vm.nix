@@ -9,6 +9,9 @@
   mode,
   scenario,
   sectorSize ? 512,
+  targetTransport ? "virtio",
+  caseScript ? ../fixtures/installed_cases.py,
+  macbookModel ? "MacBookPro12,1",
 }:
 let
   lib = pkgs.lib;
@@ -16,8 +19,22 @@ let
   efi = builtins.elem mode [
     "uefi"
     "apple-refind"
+    "apple-efi"
   ];
-  apple = mode == "apple-refind";
+  apple = builtins.elem mode [
+    "apple-refind"
+    "apple-efi"
+  ];
+  usb = targetTransport == "usb";
+  internalDrive = [
+    "-drive file=\"$SHARED_DIR/assbox-internal.qcow2\",if=none,id=assbox-internal,format=qcow2"
+    "-device virtio-blk-pci,drive=assbox-internal,serial=assbox-internal,bootindex=2"
+  ];
+  usbDrive = [
+    "-device usb-ehci,id=assbox-usb"
+    "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
+    "-device usb-storage,bus=assbox-usb.0,drive=assbox-target,serial=assbox-target,bootindex=1"
+  ];
   ca = ../fixtures/mirror-cert.crt;
   harness = import ./acceptance-harness.nix {
     inherit pkgs assbox;
@@ -68,7 +85,13 @@ let
           components = { };
           presentation = "headless";
           boot.mode = mode;
-          platform = if apple then "macbookpro12-1" else "generic";
+          platform =
+            if !apple then
+              "generic"
+            else if macbookModel == "MacBookPro11,1" then
+              "macbookpro11-1"
+            else
+              "macbookpro12-1";
         };
         environment.systemPackages = [ pkgs.hello ];
       }
@@ -143,12 +166,20 @@ let
     system.stateVersion = "26.05";
   };
 in
+assert builtins.elem targetTransport [
+  "virtio"
+  "usb"
+];
+assert !usb || (pkgs.stdenv.hostPlatform.isx86_64 && sectorSize == 512 && mode == "bios-gpt");
 pkgs.testers.runNixOSTest {
   # Installation copies a full offline build closure before activation and the
   # recovery scenario then exercises many real builds and reboots. Keep the
   # outer harness above its existing bounded per-operation timeouts.
   globalTimeout = (if arm then 4 else 2) * 60 * 60;
-  name = "assbox-${scenario}-${mode}-${toString sectorSize}";
+  name =
+    "assbox-${scenario}-${mode}-${toString sectorSize}"
+    + lib.optionalString usb "-usb"
+    + lib.optionalString (apple && macbookModel == "MacBookPro11,1") "-macbookpro11-1";
   node.pkgsReadOnly = false;
   requiredFeatures.kvm = !arm;
   nodes = {
@@ -243,6 +274,10 @@ pkgs.testers.runNixOSTest {
         "vfat"
         "nls_cp437"
         "nls_iso8859-1"
+      ]
+      ++ lib.optionals usb [
+        "ehci_pci"
+        "usb_storage"
       ];
       virtualisation.diskSize = 65536;
       # Identify the independent backup disk even when a store image adds a drive.
@@ -264,11 +299,18 @@ pkgs.testers.runNixOSTest {
         lib.optionals apple [
           # Exercise the production DMI observation, not a test-only bypass. QEMU
           # escapes a comma within a key=value argument by doubling it.
-          "-smbios type=1,manufacturer=Apple,product=MacBookPro12,,1"
+          "-smbios type=1,manufacturer=Apple,product=${lib.replaceStrings [ "," ] [ ",," ] macbookModel}"
         ]
+        ++ (
+          if usb then
+            usbDrive ++ internalDrive
+          else
+            [
+              "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
+              "-device virtio-blk-pci,drive=assbox-target,serial=assbox-target,logical_block_size=${toString sectorSize},physical_block_size=${toString sectorSize}"
+            ]
+        )
         ++ [
-          "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
-          "-device virtio-blk-pci,drive=assbox-target,serial=assbox-target,logical_block_size=${toString sectorSize},physical_block_size=${toString sectorSize}"
           "-device virtio-scsi-pci,id=assbox-scsi"
           "-drive if=none,id=assbox-iso,media=cdrom,readonly=on,format=raw,file=${iso}"
           "-device scsi-cd,bus=assbox-scsi.0,drive=assbox-iso"
@@ -290,18 +332,21 @@ pkgs.testers.runNixOSTest {
       virtualisation.useEFIBoot = efi;
       virtualisation.useDefaultFilesystems = false;
       virtualisation.efi.keepVariables = false;
-      virtualisation.qemu.drives = lib.mkForce [
-        {
-          name = "root";
-          file = "\"$NIX_DISK_IMAGE\"";
-          deviceExtraOpts = {
-            serial = "assbox-target";
-            bootindex = "1";
-            logical_block_size = toString sectorSize;
-            physical_block_size = toString sectorSize;
-          };
-        }
-      ];
+      virtualisation.qemu.drives = lib.mkForce (
+        lib.optionals (!usb) [
+          {
+            name = "root";
+            file = "\"$NIX_DISK_IMAGE\"";
+            deviceExtraOpts = {
+              serial = "assbox-target";
+              bootindex = "1";
+              logical_block_size = toString sectorSize;
+              physical_block_size = toString sectorSize;
+            };
+          }
+        ]
+      );
+      virtualisation.qemu.options = lib.optionals usb (usbDrive ++ internalDrive);
 
       virtualisation.fileSystems."/" = {
         device = "/dev/vda";
@@ -316,6 +361,8 @@ pkgs.testers.runNixOSTest {
     mode = ${builtins.toJSON mode}
     sector_size = ${toString sectorSize}
     scenario = ${builtins.toJSON scenario}
+    target_transport = ${builtins.toJSON targetTransport}
+    macbook_model = ${builtins.toJSON macbookModel}
     # Native ARM hosted runners execute these guests in software emulation. Keep
     # each progress wait bounded while allowing the same assertions to finish.
     action_timeout = ${if arm then "7200" else "3600"}
@@ -333,7 +380,9 @@ pkgs.testers.runNixOSTest {
     qemu_img = "${pkgs.qemu}/bin/qemu-img"
     target_image = str(installer.shared_dir / "assbox-target.qcow2")
     subprocess.run([qemu_img, "create", "-f", "qcow2", target_image, "64G"], check=True)
-    case_script = "${../fixtures/installed_cases.py}"
+    if target_transport == "usb":
+        subprocess.run([qemu_img, "create", "-f", "qcow2", str(installer.shared_dir / "assbox-internal.qcow2"), "64M"], check=True)
+    case_script = "${caseScript}"
     exec(compile(Path(case_script).read_text(), case_script, "exec"))
   '';
 }

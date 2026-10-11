@@ -556,6 +556,18 @@ pub fn install(args: &[&str]) -> Result<()> {
         Some(recommended.as_str()),
     )?
     .parse()?;
+    let direct_apple_efi = if platform.is_apple() {
+        println!(
+            "Direct Apple EFI requires a dedicated target with an empty ESP. The rEFInd route preserves an existing shared disk and requires an installed rEFInd loader. Neither route changes EFI variables."
+        );
+        match ask("Mac boot: direct / refind", Some("direct"))?.as_str() {
+            "direct" => true,
+            "refind" => false,
+            _ => return Err(Error::new("choose direct or refind Mac boot")),
+        }
+    } else {
+        false
+    };
     let resolved = instance_prompt(false)?;
     let components = resolved.host;
     let managed = resolved.worker != Components::default();
@@ -725,6 +737,11 @@ pub fn install(args: &[&str]) -> Result<()> {
         choices,
     };
     let plan = assbox_policy::plan_install(inv, request)?;
+    let plan = if direct_apple_efi {
+        plan.with_direct_apple_efi()?
+    } else {
+        plan
+    };
     if let Some(spec) = &plan.request().choices.worker {
         let mut hardware = assbox_system::worker::hardware(&c)?;
         hardware.free_gib = plan.root().bytes / (1024 * 1024 * 1024);

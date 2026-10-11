@@ -73,7 +73,13 @@ named_enum!(Platform { Generic => "generic", AppleIntel => "apple-intel", Macboo
 named_enum!(Firmware { Uefi => "uefi", Bios => "bios" });
 named_enum!(Table { Gpt => "gpt", Mbr => "dos", Unknown => "unknown" });
 named_enum!(FileSystem { Ext4 => "ext4", Fat => "vfat", Exfat => "exfat", None => "none", Other => "other" });
-named_enum!(BootKind { Uefi => "uefi", BiosGpt => "bios-gpt", BiosMbr => "bios-mbr", AppleRefind => "apple-refind" });
+named_enum!(BootKind { Uefi => "uefi", BiosGpt => "bios-gpt", BiosMbr => "bios-mbr", AppleRefind => "apple-refind", AppleEfi => "apple-efi" });
+
+impl BootKind {
+    pub const fn is_apple(self) -> bool {
+        matches!(self, Self::AppleRefind | Self::AppleEfi)
+    }
+}
 
 impl Platform {
     pub const fn is_apple(self) -> bool {
