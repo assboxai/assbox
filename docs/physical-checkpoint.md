@@ -76,6 +76,12 @@ device threat boundary, disconnect the internal wireless and microphone hardware
 before both boots because Apple firmware and rEFInd do not provide Assbox's kernel
 policy. Apply the same physical rule to the camera if it is in scope.
 
+Installed-system acceptance must also qualify the MacBookPro11,1 through both
+direct Apple EFI and rEFInd, with separate boot results. The current guided
+installer uses the rEFInd preservation route; direct Apple EFI installation
+remains an outstanding implementation and qualification requirement. A successful
+direct boot of this live ISO does not complete that installed-system requirement.
+
 Once the readiness file reports `passed: true`, run `assbox`, `codex --version`,
 and `happier --version`. Provider authentication in the live session is ephemeral;
 do not treat it as an installed-state or update test. Save the source revision,

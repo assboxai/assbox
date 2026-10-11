@@ -4,6 +4,11 @@ This is a procedure for qualifying one machine and application. The model profil
 are implementation targets, not a record of successful physical-hardware testing.
 Keep results, serials and machine-specific configurations outside the repository.
 
+The MacBookPro11,1 installed-system milestone requires direct Apple EFI boot and
+rEFInd boot to work independently. The current guided installer implements the
+rEFInd preservation route. Direct Apple EFI installation remains to be implemented
+and qualified; direct boot of the live checkpoint alone does not establish it.
+
 ## Hardware boundary
 
 In macOS, obtain the model identifier with `sysctl -n hw.model`. In the live NixOS
