@@ -4,6 +4,12 @@ Assbox is a dedicated machine for running AI agents and, when selected, a physic
 
 **Source status:** beta implementation candidate with native/authenticated qualification outstanding. The [accepted product contract](docs/product/index.md) defines the implementation target; [implementation status](docs/implementation-status.md) identifies what this source baseline does and does not yet contain. A target feature listed here is not a claim of completed support.
 
+Current infrastructure and laptop-checkpoint development is tracked in the canonical
+[`development/laptop-checkpoint` branch](https://github.com/buu700/assbox-dev/tree/development/laptop-checkpoint).
+The [physical checkpoint guide](docs/physical-checkpoint.md) records the live-test
+boundary and the external USB installation acceptance case. A source commit does
+not establish a passing full gate or a qualified downloadable release.
+
 ## Choose the job, then the application
 
 | Instance type | Application choices |

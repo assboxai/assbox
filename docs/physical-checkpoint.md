@@ -54,6 +54,15 @@ The legacy PC must have an x86-64 CPU and boots the image directly from its firm
 USB menu. Disable any built-in radio in firmware or by its physical switch before
 inserting the medium.
 
+The PC's eventual Assbox installation will reside entirely on an external USB
+drive. That installed drive is separate from both the live installation medium and
+the required boot-backup disk. Before qualifying installation, verify its stable
+whole-disk `/dev/disk/by-id` identity, the USB controller and storage drivers in the
+installed initrd, and a cold BIOS boot after removing the live medium. Capture the
+internal disk's identity and partition layout before and after installation and
+confirm that it was not selected or changed. Live USB boot alone does not qualify
+booting an installed external USB root; that remains a separate installer gate.
+
 MacBookPro11,1 uses its UEFI path. [Apple's hardware specification](https://support.apple.com/en-us/111946)
 lists its Wi-Fi, Bluetooth, dual microphones and FaceTime HD camera, and offers
 Ethernet through an adapter rather than a built-in port. Use a supported
