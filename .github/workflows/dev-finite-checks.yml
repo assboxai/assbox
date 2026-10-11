@@ -1,0 +1,77 @@
+# Temporary experiment; accepted core source remains buu700/assbox-dev/master.
+name: Development finite native gates
+'on':
+  workflow_dispatch: null
+permissions:
+  contents: read
+concurrency:
+  group: assbox-finite-v60-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  finite:
+    if: >-
+      github.repository == 'assboxai/assbox' &&
+      github.repository_id == '1402455771' &&
+      github.repository_owner_id == '327835666' &&
+      github.ref == 'refs/heads/test/canonical-finite-v60' &&
+      github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: authority
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Require the exact sole-parent canonical source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          read -r commit parent extra < <(git -C authority rev-list --parents -n 1 HEAD)
+          test "$commit" = "$GITHUB_SHA"
+          test "$parent" = 8bedc753f862051d9a1ebc49a13c17b3933e80f9
+          test -z "${extra:-}"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 8bedc753f862051d9a1ebc49a13c17b3933e80f9
+          path: source
+          persist-credentials: false
+      - name: Clear unused SDKs on the ephemeral hosted runner
+        run: >-
+          sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP
+          /usr/bin/python3 -I -B authority/scripts/clear_unused_runner_tools.py
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = false
+      - name: Remove installer credentials before candidate execution
+        run: |
+          sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
+          sudo systemctl restart nix-daemon.service
+          nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
+      - name: Execute complete finite gates with isolated candidate environment
+        run: >-
+          /usr/bin/python3 -I -B authority/.github/scripts/dev_finite_checks.py
+          "$GITHUB_WORKSPACE/source" "$RUNNER_TEMP/assbox-finite-checks"
+          '${{ matrix.system }}'
+      - name: Retain finite gate results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: finite-${{ matrix.system }}-8bedc753f862-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/assbox-finite-checks/report.json
+            ${{ runner.temp }}/assbox-finite-checks/*.log
+          if-no-files-found: warn
+          retention-days: 14
