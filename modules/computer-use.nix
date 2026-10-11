@@ -9,6 +9,7 @@ let
   cfg = config.assbox.computerUse;
   active = config.assbox.enable && cfg.mode != "none";
   desktop = cfg.mode == "virtual-desktop";
+  capture = import ../nix/desktop-capture.nix { inherit lib pkgs; };
   runtime = pkgs.writeShellScriptBin "assbox-computer-use-runtime" ''
     exec ${pkgs.python3}/bin/python3 ${../scripts/computer-use/desktop.py} "$@"
   '';
@@ -78,7 +79,7 @@ in
         pkgs.xfce.xfdesktop
         pkgs.dbus
         pkgs.xdotool
-        pkgs.ffmpeg
+        (lib.hiPrio capture)
         pkgs.openbox
       ];
     # References in /etc also enter the system closure. CLI-only and browser

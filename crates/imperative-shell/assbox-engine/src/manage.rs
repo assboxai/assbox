@@ -143,21 +143,25 @@ fn begin() -> Result<()> {
     result
 }
 fn build(c: &Commands) -> Result<String> {
+    build_with_evaluation_store(c, None)
+}
+fn build_with_evaluation_store(c: &Commands, evaluation_store: Option<&str>) -> Result<String> {
     let candidate = reference(&marker("candidate"))?;
     files::regular(&marker("candidate/flake.lock"))?;
-    crate::check_evaluation(c, &candidate)?;
+    crate::check_evaluation_with_store(c, &candidate, evaluation_store)?;
     let target = format!("{candidate}#nixosConfigurations.assbox.config.system.build.toplevel");
-    let output = c.text(
-        "nix",
-        &[
-            "build",
-            "--no-link",
-            "--print-out-paths",
-            "--no-update-lock-file",
-            "--no-write-lock-file",
-            &target,
-        ],
-    )?;
+    let mut arguments = vec!["build"];
+    if let Some(store) = evaluation_store {
+        arguments.extend(["--eval-store", store]);
+    }
+    arguments.extend([
+        "--no-link",
+        "--print-out-paths",
+        "--no-update-lock-file",
+        "--no-write-lock-file",
+        &target,
+    ]);
+    let output = c.text("nix", &arguments)?;
     let system = output.trim();
     if !valid_store_system(system) {
         return Err(Error::new(
@@ -362,7 +366,7 @@ fn stage_locked() -> Result<String> {
         // Durable before candidate Nix metadata/evaluation. Deliberately outside
         // source/activation rollback: failed builds permit exact retries, not replay.
         crate::release::record_floor(&release.floor)?;
-        let fetched = crate::source::bind(&Commands, release)?;
+        let fetched = crate::source::bind(&Commands, release, &marker("release-download"))?;
         let candidate = marker("candidate");
         let flake = assbox_config::retarget_flake(
             &files::text(&candidate.join("flake.nix"))?,
@@ -378,10 +382,27 @@ fn stage_locked() -> Result<String> {
         let reference = reference(&candidate)?;
         Commands.run(
             "nix",
-            &["flake", "lock", "--no-update-lock-file", &reference],
+            &[
+                "flake",
+                "lock",
+                "--store",
+                &fetched.evaluation_store,
+                "--eval-store",
+                &fetched.evaluation_store,
+                "--no-update-lock-file",
+                &reference,
+            ],
         )?;
         crate::source::verify_local_lock(&Commands, &candidate, &fetched.release.manifest)?;
-        let system = build(&Commands)?;
+        crate::release::prefetch_default_kernel(
+            &Commands,
+            &fetched.release,
+            &marker("kernel-cache"),
+            probe::architecture(&Commands)?,
+            None,
+            false,
+        )?;
+        let system = build_with_evaluation_store(&Commands, Some(&fetched.evaluation_store))?;
         commit(
             &Commands,
             &system,

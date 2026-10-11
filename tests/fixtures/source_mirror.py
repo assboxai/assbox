@@ -30,9 +30,24 @@ def verify_archive(archive, expected_hash):
             )
 
 
-def pack_source(path, archive, expected_hash):
+def validate_last_modified(last_modified):
+    if type(last_modified) is not int or not 0 < last_modified <= 2**63 - 1:
+        raise ValueError(f"invalid locked lastModified: {last_modified!r}")
+
+
+def pack_source(path, archive, expected_hash, last_modified):
+    validate_last_modified(last_modified)
     subprocess.run(
-        ["tar", "-czf", str(archive), "--transform=flags=rh;s,^,source/,", "-C", str(path), "."],
+        [
+            "tar",
+            "-czf",
+            str(archive),
+            f"--mtime=@{last_modified}",
+            "--transform=flags=rh;s,^,source/,",
+            "-C",
+            str(path),
+            ".",
+        ],
         check=True,
     )
     # Transform member names and hardlink references, preserving symlink text.
@@ -43,11 +58,15 @@ def build_mirror(out, sources):
     routes = {}
     checked = set()
     for source in sources:
+        last_modified = source["lastModified"]
+        validate_last_modified(last_modified)
         path = Path(source["path"])
-        filename = hashlib.sha256(str(path).encode()).hexdigest() + ".tar.gz"
-        identity = (filename, source["narHash"])
+        filename = (
+            hashlib.sha256(f"{path}\0{last_modified}".encode()).hexdigest() + ".tar.gz"
+        )
+        identity = (filename, source["narHash"], last_modified)
         if identity not in checked:
-            pack_source(path, out / filename, source["narHash"])
+            pack_source(path, out / filename, source["narHash"], last_modified)
             checked.add(identity)
         routes["/repos/{owner}/{repo}/tarball/{rev}".format(**source)] = filename
         routes["/{owner}/{repo}/archive/{rev}.tar.gz".format(**source)] = filename

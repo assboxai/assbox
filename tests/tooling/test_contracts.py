@@ -62,7 +62,8 @@ class ArchitectureTests(unittest.TestCase):
 class ProductSurfaceTests(unittest.TestCase):
     def test_just_is_a_tool_not_an_administrative_interface(self):
         self.assertIn("just", (ROOT / "modules/base.nix").read_text())
-        self.assertFalse(any(p.name.lower() in {"justfile", ".justfile"} for p in ROOT.rglob("*")))
+        self.assertFalse(any(p.name.lower() in {"justfile", ".justfile"} for p in (ROOT / "modules").rglob("*")))
+        self.assertNotIn("just ", (ROOT / "modules/maintenance.nix").read_text())
 
     def test_service_entrypoints_match_cli_routes(self):
         main = re.sub(r"\s+", "", (ROOT / "crates/imperative-shell/assbox-cli/src/main.rs").read_text())
@@ -88,6 +89,15 @@ class ProductSurfaceTests(unittest.TestCase):
         self.assertIn("72-assbox-policy.rules", devices)
         self.assertIn('TAG-="uaccess"', devices)
         self.assertNotIn('services.udev.extraRules', devices)
+
+    def test_execution_policy_target_survives_role_switch_and_revokes_before_stop(self):
+        base = re.sub(r"\s+", " ", (ROOT / "modules/base.nix").read_text())
+        policy = re.sub(r"\s+", " ", (ROOT / "modules/network-policy.nix").read_text())
+        self.assertIn('systemd.slices."user-1000"', base)
+        self.assertIn('wantedBy = [ "multi-user.target" ]', base)
+        self.assertIn('before = [ "nftables.service" ]', base)
+        self.assertIn('serviceConfig.ExecStop = lib.mkBefore [ revoke ]', policy)
+        self.assertNotIn('serviceConfig.ExecStopPre', policy)
 
     def test_maintenance_is_local_persistent_and_cannot_be_vetoed_by_a_gui(self):
         self.assertIn('*-*-* 18:00:00', (ROOT / "modules/options.nix").read_text())

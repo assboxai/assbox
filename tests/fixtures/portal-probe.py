@@ -35,6 +35,13 @@ chooser = dbus.Interface(bus.get_object("org.freedesktop.portal.Desktop",
                                        "/org/freedesktop/portal/desktop"),
                          "org.freedesktop.portal.FileChooser")
 options = dbus.Dictionary({"handle_token": "assbox_test", "modal": False}, signature="sv")
+folders = {
+    "open": "/home/agent/portal-open",
+    "folder": "/home/agent/portal-folder/project",
+    "save": "/home/agent/portal-save",
+    "cancel": "/home/agent/portal-open",
+}
+options["current_folder"] = dbus.ByteArray((folders[mode] + "\0").encode())
 if mode == "folder":
     options["directory"] = True
 if mode == "save":

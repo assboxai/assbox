@@ -15,7 +15,9 @@ repeat the implementation. Include stale observations, interrupted effects and
 negative cases when extending boot/storage/maintenance behavior. Review both test
 code and production code for omissions.
 
-Run the genuine locked development gate. Formatting is done with the locked Rust
+Run `just setup` and the genuine locked `just verify` gate. Use `just verify-prepare`
+for finite work without VM execution. Follow the [repair protocol](docs/repair-loop.md)
+and [dependency ownership](docs/development-maintenance.md). Formatting is done with the locked Rust
 and Nix formatters, not a handwritten imitation. Keep documentation about maintained
 behavior, interfaces and operational requirements. Put captured validation results,
 delivery notes and development-session commentary outside the source archive.

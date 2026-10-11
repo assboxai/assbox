@@ -62,8 +62,10 @@ application restart policy. Build parallelism remains at the upstream defaults.
 
 ## Development and release gate
 
-Start with [development](docs/development.md). A source checkout without a genuine
-`flake.lock` is a bootstrap candidate, not an installable release. Initial bootstrap resolves the lock with Nix. Scheduled maintenance verifies
+Start with [development](docs/development.md): `just setup`, then `just verify`.
+[Finite preparation and repair sessions](docs/repair-loop.md) make expensive
+verification and its source/oracle identity explicit. A source checkout without a
+genuine `flake.lock` is a bootstrap candidate, not an installable release. Initial bootstrap resolves the lock with Nix. Scheduled maintenance verifies
 the candidate before its bounded lock-only or empty commit; it never formats or
 changes arbitrary source.
 

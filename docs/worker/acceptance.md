@@ -42,15 +42,14 @@ python3 scripts/workflow_policy.py
 python3 scripts/model_check.py
 ```
 
-Use the normal Nix development shell for the full toolchain:
+Use the pinned Chainman entrypoints for the full toolchain:
 
 ```sh
-nix develop
-python3 scripts/component_catalog.py --check
-scripts/verify static
-scripts/verify rust
-scripts/verify mutations
-scripts/verify nix
+just setup
+just verify-static
+just verify-rust
+just verify-mutations
+just verify-nix
 ```
 
 Formatting must pass the repository's normal `cargo fmt`/`nixfmt` checks. Use `scripts/format` to format source changes, review its output, and rerun the gate. See the integration status for checks actually executed on this candidate.

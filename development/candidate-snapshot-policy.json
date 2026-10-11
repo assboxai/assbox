@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "assbox-candidate-snapshot-policy",
+  "protocol": "assbox-candidate-snapshot-v1",
+  "source_identity": "complete-admitted-raw-source",
+  "source_manifest": {
+    "record_keys": [
+      "mode",
+      "path",
+      "sha256"
+    ],
+    "record_order": "utf8-path-bytes",
+    "json_sort_keys": true,
+    "json_compact": true,
+    "ensure_ascii": false,
+    "terminal_lf": true,
+    "hash": "sha256"
+  },
+  "allowed_git_modes": [
+    "100644",
+    "100755"
+  ],
+  "git_object_format": "sha1",
+  "parents": [],
+  "author_name": "Assbox Candidate",
+  "author_email": "candidate@assbox.invalid",
+  "committer_name": "Assbox Candidate",
+  "committer_email": "candidate@assbox.invalid",
+  "timestamp": 946684800,
+  "timezone": "+0000",
+  "message": "Assbox verification snapshot v1\n",
+  "extra_commit_headers": [],
+  "original_git_metadata_writable": false,
+  "chainman_transaction_git_metadata_writable": false,
+  "source_transformations_allowed": false,
+  "release_context_generation_allowed": false,
+  "synthetic_commit_publishable": false,
+  "candidate_new_source": "explicit-inclusion-or-already-tracked",
+  "untracked_nonignored_unselected_source": "blocked",
+  "private_git_configuration": "isolated-no-hooks-filters-remotes-alternates-signing",
+  "snapshot_creation_executes_source": false,
+  "production_gate": "scripts/release-check",
+  "production_gate_arguments": [],
+  "release_only_mode_shortcuts_allowed": false,
+  "full_gate_freeze_before_stages": true,
+  "source_integrity_checks": "before-and-after-every-stage"
+}

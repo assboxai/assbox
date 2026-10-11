@@ -8,7 +8,8 @@ Darwin build or cross-installation workflow.
 ## Use the committed toolchain
 
 ```sh
-nix develop --no-update-lock-file --no-write-lock-file --command scripts/verify
+just setup
+just verify
 ```
 
 The repository includes a genuine Nix-generated lock. Routine verification uses
@@ -50,10 +51,10 @@ These fixtures do not substitute for a real terminal/install or native account t
 The shell and package check environment also supply PyGObject and libnm's type
 metadata for the Wi-Fi renderer's real-parser regression test. Missing bindings
 fail that test; they do not silently skip it. No NetworkManager daemon is needed.
-The shell also supplies Node.js for dependency-free Worker tests and Wrangler for
-explicit infrastructure deployment. These are development tools, not new installed
-Assbox runtime dependencies.
-The shell uses pinned `signal-hook` for cooperative cancellation and `rustix`
+The environments supply Node.js for dependency-free Worker tests. Explicit
+infrastructure administration can use Wrangler from the root `release-check`
+environment. These tools do not become installed Assbox runtime dependencies.
+The workspace uses pinned `signal-hook` for cooperative cancellation and `rustix`
 (with only `std` and `termios`) for safe terminal restoration and unread-password
 flushing. Their MIT/Apache-compatible dependency graphs, versions and checksums
 are explicitly reviewed in the architecture guard; Assbox itself still forbids unsafe code.
@@ -63,15 +64,15 @@ uses the Nix-provided `jq`. Review dependency changes, including licenses and tr
 Use the Nix development shell even for Cargo:
 
 ```sh
-nix develop
-cargo test --workspace --all-targets --locked
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo fmt --all -- --check
-scripts/verify
+just test
+just verify-rust
+just format-check
+just verify
 ```
 
-`ASSBOX_TOOL_PATH` is a required compile-time variable supplied by the same shared
-Nix tool environment for dev and packaged binaries. Privileged system commands do
+`ASSBOX_TOOL_PATH` is a required compile-time variable. The independent developer
+flake supplies its own unidentified test environment; the root production flake
+supplies the authenticated package and compiler environment. Privileged system commands do
 not fall back to host `/usr/bin`, current-system PATH, or a caller's PATH. Nix embeds
 the core source revision in the binary; the authenticated manifest supplies the
 source NAR and dependency-lock hashes. An unidentified development binary cannot
@@ -88,7 +89,7 @@ Clippy and actual Nix failures must be fixed with the real tools.
 The `Verify locked source` Actions workflow is manual-only (`workflow_dispatch`),
 including in development copies. A push or pull request does not start verification.
 Run it deliberately for the branch under review and check the resulting SHA before
-using its status for promotion. Production release/bootstrap schedules are guarded
+using its status for promotion. Production release/bootstrap/development-maintenance schedules are guarded
 and can be disabled entirely in development copies; see [automation](automation.md).
 
 Read [verification](verification.md) before interpreting results. Ordinary verification
@@ -126,7 +127,9 @@ builds the bootstrap client from the reviewed master lock, authenticates the exa
 published tag, then builds the candidate client from that authenticated store tree
 and its release lock. The candidate must independently verify the same public
 release in a new directory and agree on manifest/lock/source identity before latest
-can be advertised. No GitHub token is available to either client's child commands.
+can be advertised. The candidate also imports the public default kernel into a
+fresh isolated store on each native architecture before advertising. No GitHub
+token is available to any client's child commands.
 
 The bootstrap maintenance workflow does not configure rulesets, environments, numeric
 IDs or immutable releases. Those are explicit cold-administrator tasks. Do not
@@ -162,3 +165,65 @@ No prerelease application-schema compatibility layer is retained.
 The Nix verification stage enumerates every native check and builds each in a
 separate process, preserving failures and releasing evaluator memory between checks.
 It does not set Nix job/core limits; each build retains normal parallelism.
+
+## Chainman and environment ownership
+
+Install Nix and Just on the Linux host, then use the root Justfile. Its verified Git
+bootstrap loads exactly `chainman.lock`; ordinary commands never check for updates.
+The committed runtime is `4a48222bdfe1036891c73627923cd22d4e7ccb4b`. This repository
+admits only Chainman's `host-nix` mode on Linux. `just explain verify --json`,
+`just doctor`, `just deps-check`, `just deps-coverage` and `just deps-policy-report`
+inspect the configuration. `just setup` installs owned staged-format hooks; use
+`just setup --no-hooks` in CI. Hook ownership and partially staged files follow the
+pinned runtime's protocol. Do not replace someone else's hook or run a second
+handwritten hook manager.
+
+On a fresh host with Nix and no installed Just, run
+`nix run path:./nix/dev#just -- setup --no-hooks`. Public recipes reuse the invoking
+Just executable, including when `nix run` has not added it to `PATH`.
+
+The pinned CI Nix installer persists the job's GitHub token in `/etc/nix/nix.conf`.
+Every installation immediately runs the reviewed inline cleanup, restarts the
+daemon and checks that the effective access-token setting is empty before running
+candidate code. Child environment scrubbing alone does not remove that file.
+
+Before installing Nix, hosted Linux jobs reclaim the unused Android, .NET,
+hosted-tool-cache and GHCup directories. The fixed inline controller refuses local
+and self-hosted contexts, redirected directories and nested mounts, and validates
+the entire set before deletion. It records actual free bytes before and after;
+these observations do not waive the frozen canonical resource guardrails.
+
+`nix/dev` is self-contained with a genuine independent lock and default, formatter
+and repair profiles. It initially shares the production Nixpkgs revision. The root
+flake has explicit `release-tools` and `release-check` shells and no default
+developer shell. Production workflows never bootstrap Chainman. For a direct
+production check use `nix develop .#release-check --command scripts/release-check`
+on a clean committed tree. The developer adapter creates an independent clean
+snapshot before calling that unchanged production gate.
+
+`just build`, `just test`, `just generate`, `just format-write` and
+`just format-check` are ordinary developer operations. `just verify-lite` runs static
+and Rust checks. `just verify-prepare` adds mutations and configuration inspection,
+without Nix builds, a VM, or an update transaction. `just verify` freezes source
+once, checks development tooling, runs every existing production gate including
+coverage/audit, then executes a fresh canonical interactive installation. Targeted
+stages and driver builds are not full verification. See [the repair loop](repair-loop.md).
+
+Untracked source needs an explicit repeated `--include-new PATH` when taking a
+candidate snapshot; the runner never stages files for you. Tracked working bytes,
+modes and intentional deletions are captured, and index/HEAD remain unchanged.
+Generated `.cache/toolchain`, `.chainman`, Cargo targets and reports are not source.
+Tracked developer code and both developer locks remain part of the authenticated
+whole-repository core: changing them can rebuild the appliance and select a later
+release. The flake split does not create a filtered production tree.
+
+`just deps-update commit=off` verifies in a disposable transaction before applying
+changes locally without committing. Untargeted updates include the exact canonical
+upstream Chainman default-branch SHA and mature developer Nixpkgs releases. The
+project dependency maturity window is 30 days; it does not apply to Chainman.
+`just chainman-update` selects runtime-only maintenance. `just deps-propose-rust`
+and `just deps-propose-actions` are explicit verified previews; a preview can run
+VMs. They cannot change dependency approval guards to authorize themselves. Cargo,
+Actions, production `flake.lock`, artifact pins and release authority have separate
+review/ownership. [Scheduled maintenance](development-maintenance.md) starts disabled
+and can write only the two developer lock files after both native gates pass.

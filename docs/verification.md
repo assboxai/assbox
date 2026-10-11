@@ -29,6 +29,7 @@ here and keep dated, source-specific execution reports outside the repository.
 | `remote-lifecycle-vm` | Defined: real remote/editor/application units with substitute providers, CLI onboarding and frontend launch, crash/clean-exit recovery, descendant/session cleanup, diagnostics and NixOS reconfiguration; native execution remains required |
 | `editor-vm` | Defined: actual VS Code/Zed/Emacs foreground entry points, visible X11 windows, main-process crash recovery, normal close and session teardown/restart; generic GNU/Linux rust-analyzer LSP handshakes from agent login and user service; native execution remains required |
 | `desktop-services-vm` | Defined: real portal file/folder open, save and cancel dialogs on X11 and Wayland; GNOME first-use keyring creation and disposable-secret persistence across client/session/daemon restart and reboot, private files and deletion; Zed-only browser dependency, session URL-handler/rendered loopback callback and browser cleanup; repeated greetd crashes, compositor failure/logout, old-session cleanup and deliberate stop; native execution remains required |
+| `execution-loopback-vm` | Defined: real IPv4/IPv6 TCP/UDP receiving identities from direct and user-manager client cgroups, denied root listeners and same-tuple UDP listener replacement, and established TCP egress revocation; native execution remains required |
 | `radio-policy-vm` | Defined: X11/Wayland active-seat ACLs with Wi-Fi enabled/disabled, denied agent radio writes, disabled kernel radio-hotkey handler, root control, NetworkManager preference restoration, session restart and software-radio hotplug; native execution remains required |
 
 Engineering readiness requires implemented behavior and substantive verification
@@ -54,7 +55,9 @@ deferred tranche. Blocked capabilities reject configuration and carry no support
 
 ## Existing gates
 
-`scripts/verify` with no arguments remains the full gate. For targeted local work,
+`just verify` is the complete developer gate, including an independent clean
+production snapshot and a fresh canonical interactive install. `scripts/verify`
+with no arguments remains the existing production stage dispatcher. For targeted local work,
 select exactly one stage: `static` (source/tooling/model/Node tests and formatting/lint),
 `rust` (Clippy, compilation and Rust tests), `mutations`, or `nix` (flake evaluation,
 system builds and VM checks). Stages stop on failure and preserve command exit codes.
@@ -69,8 +72,9 @@ and separate SSID escaping rules. See the pinned
 The gate uses the locked libnm in Nix; it needs no daemon or network connection and
 does not establish successful radio/driver association on physical hardware.
 
-The verification workflow runs these stages as separate steps through
-`scripts/verify_observed.py`. It records memory/swap availability, disk space,
+The verification workflow provisions Just, runs Chainman setup without hooks and
+calls the finite full coordinator. Developer stages use `scripts/verify_observed.py`,
+which records memory/swap availability, disk space,
 pressure indicators and readable cgroup memory-event counters before execution,
 every 30 seconds and at completion. Missing metrics are unknown, not zero. No
 environment dump, password, or process command line is collected. Diagnostics
@@ -79,7 +83,8 @@ are best effort and do not turn failed or interrupted verification into success.
 Records stream to the job log and to `${RUNNER_TEMP}/assbox-verification` in Actions,
 or `reports/verification` for a deliberate local wrapper invocation. Each stage's
 file is capped at approximately 8 MiB plus its final record. The pinned final
-`always()` upload retains only that diagnostics directory for 14 days, named by
+`always()` upload retains that diagnostics directory and bounded top-level
+candidate/canonical summary records for 14 days, named by
 architecture, commit and run attempt. A destroyed runner can prevent both final
 sampling and upload; absence of evidence never proves an OOM or a passing check.
 

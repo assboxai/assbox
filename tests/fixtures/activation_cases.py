@@ -4,6 +4,8 @@
 Release transport alone is controlled. Builds, system profiles, bootloader writes,
 reboots, filesystem persistence and collection use the production implementation.
 """
+import re
+
 STATE = '/var/lib/assbox'
 TXN = STATE + '/transaction'
 PENDING = STATE + '/pending-reboot'
@@ -45,7 +47,17 @@ def start_cut(operation_name, cut):
     write(target, CASE + '/cut', 'pause:' + cut)
     target.succeed('systemd-run --collect --unit=acceptance-operation --service-type=exec '
                    'env ASSBOX_TEST_OPERATION=' + operation_name + ' ' + MANAGE)
-    target.wait_until_succeeds('test -f ' + CASE + '/reached', timeout=3600)
+    # A cut operation normally remains active until the driver removes its
+    # control file. If it exits first, surface its journal immediately instead
+    # of waiting for the outer NixOS test timeout.
+    target.wait_until_succeeds(
+        'test -f ' + CASE + '/reached || ! systemctl is-active --quiet acceptance-operation.service',
+        timeout=3600,
+    )
+    target.succeed(
+        'test -f ' + CASE + '/reached || '
+        '{ journalctl --no-pager -u acceptance-operation.service; false; }'
+    )
     assert target.succeed('cat ' + CASE + '/reached') == cut
 
 
@@ -179,8 +191,16 @@ boot_again()
 # restores the source set but cannot rewind the independently persisted floor.
 old_release = target.succeed('cat /etc/nixos/assbox-release.json')
 old_floor = target.succeed('cat ' + STATE + '/release-state')
+damaged_flake_source = None
 for name in ['flake.nix', 'flake.lock', 'assbox-release.json']:
     start_cut('update', 'manage-source-' + name)
+    current_flake_source = target.succeed(
+        'readlink -f ' + TXN + '/release-download/authenticated-flake-source'
+    ).strip()
+    assert re.fullmatch(r'/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-source', current_flake_source)
+    if damaged_flake_source is not None:
+        assert current_flake_source == damaged_flake_source
+        target.succeed('nix store verify --no-trust ' + shlex.quote(current_flake_source))
     advanced_floor = target.succeed('cat ' + STATE + '/release-state')
     assert advanced_floor != old_floor
     target.crash()
@@ -191,6 +211,25 @@ for name in ['flake.nix', 'flake.lock', 'assbox-release.json']:
     assert target.succeed('cat /etc/nixos/assbox-release.json') == old_release
     assert target.succeed('cat ' + STATE + '/release-state') == advanced_floor
     assert running() == selected()
+    if name == 'flake.nix':
+        # Preserve Nix's validity registration while corrupting the fetched
+        # source bytes. The next authenticated update must repair this exact
+        # content-addressed object before any candidate Nix is evaluated.
+        damaged_flake_source = current_flake_source
+        source_flake = shlex.quote(damaged_flake_source + '/flake.nix')
+        restore_store = 'mount -o remount,ro,nodev,nosuid,bind /nix/store'
+        target.succeed(
+            'set -eu; mount -o remount,rw,bind /nix/store; trap '
+            + shlex.quote(restore_store) + ' EXIT; chmod u+w ' + source_flake
+            + '; : > ' + source_flake + '; sync -f ' + shlex.quote(damaged_flake_source)
+        )
+        target.succeed(
+            "opts=$(findmnt --noheadings --output OPTIONS --target /nix/store); "
+            "case ,$opts, in *,ro,*) ;; *) exit 1;; esac; "
+            "case ,$opts, in *,nodev,*) ;; *) exit 1;; esac; "
+            "case ,$opts, in *,nosuid,*) ;; *) exit 1;; esac"
+        )
+        target.fail('nix store verify --no-trust ' + shlex.quote(damaged_flake_source))
 
 # Enable the actual runtime maintenance policy. Timers remain test-disabled so
 # the test driver controls the moment of staging and reboot.

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tarfile
 import tempfile
 import unittest
 
@@ -33,10 +34,11 @@ class SourceMirrorTests(unittest.TestCase):
         executable.chmod(0o755)
         os.link(executable, self.source / "hardlink")
         self.expected = MIRROR.nar_hash(self.source)
+        self.last_modified = 1789344334
         self.archive = self.directory / "source.tar.gz"
 
     def test_archive_roundtrip_preserves_the_exact_nar(self):
-        MIRROR.pack_source(self.source, self.archive, self.expected)
+        MIRROR.pack_source(self.source, self.archive, self.expected, self.last_modified)
         extracted = self.directory / "extracted"
         extracted.mkdir()
         subprocess.run(["tar", "-xzf", str(self.archive), "-C", str(extracted)], check=True)
@@ -45,6 +47,11 @@ class SourceMirrorTests(unittest.TestCase):
         for name in (".version", "lib/up", "absolute", "dangling"):
             self.assertEqual(os.readlink(tree / name), os.readlink(self.source / name))
         self.assertEqual((tree / ".version").read_text(), "disposable version\n")
+        with tarfile.open(self.archive, "r:gz") as archive:
+            self.assertTrue(archive.getmembers())
+            self.assertTrue(
+                all(member.mtime == self.last_modified for member in archive.getmembers())
+            )
 
     def test_old_symlink_transformation_is_rejected(self):
         subprocess.run(["tar", "-czf", str(self.archive), "--transform=s,^,source/,",
@@ -56,7 +63,8 @@ class SourceMirrorTests(unittest.TestCase):
         out = self.directory / "mirror"
         out.mkdir()
         record = dict(path=str(self.source), owner="fixture", repo="input", rev="a" * 40,
-                      narHash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+                      narHash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                      lastModified=self.last_modified)
         with self.assertRaisesRegex(ValueError, "source archive NAR mismatch"):
             MIRROR.build_mirror(out, [record])
         self.assertFalse((out / "routes.json").exists())
@@ -66,6 +74,23 @@ class SourceMirrorTests(unittest.TestCase):
         self.assertEqual(len(routes), 2)
         self.assertEqual(len(set(routes.values())), 1)
         self.assertTrue(all((out / archive).is_file() for archive in routes.values()))
+
+    def test_mirror_rejects_invalid_locked_timestamp_before_packing(self):
+        for last_modified in (True, 0, -1, "1"):
+            with self.subTest(lastModified=last_modified):
+                out = self.directory / f"invalid-{last_modified!r}"
+                out.mkdir()
+                record = dict(
+                    path=str(self.source),
+                    owner="fixture",
+                    repo="input",
+                    rev="a" * 40,
+                    narHash=self.expected,
+                    lastModified=last_modified,
+                )
+                with self.assertRaisesRegex(ValueError, "invalid locked lastModified"):
+                    MIRROR.build_mirror(out, [record])
+                self.assertEqual(list(out.iterdir()), [])
 
 
 if __name__ == "__main__":

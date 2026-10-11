@@ -35,13 +35,14 @@ can maintain the branch. A missing check is a blocking failure, not optional cov
 
 ## Repository administration
 
-Only `release.yml` and `bootstrap.yml` may declare schedules. Their entry jobs
+Only `release.yml`, `bootstrap.yml` and the disabled-by-default development
+`maintenance.yml` may declare schedules. Their entry jobs
 require `assboxai/assbox`, `master`, and the reviewed schedule/manual events. The
 workflow policy checks that every subsequent job remains dependent on that entry
 guard and cannot run via an independent job or an `always()` job condition.
 
 GitHub job conditions skip work but can still leave skipped scheduled runs in a
-development copy's history. To suppress those events completely, disable the two
+development copy's history. To suppress those events completely, disable the three
 production-only workflows in that development repository using GitHub's
 [workflow controls](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow).
 After confirming the selected repository is **not** `assboxai/assbox`:

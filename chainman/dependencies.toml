@@ -1,0 +1,6 @@
+[dependencies]
+exclusions = [
+ { pattern = "flake.lock", reason = "Authenticated Assbox bootstrap owns production inputs." },
+ { pattern = "nix/*-source.json", reason = "Reviewed production application artifact identities." },
+ { pattern = "release/policy.json", reason = "Administrator-provisioned release authority." },
+]

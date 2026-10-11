@@ -44,6 +44,17 @@ class DevicePolicyTests(unittest.TestCase):
                 self.assertEqual(value['unmanaged'], [] if wifi else ['type:wifi'])
                 self.assertIn('/bin/nmcli radio wifi ' + ('on' if wifi else 'off'), value['radioStartup'])
                 self.assertEqual('/bin/rfkill block wlan' in value['radioStartup'], not wifi)
+                if wifi:
+                    self.assertIsNone(value['radioHotplug'])
+                else:
+                    hotplug = value['radioHotplug']
+                    self.assertEqual(hotplug['requires'], ['NetworkManager.service'])
+                    self.assertEqual(hotplug['after'], ['NetworkManager.service'])
+                    self.assertEqual(hotplug['serviceConfig']['Type'], 'oneshot')
+                    self.assertIn('/bin/nmcli radio wifi off', hotplug['script'])
+                    self.assertIn('/bin/rfkill block wlan', hotplug['script'])
+                    self.assertIn('ENV{SYSTEMD_WANTS}+="assbox-radio-hotplug.service"',
+                                  policy['text'])
                 self.assertEqual(value['radioInput']['tristate'], 'n')
                 self.assertFalse(value['radioInput']['optional'])
 

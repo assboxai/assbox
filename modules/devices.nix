@@ -44,7 +44,7 @@ in
           SUBSYSTEM=="sound", TAG-="uaccess", OWNER="root", GROUP="root", MODE="0600"
         ''
         + lib.optionalString (!cfg.devices.wifi.enable) ''
-          ACTION=="add", SUBSYSTEM=="rfkill", ATTR{type}=="wlan", RUN+="${pkgs.util-linux}/bin/rfkill block wlan"
+          ACTION=="add", SUBSYSTEM=="rfkill", ATTR{type}=="wlan", RUN+="${pkgs.util-linux}/bin/rfkill block wlan", TAG+="systemd", ENV{SYSTEMD_WANTS}+="assbox-radio-hotplug.service"
         ''
       ))
     ];
@@ -62,7 +62,20 @@ in
         ${pkgs.util-linux}/bin/rfkill block wlan
       fi
     '';
-    # New Wi-Fi radios are blocked by the udev rule; drivers remain available.
+    # The immediate udev action closes the hotplug window. Reassert the policy
+    # after NetworkManager as well, because its device discovery can restore a
+    # saved enabled preference after the udev RUN command has completed.
+    systemd.services.assbox-radio-hotplug = lib.mkIf (!cfg.devices.wifi.enable) {
+      description = "Reapply the Assbox disabled Wi-Fi policy after radio hotplug";
+      requires = [ "NetworkManager.service" ];
+      after = [ "NetworkManager.service" ];
+      serviceConfig.Type = "oneshot";
+      script = ''
+        ${pkgs.networkmanager}/bin/nmcli radio wifi off
+        ${pkgs.util-linux}/bin/rfkill block wlan
+      '';
+    };
+    # New Wi-Fi radios remain blocked; drivers stay available.
     systemd.targets.sleep.enable = cfg.power.suspend.enable;
     systemd.targets.suspend.enable = cfg.power.suspend.enable;
     systemd.targets.hibernate.enable = cfg.power.suspend.enable;

@@ -84,7 +84,7 @@ native-policy pass. A supplied contract still needs exact runtime and account ev
   these credential-free VMs certifies provider login or completed remote tasks.
 - `remote-lifecycle-vm`: real production adapter modules and systemd user units with
   harmless substitute provider programs. It exercises onboarding, repeated failures
-  beyond the former start limit, clean-exit stop, explicit stop, descendant
+  beyond the former start limit, clean-exit recovery, explicit stop, descendant
   cleanup, foreground GUI crashes with surviving helpers and normal close, graphical-session teardown,
   structured doctor output, private diagnostic capture, changed settings and
   component removal through NixOS reconfiguration. Only restart delays are shortened;

@@ -41,24 +41,117 @@ NIX = "cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24"
 UPLOAD = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 DOWNLOAD = "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
 ATTEST = "actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32"
+ATTEST_SUBJECTS = "\n".join("${{ runner.temp }}/assbox-release/assets/" + name for name in (
+    "release.json", "kernel-aarch64-linux.json", "kernel-x86_64-linux.json")) + "\n"
 READ = {"contents": "read"}
 RUNNERS = {"ubuntu-24.04", "ubuntu-24.04-arm"}
+
+
+def credential_cleanup_command():
+    # Inline the reviewed code: do not execute a candidate-provided cleanup file.
+    body = Path(__file__).with_name('clear_nix_credentials.py').read_text()
+    return ("sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n" + body
+            + "ASSBOX_CLEAR_NIX_CREDENTIALS\n"
+            + "sudo systemctl restart nix-daemon.service\n"
+            + "nix config show --json | /usr/bin/python3 -I -B -c "
+            + "'import json,sys; assert json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'")
+
+
+def credential_cleanup_step():
+    return {'name': 'Remove installer credentials before candidate execution',
+            'run': credential_cleanup_command()}
+
+
+def runner_clearance_command():
+    body = Path(__file__).with_name('clear_unused_runner_tools.py').read_text()
+    context = ('GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,'
+               'GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,'
+               'GITHUB_RUN_ATTEMPT,RUNNER_TEMP')
+    return ("sudo --preserve-env=" + context + " /usr/bin/python3 -I -B <<'ASSBOX_RUNNER_CLEARANCE'\n"
+            + body + 'ASSBOX_RUNNER_CLEARANCE')
+
+
+def runner_clearance_step():
+    return {'name': 'Clear unused SDKs on the ephemeral hosted runner',
+            'run': runner_clearance_command()}
+
+
 # This is an effect-entrypoint allowlist, not a blacklist of dangerous shell words.
 READ_COMMANDS = {
     'test -f flake.lock && git ls-files --error-unmatch flake.lock',
-    'nix develop --command scripts/verify',
+    'nix develop .#release-check --command scripts/verify',
+    credential_cleanup_command(),
+    runner_clearance_command(),
 }
-VERIFY_COMMANDS = [f'python3 scripts/verify_observed.py {stage}'
-                   for stage in ('static', 'rust', 'mutations', 'nix')]
+VERIFY_COMMANDS = ['nix run path:./nix/dev#just -- verify']
 VERIFY_UPLOAD = {
     'if': 'always()', 'uses': UPLOAD,
     'with': {'name': 'verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}',
-             'path': '${{ runner.temp }}/assbox-verification',
+             'path': '${{ runner.temp }}/assbox-verification\n${{ runner.temp }}/assbox/verification/*/summary.json\n${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json\n${{ runner.temp }}/assbox/verification/*/canonical-summary.json\n',
              'if-no-files-found': 'warn', 'retention-days': 14},
 }
 RELEASE_CRON = "23 4 * * *"
 BOOTSTRAP_CRON = "41 3 * * 0"
 MAINTENANCE_GUARD = "github.repository == 'assboxai/assbox' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')"
+DEVELOPMENT_GUARD = MAINTENANCE_GUARD + " && vars.ASSBOX_DEVELOPMENT_MAINTENANCE == 'enabled'"
+DEVELOPMENT_DISCOVER = 'python3 scripts/development_maintenance.py discover "$RUNNER_TEMP/assbox-maintenance/discovery.json" "Prepare candidate"'
+DEVELOPMENT_NATIVE_DISCOVER = 'python3 scripts/development_maintenance.py discover "$RUNNER_TEMP/assbox-maintenance/discovery.json" "Native $SYSTEM"'
+DEVELOPMENT_PREPARE = 'python3 scripts/development_maintenance.py prepare "$RUNNER_TEMP/assbox-maintenance/discovery.json" "$RUNNER_TEMP/assbox-maintenance/candidate.json"'
+DEVELOPMENT_NATIVE = 'python3 scripts/development_maintenance.py native "$RUNNER_TEMP/assbox-maintenance/discovery.json" "$RUNNER_TEMP/assbox-maintenance/candidate.json" "$RUNNER_TEMP/assbox-maintenance/report.json" "$SYSTEM"'
+
+
+def development_writer_command():
+    bootstrap = Path(__file__).with_name('development_maintenance_bootstrap.py').read_text()
+    return "/usr/bin/python3 -I -B <<'ASSBOX_WRITER'\n" + bootstrap + 'ASSBOX_WRITER'
+
+
+def development_token_envs():
+    return {
+        ('prepare', DEVELOPMENT_DISCOVER): {'GH_TOKEN': '${{ github.token }}'},
+        ('native', DEVELOPMENT_NATIVE_DISCOVER): {'GH_TOKEN': '${{ github.token }}', 'SYSTEM': '${{ matrix.system }}'},
+        ('write', development_writer_command()): {
+            'GH_TOKEN': '${{ github.token }}', 'BASE': '${{ github.sha }}',
+            'RUN_ID': '${{ github.run_id }}', 'RUN_ATTEMPT': '${{ github.run_attempt }}',
+            'REPOSITORY': '${{ github.repository }}', 'REF': '${{ github.ref }}', 'EVENT': '${{ github.event_name }}',
+            'MAINTENANCE_ENABLED': '${{ vars.ASSBOX_DEVELOPMENT_MAINTENANCE }}',
+            'MAINTENANCE_READY': '${{ vars.ASSBOX_DEVELOPMENT_MAINTENANCE_READY }}',
+        },
+    }
+
+
+def development_document():
+    checkout = {'uses': CHECKOUT, 'with': {'ref': '${{ github.sha }}', 'persist-credentials': False}}
+    def nix(matrix=False):
+        return {'uses': NIX, 'with': {'install_url': 'https://releases.nixos.org/nix/nix-2.35.2/install',
+            'enable_kvm': "${{ matrix.system == 'x86_64-linux' }}" if matrix else True,
+            'extra_nix_config': 'experimental-features = nix-command flakes\naccept-flake-config = false\n'}}
+    def upload(name, path):
+        return {'uses': UPLOAD, 'with': {'name': name, 'path': path, 'if-no-files-found': 'error', 'retention-days': 14}}
+    tokens = development_token_envs()
+    return {'name': 'Verified development maintenance',
+        'on': {'schedule': [{'cron': '17 7 * * 2'}], 'workflow_dispatch': None},
+        'permissions': {}, 'concurrency': {'group': 'assbox-development-maintenance', 'cancel-in-progress': False},
+        'jobs': {
+            'prepare': {'name': 'Prepare candidate', 'if': DEVELOPMENT_GUARD, 'runs-on': 'ubuntu-24.04',
+                'permissions': {'contents': 'read', 'actions': 'read'}, 'timeout-minutes': 360,
+                'outputs': {'changed': '${{ steps.candidate.outputs.changed }}'},
+                'steps': [checkout, runner_clearance_step(), nix(), credential_cleanup_step(), {'run': DEVELOPMENT_DISCOVER, 'env': tokens[('prepare', DEVELOPMENT_DISCOVER)]},
+                    {'id': 'candidate', 'run': DEVELOPMENT_PREPARE},
+                    {'if': "steps.candidate.outputs.changed == 'true'", **upload('maintenance-candidate-${{ github.run_attempt }}', '${{ runner.temp }}/assbox-maintenance/candidate.json')}]},
+            'native': {'name': 'Native ${{ matrix.system }}', 'needs': 'prepare',
+                'if': "needs.prepare.outputs.changed == 'true'", 'permissions': {'contents': 'read', 'actions': 'read'},
+                'strategy': {'fail-fast': False, 'matrix': {'include': [
+                    {'system': 'x86_64-linux', 'runner': 'ubuntu-24.04'},
+                    {'system': 'aarch64-linux', 'runner': 'ubuntu-24.04-arm'}]}},
+                'runs-on': '${{ matrix.runner }}', 'timeout-minutes': 360,
+                'steps': [checkout, runner_clearance_step(), nix(True), credential_cleanup_step(),
+                    {'run': DEVELOPMENT_NATIVE_DISCOVER, 'env': tokens[('native', DEVELOPMENT_NATIVE_DISCOVER)]},
+                    {'run': DEVELOPMENT_NATIVE, 'env': {'SYSTEM': '${{ matrix.system }}'}},
+                    upload('maintenance-native-${{ matrix.system }}-${{ github.run_attempt }}', '${{ runner.temp }}/assbox-maintenance/report.json')]},
+            'write': {'needs': ['prepare', 'native'], 'runs-on': 'ubuntu-24.04', 'timeout-minutes': 15,
+                'permissions': {'contents': 'write', 'actions': 'read'}, 'environment': 'development-maintenance',
+                'steps': [{'run': development_writer_command(), 'env': tokens[('write', development_writer_command())]}]},
+        }}
 RELEASE_JOB_GATES = {
     'prepare': (None, MAINTENANCE_GUARD),
     'probe': ('prepare', None),
@@ -100,11 +193,11 @@ def bootstrap_document():
         "permissions": READ, "concurrency": {"group": "assbox-bootstrap-maintenance", "cancel-in-progress": False},
         "jobs": {
             "prepare": {"if": MAINTENANCE_GUARD, "runs-on": "ubuntu-24.04", "timeout-minutes": 90, "steps": [
-                checkout, nix(), {"run": BOOTSTRAP_DISCOVER, "env": {"GH_TOKEN": "${{ github.token }}"}},
+                checkout, runner_clearance_step(), nix(), credential_cleanup_step(), {"run": BOOTSTRAP_DISCOVER, "env": {"GH_TOKEN": "${{ github.token }}"}},
                 {"run": BOOTSTRAP_PREPARE}, upload("bootstrap-locks", "${{ runner.temp }}/assbox-bootstrap/assets")]},
             "native": {"needs": "prepare", "strategy": {"fail-fast": False, "matrix": {"include": matrix}},
                 "runs-on": "${{ matrix.runner }}", "timeout-minutes": 360, "steps": [
-                    checkout, nix(True), download(name="bootstrap-locks"),
+                    checkout, runner_clearance_step(), nix(True), credential_cleanup_step(), download(name="bootstrap-locks"),
                     {"run": BOOTSTRAP_NATIVE, "env": {"SYSTEM": "${{ matrix.system }}", "VARIANT": "${{ matrix.variant }}"}},
                     upload("bootstrap-native-${{ matrix.variant }}-${{ matrix.system }}", "${{ runner.temp }}/assbox-bootstrap-report/")]},
             "write": {"needs": "native", "runs-on": "ubuntu-24.04", "timeout-minutes": 15,
@@ -182,7 +275,7 @@ def credential_context(path, text):
 
 def approved_token_binding(name, document, path, text):
     """Only one exact scalar env value in each reviewed command is an exception."""
-    if (name not in {"release.yml", "bootstrap.yml"} or len(path) != 6 or path[0] != "jobs"
+    if (name not in {"release.yml", "bootstrap.yml", "maintenance.yml"} or len(path) != 6 or path[0] != "jobs"
             or path[2] != "steps" or path[4:] != ("env", "GH_TOKEN")
             or type(path[3]) is not int or text != "${{ github.token }}"):
         return False
@@ -195,7 +288,8 @@ def approved_token_binding(name, document, path, text):
     if not isinstance(step, dict) or set(step) - {"name", "id", "run", "env"}:
         return False
     command = step.get("run")
-    table = BOOTSTRAP_TOKEN_ENVS if name == "bootstrap.yml" else TOKEN_COMMAND_ENVS
+    table = (development_token_envs() if name == 'maintenance.yml' else
+             BOOTSTRAP_TOKEN_ENVS if name == "bootstrap.yml" else TOKEN_COMMAND_ENVS)
     expected = table.get((path[1], command.strip())) if isinstance(command, str) else None
     return expected is not None and step.get("env") == expected
 
@@ -221,6 +315,13 @@ def readonly_action(step):
 def check_document(name, document):
     errors = []
     def refuse(message): errors.append(f"{name}: {message}")
+    if name == 'maintenance.yml':
+        if document != development_document():
+            refuse('development maintenance authority stencil changed')
+        for path, text in text_locations(document):
+            if credential_context(path, text) and not approved_token_binding(name, document, path, text):
+                refuse('credential outside fixed maintenance API step')
+        return errors
     if not isinstance(document, dict) or not isinstance(document.get("on"), dict) or not document["on"]:
         return [f"{name}: workflow must have an explicit nonempty event mapping"]
     # Authority does not depend on the event: even a push-only workflow may be
@@ -258,7 +359,8 @@ def check_document(name, document):
             steps = []
         runs = [step.get('run', '').strip() for step in steps
                 if isinstance(step, dict) and isinstance(step.get('run'), str)]
-        if runs != ['test -f flake.lock && git ls-files --error-unmatch flake.lock', *VERIFY_COMMANDS]:
+        if runs != [runner_clearance_command(), credential_cleanup_command(), 'test -f flake.lock && git ls-files --error-unmatch flake.lock',
+                    'nix run path:./nix/dev#just -- setup --no-hooks', *VERIFY_COMMANDS]:
             refuse('verification must execute every reviewed stage exactly once in order')
         if (not steps or not isinstance(steps[-1], dict)
                 or {key: value for key, value in steps[-1].items() if key != 'name'} != VERIFY_UPLOAD):
@@ -304,6 +406,20 @@ def check_document(name, document):
         steps = job.get("steps")
         if not isinstance(steps, list) or not steps:
             refuse(f"steps required in {job_name}"); continue
+        installers = sum(isinstance(step, dict) and step.get('uses') == NIX for step in steps)
+        cleanups = sum(isinstance(step, dict) and step.get('run') == credential_cleanup_command() for step in steps)
+        if cleanups != installers:
+            refuse(f"Each Nix installation requires exactly one credential cleanup in {job_name}")
+        clearances = sum(isinstance(step, dict) and step.get('run') == runner_clearance_command() for step in steps)
+        if clearances != installers:
+            refuse(f"Each Nix installation requires exactly one hosted runner clearance in {job_name}")
+        for index, step in enumerate(steps):
+            if isinstance(step, dict) and step.get('uses') == NIX:
+                if index == 0 or steps[index - 1] != runner_clearance_step():
+                    refuse(f"Nix installation must immediately follow fixed runner clearance in {job_name}")
+                expected_cleanup = credential_cleanup_step()
+                if index + 1 >= len(steps) or steps[index + 1] != expected_cleanup:
+                    refuse(f"Nix installation must immediately clear persisted credentials in {job_name}")
         for step in steps:
             if not isinstance(step, dict):
                 refuse(f"invalid step in {job_name}"); continue
@@ -312,7 +428,9 @@ def check_document(name, document):
                     reviewed = {key: value for key, value in step.items() if key != 'name'}
                     if reviewed == VERIFY_UPLOAD:
                         continue
-                    if set(reviewed) == {'run'} and reviewed['run'] in VERIFY_COMMANDS:
+                    if reviewed == {'run': VERIFY_COMMANDS[0], 'env': {'XDG_STATE_HOME': '${{ runner.temp }}'}}:
+                        continue
+                    if reviewed == {'run': 'nix run path:./nix/dev#just -- setup --no-hooks'}:
                         continue
                 if set(step) - {"name", "uses", "with", "run"}:
                     refuse(f"unreviewed step credentials/condition/context in {job_name}")
@@ -346,7 +464,7 @@ def check_document(name, document):
                                 {"name": "release-assets", "path": "${{ runner.temp }}/assbox-release/assets"},
                                 {"pattern": "native-*", "path": "${{ runner.temp }}/assbox-release/reports"},
                             ],
-                            ATTEST: [{"subject-path": "${{ runner.temp }}/assbox-release/assets/release.json"}],
+                            ATTEST: [{"subject-path": ATTEST_SUBJECTS}],
                         }
                         if (step["uses"] not in allowed_actions or "run" in step or "env" in step
                                 or options not in approved_options.get(step["uses"], [])):
@@ -380,7 +498,8 @@ def check_document(name, document):
                 {"system": "x86_64-linux", "runner": "ubuntu-24.04"},
                 {"system": "aarch64-linux", "runner": "ubuntu-24.04-arm"},
             ]
-            run_steps = [s for s in live.get("steps", []) if "run" in s]
+            run_steps = [s for s in live.get("steps", []) if "run" in s
+                         and s.get('run') not in (credential_cleanup_command(), runner_clearance_command())]
             if (live.get("needs") != "publish" or live.get("strategy") != {"fail-fast": False, "matrix": {"include": expected_matrix}}
                     or len(run_steps) != 1 or run_steps[0]["run"].strip() != LIVE_VERIFY
                     or run_steps[0].get("env") != {"RELEASE_TAG": "${{ needs.publish.outputs.tag }}", "SYSTEM": "${{ matrix.system }}"}):

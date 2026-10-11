@@ -27,6 +27,7 @@ let
         repo
         rev
         narHash
+        lastModified
         ;
       path = source.key;
     }

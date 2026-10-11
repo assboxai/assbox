@@ -78,8 +78,13 @@ let
     }
     chain local_ipc {
       type filter hook input priority -150; policy accept;
-      # On ingress the socket lookup identifies the receiving listener. This
-      # permits dynamic provider IPC ports without authorizing root brokers.
+      # Approve TCP only after looking up its receiving listener. During the
+      # handshake, request sockets do not retain the listener's cgroup identity;
+      # remember that approval for subsequent established TCP packets. Outbound
+      # UID policy still checks every packet, so revocation remains effective.
+      # UDP always rechecks the receiver, including after a listener is replaced.
+      iifname "lo" meta mark 0x41534258 meta l4proto tcp ct state established ct mark 0x41534258 accept
+      iifname "lo" meta mark 0x41534258 meta l4proto tcp socket cgroupv2 level 2 "user.slice/user-1000.slice" ct mark set 0x41534258 accept
       iifname "lo" meta mark 0x41534258 socket cgroupv2 level 2 "user.slice/user-1000.slice" accept
       iifname "lo" meta mark 0x41534258 reject
     }
@@ -141,18 +146,25 @@ in
       }
     ];
     networking.nftables.enable = true;
+    # NixOS checks rules in an LKL kernel without socket cgroupv2 support or the
+    # installed user's slice. Adapt that expression only in the temporary check
+    # copy; keep checking the surrounding rules. The deployed cgroup rule stays
+    # unchanged and is exercised by the network policy acceptance tests.
+    networking.nftables.preCheckRuleset = ''
+      sed -i 's@socket cgroupv2 level 2 "user.slice/user-1000.slice"@meta mark 0x41534258@g' ruleset.conf
+    '';
     networking.nftables.tables.assbox-execution = {
       family = "inet";
       content = table;
     };
-    # nft resolves the receiver cgroup when loading the rules, before logins.
-    systemd.slices."user-1000" = {
-      before = [ "nftables.service" ];
-    };
+    # nft resolves the persistent receiver cgroup before loading the rules.
     systemd.services.nftables = {
       requires = [ "user-1000.slice" ];
       after = [ "user-1000.slice" ];
-      serviceConfig.ExecStopPre = [ revoke ];
+      # Terminate execution-owned processes before the firewall removes its
+      # policy. Prepend this to the NixOS nftables module's existing deletion
+      # and cleanup commands so the ordering uses valid service directives.
+      serviceConfig.ExecStop = lib.mkBefore [ revoke ];
     };
     services.resolved.enable = true;
     # A root-owned build daemon is otherwise a proxy for private-network access.
@@ -161,6 +173,8 @@ in
     # this namespace through an execution-UID userspace forwarder. No delegated
     # privileged network setup, rootless container socket or blanket devices.
     systemd.services."user@1000" = {
+      # Keep systemd's user-manager template; add admission dependencies to its instance.
+      overrideStrategy = "asDropin";
       requires = [ "nftables.service" ];
       after = [ "nftables.service" ];
       bindsTo = [ "nftables.service" ];
@@ -182,7 +196,7 @@ in
         modulePath = "${pkgs.pam}/lib/security/pam_exec.so";
         args = [
           "quiet"
-          admission
+          (toString admission)
         ];
       };
     });

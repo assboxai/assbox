@@ -69,6 +69,18 @@ let
       "tailscale"
     ] pkg
     // {
+      ffmpeg = (pkg "ffmpeg") // {
+        override =
+          flags:
+          assert
+            flags == {
+              withXcb = true;
+              withXcbShm = true;
+              withXcbxfixes = true;
+              withXcbShape = true;
+            };
+          pkg "ffmpeg-x11";
+      };
       tailscale =
         if poisonTailscale then throw "deselected Tailscale package was forced" else pkg "tailscale";
       callPackage = _: _: pkg "vscode-cli";
@@ -225,6 +237,11 @@ in
   xdg = result.config.xdg;
   packages = map toString (result.config.environment.systemPackages or [ ]);
   scripts = lib.mapAttrs (_: value: value.source.scriptText) (
+    lib.filterAttrs (
+      name: _: lib.hasPrefix "assbox/onboarding/" name || lib.hasPrefix "assbox/diagnostics/" name
+    ) result.config.environment.etc
+  );
+  scriptModes = lib.mapAttrs (_: value: value.mode or "symlink") (
     lib.filterAttrs (
       name: _: lib.hasPrefix "assbox/onboarding/" name || lib.hasPrefix "assbox/diagnostics/" name
     ) result.config.environment.etc

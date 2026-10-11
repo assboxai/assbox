@@ -29,7 +29,10 @@ fn rendered_selections_and_consent_parse_together_in_nix() {
     ] {
         let components: Components = ids.parse().unwrap();
         let choices = Choices {
-            instance: Default::default(),
+            instance: assbox_domain::instances::InstanceConfig {
+                tailscale: true,
+                ..Default::default()
+            },
             hostname: Hostname::parse("assbox-fixture").unwrap(),
             timezone: "UTC".into(),
             components,

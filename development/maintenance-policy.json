@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "kind": "assbox-development-maintenance-policy-specification",
+  "authority": "00-decisions.md D05-D08 and D15-D20; 05-dependency-lifecycle.md; 06-scheduled-maintenance.md; 18-candidate-snapshots.md; 19-maintenance-activation.md",
+  "workflow": {
+    "repository": "assboxai/assbox",
+    "ref": "refs/heads/master",
+    "path": ".github/workflows/maintenance.yml",
+    "events": [
+      "schedule",
+      "workflow_dispatch"
+    ],
+    "cron_utc": "17 7 * * 2",
+    "dispatch_inputs": [],
+    "enablement_variable": "ASSBOX_DEVELOPMENT_MAINTENANCE",
+    "enablement_value": "enabled",
+    "disabled_until_separately_qualified_and_enabled": true,
+    "positive_numeric_repository_and_owner_ids_required": true,
+    "permissions": {},
+    "job_permissions": {
+      "prepare": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "native": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "write": {
+        "contents": "write",
+        "actions": "read"
+      }
+    },
+    "unspecified_scopes": "none",
+    "actions_read_callers": [
+      "prepare",
+      "native",
+      "write"
+    ],
+    "numeric_producer_job_identity": "resolve-unique-job-from-exact-run-attempt-api",
+    "missing_or_unauthorized_identity_evidence": "blocked-no-envelope-or-write",
+    "job_scope_is_not_step_scope": true,
+    "candidate_execution_in_writer_job": false
+  },
+  "outputs": {
+    "replacement_paths": [
+      "chainman.lock",
+      "nix/dev/flake.lock"
+    ],
+    "mode": "100644",
+    "existing_regular_files_only": true,
+    "additions_deletions_or_mode_changes": false,
+    "maximum_replacement_bytes": 1048576,
+    "maximum_envelope_bytes": 4194304,
+    "production_lock_must_remain_identical": true,
+    "expected_head_atomic_non_force_update": true
+  },
+  "runtime_trust": {
+    "canonical_repository": "chainmandev/chainman",
+    "initial_pin_review_required": true,
+    "after_enablement": "unattended-exact-sha-updates-after-required-native-gates",
+    "selection": "advertised-default-branch-frozen-to-full-commit-sha",
+    "trust_basis": "intentional-same-maintainer-upstream-supply-chain-trust",
+    "project_dependency_age_delay_applies": false,
+    "ordinary_launches_query_for_updates": false,
+    "verification_executes_selected_candidate_runtime": true,
+    "native_systems": [
+      "x86_64-linux",
+      "aarch64-linux"
+    ],
+    "gate_task": "verify",
+    "compatibility_gates_prove_benign_upstream_code": false,
+    "writer_executes_runtime": false
+  },
+  "source_identity": {
+    "model": "preserve-existing-whole-repository-authenticated-core",
+    "tracked_developer_source_included": true,
+    "tracked_developer_locks_included": [
+      "chainman.lock",
+      "nix/dev/flake.lock"
+    ],
+    "filtered_production_release_tree_allowed": false,
+    "suppress_developer_triggered_release_selection": false,
+    "production_build_invalidation_and_later_release_are_expected_consequences": true,
+    "local_untracked_caches_and_run_artifacts_are_not_source": true,
+    "maintenance_dispatches_release": false
+  },
+  "qualification": {
+    "specification_is_runtime_evidence": false,
+    "preparation_executes_vms": false
+  },
+  "writer": {
+    "job_uses_allowed": false,
+    "step_uses_allowed": false,
+    "containers_or_services_allowed": false,
+    "candidate_checkout_allowed": false,
+    "bootstrap": "fixed-inline-python-isolated-mode",
+    "controller_path": "scripts/development_maintenance_writer.py",
+    "policy_path": "development/maintenance-policy.json",
+    "controller_source": "trusted-workflow-base-commit-and-verified-git-blob",
+    "imports": "python-standard-library-only",
+    "controller_child_processes_allowed": false,
+    "dynamic_dependency_installation_allowed": false,
+    "artifact_executable_content_allowed": false,
+    "shared_candidate_caches_allowed": false,
+    "ref_mutation": "GraphQL.updateRefs",
+    "ref_update_fields": [
+      "name",
+      "beforeOid",
+      "afterOid",
+      "force"
+    ],
+    "ref_update_count": 1,
+    "force": false,
+    "mutation_id_is_assumed_idempotency_key": false
+  },
+  "environment": {
+    "name": "development-maintenance",
+    "job": "write",
+    "manual_precreation_required": true,
+    "deployment_branch_policy": "selected-branches-and-tags",
+    "branch_rules": [
+      "master"
+    ],
+    "tag_rules": [],
+    "ready_variable": "ASSBOX_DEVELOPMENT_MAINTENANCE_READY",
+    "ready_value": "provisioned-v1",
+    "ready_variable_scope": "environment-only-no-repository-or-organization-shadow",
+    "ready_check_stage": "fixed-writer-run-step-after-environment-admission-before-mutation",
+    "missing_or_wrong_ready": "administration-required-no-write",
+    "marker_is_live_protection_attestation": false,
+    "out_of_band_administrator_verification_required": true,
+    "repository_switch_is_intrinsically_admin_only": false,
+    "provision_before_enable": true,
+    "secrets_required": [],
+    "per_run_reviewers": "optional-operator-policy-default-unattended-after-qualification"
+  },
+  "candidate_snapshot": {
+    "policy": "candidate-snapshot-policy.json",
+    "schema": "candidate-snapshot.schema.json",
+    "same_identity_on_both_native_systems": true,
+    "writer_recomputes_from_raw_source": true,
+    "caller_or_transaction_git_mutation_allowed": false,
+    "production_clean_gate_retained": true,
+    "eventual_real_commit_may_differ": true
+  },
+  "credential_hygiene": {
+    "candidate_child_environment": "explicit-safe-allowlist",
+    "api_discovery_process_exits_before_candidate": true,
+    "candidate_runner_file_command_channels_allowed": false,
+    "same_user_hostile_code_sandbox_claim": false,
+    "artifact_redirect_credentials_forwarded": false
+  }
+}

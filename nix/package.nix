@@ -22,6 +22,8 @@ rustPlatform.buildRustPackage {
         "reports"
         "result"
         "__pycache__"
+        ".chainman"
+        ".cache"
       ]);
   };
   cargoLock.lockFile = ../Cargo.lock;

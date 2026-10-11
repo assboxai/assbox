@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -386,6 +387,12 @@ def native_gate(assets: Path, system: str, report: Path) -> None:
             path = tree / name
             if path.is_symlink() or bounded_bytes(path, 16 * 1024 * 1024) != content or path.stat().st_mode & 0o777 != mode:
                 raise ValueError("verification modified a release source file")
+        # The same final source and dependency combination supplies all three
+        # default kernel outputs. The private signing key is erased by produce;
+        # only the release-bound index and signed public closure leave this job.
+        import kernel_cache
+        report.parent.mkdir(parents=True, exist_ok=True)
+        kernel_cache.produce(tree, assets / "release.json", report.parent / ("kernel-" + system), system)
     report.parent.mkdir(parents=True, exist_ok=True)
     write(report, {"system": system, "manifestSha256": data.digest((assets / "release.json").read_bytes()), "passed": True})
 
@@ -436,10 +443,16 @@ def live_verify(tag: str, system: str, directory: Path) -> None:
             or run("sudo", "cat", "--", str(second / "flake.lock")) != first_lock
             or store_path(run("sudo", "cat", "--", str(second / "verified-source-path"))) != authenticated_source):
         raise ValueError("candidate and bootstrap verifiers disagree about the published release")
+    kernel = directory.with_name(directory.name + "-kernel")
+    run("sudo", f"{candidate}/bin/assbox", "release", "verify-kernel", tag, str(kernel))
+    if (run("sudo", "cat", "--", str(kernel / "release.json")) != first_manifest
+            or run("sudo", "cat", "--", str(kernel / "flake.lock")) != first_lock
+            or store_path(run("sudo", "cat", "--", str(kernel / "verified-source-path"))) != authenticated_source):
+        raise ValueError("public kernel verification disagrees with the authenticated release")
     # An unchanged lock/renewal may legitimately reproduce the same store binary.
     # This verifies the candidate's current public round trip, not every possible
     # future server/API change or actual traversal from an installed-machine floor.
-    print(f"Bootstrap and candidate public verification passed: {tag} / {system}")
+    print(f"Bootstrap, candidate and cold kernel public verification passed: {tag} / {system}")
 
 
 def ready(assets: Path, reports: Path) -> dict:
@@ -460,6 +473,23 @@ def ready(assets: Path, reports: Path) -> dict:
 def attestation_ready(assets: Path, reports: Path) -> None:
     ready(assets, reports)
     check_repository(privileged=True)
+    import kernel_cache
+    manifest_bytes = bounded_bytes(assets / "release.json", 65536)
+    # Validate the complete set before copying any public asset. The publisher
+    # only hashes/parses these files; it never evaluates candidate Nix or code.
+    copies = []
+    for system in data.SYSTEMS:
+        directories = list(reports.rglob("kernel-" + system))
+        if len(directories) != 1 or directories[0].is_symlink() or not directories[0].is_dir():
+            raise ValueError("missing or ambiguous native kernel artifact")
+        directory = directories[0]
+        names = kernel_cache.validate_export(directory, manifest_bytes, system)
+        copies.extend((directory / name, assets / name) for name in names)
+    if any(destination.exists() or destination.is_symlink() for _, destination in copies):
+        raise ValueError("kernel publication would overwrite an existing asset")
+    for source, destination in copies:
+        with source.open("rb") as incoming, destination.open("xb") as outgoing:
+            shutil.copyfileobj(incoming, outgoing)
 
 
 def write_api(path: str, payload: dict, *, method: str = "POST"):
@@ -480,6 +510,39 @@ def publish(assets: Path, reports: Path) -> None:
     bundle = assets / "release.sigstore.json"
     if bundle.is_symlink() or not bundle.is_file() or bundle.stat().st_size > 4 * 1024 * 1024:
         raise ValueError("missing provenance bundle")
+    import kernel_cache
+    # Both kernel indices are subjects of the same fixed provenance action.
+    # Revalidate the staged public assets before the first remote mutation.
+    kernel_assets = []
+    indices = {}
+    manifest_bytes = bounded_bytes(assets / "release.json", 65536)
+    for system in data.SYSTEMS:
+        index_path = assets / kernel_cache.index_name(system)
+        index = kernel_cache.validate_index(bounded_bytes(index_path, kernel_cache.MAX_INDEX),
+            release_sha=data.digest(manifest_bytes), core=manifest['coreCommit'],
+            lock_sha=manifest['lockSha256'], system=system)
+        indices[system] = index
+        names = [kernel_cache.index_name(system), *(kernel_cache.prefix(system) + name for name in index['cacheAssets'])]
+        for name in names[1:]:
+            proof = index['cacheAssets'][name.removeprefix(kernel_cache.prefix(system))]
+            path = assets / name
+            if path.is_symlink() or path.stat().st_size != proof['size'] or kernel_cache.file_digest(path) != proof['sha256']:
+                raise ValueError("kernel publication asset changed after attestation preparation")
+        kernel_bundle = index_path.with_suffix('.sigstore.json')
+        if (kernel_bundle.exists() or kernel_bundle.is_symlink()) and bounded_bytes(kernel_bundle, 4 * 1024 * 1024) != bounded_bytes(bundle, 4 * 1024 * 1024):
+            raise ValueError("kernel provenance destination differs from the attested bundle")
+        kernel_assets.extend([*names, kernel_bundle.name])
+    expected_names = set(ASSETS) | set(kernel_assets)
+    actual_names = {path.name for path in assets.iterdir()}
+    optional_bundles = {name for name in kernel_assets if name.endswith('.sigstore.json')}
+    if not expected_names - optional_bundles <= actual_names <= expected_names:
+        raise ValueError("unreviewed release publication asset")
+    for system, index in indices.items():
+        cache_names = {kernel_cache.prefix(system) + name for name in index['cacheAssets']}
+        kernel_cache.validate_cache(assets, index, asset_prefix=kernel_cache.prefix(system),
+                                    metadata_files=actual_names - cache_names)
+    for system in data.SYSTEMS:
+        (assets / kernel_cache.index_name(system)).with_suffix('.sigstore.json').write_bytes(bounded_bytes(bundle, 4 * 1024 * 1024))
     check_parent_head(manifest)
     tag = manifest["tag"]
     # A lightweight tag is intentional: clients verify its attested commit too.
@@ -489,7 +552,7 @@ def publish(assets: Path, reports: Path) -> None:
                   "make_latest": "false", "body": "Authenticated dependency release. See the attached release manifest."})
     # Uploading does not execute asset content. Token is ephemeral GITHUB_TOKEN.
     check_repository(privileged=True)
-    run("gh", "release", "upload", tag, *(str(assets / name) for name in ASSETS), "--repo", REPO, github_upload=True)
+    run("gh", "release", "upload", tag, *(str(assets / name) for name in (*ASSETS, *kernel_assets)), "--repo", REPO, github_upload=True)
     published = write_api(f"/repos/{REPO}/releases/{release['id']}", {"draft": False, "make_latest": "false"}, method="PATCH")
     if published.get("immutable") is not True:
         raise ValueError("publication is not immutable; latest was NOT advanced. Enable immutable releases with the cold administrator.")

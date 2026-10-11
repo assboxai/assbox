@@ -12,3 +12,6 @@ __pycache__/
 **/.dev.vars.*
 **/node_modules/
 *.pem
+
+/.chainman/
+/.cache/toolchain/

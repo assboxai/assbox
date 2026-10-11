@@ -37,7 +37,7 @@ let
   # This changes image construction only; the production worker remains KVM-only.
   disk =
     if pkgs.stdenv.hostPlatform.isAarch64 then
-      builtDisk.overrideAttrs (old: {
+      pkgs.lib.overrideDerivation builtDisk (old: {
         requiredSystemFeatures = builtins.filter (feature: feature != "kvm") (
           old.requiredSystemFeatures or [ ]
         );

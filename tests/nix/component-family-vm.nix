@@ -32,13 +32,14 @@ pkgs.testers.runNixOSTest {
       presentation = mode;
       acceptUnfree = true;
       components =
-        lib.genAttrs selected (_: {
-          enable = true;
-          allowMutableCode = true;
-        })
-        // {
-          hermes-dashboard.publicUrl = "https://assbox-ci.example.ts.net/";
-        };
+        lib.recursiveUpdate
+          (lib.genAttrs selected (_: {
+            enable = true;
+            allowMutableCode = true;
+          }))
+          {
+            hermes-dashboard.publicUrl = "https://assbox-ci.example.ts.net/";
+          };
       session.autostart = [ ];
       updates.enable = false;
     };
@@ -48,6 +49,9 @@ pkgs.testers.runNixOSTest {
     users.allowNoPasswordLogin = true;
     users.users.root.hashedPasswordFile = lib.mkForce null;
     users.users.admin.hashedPasswordFile = lib.mkForce null;
+    # Startup reads many small JavaScript modules; keep them off 9p.
+    virtualisation.useNixStoreImage = pkgs.stdenv.hostPlatform.isAarch64;
+    virtualisation.writableStore = true;
     virtualisation.memorySize = if graphical then 4096 else 2048;
     virtualisation.qemu.forceAccel = lib.mkForce (!pkgs.stdenv.hostPlatform.isAarch64);
     system.stateVersion = "26.05";

@@ -21,6 +21,7 @@ const HELP: &str = r#"Assbox — Assistant Box
   assbox configure [--apply]            Preview or build/stage purpose-first reconfiguration
   assbox component stop|disable|enable ID  Explicit service lifecycle as agent
   assbox release verify TAG DIRECTORY   Authenticate/download without installing
+  assbox release verify-kernel TAG DIRECTORY   Authenticate/import the default kernel in a fresh store
   assbox status                         Show running, boot and maintenance state
   assbox doctor                         Inspect system and agent-service state (sudo or agent)
   assbox check                          Validate and build without activation
@@ -212,6 +213,9 @@ fn run(args: &[&str]) -> Result<()> {
         }
         ["release", "verify", tag, directory] => {
             assbox_engine::inspect_release(tag, std::path::Path::new(directory), false)
+        }
+        ["release", "verify-kernel", tag, directory] => {
+            assbox_engine::inspect_release_kernel(tag, std::path::Path::new(directory))
         }
         ["internal", "maintenance"] => manage::maintenance(false),
         ["internal", "maintenance", "--retry"] => manage::maintenance(true),

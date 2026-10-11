@@ -182,9 +182,11 @@ def observe(stage, directory, command):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('stage', choices=STAGES)
+    parser.add_argument('--entered', action='store_true', help='Observe an already provisioned environment')
     args = parser.parse_args()
     directory = Path(os.environ['RUNNER_TEMP']) / 'assbox-verification' if os.environ.get('RUNNER_TEMP') else ROOT / 'reports/verification'
-    return observe(args.stage, directory, ['nix', 'develop', '--command', 'scripts/verify', args.stage])
+    command = ['scripts/verify', args.stage] if args.entered else ['nix', 'develop', '.#release-check', '--no-update-lock-file', '--no-write-lock-file', '--command', 'scripts/verify', args.stage]
+    return observe(args.stage, directory, command)
 
 
 if __name__ == '__main__':

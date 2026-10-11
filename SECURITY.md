@@ -68,6 +68,21 @@ missing full acceptance gates block promotion. See
 [release authentication](docs/release-authentication.md) and
 [governance](docs/governance.md) for boundaries and provisioning tasks.
 
+## Development infrastructure
+
+Developer tooling uses a separately locked Chainman host-Nix environment. Its
+full gate freezes raw source into an independent clean Git snapshot before invoking
+the unchanged production checks. The repair oracle is separately frozen; same-user
+protection is cooperative. Candidate dependency code remains a supply-chain trust
+boundary, not something compatibility tests can prove harmless.
+
+Disabled [development maintenance](docs/development-maintenance.md) can write only
+two developer locks after both native gates. Its fresh zero-Action writer loads only
+verified trusted-base code, consumes bounded JSON evidence and uses an exact-head,
+nonforcing ref update. It never runs candidate Nix/Chainman or imports its caches.
+The distinct master-only Environment and readiness marker must be provisioned before
+enablement. No implementation or local test grants remote publication authority.
+
 ## Reporting
 
 Use GitHub's private vulnerability reporting for `assboxai/assbox` when the project

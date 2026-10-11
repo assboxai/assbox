@@ -1,0 +1,11 @@
+--- a/lib/inode.c
++++ b/lib/inode.c
+@@ -1424,7 +1424,7 @@
+ 	struct erofs_buffer_head *const bh = root->bh;
+ 	struct erofs_sb_info *sbi = root->sbi;
+ 	int bsz = erofs_blksiz(sbi);
+-	int meta_offset = 0;
++	s64 meta_offset = 0;
+ 	erofs_off_t off;
+ 
+ 	erofs_mapbh(NULL, bh->block);
