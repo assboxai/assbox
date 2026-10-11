@@ -444,6 +444,29 @@ def consume(source, release_path, directory, system, repository_id, owner_id, st
     return {'status': 'copied-authenticated-cache', 'kernelBuildInvoked': False, **expected}
 
 
+def normalize_export(cache):
+    """Flatten referenced NARs and remove only empty cache scaffolding."""
+    for path in cache.iterdir():
+        if path.is_symlink():
+            raise ValueError('Redirected producer cache asset')
+    for info in cache.glob('*.narinfo'):
+        text = bounded(info, 256 * 1024).decode()
+        urls = [line[5:] for line in text.splitlines() if line.startswith('URL: ')]
+        if len(urls) != 1 or not re.fullmatch(r'nar/[0-9abcdfghijklmnpqrsvwxyz]{52}\.nar\.xz', urls[0]):
+            raise ValueError('Unsupported producer NAR location')
+        old = urls[0]
+        new = 'nar-' + old.split('/')[1]
+        if (cache / old).exists():
+            (cache / old).rename(cache / new)
+        info.write_text(text.replace('URL: ' + old + '\n', 'URL: ' + new + '\n'))
+    for path in cache.iterdir():
+        if path.is_dir():
+            try:
+                path.rmdir()
+            except OSError as error:
+                raise ValueError('Producer cache directory must be empty: ' + path.name) from error
+
+
 def produce(source, release_path, directory, system):
     require_system(system)
     release_bytes = bounded(release_path, 65536)
@@ -479,19 +502,7 @@ def produce(source, release_path, directory, system):
         finally:
             secret.unlink(missing_ok=True)
         key = bounded(public, 4096).decode().strip()
-        for info in cache.glob('*.narinfo'):
-            text = bounded(info, 256 * 1024).decode()
-            urls = [line[5:] for line in text.splitlines() if line.startswith('URL: ')]
-            if len(urls) != 1 or not re.fullmatch(r'nar/[0-9abcdfghijklmnpqrsvwxyz]{52}\.nar\.xz', urls[0]):
-                raise ValueError('Unsupported producer NAR location')
-            old = urls[0]
-            new = 'nar-' + old.split('/')[1]
-            if (cache / old).exists():
-                (cache / old).rename(cache / new)
-            info.write_text(text.replace('URL: ' + old + '\n', 'URL: ' + new + '\n'))
-        for name in ('nar', 'log', 'build-trace-v2'):
-            if (cache / name).exists():
-                (cache / name).rmdir()
+        normalize_export(cache)
         assets = {path.name: {'size': path.stat().st_size, 'sha256': file_digest(path)} for path in sorted(cache.iterdir())}
         index = dict(schema=1, kind='assbox-release-kernel-cache', releaseManifestSha256=hashlib.sha256(release_bytes).hexdigest(),
                      coreCommit=release['coreCommit'], lockSha256=release['lockSha256'], system=system,

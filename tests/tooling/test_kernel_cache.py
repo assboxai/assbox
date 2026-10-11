@@ -423,5 +423,56 @@ class DefaultFormatterCache(unittest.TestCase):
         self.assertEqual(downloads, ['kernel-x86_64-linux.json', 'kernel-x86_64-linux.sigstore.json'])
 
 
+class ProducerCacheLayout(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='assbox-producer-layout-')
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name) / 'public-cache'
+        self.directory.mkdir()
+        self.index = fixture(self.directory)
+        (self.directory / 'nar').mkdir()
+        for info in self.directory.glob('*.narinfo'):
+            text = info.read_text()
+            name = next(line[5:] for line in text.splitlines() if line.startswith('URL: '))
+            nested = 'nar/' + name.removeprefix('nar-')
+            (self.directory / name).rename(self.directory / nested)
+            info.write_text(text.replace('URL: ' + name + '\n', 'URL: ' + nested + '\n'))
+
+    def test_empty_cache_scaffolding_leaves_all_bound_release_assets(self):
+        for name in ('log', 'build-trace-v2', 'realisations', 'debuginfo'):
+            (self.directory / name).mkdir()
+        cache.normalize_export(self.directory)
+        self.assertEqual({path.name for path in self.directory.iterdir()}, set(self.index['cacheAssets']))
+        self.assertTrue(all(path.is_file() for path in self.directory.iterdir()))
+        cache.validate_cache(self.directory, self.index)
+
+    def test_nonempty_auxiliary_directory_is_refused_and_preserved(self):
+        directory = self.directory / 'debuginfo'
+        directory.mkdir()
+        sentinel = directory / 'unexpected-data'
+        sentinel.write_bytes(b'preserve unexpected producer data')
+        with self.assertRaisesRegex(ValueError, 'Producer cache directory must be empty: debuginfo'):
+            cache.normalize_export(self.directory)
+        self.assertEqual(sentinel.read_bytes(), b'preserve unexpected producer data')
+
+    def test_unreferenced_nar_is_refused_and_preserved(self):
+        sentinel = self.directory / 'nar/unreferenced.nar.xz'
+        sentinel.write_bytes(b'unreferenced producer archive')
+        with self.assertRaisesRegex(ValueError, 'Producer cache directory must be empty: nar'):
+            cache.normalize_export(self.directory)
+        self.assertEqual(sentinel.read_bytes(), b'unreferenced producer archive')
+
+    def test_redirected_directory_is_refused_before_nar_rewriting(self):
+        outside = Path(self.temporary.name) / 'outside'
+        outside.mkdir()
+        sentinel = outside / 'sentinel'
+        sentinel.write_bytes(b'outside the producer cache')
+        (self.directory / 'log').symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'Redirected producer cache asset'):
+            cache.normalize_export(self.directory)
+        self.assertEqual(sentinel.read_bytes(), b'outside the producer cache')
+        self.assertTrue(all('URL: nar/' in info.read_text() for info in self.directory.glob('*.narinfo')))
+
+
 if __name__ == '__main__':
     unittest.main()
