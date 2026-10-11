@@ -1,0 +1,26 @@
+--- a/src/libtinysparql/core/tracker-db-interface-sqlite.c
++++ b/src/libtinysparql/core/tracker-db-interface-sqlite.c
+@@ -1904,6 +1904,23 @@
+ 		                         db_interface->filename? db_interface->filename : "memory"));
+ 	}
+ 
++#ifdef SQLITE_DBCONFIG_FP_DIGITS
++	/* TinySPARQL 3.11.1 exposes SQLite's historical 15-digit double-to-text
++	 * representation. SQLite 3.53 changes its default to 17 digits; retain
++	 * this library's existing lexical contract without changing the SQLite
++	 * default for other consumers or weakening the SPARQL query tests.
++	 */
++	result = sqlite3_db_config (db_interface->db, SQLITE_DBCONFIG_FP_DIGITS, 15, NULL);
++	if (result != SQLITE_OK) {
++		g_set_error (error,
++		             TRACKER_DB_INTERFACE_ERROR,
++		             TRACKER_DB_OPEN_ERROR,
++		             "Could not configure sqlite3 floating-point text format: %s",
++		             sqlite3_errstr (result));
++		return;
++	}
++#endif
++
+ 	/* Set our unicode collation function */
+ 	tracker_db_interface_sqlite_reset_collator (db_interface);
+ 

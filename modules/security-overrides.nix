@@ -228,6 +228,17 @@ in
             else
               previous.nghttp2;
           sqlite = upgradeSqlite previous.sqlite;
+          tinysparql =
+            # Keep 3.11.1's public double-to-text representation and complete
+            # upstream query assertions when upgrading its SQLite dependency.
+            # The compatibility setting is per connection, so other SQLite
+            # consumers retain the new default and the security point release.
+            if previous.tinysparql.version == "3.11.1" && previous.sqlite.version == "3.51.2" then
+              previous.tinysparql.overrideAttrs (old: {
+                patches = (old.patches or [ ]) ++ [ ../nix/patches/tinysparql-sqlite-precision.patch ];
+              })
+            else
+              previous.tinysparql;
           sqlite-interactive = upgradeSqlite previous.sqlite-interactive;
         }
       )
