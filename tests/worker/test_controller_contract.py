@@ -194,4 +194,16 @@ class QualifiedInterfaces(unittest.TestCase):
         loop=release.split('for system in "${systems[@]}";',1)[1].split('\ndone',1)[0]
         self.assertIn('config.assbox.worker.enable',loop)
         self.assertIn('system.build.assboxWorkerAudit',loop)
-        self.assertIn('vulnix "$worker_audit"',loop)
+        self.assertIn('closure_targets+=("$worker_audit")',loop)
+        self.assertIn('vulnix "$@" --closure --json',release)
+        self.assertIn('vulnerability-closure-roots.txt',release)
+        self.assertIn('scripts/vulnerability_policy.py',release)
+
+    def test_native_policy_parser_normalizes_directives_without_changing_values(self):
+        spec=importlib.util.spec_from_file_location('native_sshd',ROOT/'tests/worker/native-sshd-policy.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        output='AllowUsers agent\nallowusers assbox-health\nForceCommand /nix/store/CaseSensitive/bin/HealthShell\n'
+        with patch.object(module.subprocess,'run',return_value=SimpleNamespace(stdout=output)):
+            fields=module.effective('/bin/sshd','/etc/example','agent')
+        self.assertEqual(fields['allowusers'],'agent assbox-health')
+        self.assertEqual(fields['forcecommand'],'/nix/store/CaseSensitive/bin/HealthShell')

@@ -20,6 +20,16 @@ const WORK: &str = "/run/assbox-install";
 fn point(name: &str) -> PathBuf {
     Path::new(WORK).join(name)
 }
+fn mount_type(fs: FileSystem) -> Result<&'static str> {
+    match fs {
+        FileSystem::Ext4 => Ok("ext4"),
+        FileSystem::Fat => Ok("vfat"),
+        FileSystem::Exfat => Ok("exfat"),
+        FileSystem::None | FileSystem::Other => Err(Error::new(
+            "selected filesystem has no supported mount type",
+        )),
+    }
+}
 fn recheck(plan: &InstallPlan, c: &Commands, mounts: &[&Mount]) -> Result<()> {
     cancellation::check()?;
     let allowed: Vec<(&str, &str)> = mounts
@@ -181,6 +191,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     let c = Commands;
     for tool in [
         "nix",
+        "nix-store",
         "systemd-run",
         "systemctl",
         "nixos-install",
@@ -226,43 +237,66 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             "installer work directory is not empty; inspect/unmount a previous attempt before continuing",
         ));
     }
-    let fetched = crate::source::resolve(&c, release_tag, &point("release-download"))?;
-    let flake = assbox_config::flake(&fetched.release.manifest, plan.inventory().architecture);
     recheck(&plan, &c, &[])?;
     let selected: Vec<&Partition> = std::iter::once(plan.root())
         .chain(plan.esp())
         .chain(std::iter::once(plan.backup()))
         .collect();
+    let mut deferred_check = None;
     // All selected filesystems are checked before the first mount, including backup.
+    // A failed root check remains fatal because the root cannot be inspected safely.
+    // A non-root failure is retained until the clean root is inspected for a durable
+    // record left by the interrupted transaction that also dirtied that filesystem.
     for p in selected {
         recheck(&plan, &c, &[])?;
         let (program, flags) = filesystem_check(p.fs)?;
         let mut args = flags.to_vec();
         args.push(&p.path);
-        c.run(program, &args)?;
+        let status = c.status(program, &args)?;
+        if !status.success() {
+            let error = Error::new(format!("{program} failed ({status})"));
+            if p.path == plan.root().path {
+                return Err(error);
+            }
+            if deferred_check.is_none() {
+                deferred_check = Some(error);
+            }
+        }
     }
     recheck(&plan, &c, &[])?;
     let mut root_probe = Mount::new(
         &c,
         &plan.root().path,
         &point("root-check"),
+        mount_type(plan.root().fs)?,
         "ro,noload,nosuid,nodev,noexec",
     )?;
-    let mut esp_probe = if let Some(esp) = plan.esp() {
-        Some(Mount::new(
-            &c,
-            &esp.path,
-            &point("esp-check"),
-            "ro,nosuid,nodev,noexec",
-        )?)
-    } else {
-        None
-    };
     if files::entry_exists(&root_probe.point.join(".assbox-install.json"))? {
         return Err(Error::new(
             "target contains an installation record; incomplete or existing installations require inspection, never automatic resume",
         ));
     }
+    if let Some(error) = deferred_check {
+        return Err(error);
+    }
+    recheck(&plan, &c, &[&root_probe])?;
+    let mut esp_probe = if let Some(esp) = plan.esp() {
+        Some(Mount::new(
+            &c,
+            &esp.path,
+            &point("esp-check"),
+            mount_type(esp.fs)?,
+            "ro,nosuid,nodev,noexec",
+        )?)
+    } else {
+        None
+    };
+    // Refuse an incomplete or existing target before fetching the release. A
+    // live installer can lose dynamically imported store objects across a
+    // power cycle, while this durable target record must remain sufficient to
+    // stop a blind retry without depending on transient installer state.
+    let fetched = crate::source::resolve(&c, release_tag, &point("release-download"))?;
+    let flake = assbox_config::flake(&fetched.release.manifest, plan.inventory().architecture);
     assbox_policy::validate_prepared_root(&files::prepared_root_entries(&root_probe.point)?)?;
     let apple = plan.boot() == BootKind::AppleRefind;
     let before_esp = match &esp_probe {
@@ -347,9 +381,21 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     crate::acceptance::install_configuration(&config)?;
     // Ask real Nix to validate the rebased graph; it is forbidden to update pins.
     let local = format!("path:{}", files::path_text(&config)?);
-    c.run("nix", &["flake", "lock", "--no-update-lock-file", &local])?;
+    c.run(
+        "nix",
+        &[
+            "flake",
+            "lock",
+            "--store",
+            &fetched.evaluation_store,
+            "--eval-store",
+            &fetched.evaluation_store,
+            "--no-update-lock-file",
+            &local,
+        ],
+    )?;
     crate::source::verify_local_lock(&c, &config, &fetched.release.manifest)?;
-    crate::check_evaluation(&c, &local)?;
+    crate::check_evaluation_with_store(&c, &local, Some(&fetched.evaluation_store))?;
     let mut configuration = configuration_snapshot(&config)?;
     let configuration_digest = configuration_digest(&c, &configuration)?;
     let mut mounts = vec![&root_probe];
@@ -362,7 +408,14 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     } else {
         "rw,nosuid,nodev,noexec,uid=0,gid=0,fmask=0177,dmask=0077"
     };
-    let mut backup = Mount::new(&c, &plan.backup().path, &point("backup"), backup_options)?;
+    let backup_type = mount_type(plan.backup().fs)?;
+    let mut backup = Mount::new(
+        &c,
+        &plan.backup().path,
+        &point("backup"),
+        backup_type,
+        backup_options,
+    )?;
     let available = c.text(
         "stat",
         &["-f", "--format=%a %S", files::path_text(&backup.point)?],
@@ -474,6 +527,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         &c,
         &plan.backup().path,
         &point("backup"),
+        backup_type,
         "ro,nosuid,nodev,noexec",
     )?;
     for (name, expected) in &hashes {
@@ -519,7 +573,13 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     // The backup contains the durable write intent even if the first target
     // record cannot be created. This file is separate from the immutable archive.
     backup.unmount(&c)?;
-    backup = Mount::new(&c, &plan.backup().path, &point("backup"), backup_options)?;
+    backup = Mount::new(
+        &c,
+        &plan.backup().path,
+        &point("backup"),
+        backup_type,
+        backup_options,
+    )?;
     write_backup_file(
         &backup
             .point
@@ -532,6 +592,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         &c,
         &plan.backup().path,
         &point("backup"),
+        backup_type,
         "ro,nosuid,nodev,noexec",
     )?;
     if io(fs::read(
@@ -547,7 +608,13 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     crate::acceptance::checkpoint("install-pre-write")?;
     // FIRST TARGET WRITE: preflight and independent backup succeeded. A failed
     // build can now leave an incomplete Linux root; boot files stay read-only.
-    let mut root = Mount::new(&c, &plan.root().path, &point("target"), "rw")?;
+    let mut root = Mount::new(
+        &c,
+        &plan.root().path,
+        &point("target"),
+        mount_type(plan.root().fs)?,
+        "rw",
+    )?;
     files::atomic_write(&root.point.join(".assbox-install.json"), &record, 0o600)?;
     #[cfg(test)]
     crate::acceptance::checkpoint("install-target-writes")?;
@@ -557,6 +624,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             &c,
             &p.path,
             &parent.join("efi"),
+            mount_type(p.fs)?,
             "ro,nosuid,nodev,noexec",
         )?)
     } else {
@@ -601,6 +669,15 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     // Use the upstream chroot-store mechanism and disk-backed build directory.
     let store = files::path_text(&root.point)?;
     let build_dir = make_dirs(&root.point, "var/tmp/assbox-build")?;
+    // Preflight must finish before target writes, so its private evaluator store
+    // starts under /run. Copy the already-validated state to the target before
+    // full evaluation so evaluator growth cannot exhaust the live environment.
+    let target_evaluation_store = crate::source::copy_evaluation_store(
+        &c,
+        &fetched.evaluation_store,
+        &build_dir,
+        &fetched.source_path,
+    )?;
     let logs = make_dirs(&root.point, "var/log/assbox-install")?;
     io(fs::set_permissions(
         &logs,
@@ -612,6 +689,17 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
         "path:{}#nixosConfigurations.assbox.config.system.build.toplevel",
         files::path_text(&installed_config)?
     );
+    write_phase(&c, &root.point, &record, "building", None)?;
+    recheck(&plan, &c, &mounts)?;
+    crate::release::check_freshness(&c, &fetched.release.manifest)?;
+    crate::release::prefetch_default_kernel(
+        &c,
+        &fetched.release,
+        &build_dir.join("kernel-cache"),
+        plan.inventory().architecture,
+        Some(&root.point),
+        false,
+    )?;
     // Both the provisional sizing build and the final build use the same
     // cancellation, retry and revalidation path. The snapshot changes only
     // after sizing resolves, never while retrying a particular build.
@@ -635,6 +723,8 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
                         "build",
                         "--store",
                         store,
+                        "--eval-store",
+                        &target_evaluation_store,
                         "--extra-substituters",
                         "auto?trusted=1",
                         "--option",
@@ -723,6 +813,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             &c,
             &p.path,
             &root.point.join("boot/efi"),
+            mount_type(p.fs)?,
             "rw,nosuid,nodev,noexec,fmask=0077,dmask=0077",
         )?)
     } else {

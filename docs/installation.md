@@ -140,8 +140,12 @@ configurable and defaults off. An exact whole-disk confirmation is required befo
 proceeding. Credentials are obtained separately, never inserted in Nix source or
 command arguments.
 
-The release tarball and lock are authenticated before Nix metadata/evaluation. The
-machine's ordinary flake pins the exact immutable release asset with its NAR hash;
+The release tarball and lock are authenticated before Nix metadata/evaluation.
+Metadata is evaluated from the verified content-addressed store object, and the
+complete release evaluation uses a new transaction-private Nix store so an older
+shared-store hardlink cannot redirect evaluation through damaged source bytes.
+Build outputs still enter the target store. The machine's ordinary flake pins the
+exact immutable release asset with its NAR hash;
 there is no moving branch or `--source` bypass. Future Assbox updates authenticate
 a new immutable release before changing that pin. Direct NixOS administration is
 still available for separately trusted custom sources, outside this automatic

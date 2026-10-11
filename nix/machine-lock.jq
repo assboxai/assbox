@@ -6,10 +6,10 @@ if $lock.version != 7 or ($lock.nodes | type) != "object"
    or ($lock.nodes[$lock.root].inputs.nixpkgs == null)
    or ($lock.nodes | has("_assbox_machine"))
    or any($lock.nodes[]; has("parent") or (.locked.type == "path"))
-   or $metadata.locked.type != "tarball"
-   or $metadata.locked.url != $url or $metadata.locked.narHash != $hash
-   or $metadata.original.type != "tarball" or $metadata.original.url != $url
-   or $metadata.original.narHash != $hash
+   or $metadata.path != $path
+   or $metadata.locked.type != "path"
+   or $metadata.locked.path != $path or $metadata.locked.narHash != $hash
+   or $metadata.original.type != "path" or $metadata.original.path != $path
 then error("unsupported or unauthenticated release input graph") else . end |
 ($lock.nodes | with_entries(
   if .value.inputs then
@@ -18,7 +18,11 @@ then error("unsupported or unauthenticated release input graph") else . end |
     )
   else . end
 )) as $nodes |
-($nodes | .[$lock.root] += {locked: $metadata.locked, original: $metadata.original}) as $bound |
+# Metadata was evaluated from the already authenticated local store object.
+# Persist the immutable release identity from the signed manifest rather than
+# its transaction-local path reference.
+({type: "tarball", url: $url, narHash: $hash}) as $release |
+($nodes | .[$lock.root] += {locked: $release, original: $release}) as $bound |
 {version: 7, root: "_assbox_machine", nodes: ($bound + {
   "_assbox_machine": {inputs: {assbox: $lock.root, nixpkgs: ["assbox", "nixpkgs"]}}
 })}

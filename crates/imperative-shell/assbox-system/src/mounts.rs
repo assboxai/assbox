@@ -22,7 +22,7 @@ struct Identity {
 // acquisition/cleanup algorithm without mounting devices in a Cargo unit test.
 trait Backend {
     fn observe(&self, point: &Path) -> Result<Vec<Identity>>;
-    fn mount(&self, device: &str, point: &Path, options: &str) -> Result<()>;
+    fn mount(&self, device: &str, point: &Path, fs_type: &str, options: &str) -> Result<()>;
     fn unmount(&self, point: &Path) -> Result<()>;
 }
 struct LinuxBackend;
@@ -30,10 +30,18 @@ impl Backend for LinuxBackend {
     fn observe(&self, point: &Path) -> Result<Vec<Identity>> {
         parse_mountinfo(&io(fs::read_to_string("/proc/self/mountinfo"))?, point)
     }
-    fn mount(&self, device: &str, point: &Path, options: &str) -> Result<()> {
+    fn mount(&self, device: &str, point: &Path, fs_type: &str, options: &str) -> Result<()> {
         Commands.run(
             "mount",
-            &["-o", options, "--", device, files::path_text(point)?],
+            &[
+                "-t",
+                fs_type,
+                "-o",
+                options,
+                "--",
+                device,
+                files::path_text(point)?,
+            ],
         )
     }
     fn unmount(&self, point: &Path) -> Result<()> {
@@ -97,12 +105,13 @@ impl<B: Backend> Lease<B> {
         device: &str,
         major_minor: String,
         point: &Path,
+        fs_type: &str,
         options: &str,
     ) -> Result<Self> {
         if !backend.observe(point)?.is_empty() {
             return Err(Error::new("mount destination is already mounted"));
         }
-        backend.mount(device, point, options)?;
+        backend.mount(device, point, fs_type, options)?;
         // No fallible operation between successful mount and owning its cleanup.
         let mut lease = Self {
             backend,
@@ -160,7 +169,13 @@ pub struct Mount {
     pub point: PathBuf,
 }
 impl Mount {
-    pub fn new(_commands: &Commands, device: &str, point: &Path, options: &str) -> Result<Self> {
+    pub fn new(
+        _commands: &Commands,
+        device: &str,
+        point: &Path,
+        fs_type: &str,
+        options: &str,
+    ) -> Result<Self> {
         files::create_private(point)?;
         let metadata = io(fs::metadata(device))?;
         if !metadata.file_type().is_block_device() {
@@ -175,6 +190,7 @@ impl Mount {
             device,
             format!("{major}:{minor}"),
             point,
+            fs_type,
             options,
         )?;
         Ok(Self {
@@ -203,6 +219,7 @@ mod tests {
         fail_read: Option<usize>,
         replacement: bool,
         fail_unmount: bool,
+        fs_type: Option<String>,
     }
     struct Fake(Rc<RefCell<State>>);
     impl Backend for Fake {
@@ -222,10 +239,11 @@ mod tests {
                 vec![]
             })
         }
-        fn mount(&self, _: &str, _: &Path, _: &str) -> Result<()> {
+        fn mount(&self, _: &str, _: &Path, fs_type: &str, _: &str) -> Result<()> {
             let mut s = self.0.borrow_mut();
             s.mounted = true;
             s.mounts += 1;
+            s.fs_type = Some(fs_type.into());
             Ok(())
         }
         fn unmount(&self, _: &Path) -> Result<()> {
@@ -250,6 +268,7 @@ mod tests {
                 "/dev/test",
                 "8:1".into(),
                 Path::new("/owned"),
+                "vfat",
                 "ro"
             )
             .is_err()
@@ -257,6 +276,7 @@ mod tests {
         let s = state.borrow();
         assert_eq!(s.mounts, 1);
         assert_eq!(s.unmounts, 1);
+        assert_eq!(s.fs_type.as_deref(), Some("vfat"));
         assert!(!s.mounted);
     }
     #[test]
@@ -271,6 +291,7 @@ mod tests {
                 "/dev/test",
                 "8:1".into(),
                 Path::new("/owned"),
+                "ext4",
                 "ro"
             )
             .is_err()
@@ -285,6 +306,7 @@ mod tests {
             "/dev/test",
             "8:1".into(),
             Path::new("/owned"),
+            "ext4",
             "ro",
         )
         .unwrap();
@@ -296,6 +318,7 @@ mod tests {
             "/dev/test",
             "8:1".into(),
             Path::new("/owned"),
+            "ext4",
             "ro",
         )
         .unwrap();
@@ -315,6 +338,7 @@ mod tests {
             "/dev/test",
             "8:1".into(),
             Path::new("/owned"),
+            "ext4",
             "ro",
         )
         .unwrap();

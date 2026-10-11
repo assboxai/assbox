@@ -9,9 +9,21 @@
 let
   system = guest.config.system.build.toplevel;
   buildId = builtins.hashString "sha256" (toString system);
+  builderKernel = guest.config.boot.kernelPackages.kernel;
+  # make-disk-image normally boots pkgs.vmTools' kernel while constructing the
+  # qcow2. Bind that private builder VM to the same authenticated kernel used
+  # by the appliance and worker runtime; otherwise an application overlay can
+  # quietly introduce a second full kernel build before the artifact exists.
+  builderPkgs = pkgs.extend (
+    _final: previous: {
+      vmTools = previous.vmTools.override {
+        kernel = builderKernel;
+      };
+    }
+  );
   builtDisk = import (pkgs.path + "/nixos/lib/make-disk-image.nix") {
-    inherit pkgs;
-    inherit (pkgs) lib;
+    pkgs = builderPkgs;
+    inherit (builderPkgs) lib;
     config = guest.config;
     name = "assbox-worker-disk";
     baseName = "assbox-worker";
@@ -37,7 +49,7 @@ let
   # This changes image construction only; the production worker remains KVM-only.
   disk =
     if pkgs.stdenv.hostPlatform.isAarch64 then
-      builtDisk.overrideAttrs (old: {
+      pkgs.lib.overrideDerivation builtDisk (old: {
         requiredSystemFeatures = builtins.filter (feature: feature != "kvm") (
           old.requiredSystemFeatures or [ ]
         );
@@ -77,6 +89,8 @@ pkgs.runCommand "assbox-worker-artifact"
       # Evaluation-only policy evidence. This is not a runtime root or export of
       # guest executables into the host system.
       guestPolicy = {
+        builderKernelDrv = builderKernel.drvPath;
+        kernelDrv = guest.config.boot.kernelPackages.kernel.drvPath;
         sshdConfig = guest.config.environment.etc."ssh/sshd_config".source;
         assertions = guest.config.assertions;
         mutableUsers = guest.config.users.mutableUsers;

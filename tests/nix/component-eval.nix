@@ -69,6 +69,18 @@ let
       "tailscale"
     ] pkg
     // {
+      ffmpeg = (pkg "ffmpeg") // {
+        override =
+          flags:
+          assert
+            flags == {
+              withXcb = true;
+              withXcbShm = true;
+              withXcbxfixes = true;
+              withXcbShape = true;
+            };
+          pkg "ffmpeg-x11";
+      };
       tailscale =
         if poisonTailscale then throw "deselected Tailscale package was forced" else pkg "tailscale";
       callPackage = _: _: pkg "vscode-cli";
@@ -78,7 +90,9 @@ let
       writeShellScriptBin = name: _: pkg name;
       writeShellScript = name: text: (pkg name) // { scriptText = text; };
       writeText = name: text: (pkg name) // { scriptText = text; };
-      stdenv.cc.cc = pkg "cc";
+      stdenv.cc.cc = (pkg "cc") // {
+        lib = pkg "cc-lib";
+      };
       stdenv.hostPlatform = {
         system = "x86_64-linux";
         isx86_64 = true;
@@ -225,6 +239,11 @@ in
   xdg = result.config.xdg;
   packages = map toString (result.config.environment.systemPackages or [ ]);
   scripts = lib.mapAttrs (_: value: value.source.scriptText) (
+    lib.filterAttrs (
+      name: _: lib.hasPrefix "assbox/onboarding/" name || lib.hasPrefix "assbox/diagnostics/" name
+    ) result.config.environment.etc
+  );
+  scriptModes = lib.mapAttrs (_: value: value.mode or "symlink") (
     lib.filterAttrs (
       name: _: lib.hasPrefix "assbox/onboarding/" name || lib.hasPrefix "assbox/diagnostics/" name
     ) result.config.environment.etc

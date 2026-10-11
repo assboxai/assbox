@@ -23,6 +23,9 @@ let
     inherit pkgs assbox;
     testCa = ca;
   };
+  releasedPackage = import ./fixture-release-package.nix {
+    inherit pkgs assbox;
+  };
   mirror = import ./source-mirror.nix { inherit pkgs inputs; };
   keys = pkgs.runCommand "assbox-disposable-ssh-key" { nativeBuildInputs = [ pkgs.openssh ]; } ''
     mkdir "$out"
@@ -36,7 +39,10 @@ let
       networking.useDHCP = lib.mkForce false;
       networking.interfaces.eth1.ipv4.addresses = lib.mkForce [{ address = "192.168.1.3"; prefixLength = 24; }];
       networking.hosts."192.168.1.1" = [ "github.com" "api.github.com" ];
-      security.pki.certificateFiles = [ ${ca} ];
+      # This module is copied into a new flake. Embed the same public test CA
+      # instead of introducing an absolute path outside that flake's inputs.
+      ${import ./fixture-certificate.nix { certificate = ca; }}
+      nix.settings.trusted-public-keys = lib.mkAfter [ ${builtins.toJSON (import ./fixture-cache-public-key.nix)} ];
       nix.settings.substituters = lib.mkForce [];
       nix.settings.builders = lib.mkForce "";
       assbox.network.tailscale.enable = lib.mkForce false;
@@ -117,6 +123,11 @@ let
       assbox
       assbox.drvPath
       assbox.cargoDeps
+      releasedPackage
+      releasedPackage.drvPath
+      seed.config.boot.kernelPackages.kernel.out
+      seed.config.boot.kernelPackages.kernel.modules
+      seed.config.boot.kernelPackages.kernel.dev
     ]
     ++ buildTools;
   };
@@ -128,10 +139,15 @@ let
   common = { lib, ... }: {
     virtualisation.memorySize = 3072;
     virtualisation.qemu.forceAccel = lib.mkForce (!arm);
+    virtualisation.qemu.options = lib.optionals arm [ "-cpu max,lpa2=off" ];
     system.stateVersion = "26.05";
   };
 in
 pkgs.testers.runNixOSTest {
+  # Installation copies a full offline build closure before activation and the
+  # recovery scenario then exercises many real builds and reboots. Keep the
+  # outer harness above its existing bounded per-operation timeouts.
+  globalTimeout = (if arm then 4 else 2) * 60 * 60;
   name = "assbox-${scenario}-${mode}-${toString sectorSize}";
   node.pkgsReadOnly = false;
   requiredFeatures.kvm = !arm;
@@ -163,7 +179,17 @@ pkgs.testers.runNixOSTest {
       ];
     };
     installer = { lib, ... }: {
-      imports = [ common ];
+      imports = [
+        common
+        ./fixture-store-image.nix
+        (import ./fixture-cache-signing.nix {
+          inherit pkgs;
+          roots = [
+            harness
+            dependencies
+          ];
+        })
+      ];
       networking.interfaces.eth1.ipv4.addresses = lib.mkForce [
         {
           address = "192.168.1.2";
@@ -205,11 +231,34 @@ pkgs.testers.runNixOSTest {
         ];
         substituters = lib.mkForce [ ];
       };
+      # Read the offline closure from a block-backed image instead of 9p.
+      virtualisation.useNixStoreImage = true;
+      virtualisation.writableStore = true;
+      # The optical fixture is attached through a modular virtio SCSI driver.
+      # The live fixture also creates and mounts an ESP before the target
+      # configuration exists, so retain the FAT modules in its system closure.
+      boot.kernelModules = [
+        "virtio_scsi"
+        "sr_mod"
+        "vfat"
+        "nls_cp437"
+        "nls_iso8859-1"
+      ];
       virtualisation.diskSize = 65536;
-      virtualisation.emptyDiskImages = [ 2048 ]; # Independent backup disk.
+      # Identify the independent backup disk even when a store image adds a drive.
+      virtualisation.emptyDiskImages = [
+        {
+          size = 2048;
+          driveConfig.deviceExtraOpts.serial = "assbox-backup";
+        }
+      ];
       virtualisation.useEFIBoot = efi;
-      virtualisation.useBootLoader = efi;
-      boot.loader.systemd-boot.enable = lib.mkForce efi;
+      # Direct kernel boot through the EFI firmware keeps real firmware
+      # observation without baking the complete offline build closure into an
+      # installer image. The produced target still boots its real bootloader.
+      virtualisation.useBootLoader = false;
+      virtualisation.efi.keepVariables = false;
+      boot.loader.systemd-boot.enable = lib.mkForce false;
       boot.loader.grub.enable = lib.mkForce false;
       virtualisation.qemu.options =
         lib.optionals apple [
@@ -240,6 +289,7 @@ pkgs.testers.runNixOSTest {
       virtualisation.useBootLoader = true;
       virtualisation.useEFIBoot = efi;
       virtualisation.useDefaultFilesystems = false;
+      virtualisation.efi.keepVariables = false;
       virtualisation.qemu.drives = lib.mkForce [
         {
           name = "root";
@@ -253,7 +303,7 @@ pkgs.testers.runNixOSTest {
         }
       ];
 
-      fileSystems."/" = {
+      virtualisation.fileSystems."/" = {
         device = "/dev/vda";
         fsType = "ext4";
       };
@@ -261,11 +311,14 @@ pkgs.testers.runNixOSTest {
     };
   };
   testScript = ''
-    import json, shlex, subprocess
+    import subprocess
     from pathlib import Path
     mode = ${builtins.toJSON mode}
     sector_size = ${toString sectorSize}
     scenario = ${builtins.toJSON scenario}
+    # Native ARM hosted runners execute these guests in software emulation. Keep
+    # each progress wait bounded while allowing the same assertions to finish.
+    action_timeout = ${if arm then "7200" else "3600"}
     harness = "${harness}/libexec/assbox-acceptance"
     dependencies = "${dependencies}"
     key = "${keys}/key.pub"
@@ -275,10 +328,12 @@ pkgs.testers.runNixOSTest {
     release_script = "${../fixtures/install_release.py}"
     terminal_script = "${../fixtures/installer_terminal.py}"
     test_ca = "${ca}"
+    test_ca_pem = ${builtins.toJSON (builtins.readFile ca)}
     refind = "${if apple then "${pkgs.refind}/share/refind/refind_x64.efi" else ""}"
     qemu_img = "${pkgs.qemu}/bin/qemu-img"
     target_image = str(installer.shared_dir / "assbox-target.qcow2")
     subprocess.run([qemu_img, "create", "-f", "qcow2", target_image, "64G"], check=True)
-    exec(Path("${../fixtures/installed_cases.py}").read_text())
+    case_script = "${../fixtures/installed_cases.py}"
+    exec(compile(Path(case_script).read_text(), case_script, "exec"))
   '';
 }

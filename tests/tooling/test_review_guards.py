@@ -9,11 +9,13 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
 
 
 class ReviewGuards(unittest.TestCase):
@@ -125,6 +127,7 @@ class ReviewGuards(unittest.TestCase):
     def required_acceptance_names():
         required = ["worker-tools", "worker-policy", "worker-artifact", "worker-boot-gate-vm", "worker-sshd-policy-vm", "worker-network-vm", "worker-lifecycle-vm", "remote-lifecycle-vm", "editor-vm", "desktop-services-vm", "radio-policy-vm", "access-lan-vm", "access-tailscale-vm", "install-boot-vm", "activation-recovery-vm", "authenticated-release-vm",
                     "application-chatgpt-vm", "application-opencode-vm", "application-openclaw-vm"]
+        required.append("computer-use-vm")
         required += ["application-" + family + "-vm" for family in __import__("component_families").FAMILIES if "application-" + family + "-vm" not in required]
         return required
 

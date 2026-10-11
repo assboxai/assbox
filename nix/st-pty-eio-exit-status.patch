@@ -1,0 +1,55 @@
+Preserve the child exit status when Linux reports EIO after the last PTY
+slave closes.  SIGCHLD and the PTY readiness notification can arrive in
+either order; treating EIO as an unconditional terminal error makes a
+successful short-lived child fail nondeterministically.
+
+--- a/st.c
++++ b/st.c
+@@ -156,5 +156,6 @@ static void execsh(char *, char **);
+ static void stty(char **);
+ static void sigchld(int);
++static void ttywait(int);
+ static void ttywriteraw(const char *, size_t);
+ 
+ static void csidump(void);
+@@ -710,13 +711,13 @@ execsh(char *cmd, char **args)
+ }
+ 
+ void
+-sigchld(int a)
++ttywait(int options)
+ {
+ 	int stat;
+ 	pid_t p;
+ 
+-	if ((p = waitpid(pid, &stat, WNOHANG)) < 0)
++	if ((p = waitpid(pid, &stat, options)) < 0)
+ 		die("waiting for pid %hd failed: %s\n", pid, strerror(errno));
+ 
+ 	if (pid != p)
+ 		return;
+@@ -728,6 +729,12 @@ ttywait(int options)
+ 	_exit(0);
+ }
+ 
++void
++sigchld(int a)
++{
++	ttywait(WNOHANG);
++}
++
+ void
+ stty(char **args)
+ {
+@@ -828,6 +835,11 @@ ttyread(void)
+ 	case 0:
+ 		exit(0);
+ 	case -1:
++		if (errno == EIO) {
++			/* Own the reap here; do not race the asynchronous handler. */
++			signal(SIGCHLD, SIG_DFL);
++			ttywait(0);
++		}
+ 		die("couldn't read from shell: %s\n", strerror(errno));
+ 	default:
+ 		buflen += ret;

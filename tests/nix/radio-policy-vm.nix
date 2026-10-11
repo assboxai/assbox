@@ -20,6 +20,11 @@ let
       presentation = "wayland";
       wifi = true;
     };
+    strict = {
+      presentation = "headless";
+      wifi = false;
+      strict = true;
+    };
   };
 in
 pkgs.testers.runNixOSTest {
@@ -35,8 +40,13 @@ pkgs.testers.runNixOSTest {
       updates.enable = false;
       components = { };
     };
-    boot.kernelModules = [ "mac80211_hwsim" ];
-    boot.extraModprobeConfig = "options mac80211_hwsim radios=1";
+    boot.kernelModules = lib.optional (!(case.strict or false)) "mac80211_hwsim";
+    boot.extraModprobeConfig = lib.optionalString (
+      !(case.strict or false)
+    ) "options mac80211_hwsim radios=1";
+    # This VM exercises the independent rfkill/hotplug backstop with a software
+    # radio. Remove the earlier module denial only inside this synthetic test.
+    _module.args.assboxDeviceModuleDeny = case.strict or false;
     boot.loader.systemd-boot.enable = lib.mkForce false;
     boot.loader.grub.enable = lib.mkForce false;
     systemd.services.assbox-boot-check.enable = lib.mkForce false;
@@ -55,7 +65,7 @@ pkgs.testers.runNixOSTest {
     import json
     import shlex
 
-    cases = ${builtins.toJSON cases}
+    cases = json.loads(${builtins.toJSON (builtins.toJSON cases)})
     for name, case in cases.items():
         machine = next(node for node in machines if node.name == name)
         machine.start()
@@ -64,14 +74,32 @@ pkgs.testers.runNixOSTest {
         # handler, not just that /dev/rfkill is inaccessible to the seat user.
         machine.succeed("zgrep -x '# CONFIG_RFKILL_INPUT is not set' /proc/config.gz")
 
+        if case.get("strict", False):
+            machine.wait_for_unit("assbox-device-policy-check.service")
+            machine.succeed("systemctl is-active assbox-device-policy-check.service")
+            machine.succeed("grep -q 'module_blacklist=.*cfg80211.*snd' /proc/cmdline")
+            machine.succeed("for interface in /sys/class/net/*; do test ! -d $interface/wireless; done")
+            machine.fail("test -e /sys/class/sound/card0")
+            machine.fail("test -e /dev/snd")
+            machine.fail("ip -o link | grep -Ev ': (lo|eth[0-9]+|en[^:]+):'")
+            machine.shutdown()
+            continue
+
         def user(command):
             return "runuser -u agent -- bash -c " + shlex.quote(command)
 
         def active_seat():
-            machine.wait_until_succeeds("test -n \"$(loginctl show-seat seat0 -p ActiveSession --value)\"")
-            session = machine.succeed("loginctl show-seat seat0 -p ActiveSession --value").strip()
-            for prop, value in [("Name", "agent"), ("Active", "yes"), ("Type", case["presentation"])]:
-                machine.wait_until_succeeds("test $(loginctl show-session " + shlex.quote(session) + " -p " + prop + " --value) = " + value)
+            # During a display-manager restart logind can briefly report the old
+            # active session immediately before retiring it. Re-read the seat and
+            # verify every property in one retry so a stale ID cannot be cached.
+            expected = shlex.quote(case["presentation"])
+            machine.wait_until_succeeds(
+                "session=$(loginctl show-seat seat0 -p ActiveSession --value); "
+                + "test -n \"$session\" && "
+                + "test \"$(loginctl show-session \"$session\" -p Name --value)\" = agent && "
+                + "test \"$(loginctl show-session \"$session\" -p Active --value)\" = yes && "
+                + "test \"$(loginctl show-session \"$session\" -p Type --value)\" = " + expected,
+                timeout=120)
 
         def radio():
             discover = "for p in /sys/class/rfkill/rfkill*; do if test $(cat $p/type) = wlan; then echo $p; fi; done"
@@ -82,7 +110,7 @@ pkgs.testers.runNixOSTest {
             return paths[0]
 
         def soft(value):
-            machine.wait_until_succeeds("test $(cat " + radio() + "/soft) = " + str(value))
+            machine.wait_until_succeeds("test $(cat " + radio() + "/soft) = " + str(value), timeout=120)
 
         def denied():
             machine.succeed("udevadm settle; test -c /dev/rfkill")

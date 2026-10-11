@@ -12,17 +12,26 @@ use assbox_domain::*;
 use assbox_system::commands::Commands;
 
 pub fn check_evaluation(c: &Commands, flake: &str) -> Result<()> {
+    check_evaluation_with_store(c, flake, None)
+}
+
+pub(crate) fn check_evaluation_with_store(
+    c: &Commands,
+    flake: &str,
+    evaluation_store: Option<&str>,
+) -> Result<()> {
     let target = format!("{flake}#nixosConfigurations.assbox.config.assbox.audit");
-    let json = c.capture(
-        "nix",
-        &[
-            "eval",
-            "--json",
-            "--no-write-lock-file",
-            "--no-update-lock-file",
-            &target,
-        ],
-    )?;
+    let mut arguments = vec!["eval"];
+    if let Some(store) = evaluation_store {
+        arguments.extend(["--eval-store", store]);
+    }
+    arguments.extend([
+        "--json",
+        "--no-write-lock-file",
+        "--no-update-lock-file",
+        &target,
+    ]);
+    let json = c.capture("nix", &arguments)?;
     let f = c.jq_fields(
         &json,
         r#"[.enabled,(.selectedComponents|join(",")),.presentation,.firewall,.rootLocked,.agentLocked,
@@ -84,6 +93,34 @@ pub fn inspect_release(tag: &str, directory: &std::path::Path, historical: bool)
         } else {
             ""
         }
+    );
+    Ok(())
+}
+
+/// Authenticate and import the published default kernel into a fresh isolated
+/// store. Existing host paths cannot substitute for public cache availability.
+pub fn inspect_release_kernel(tag: &str, directory: &std::path::Path) -> Result<()> {
+    assbox_system::files::require_root()?;
+    let authenticated = release::fetch(&Commands, Some(tag), directory, None, false)?;
+    let store = directory.join("kernel-store");
+    assbox_system::files::create_private(&store)?;
+    assbox_system::cancellation::install_handlers()?;
+    release::prefetch_default_kernel(
+        &Commands,
+        &authenticated,
+        &directory.join("kernel-cache"),
+        assbox_system::probe::architecture(&Commands)?,
+        Some(&store),
+        true,
+    )?;
+    assbox_system::files::atomic_write(
+        &directory.join("verified-source-path"),
+        assbox_system::files::path_text(&authenticated.source_path)?.as_bytes(),
+        0o600,
+    )?;
+    println!(
+        "Authenticated and imported the default kernel for {}.",
+        authenticated.manifest.tag.as_str()
     );
     Ok(())
 }

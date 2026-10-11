@@ -4,12 +4,11 @@ Assbox is a dedicated machine for running AI agents and, when selected, a physic
 
 **Source status:** beta implementation candidate with native/authenticated qualification outstanding. The [accepted product contract](docs/product/index.md) defines the implementation target; [implementation status](docs/implementation-status.md) identifies what this source baseline does and does not yet contain. A target feature listed here is not a claim of completed support.
 
-Current infrastructure and laptop-checkpoint development is tracked in the canonical
-[`development/laptop-checkpoint` branch](https://github.com/buu700/assbox-dev/tree/development/laptop-checkpoint).
-Its [physical checkpoint guide](https://github.com/buu700/assbox-dev/blob/development/laptop-checkpoint/docs/physical-checkpoint.md)
-records the live-test boundary and the external USB installation acceptance case.
-Qualification remains pending; consult that branch for the latest implementation.
-
+Current accepted development is committed to canonical
+[`master`](https://github.com/buu700/assbox-dev/tree/master).
+The [physical checkpoint guide](docs/physical-checkpoint.md) records the live-test
+boundary and the external USB installation acceptance case. A source commit does
+not establish a passing full gate or a qualified downloadable release.
 
 ## Choose the job, then the application
 
@@ -37,6 +36,10 @@ The Coder menu makes Codex via an external ChatGPT Desktop SSH connection explic
 The installer starts with purpose, then application, component exclusions, presentation, execution resources and access. Existing headless, X11/Openbox and Wayland/labwc machinery remains. Native Desktop compatibility is specific to the selected application and its qualification record.
 
 Retain generic x86-64 UEFI/BIOS, existing Intel Mac preservation profiles and generic AArch64 UEFI arrangements, including suitable VMs. This is not bare-metal Apple Silicon, 32-bit ARM or board-specific boot-image support. Consult [hardware acceptance](docs/intel-mac-acceptance.md) and [Parallels](docs/parallels.md). A VM without exposed KVM can be a standalone host even when native worker/provider-VM routes are unavailable.
+
+An immutable development [physical x86 checkpoint](docs/physical-checkpoint.md)
+provides a non-installing hybrid BIOS/UEFI live image for early wired-only testing.
+It is separate from the authenticated installation and update release line.
 
 The existing direct QEMU/KVM [managed worker](docs/worker/controller-model.md) has persistent home, disposable root, dedicated SSH identities and host-enforced policy. Preserve its [operations](docs/worker/operations.md), [scoped Git workflow](docs/worker/git-workflow.md), [client-routing checks](docs/worker/client-routing.md) and [qualification status](docs/worker/implementation-status.md). A VM does not reduce the provider-side authority of a credential placed inside it.
 
@@ -69,8 +72,10 @@ application restart policy. Build parallelism remains at the upstream defaults.
 
 ## Development and release gate
 
-Start with [development](docs/development.md). A source checkout without a genuine
-`flake.lock` is a bootstrap candidate, not an installable release. Initial bootstrap resolves the lock with Nix. Scheduled maintenance verifies
+Start with [development](docs/development.md): `just setup`, then `just verify`.
+[Finite preparation and repair sessions](docs/repair-loop.md) make expensive
+verification and its source/oracle identity explicit. A source checkout without a
+genuine `flake.lock` is a bootstrap candidate, not an installable release. Initial bootstrap resolves the lock with Nix. Scheduled maintenance verifies
 the candidate before its bounded lock-only or empty commit; it never formats or
 changes arbitrary source.
 

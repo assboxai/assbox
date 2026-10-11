@@ -87,7 +87,12 @@
           };
           omp = omp-packages.packages.${pkgs.stdenv.hostPlatform.system};
           grok = grok-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
+            openclaw = import ./nix/openclaw.nix {
+              inherit pkgs;
+              raw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system}.openclaw;
+            };
+          };
           opencode = opencode-packages.packages.${pkgs.stdenv.hostPlatform.system};
 
         };
@@ -119,6 +124,78 @@
             ;
         }
       );
+      physicalCheckpoint =
+        system:
+        let
+          p = platform.${system};
+          checkpointSystemd = p.pkgs.systemd.override {
+            pname = "systemd-assbox-checkpoint";
+            withBootloader = false;
+            withCoredump = false;
+            withCryptsetup = false;
+            withEfi = false;
+            withFido2 = false;
+            withHomed = false;
+            withImportd = false;
+            withLibBPF = false;
+            withMachined = false;
+            withNspawn = false;
+            withPortabled = false;
+            withRemote = false;
+            withRepart = false;
+            withSysupdate = false;
+            withTpm2Tss = false;
+            withVmspawn = false;
+          };
+          # The live checkpoint cannot install or update a machine. Give its
+          # real Assbox binary only the immutable diagnostic tools available in
+          # the image instead of retaining the production installer/rebuild
+          # tool closure (including Nix and disk-management programs).
+          checkpointTools = with p.pkgs; [
+            curl
+            cacert
+            git
+            jq
+            checkpointSystemd
+            util-linux
+            coreutils
+            findutils
+            gnugrep
+            gnused
+            gnutar
+            iproute2
+            pciutils
+            usbutils
+            openssh
+          ];
+          checkpointAssbox = p.assbox.overrideAttrs (_old: {
+            ASSBOX_TOOL_PATH = p.pkgs.lib.makeBinPath checkpointTools;
+            # The full package is tested by the ordinary native gates. Avoid a
+            # second package-test closure in the published live image build.
+            doCheck = false;
+            nativeCheckInputs = [ ];
+            GI_TYPELIB_PATH = "";
+          });
+          recipes = happier-packages.packages.${system};
+          artifact = builtins.fromJSON (builtins.readFile ./nix/happier-source.json);
+          happier =
+            if recipes ? happier then
+              recipes.happier
+            else
+              assert happier-packages.rev == artifact.reviewedPackageRecipeRevision;
+              p.pkgs.callPackage ./nix/happier.nix { };
+        in
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            assboxPackage = checkpointAssbox;
+            assboxCodex = codex-packages.packages.${system}.codex;
+            assboxHappier = happier;
+            assboxCheckpointSystemd = checkpointSystemd;
+            inherit sourceRevision;
+          };
+          modules = [ ./nix/physical-checkpoint-iso.nix ];
+        };
     in
     {
       nixosModules.default = module;
@@ -131,63 +208,47 @@
           inherit (p) assbox;
           default = p.assbox;
         }
+        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          physical-checkpoint-iso = (physicalCheckpoint system).config.system.build.isoImage;
+        }
       );
       # Exposed data for trusted release jobs; no source mutation is required.
       assboxReleasePolicy = releasePolicy;
       formatter = eachSystem (system: platform.${system}.pkgs.nixfmt);
       devShells = eachSystem (
         system:
-        let
-          p = platform.${system};
-        in
-        {
-          default = p.pkgs.mkShell {
-            packages =
-              p.tools.packages
-              ++ (with p.pkgs; [
-                cargo
-                rustc
-                rustfmt
-                clippy
-                (python3.withPackages (ps: [
-                  ps.pyyaml
-                  ps.pygobject3
-                ]))
-                shellcheck
-                actionlint
-                just
-                nodejs
-                wrangler
-                openssl
-                cargo-llvm-cov
-                cargo-audit
-                vulnix
-              ]);
-            ASSBOX_NIX_LIB = "${nixpkgs}/lib";
-            GI_TYPELIB_PATH = p.pkgs.lib.makeSearchPath "lib/girepository-1.0" [
-              p.pkgs.networkmanager
-              p.pkgs.glib
-            ];
-            ASSBOX_TOOL_PATH = p.tools.path;
-            ASSBOX_SOURCE_REVISION = sourceRevision;
-            ASSBOX_REPOSITORY_ID = toString releasePolicy.repositoryId;
-            ASSBOX_OWNER_ID = toString releasePolicy.ownerId;
-            ASSBOX_CA_BUNDLE = "${p.pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-            RUST_SRC_PATH = "${p.pkgs.rustPlatform.rustLibSrc}";
-            # Nix's Rust compiler has no rustup llvm-tools-preview component.
-            # Coverage profiles must be read by its matching LLVM toolchain.
-            LLVM_COV = "${p.pkgs.rustc.llvmPackages.llvm}/bin/llvm-cov";
-            LLVM_PROFDATA = "${p.pkgs.rustc.llvmPackages.llvm}/bin/llvm-profdata";
-          };
+        import ./nix/release-environments.nix {
+          inherit (platform.${system}) pkgs tools;
+          inherit nixpkgs sourceRevision releasePolicy;
         }
       );
-      nixosConfigurations = nixpkgs.lib.foldl' (
-        all: system: all // platform.${system}.matrix.configurations
-      ) { } systems;
+      nixosConfigurations =
+        nixpkgs.lib.foldl' (all: system: all // platform.${system}.matrix.configurations) { } systems
+        // {
+          x86_64-linux-physical-checkpoint = physicalCheckpoint "x86_64-linux";
+        };
       checks = eachSystem (
         system:
         let
           p = platform.${system};
+          installBoot = import ./tests/nix/install-boot-vm.nix {
+            inherit module;
+            inherit (p) pkgs assbox;
+            inputs = {
+              inherit
+                nixpkgs
+                antigravity-packages
+                chatgpt-packages
+                claude-code-packages
+                claude-desktop-packages
+                codex-packages
+                cursor-packages
+                grok-packages
+                openclaw-packages
+                opencode-packages
+                ;
+            };
+          };
         in
         p.matrix.checks
         //
@@ -212,6 +273,9 @@
                 family = nixpkgs.lib.removeSuffix "-vm" (nixpkgs.lib.removePrefix "application-" name);
               }
             )
+        // nixpkgs.lib.mapAttrs' (
+          name: value: nixpkgs.lib.nameValuePair "install-boot-case-${name}" value
+        ) installBoot.cases
         // {
           workspace = p.assbox;
           worker-policy = import ./tests/nix/worker-policy.nix {
@@ -264,6 +328,10 @@
             inherit module;
             inherit (p) pkgs;
           };
+          execution-loopback-vm = import ./tests/nix/execution-loopback-vm.nix {
+            inherit module;
+            inherit (p) pkgs;
+          };
           computer-use-vm = import ./tests/nix/computer-use-vm.nix {
             inherit module;
             inherit (p) pkgs;
@@ -294,24 +362,7 @@
             inherit module;
             inherit (p) pkgs;
           };
-          install-boot-vm = import ./tests/nix/install-boot-vm.nix {
-            inherit module;
-            inherit (p) pkgs assbox;
-            inputs = {
-              inherit
-                nixpkgs
-                antigravity-packages
-                chatgpt-packages
-                claude-code-packages
-                claude-desktop-packages
-                codex-packages
-                cursor-packages
-                grok-packages
-                openclaw-packages
-                opencode-packages
-                ;
-            };
-          };
+          install-boot-vm = installBoot.matrix;
           activation-recovery-vm = import ./tests/nix/activation-recovery-vm.nix {
             inherit module;
             inherit (p) pkgs assbox;
@@ -348,6 +399,20 @@
             inherit (p) pkgs;
             application = "openclaw";
           };
+        }
+        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          physical-checkpoint-iso = (physicalCheckpoint system).config.system.build.isoImage;
+          physical-checkpoint-boot =
+            let
+              checkpoint = physicalCheckpoint system;
+              kernel = checkpoint.config.boot.kernelPackages.kernel;
+            in
+            import ./tests/nix/physical-checkpoint-boot.nix {
+              inherit sourceRevision;
+              inherit (checkpoint.config.system.build) isoImage;
+              inherit (p) pkgs;
+              kernelConfig = "${kernel.dev}/lib/modules/${kernel.modDirVersion}/build/.config";
+            };
         }
       );
     };

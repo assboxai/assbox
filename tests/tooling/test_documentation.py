@@ -38,7 +38,7 @@ class DocumentationTests(unittest.TestCase):
     def test_relative_files_and_heading_links_resolve(self):
         checked = 0
         for source in ROOT.rglob("*.md"):
-            if any(part in {".git", "target", "node_modules", "reports"} for part in source.relative_to(ROOT).parts):
+            if any(part in {".git", "target", "node_modules", "reports", ".cache", ".chainman"} for part in source.relative_to(ROOT).parts):
                 continue
             for target in re.findall(r"\[[^\]\n]+\]\(([^)\s]+)\)", source.read_text()):
                 link = urlsplit(target)

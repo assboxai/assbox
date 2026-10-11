@@ -197,8 +197,16 @@ suggestions, not an ongoing hardware-dependent configuration rewrite.
 
 Radio power switches remain administrative even while the agent owns the local
 desktop. `/dev/rfkill` is root-only; administrators use `sudo rfkill` when needed.
+Disabled Wi-Fi, Bluetooth and other radio core modules are denied from the earliest
+kernel command line, which also defaults newly registered rfkill devices to blocked;
+disabled sound and camera drivers receive the same module treatment.
+Before NetworkManager starts, a boot service reapplies the selected radio blocks
+and refuses the network dependency if a denied module or disabled device class was
+nevertheless initialized.
 The configured Wi-Fi selection is reapplied when NetworkManager starts, and
-disabled Wi-Fi radios are blocked on hotplug. Temporary administrator radio
+disabled Wi-Fi and Bluetooth radios are blocked on hotplug. When both are disabled,
+Assbox blocks every rfkill radio class, including otherwise unconfigured radio types.
+Temporary administrator radio
 changes last until that policy is reapplied; change the Nix option for persistence.
 The legacy kernel radio-hotkey handler is disabled so an agent-controlled input
 device cannot bypass this boundary. This uses a standard NixOS kernel configuration

@@ -25,7 +25,7 @@ class StateContinuity(unittest.TestCase):
         self.owner = os.geteuid()
 
     def test_exact_disk_mode_required_before_admission_and_existing_disk_reuse(self):
-        for mode in (0o400, 0o200, 0o000, 0o700, 0o4600, 0o1600, 0o640):
+        for mode in (0o400, 0o200, 0o000, 0o700, 0o1600, 0o640):
             with self.subTest(mode=oct(mode)):
                 self.home.chmod(mode)
                 with self.assertRaises(w.Refusal):
@@ -35,6 +35,21 @@ class StateContinuity(unittest.TestCase):
                         w.create_state_disk(self.home, self.c['stateGiB']*w.GIB, '/unused')
                     run.assert_not_called()
                 self.assertEqual(self.home.stat().st_mode & 0o7777, mode)
+        # Nix's unprivileged build sandbox refuses chmod(04600). Exercise that
+        # exact metadata through the same admission paths with a synthetic stat
+        # result, while the ordinary and sticky modes above use real files.
+        fields = list(self.home.lstat())
+        fields[0] = (fields[0] & ~0o7777) | 0o4600
+        synthetic = os.stat_result(fields)
+        with self.subTest(mode=oct(0o4600)), \
+             patch.object(w, 'require_regular', return_value=synthetic):
+            with self.assertRaises(w.Refusal):
+                w.disk_admission(self.c, {'rootVirtualBytes': 8*w.GIB}, owner=self.owner)
+            with patch.object(w, 'run') as run:
+                with self.assertRaises(w.Refusal):
+                    w.create_state_disk(self.home, self.c['stateGiB']*w.GIB, '/unused')
+                run.assert_not_called()
+            self.assertEqual(synthetic.st_mode & 0o7777, 0o4600)
         self.home.chmod(0o600)
         self.assertTrue(w.existing_state(self.c, self.owner))
 
@@ -96,10 +111,17 @@ class CanonicalKeyValidation(unittest.TestCase):
 
     def test_permissions_type_links_and_owner_are_checked_before_parsing(self):
         with patch.object(w, 'run') as run:
-            for mode in (0o400, 0o700, 0o640, 0o4600):
+            for mode in (0o400, 0o700, 0o640):
                 self.key.chmod(mode)
                 with self.assertRaises(w.Refusal):
                     w.key_public(self.key, '/unused', owner=os.geteuid())
+            fields = list(self.key.lstat())
+            fields[0] = (fields[0] & ~0o7777) | 0o4600
+            synthetic = os.stat_result(fields)
+            with patch.object(w, 'require_regular', return_value=synthetic):
+                with self.assertRaises(w.Refusal):
+                    w.key_public(self.key, '/unused', owner=os.geteuid())
+            self.assertEqual(synthetic.st_mode & 0o7777, 0o4600)
             self.key.chmod(0o600)
             with self.assertRaises(w.Refusal):
                 w.key_public(self.key, '/unused', owner=os.geteuid()+1)

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+schema = 3
+include = ["chainman/profiles.toml", "chainman/tasks.toml", "chainman/hooks.toml", "chainman/updates.toml", "chainman/dependencies.toml"]
+[project]
+default_profile = "default"
+[environment]
+pass = ["ASSBOX_ORACLE_SOURCE", "XDG_STATE_HOME", "RUNNER_TEMP"]

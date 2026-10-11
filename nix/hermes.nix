@@ -18,9 +18,24 @@ let
   dependencies = builtins.filter (
     p: !(builtins.elem (p.pname or (lib.getName p)) excluded)
   ) raw.dependencies;
-  pythonBase = raw.pythonModule or pkgs.python3;
+  # Python applications need not expose pythonModule. Their declared Python
+  # dependencies still identify the upstream interpreter; the consuming host's
+  # Python can have a different native extension ABI.
+  pythonDependency = lib.findFirst (
+    p: p ? pythonModule && !(builtins.isBool p.pythonModule)
+  ) null dependencies;
+  pythonBase =
+    if raw ? pythonModule && !(builtins.isBool raw.pythonModule) then
+      raw.pythonModule
+    else if pythonDependency != null then
+      pythonDependency.pythonModule
+    else
+      throw "Hermes dependencies do not identify their Python interpreter";
   python = pythonBase.withPackages (_: dependencies);
 in
+assert lib.all (
+  p: !(p ? pythonModule) || builtins.isBool p.pythonModule || p.pythonModule == pythonBase
+) dependencies;
 raw.overridePythonAttrs (old: {
   inherit dependencies;
   makeWrapperArgs = map (

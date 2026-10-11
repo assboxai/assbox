@@ -152,7 +152,7 @@ def check(root: Path) -> list[str]:
     if locked != GRAPH or any("source" in p or p["version"] != package["version"] for p in internal):
         errors.append("Cargo.lock does not describe the internal workspace exactly")
     for path in root.rglob("*"):
-        if any(part in {".git", "target", "reports", "__pycache__"} for part in path.relative_to(root).parts):
+        if any(part in {".git", "target", "reports", "__pycache__", ".chainman", ".cache"} for part in path.relative_to(root).parts):
             continue
         if path.is_symlink():
             errors.append(f"source symlink: {path.relative_to(root)}")

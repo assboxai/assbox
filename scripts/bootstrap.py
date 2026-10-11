@@ -227,7 +227,7 @@ def native(assets: Path, variant: str, system: str, report: Path) -> None:
             with tempfile.TemporaryDirectory(prefix="assbox-bootstrap-native-") as temp:
                 tree = Path(temp) / "source"
                 rel.materialize(files, tree)
-                rel.run("nix", "develop", "--no-update-lock-file", "--no-write-lock-file", "path:" + str(tree),
+                rel.run("nix", "develop", "--no-update-lock-file", "--no-write-lock-file", "path:" + str(tree) + "#release-check",
                         "--command", "bash", str(tree / "scripts/release-check"), "--bootstrap", str(tree))
                 clean_tree(tree, files)
                 passed = True

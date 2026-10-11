@@ -18,7 +18,7 @@ assert not any(os.environ.get(k) for k in ('GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_
 with (root / 'calls.jsonl').open('a') as log:
     log.write(json.dumps([tool, *args]) + '\n')
 if tool == 'systemd-ask-password':
-    assert args in [['Choose an administrator password:'], ['Repeat the administrator password:']]
+    assert args in [['--echo=no', 'Choose an administrator password:'], ['--echo=no', 'Repeat the administrator password:']]
     if case.get('pause_password'):
         (root / 'password-pid').write_text(str(os.getpid()))
         time.sleep(3600)

@@ -71,7 +71,7 @@ in
   config = lib.mkIf config.assbox.enable {
     # Compress cold anonymous pages in RAM. These are the standard NixOS zram
     # defaults: zstd, a logical size of 50% of RAM, allocated only as used.
-    zramSwap.enable = true;
+    zramSwap.enable = lib.mkDefault true;
     systemd.user.services = lib.genAttrs units (_: {
       serviceConfig = {
         MemoryMax = lib.mkDefault "${toString cfg.resources.agentMemoryMaxMiB}M";

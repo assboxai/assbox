@@ -107,6 +107,7 @@ in
     users.mutableUsers = false;
     users.users.root.hashedPassword = "!";
     users.users.agent = {
+      uid = 1000;
       isNormalUser = true;
       home = "/home/agent";
       homeMode = "0700";
@@ -115,9 +116,17 @@ in
       extraGroups = [ ];
     };
     users.users.admin = {
+      uid = 1001;
       isNormalUser = true;
       extraGroups = [ "wheel" ];
       hashedPasswordFile = "/var/lib/assbox-secrets/admin-password.hash";
+    };
+    # The execution firewall resolves this cgroup while loading its rules. Keep
+    # the slice present across controller-role changes even when no user manager
+    # is lingering, so an atomic nftables reload cannot lose its policy target.
+    systemd.slices."user-1000" = {
+      wantedBy = [ "multi-user.target" ];
+      before = [ "nftables.service" ];
     };
     security.sudo.wheelNeedsPassword = true;
     security.sudo.execWheelOnly = true;

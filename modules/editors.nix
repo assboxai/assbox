@@ -59,7 +59,7 @@ in
         {
           enable = true;
           libraries = [
-            pkgs.stdenv.cc.cc
+            pkgs.stdenv.cc.cc.lib
             pkgs.zlib
             pkgs.openssl
             pkgs.curl

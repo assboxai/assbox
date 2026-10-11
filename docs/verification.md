@@ -29,6 +29,7 @@ here and keep dated, source-specific execution reports outside the repository.
 | `remote-lifecycle-vm` | Defined: real remote/editor/application units with substitute providers, CLI onboarding and frontend launch, crash/clean-exit recovery, descendant/session cleanup, diagnostics and NixOS reconfiguration; native execution remains required |
 | `editor-vm` | Defined: actual VS Code/Zed/Emacs foreground entry points, visible X11 windows, main-process crash recovery, normal close and session teardown/restart; generic GNU/Linux rust-analyzer LSP handshakes from agent login and user service; native execution remains required |
 | `desktop-services-vm` | Defined: real portal file/folder open, save and cancel dialogs on X11 and Wayland; GNOME first-use keyring creation and disposable-secret persistence across client/session/daemon restart and reboot, private files and deletion; Zed-only browser dependency, session URL-handler/rendered loopback callback and browser cleanup; repeated greetd crashes, compositor failure/logout, old-session cleanup and deliberate stop; native execution remains required |
+| `execution-loopback-vm` | Defined: real IPv4/IPv6 TCP/UDP receiving identities from direct and user-manager client cgroups, denied root listeners and same-tuple UDP listener replacement, and established TCP egress revocation; native execution remains required |
 | `radio-policy-vm` | Defined: X11/Wayland active-seat ACLs with Wi-Fi enabled/disabled, denied agent radio writes, disabled kernel radio-hotkey handler, root control, NetworkManager preference restoration, session restart and software-radio hotplug; native execution remains required |
 
 Engineering readiness requires implemented behavior and substantive verification
@@ -54,7 +55,9 @@ deferred tranche. Blocked capabilities reject configuration and carry no support
 
 ## Existing gates
 
-`scripts/verify` with no arguments remains the full gate. For targeted local work,
+`just verify` is the complete developer gate, including an independent clean
+production snapshot and a fresh canonical interactive install. `scripts/verify`
+with no arguments remains the existing production stage dispatcher. For targeted local work,
 select exactly one stage: `static` (source/tooling/model/Node tests and formatting/lint),
 `rust` (Clippy, compilation and Rust tests), `mutations`, or `nix` (flake evaluation,
 system builds and VM checks). Stages stop on failure and preserve command exit codes.
@@ -69,8 +72,9 @@ and separate SSID escaping rules. See the pinned
 The gate uses the locked libnm in Nix; it needs no daemon or network connection and
 does not establish successful radio/driver association on physical hardware.
 
-The verification workflow runs these stages as separate steps through
-`scripts/verify_observed.py`. It records memory/swap availability, disk space,
+The verification workflow provisions Just, runs Chainman setup without hooks and
+calls the finite full coordinator. Developer stages use `scripts/verify_observed.py`,
+which records memory/swap availability, disk space,
 pressure indicators and readable cgroup memory-event counters before execution,
 every 30 seconds and at completion. Missing metrics are unknown, not zero. No
 environment dump, password, or process command line is collected. Diagnostics
@@ -79,7 +83,8 @@ are best effort and do not turn failed or interrupted verification into success.
 Records stream to the job log and to `${RUNNER_TEMP}/assbox-verification` in Actions,
 or `reports/verification` for a deliberate local wrapper invocation. Each stage's
 file is capped at approximately 8 MiB plus its final record. The pinned final
-`always()` upload retains only that diagnostics directory for 14 days, named by
+`always()` upload retains that diagnostics directory and bounded top-level
+candidate/canonical summary records for 14 days, named by
 architecture, commit and run attempt. A destroyed runner can prevent both final
 sampling and upload; absence of evidence never proves an OOM or a passing check.
 
@@ -94,6 +99,14 @@ Release checks require a clean committed core or a release candidate compared
 byte-for-byte with that core, allowing only generated lock/context changes. They
 additionally require measured core line
 coverage of at least 90%, Cargo dependency advisory review and NixOS closure scans.
+Vulnix reports remain raw and unwhitelisted. A separate reviewed policy binds the
+native architecture, exact package/version/CVE set and full vulnerability-description
+digests, and distinguishes reviewed false product matches from patched findings. Every
+patched finding must name the reviewed patch bytes and prove that each reported
+derivation actually received those patches. New, removed, changed or stale findings
+fail the release until the policy receives an independent review update. Exact
+durable decisions do not impose a periodic source commit on otherwise unattended
+releases; a fresh scanner result still has to match every reviewed byte binding.
 There is no measured shell-coverage floor. A mutation counts only when a passing
 native baseline becomes a real assertion failure, not a compiler error, missing
 tool or timeout. Crates.io advisory checks do not scan the compiler itself.
@@ -229,7 +242,9 @@ For every promoted profile, verify live-media and installed-target boot, storage
 identities, networking/credentials, TTY and graphical input, display policy, USB
 input/Ethernet, denied raw storage access, rescue boot and retained generations.
 Exercise scheduled updates while the GUI and agents are active, low/unknown power
-retries and disk-space pressure. On Intel Macs verify both rEFInd and macOS boot.
+retries and disk-space pressure. For the Intel Mac live-media milestone, verify the
+same image through direct Apple Option/EFI boot and through rEFInd and record the two
+results separately. For an installation that retains macOS, verify macOS boot too.
 On Parallels record guest architecture, firmware, virtual devices and GUI behavior
 separately from host architecture. Follow [the acceptance guide](parallels.md).
 For Intel Macs use the [model and networking acceptance procedure](intel-mac-acceptance.md).
@@ -238,6 +253,13 @@ external adapters and hardware drift. Sysfs adapter tests use local fixture tree
 The Apple install VM supplies a synthetic MacBookPro12,1 DMI identity through QEMU
 and exercises profile refusal before target writes; this remains no evidence about
 physical Mac firmware or wireless hardware.
+
+The development [physical x86 checkpoint](physical-checkpoint.md) builds one exact
+hybrid ISO and boots those bytes both as a legacy BIOS disk and as UEFI USB media.
+Each path must pass the early disabled-device gate and emit the source-bound serial
+readiness marker. This qualifies the live artifact's virtual boot paths; it does not
+replace the separate direct-Apple-firmware and rEFInd runs on the real Mac, or the
+real PC hardware observations above.
 
 For each application version/architecture, test actual onboarding/provider login,
 authenticated tasks, headed/headless client behavior, loopback binding, shutdown

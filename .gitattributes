@@ -1,2 +1,7 @@
 # Unified-diff context markers precede upstream tab indentation.
-nix/*.patch whitespace=-space-before-tab
+nix/*.patch whitespace=-space-before-tab,-blank-at-eol,-blank-at-eof
+# Preserve authenticated upstream mail patches byte for byte, including their
+# original signature separators and blank final line.
+nix/patches/*.patch whitespace=-space-before-tab,-blank-at-eol,-blank-at-eof
+
+chainman.lock text eol=lf
