@@ -498,7 +498,13 @@ def produce(source, release_path, directory, system):
         try:
             run(env, 'nix-store', '--generate-binary-cache-key', keyname, str(secret), str(public))
             secret.chmod(0o600)
-            run(env, 'nix', 'copy', '--to', cache.as_uri() + '?secret-key=' + urllib.parse.quote(str(secret), safe='/'), *paths)
+            # Export large development outputs within the build budget while
+            # preserving XZ transport and the complete signed closure.
+            destination = cache.as_uri() + '?' + urllib.parse.urlencode({
+                'secret-key': str(secret), 'compression': 'xz', 'compression-level': '1',
+                'parallel-compression': 'true',
+            })
+            run(env, 'nix', 'copy', '--to', destination, *paths)
         finally:
             secret.unlink(missing_ok=True)
         key = bounded(public, 4096).decode().strip()
