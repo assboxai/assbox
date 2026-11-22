@@ -65,13 +65,18 @@ def run(config, withdraw=False, component=None):
         binary=config['tailscale']
         status=json.loads(command(binary, 'serve', 'status', '--json'))
         # Remove stale routes first. An owner-replaced route is left untouched.
+        removed_route = False
         for key,item in list(old.items()):
             if desired.get(key)==item: continue
             current=existing(status,item)
             if current=={'Proxy':item['target']}:
                 command(binary, 'serve', '--https='+str(item['https']), '--set-path='+item['path'], 'off')
+                removed_route = True
             del old[key]
             persist(record,old)
+        if removed_route and desired:
+            # A requested path can have a new owner after withdrawal.
+            status=json.loads(command(binary, 'serve', 'status', '--json'))
         for key,item in desired.items():
             current=existing(status,item)
             if current and current!={'Proxy':item['target']}: raise Refusal('The requested path belongs to another owner-managed Serve mapping')
