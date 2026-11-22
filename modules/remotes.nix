@@ -178,15 +178,12 @@ let
               package = "opencode";
               command = "opencode";
             }
-            {
-              id = "antigravity-cli";
-              env = "HAPPIER_ANTIGRAVITY_PATH";
-              family = "antigravity";
-              package = "antigravity-cli";
-              command = "agy";
-            }
           ]
       )
+      // lib.optionalAttrs (enabled "antigravity-cli") {
+        # Happier uses the "agy" ID for its interactive CLI. The ACP helper is separate.
+        HAPPIER_AGY_PATH = "${builtins.head cfg.componentPackagePaths.antigravity-cli}/bin/agy";
+      }
     ))
     // (lib.optionalAttrs
       (builtins.elem id [

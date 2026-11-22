@@ -86,6 +86,24 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertNotIn('assbox-serve',result['services'].get('timers',{}))
         self.assertNotIn('assbox-serve',result['services'].get('services',{}))
 
+    def test_happier_pins_the_selected_interactive_antigravity_cli(self):
+        selection = {
+            'happier': {'enable': True},
+            'happier-daemon': {'enable': True},
+            'antigravity-cli': {'enable': True},
+        }
+        selected = self.evaluate(selection)
+        self.assertFalse(selected['failures'])
+        environment = selected['services']['user']['services']['assbox-happier-daemon']['environment']
+        self.assertEqual(environment['HAPPIER_AGY_PATH'], '/nix/store/test-agy/bin/agy')
+        self.assertNotIn('HAPPIER_ANTIGRAVITY_PATH', environment)
+
+        del selection['antigravity-cli']
+        deselected = self.evaluate(selection)
+        self.assertFalse(deselected['failures'])
+        environment = deselected['services']['user']['services']['assbox-happier-daemon']['environment']
+        self.assertNotIn('HAPPIER_AGY_PATH', environment)
+
     def test_checkpoint_tracks_custom_provider_homes_and_rejects_traversal(self):
         selected={'happier':{'enable':True},
                   'happier-daemon':{'enable':True,'home':'/home/agent/state/happier'},
