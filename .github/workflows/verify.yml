@@ -4,7 +4,7 @@ name: Assbox x86 live checkpoint qualification
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-physical-checkpoint-x86-v6
+  group: assbox-physical-checkpoint-x86-v7
   cancel-in-progress: false
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v6' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v7' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04
     timeout-minutes: 360
@@ -46,6 +46,14 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
+      - name: Import only the verified signed development kernel and formatter
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
+          install -d -m 0700 "$RUNNER_TEMP/assbox-checkpoint-logs"
+          /usr/bin/python3 -I -B authority/.github/experiments/prefill-checkpoint-distribution.py \
+            product "$RUNNER_TEMP/assbox-checkpoint-logs/kernel-formatter-seed.json"
       - name: Verify native finite gates and boot the exact hybrid image twice
         shell: bash
         run: |
@@ -71,7 +79,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v6' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v7' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     needs: build
     runs-on: ubuntu-24.04

@@ -16,7 +16,7 @@ import sys
 REPO = 'assboxai/assbox'
 REPO_ID = '1402455771'
 OWNER_ID = '327835666'
-REF = 'refs/heads/test/physical-checkpoint-x86-v6'
+REF = 'refs/heads/test/physical-checkpoint-x86-v7'
 SOURCE = '24b3a4f3773d61aa236c22d8ee48ab42a39797e0'
 TREE = 'dded0799163d8ca63d8e91948402fa633a401be8'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
@@ -98,12 +98,17 @@ def build_sqlite(source, logs):
     output = run('nix', 'eval', '--raw', *NIX_FLAGS, attribute + '.bin.outPath', cwd=source)
     if selected != SQLITE_DRV or output != SQLITE_BIN:
         raise ValueError('SQLite differs from the reviewed checkpoint dependency')
-    with (logs / 'sqlite-build.log').open('xb') as log:
-        built = subprocess.run(
-            ('nix', 'build', '--max-jobs', '1', '--cores', '2', '--keep-failed', '--no-link',
-             '--print-out-paths', '-L', *NIX_FLAGS, selected + '^bin'),
-            cwd=source, stdout=log, stderr=subprocess.STDOUT,
-        )
+    print('Building exact SQLite with the full native test suite and four test workers', flush=True)
+    try:
+        with (logs / 'sqlite-build.log').open('xb') as log:
+            built = subprocess.run(
+                ('nix', 'build', '--max-jobs', '1', '--cores', '4', '--keep-failed', '--no-link',
+                 '--print-out-paths', '-L', *NIX_FLAGS, selected + '^bin'),
+                cwd=source, stdout=log, stderr=subprocess.STDOUT, timeout=3600,
+            )
+    except subprocess.TimeoutExpired:
+        (logs / 'sqlite-status.tsv').write_text(f'124\t{selected}\t{output}\n')
+        raise
     (logs / 'sqlite-status.tsv').write_text(f'{built.returncode}\t{selected}\t{output}\n')
     if built.returncode:
         with (logs / 'sqlite-derivation.log').open('xb') as log:
@@ -121,8 +126,12 @@ def build(files, scope, logs):
     if (run('git', 'rev-parse', 'HEAD^{tree}', cwd=source) != TREE
             or file_proof(source / 'flake.lock', 1024 * 1024)['sha256'] != LOCK):
         raise ValueError('Product tree or flake lock differs from the reviewed checkpoint source')
-    logs.mkdir(mode=0o700)
+    prefill = json.loads((logs / 'kernel-formatter-seed.json').read_bytes())
+    pin = json.loads((Path(__file__).resolve().parent / 'v71-x86-kernel-formatter.json').read_bytes())
+    if any(prefill.get(key) != value for key, value in pin.items()) or prefill.get('signatureRequired') is not True:
+        raise ValueError('Checkpoint cache receipt differs from the reviewed signed inputs')
     for gate in GATES:
+        print(f'Running native checkpoint gate {gate[0]}', flush=True)
         with (logs / (gate[0] + '.log')).open('xb') as output:
             subprocess.run(('nix', 'run', *NIX_FLAGS, 'path:./nix/dev#just', '--', *gate), cwd=source,
                            stdout=output, stderr=subprocess.STDOUT, timeout=1200, check=True)
@@ -136,7 +145,12 @@ def build(files, scope, logs):
     inputs = run('nix-store', '--query', '--references', boot_drv, cwd=source).splitlines()
     if image_drv not in inputs:
         raise ValueError('The boot check does not reference the selected image derivation')
-    boot = run('nix', 'build', '--no-link', '--print-out-paths', *NIX_FLAGS, boot_attr, cwd=source)
+    print('Building and booting the exact ISO in BIOS and UEFI USB modes', flush=True)
+    with (logs / 'boot-build.log').open('xb') as log:
+        boot = subprocess.check_output(
+            ('nix', 'build', '--no-link', '--print-out-paths', '-L', *NIX_FLAGS, boot_attr),
+            cwd=source, stderr=log, text=True,
+        ).strip()
     image = run('nix', 'build', '--no-link', '--print-out-paths', *NIX_FLAGS, image_attr, cwd=source)
     if not FILE_PATH.fullmatch(boot) or not FILE_PATH.fullmatch(image):
         raise ValueError('Expected one boot result and one image store path')
