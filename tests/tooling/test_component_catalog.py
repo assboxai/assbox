@@ -323,6 +323,32 @@ class ComponentCatalogTests(unittest.TestCase):
         self.assertFalse(separate['failures'])
         self.assertIn('assbox-codex-relay',separate['services']['user']['services'])
 
+    def test_direct_codex_relay_requires_exclusive_workload_access(self):
+        selected = {name: {'enable': True} for name in ('codex', 'codex-relay')}
+        ssh = {
+            'exposure': 'lan',
+            'lanInterfaces': ['enp0s5'],
+            'agent': {'enable': True, 'keys': ['ssh-ed25519 fixture']},
+        }
+        staged = self.evaluate(selected, network={'ssh': ssh})
+        self.assertFalse(staged['failures'])
+        self.assertTrue(staged['sshEnabled'])
+        self.assertNotIn('assbox-codex-relay', staged['services']['user']['services'])
+
+        selected['codex-relay']['foregroundCommand'] = ['/nix/store/fixture-codex/bin/codex', 'remote-control']
+        combined = self.evaluate(selected, network={'ssh': ssh})
+        self.assertIn(
+            'Direct Codex relay and workload SSH share the agent account. Disable one before activating the other.',
+            combined['failures'],
+        )
+
+        del ssh['agent']
+        ssh['admin'] = {'enable': True, 'keys': ['ssh-ed25519 administrator-fixture']}
+        separate = self.evaluate(selected, network={'ssh': ssh})
+        self.assertFalse(separate['failures'])
+        self.assertTrue(separate['sshEnabled'])
+        self.assertIn('assbox-codex-relay', separate['services']['user']['services'])
+
     def test_hermes_public_origin_rejects_loopback_and_ambiguous_hosts(self):
         good=['https://assbox.example.ts.net/','https://10.0.0.2:8443/dashboard','https://host.example./']
         bad=['https://localhost/','https://LOCALHOST/','https://host.localhost./','https://127.0.0.2/',

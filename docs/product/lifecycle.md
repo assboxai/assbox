@@ -18,7 +18,7 @@ Disabling/removing a managed service withdraws owned exposure, stops process gro
 
 Resource policies account for the full selected combination: CLIs idle/active, physical GUI, Assbox worker, optional provider VM and optional virtual desktop. Preserve support for qualified older hardware; no assistant selection implies downloading a local model. Record measured hardware/capability results, not optimistic concurrency guesses.
 
-External Desktop SSH may start its own remote process for the connection; do not add an unrelated persistent public app-server. Direct Codex relay has separate experimental lifetime and state ownership. Cloud Cowork, local bridges and any eligible provider VM likewise have distinct availability requirements.
+External Desktop SSH may start its own remote process for the connection. Disable workload SSH before activating the experimental direct Codex relay to avoid sharing Codex session and credential state. Cloud Cowork, local bridges and any eligible provider VM have their own availability requirements.
 
 ## Native-policy activation lifecycle
 

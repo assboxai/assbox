@@ -486,6 +486,10 @@ in
         assertion = !enabled "codex-relay" || command.codex-relay == [ ] || !enabled "happier-daemon";
         message = "Direct Codex relay and Happier daemon coexistence is not qualified; explicitly retire one route before activating the other.";
       }
+      {
+        assertion = !enabled "codex-relay" || !available "codex-relay" || !cfg.network.ssh.agent.enable;
+        message = "Direct Codex relay and workload SSH share the agent account. Disable one before activating the other.";
+      }
     ]
     ++ map (id: {
       assertion =
