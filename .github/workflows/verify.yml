@@ -1,129 +1,143 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Verify locked source
+name: Assbox native ARM state restore candidate qualification
 'on':
   workflow_dispatch: null
-permissions:
-  contents: read
+permissions: {}
 concurrency:
-  group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: assbox-arm-state-restore-v1
+  cancel-in-progress: false
 jobs:
-  verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - system: x86_64-linux
-          runner: ubuntu-24.04
-        - system: aarch64-linux
-          runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 360
+  collect:
+    if: >-
+      github.repository == 'assboxai/assbox' &&
+      github.repository_id == '1402455771' &&
+      github.repository_owner_id == '327835666' &&
+      github.ref == 'refs/heads/test/arm-state-restore-v1' &&
+      github.event_name == 'workflow_dispatch' && github.run_attempt == 1
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 65
+    permissions:
+      contents: read
+    env:
+      PRODUCT_COMMIT: 106eaec3f3d14641094035323385f1b8319def75
+      PRODUCT_TREE: 2997d296e6a64e862e21c267edaa32a021754fbe
     steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        persist-credentials: false
-    - name: Clear unused SDKs on the ephemeral hosted runner
-      run: "sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP\
-        \ /usr/bin/python3 -I -B <<'ASSBOX_RUNNER_CLEARANCE'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
-        \ GPL-3.0-or-later\n\"\"\"Reclaim fixed unused SDK directories on an ephemeral GitHub-hosted Linux\
-        \ runner.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\nimport\
-        \ shutil\nimport stat\nimport time\n\nPATHS = tuple(Path(name) for name in (\n    '/usr/local/lib/android',\
-        \ '/usr/share/dotnet',\n    '/opt/hostedtoolcache', '/usr/local/.ghcup'))\n\n\ndef validate_environment(environment):\n\
-        \    if (os.geteuid() != 0 or platform.system() != 'Linux'\n            or environment.get('GITHUB_ACTIONS')\
-        \ != 'true'\n            or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'\n           \
-        \ or environment.get('GITHUB_EVENT_NAME') not in (\n                'workflow_dispatch', 'schedule',\
-        \ 'push', 'pull_request', 'workflow_run', 'workflow_call')):\n        raise ValueError('Clearance\
-        \ requires an ephemeral hosted Linux workflow runner')\n    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',\
-        \ environment.get('GITHUB_REPOSITORY', '')):\n        raise ValueError('Missing workflow repository\
-        \ identity')\n    for name in ('GITHUB_REPOSITORY_ID', 'GITHUB_REPOSITORY_OWNER_ID', 'GITHUB_RUN_ID',\
-        \ 'GITHUB_RUN_ATTEMPT'):\n        if not re.fullmatch(r'[1-9][0-9]*', environment.get(name, '')):\n\
-        \            raise ValueError('Missing numeric workflow identity')\n    if not re.fullmatch(r'[0-9a-f]{40}',\
-        \ environment.get('GITHUB_SHA', '')):\n        raise ValueError('Missing workflow source identity')\n\
-        \    temporary = Path(environment.get('RUNNER_TEMP', ''))\n    if not temporary.is_absolute() or temporary.resolve()\
-        \ != temporary:\n        raise ValueError('Unexpected runner temporary path')\n    metadata = temporary.lstat()\n\
-        \    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid == 0:\n        raise ValueError('Unexpected\
-        \ runner temporary ownership')\n    return temporary, metadata.st_uid\n\n\ndef mount_points():\n \
-        \   points = []\n    for line in Path('/proc/self/mountinfo').read_text().splitlines():\n        value\
-        \ = line.split()[4]\n        value = re.sub(r'\\\\([0-7]{3})', lambda match: chr(int(match[1], 8)),\
-        \ value)\n        points.append(Path(value))\n    return points\n\n\ndef clear_directories(paths,\
-        \ runner_uid, root_device, mounts):\n    if not shutil.rmtree.avoids_symlink_attacks:\n        raise\
-        \ ValueError('Symlink-resistant directory deletion is required')\n    admitted = []\n    for path\
-        \ in paths:\n        if path.is_symlink() or path.resolve() != path:\n            raise ValueError('Refusing\
-        \ a redirected toolchain directory')\n        if not path.exists():\n            continue\n      \
-        \  metadata = path.lstat()\n        if (not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid not\
-        \ in (0, runner_uid)\n                or metadata.st_dev != root_device):\n            raise ValueError('Unexpected\
-        \ toolchain directory type, owner or volume')\n        if any(mount == path or path in mount.parents\
-        \ for mount in mounts):\n            raise ValueError('Refusing a mounted toolchain directory')\n\
-        \        admitted.append(path)\n    # Admit the entire fixed set before removing anything.\n    for\
-        \ path in admitted:\n        shutil.rmtree(path)\n        if path.exists():\n            raise ValueError('Toolchain\
-        \ clearance was incomplete')\n    return [str(path) for path in admitted]\n\n\ndef main():\n    temporary,\
-        \ runner_uid = validate_environment(os.environ)\n    before = shutil.disk_usage('/')\n    started\
-        \ = time.monotonic()\n    removed = clear_directories(PATHS, runner_uid, Path('/').stat().st_dev,\
-        \ mount_points())\n    after = shutil.disk_usage('/')\n    facts = dict(schema=1, kind='hosted-runner-toolchain-clearance',\n\
-        \                 system=platform.machine() + '-linux', source_commit=os.environ['GITHUB_SHA'],\n\
-        \                 run_id=int(os.environ['GITHUB_RUN_ID']), run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),\n\
-        \                 removed_directories=removed, before_available_bytes=before.free,\n             \
-        \    after_available_bytes=after.free, observed_free_bytes_increase=after.free - before.free,\n  \
-        \               seconds=round(time.monotonic() - started, 2))\n    output = temporary / 'assbox-runner-clearance.json'\n\
-        \    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)\n    with os.fdopen(fd,\
-        \ 'w') as stream:\n        stream.write(json.dumps(facts, sort_keys=True, separators=(',', ':')) +\
-        \ '\\n')\n    print(json.dumps(facts, sort_keys=True))\n\n\nif __name__ == '__main__':\n    main()\n\
-        ASSBOX_RUNNER_CLEARANCE"
-    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
-      with:
-        install_url: https://releases.nixos.org/nix/nix-2.35.2/install
-        enable_kvm: ${{ matrix.system == 'x86_64-linux' }}
-        extra_nix_config: 'experimental-features = nix-command flakes
-
-          accept-flake-config = false
-
-          '
-    - name: Remove installer credentials before candidate execution
-      run: "sudo /usr/bin/python3 -I -B <<'ASSBOX_CLEAR_NIX_CREDENTIALS'\n#!/usr/bin/env python3\n# SPDX-License-Identifier:\
-        \ GPL-3.0-or-later\n\"\"\"Remove the installer's persisted API credentials before candidate execution.\"\
-        \"\"\nimport os\nfrom pathlib import Path\nimport re\nimport stat\nimport tempfile\n\nMAX_CONFIG = 256 *\
-        \ 1024\n\n\ndef sanitized(contents):\n    if len(contents) > MAX_CONFIG:\n        raise ValueError('Nix\
-        \ configuration exceeds the cleanup bound')\n    lines = contents.decode('utf-8').splitlines(keepends=True)\n\
-        \    result = []\n    continuation = False\n    for line in lines:\n        if re.match(r'^\\s*!?include\\\
-        s+', line):\n            raise ValueError('Indirect Nix configuration requires separate cleanup review')\n\
-        \        credential = re.match(r'^\\s*(?:extra-)?access-tokens\\s*=', line)\n        if credential or continuation:\n\
-        \            continuation = line.rstrip().endswith('\\\\')\n            continue\n        result.append(line)\n\
-        \    return (''.join(result).rstrip('\\n') + '\\naccess-tokens =\\n').encode('utf-8')\n\n\ndef rewrite(path,\
-        \ owner):\n    path = Path(path)\n    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)\n    with os.fdopen(fd,\
-        \ 'rb') as stream:\n        metadata = os.fstat(stream.fileno())\n        if (not stat.S_ISREG(metadata.st_mode)\
-        \ or metadata.st_nlink != 1\n                or metadata.st_uid != owner):\n            raise ValueError('Unexpected\
-        \ Nix configuration ownership or file type')\n        contents = sanitized(stream.read(MAX_CONFIG + 1))\n\
-        \    temporary_fd, temporary = tempfile.mkstemp(prefix='.assbox-nix-', dir=path.parent)\n    try:\n    \
-        \    with os.fdopen(temporary_fd, 'wb') as stream:\n            os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))\n\
-        \            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)\n            stream.write(contents)\n\
-        \            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n\
-        \    finally:\n        if os.path.exists(temporary):\n            os.unlink(temporary)\n\n\nif __name__\
-        \ == '__main__':\n    if os.geteuid() != 0:\n        raise SystemExit('Credential cleanup requires the trusted\
-        \ runner administrator')\n    rewrite('/etc/nix/nix.conf', 0)\nASSBOX_CLEAR_NIX_CREDENTIALS\nsudo systemctl\
-        \ restart nix-daemon.service\nnix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert\
-        \ json.load(sys.stdin)[\"access-tokens\"][\"value\"] == {}, \"Nix API credentials remain configured\"'"
-    - name: Require committed input lock
-      run: test -f flake.lock && git ls-files --error-unmatch flake.lock
-    - name: Set up Chainman without Git hooks
-      run: nix run path:./nix/dev#just -- setup --no-hooks
-    - name: Full native Chainman verification
-      run: nix run path:./nix/dev#just -- verify
-      env:
-        XDG_STATE_HOME: ${{ runner.temp }}
-    - name: Retain verification diagnostics
-      if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: verification-${{ matrix.system }}-${{ github.sha }}-${{ github.run_attempt }}
-        path: '${{ runner.temp }}/assbox-verification
-
-          ${{ runner.temp }}/assbox/verification/*/summary.json
-
-          ${{ runner.temp }}/assbox/verification/*/candidate-snapshot.json
-
-          ${{ runner.temp }}/assbox/verification/*/canonical-summary.json
-
-          '
-        if-no-files-found: warn
-        retention-days: 14
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: authority
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.PRODUCT_COMMIT }}
+          path: product
+          persist-credentials: false
+      - name: Clear unused SDKs on the ephemeral hosted runner
+        run: >-
+          sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP
+          /usr/bin/python3 -I -B authority/scripts/clear_unused_runner_tools.py
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+          enable_kvm: false
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = false
+      - name: Remove installer credentials before candidate execution
+        run: |
+          set -euo pipefail
+          sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
+          sudo systemctl restart nix-daemon.service
+          nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
+      - name: Verify candidate identity and run native finite gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(uname -m)" = aarch64
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git -C authority status --porcelain)"
+          cd product
+          test "$(git rev-parse HEAD)" = "$PRODUCT_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
+          test -z "$(git status --porcelain)"
+          printf '%s\n' \
+            'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
+            '10e9eb6ad0cc12447dbea4fd76160c1b8a14ba1bdaa3e5ff0eadc1ae218b4997  scripts/release-check' \
+            | sha256sum --check
+          evidence="$RUNNER_TEMP/assbox-arm-state-restore"
+          mkdir -m 0700 "$evidence"
+          {
+            date -u +%FT%TZ
+            printf 'workflowCommit\t%s\nrunId\t%s\nrunAttempt\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+            git rev-parse HEAD 'HEAD^{tree}'
+            sha256sum flake.lock scripts/release-check
+            uname -sm
+            df -h /nix/store "$RUNNER_TEMP"
+            nix --version
+          } > "$evidence/scope.txt"
+          export XDG_STATE_HOME="$RUNNER_TEMP/assbox-arm-chainman-state"
+          mkdir -m 0700 "$XDG_STATE_HOME"
+          run_finite() {
+            local command_name=$1
+            local result=0
+            nix run path:./nix/dev#just -- "$@" > "$evidence/finite-$command_name.log" 2>&1 || result=$?
+            printf '%s\t%s\t%s\n' "$command_name" "$result" "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
+            return "$result"
+          }
+          run_finite setup --no-hooks
+          run_finite doctor
+          run_finite explain verify --json
+          run_finite deps-check
+          run_finite deps-coverage
+          run_finite deps-policy-report
+          run_finite verify-lite
+          run_finite verify-prepare
+          test -z "$(git status --porcelain)"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: native-arm-state-restore-finite
+          path: |
+            ${{ runner.temp }}/assbox-arm-state-restore/scope.txt
+            ${{ runner.temp }}/assbox-arm-state-restore/finite.tsv
+            ${{ runner.temp }}/assbox-arm-state-restore/finite-*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Realize the exact ARM state helper
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(uname -m)" = aarch64
+          test "$(git rev-parse HEAD)" = "$PRODUCT_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
+          evidence="$RUNNER_TEMP/assbox-arm-state-restore"
+          sha256sum --check <<'SUMS'
+          fd98d68b9e9c0b5d38c8dbdbf1a53a4e39f5ff27ed5d6a95dfa2a4979a5b9086  scripts/state/snapshot.py
+          SUMS
+          export NIX_CONFIG="max-jobs = 1
+          cores = 2"
+          expr='let f = builtins.getFlake (toString ./.); c = f.nixosConfigurations.aarch64-linux-uefi-none-headless.config; in builtins.head (builtins.filter (p: p.name == "assbox-state") c.environment.systemPackages)'
+          drv=$(nix eval --impure --raw --no-update-lock-file --no-write-lock-file --expr "($expr).drvPath")
+          built=$(nix build --no-link --impure --print-out-paths --no-update-lock-file --no-write-lock-file --expr "$expr" 2>"$evidence/state-helper-build.log")
+          test "$(nix path-info --offline "$built")" = "$built"
+          "$built/bin/assbox-state" --help > "$evidence/state-helper-help.txt"
+          grep -F 'backup,list,restore' "$evidence/state-helper-help.txt"
+          test -z "$(git status --porcelain)"
+          printf '%s\n%s\n%s\n%s\n%s\n' "$PRODUCT_COMMIT" "$PRODUCT_TREE" "$(uname -sm)" "$drv" "$built" > "$evidence/state-helper-scope.txt"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: native-arm-state-helper
+          path: |
+            ${{ runner.temp }}/assbox-arm-state-restore/state-helper-scope.txt
+            ${{ runner.temp }}/assbox-arm-state-restore/state-helper-help.txt
+            ${{ runner.temp }}/assbox-arm-state-restore/state-helper-build.log
+          if-no-files-found: warn
+          retention-days: 14
