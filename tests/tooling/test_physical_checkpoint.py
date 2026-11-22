@@ -98,7 +98,11 @@ class PhysicalCheckpointTests(unittest.TestCase):
         source = (ROOT / 'tests/nix/physical-checkpoint-boot.nix').read_text()
         self.assertIn('requiredSystemFeatures = [ "kvm" ];', source)
         self.assertIn('-machine pc,accel=kvm', source)
-        self.assertIn('-drive "if=ide,format=raw,readonly=on,file=$iso"', source)
+        for media, drive in (
+                ('bios', '-drive "if=ide,format=qcow2,file=$PWD/bios-media.qcow2"'),
+                ('uefi', '-drive "if=none,format=qcow2,file=$PWD/uefi-media.qcow2,id=checkpoint"')):
+            create = f'qemu-img create -q -f qcow2 -F raw -b "$iso" "$PWD/{media}-media.qcow2"'
+            self.assertLess(source.index(create), source.index(drive))
         self.assertIn('-machine q35,accel=kvm', source)
         self.assertIn('${ovmf.firmware}', source)
         self.assertIn('${ovmf.variables}', source)
