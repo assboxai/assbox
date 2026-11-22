@@ -3,6 +3,7 @@
 """Render reviewed catalog and dated evidence. No network or runtime capability rules."""
 import argparse
 from datetime import date
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
@@ -138,11 +139,76 @@ def coder_routes_page():
     return before + CONTROLLER_ROUTES_START + '\n' + '\n'.join(lines) + '\n' + CONTROLLER_ROUTES_END + after
 
 
+def computer_use_status(row, acceptance, lock_sha256, reviewed):
+    state, evidence = row['assbox_status'], row['evidence']
+    row_date = date.fromisoformat(row['reviewed_local_date'])
+    if row_date > reviewed:
+        raise ValueError(f'{row["id"]} review date is newer than the matrix review')
+    if state == 'not_run':
+        if evidence is not None:
+            raise ValueError(f'{row["id"]} unexecuted qualification requires null evidence')
+        return 'not run'
+    if state not in {'passed', 'partial', 'failed'}:
+        raise ValueError(f'{row["id"]} has an invalid Assbox qualification status')
+    if (not isinstance(evidence, dict)
+            or set(evidence) != {'row', 'product_path', 'source', 'lock_sha256', 'observed_on', 'scope', 'checks'}
+            or evidence['row'] != row['id']
+            or evidence['product_path'] != row['path']
+            or not isinstance(evidence['source'], str)
+            or not re.fullmatch(r'[a-f0-9]{40}', evidence['source'])
+            or not isinstance(evidence['observed_on'], str)
+            or evidence['lock_sha256'] != lock_sha256):
+        raise ValueError(f'{row["id"]} requires evidence for this product path and lock')
+    if not row_date <= date.fromisoformat(evidence['observed_on']) <= reviewed:
+        raise ValueError(f'{row["id"]} evidence is outside the reviewed date range')
+
+    scope = evidence['scope']
+    keys = {'architecture', 'surface', 'authentication', 'package_sha256',
+            'helper_sha256', 'compiled_features', 'display_backend'}
+
+    def is_digest(value):
+        return isinstance(value, str) and re.fullmatch(r'[a-f0-9]{64}', value) is not None
+
+    if (not isinstance(scope, dict) or set(scope) != keys
+            or scope['architecture'] not in ('x86_64-linux', 'aarch64-linux')
+            or scope['surface'] not in ('browser', 'desktop')
+            or not all(isinstance(scope[key], str) and scope[key].strip()
+                       for key in ('authentication', 'display_backend'))
+            or not is_digest(scope['package_sha256'])
+            or not isinstance(scope['helper_sha256'], dict)
+            or not all(isinstance(name, str) and name.strip() and is_digest(digest)
+                       for name, digest in scope['helper_sha256'].items())
+            or not isinstance(scope['compiled_features'], list)
+            or not all(isinstance(feature, str) and feature.strip() for feature in scope['compiled_features'])):
+        raise ValueError(f'{row["id"]} requires an exact package, helper, authentication and display scope')
+
+    # A114 verifies this matrix. Its own result cannot establish a runtime capability.
+    required = set(row['requirements']) - {'A114'}
+    checks = evidence['checks']
+    if (not isinstance(checks, dict) or not checks or not checks.keys() <= required
+            or (state == 'passed' and checks.keys() != required)):
+        raise ValueError(f'{row["id"]} requires its own runtime acceptance checks')
+    identity = {key: value for key, value in evidence.items() if key != 'checks'}
+    for case, digest in checks.items():
+        result = acceptance[case]
+        stored = result['evidence']
+        scoped = stored.get('linux_computer_use') if isinstance(stored, dict) else None
+        if (not is_digest(digest) or result['status'] not in {'passed', 'partial', 'failed'}
+                or (state == 'passed' and result['status'] != 'passed')
+                or not isinstance(scoped, dict)
+                or scoped.get(row['id']) != {**identity, 'sha256': digest}):
+            raise ValueError(f'{row["id"]} requires a matching reviewed {case} receipt')
+    if state == 'failed' and all(acceptance[case]['status'] != 'failed' for case in checks):
+        raise ValueError(f'{row["id"]} failed qualification requires a failed runtime check')
+    return f'{state} ({scope["surface"]}, {scope["architecture"]}, {scope["display_backend"]})'
+
+
 def evidence_page():
     data = json.loads((ROOT / 'qualification/linux-computer-use.json').read_text())
-    requirements = {r['id'] for r in json.loads((ROOT / 'qualification/acceptance.json').read_text())}
+    acceptance = {r['id']: r for r in json.loads((ROOT / 'qualification/acceptance.json').read_text())}
     anchors = set(re.findall(r'<a id="([^"]+)"', (ROOT / 'docs/product/sources.md').read_text()))
-    date.fromisoformat(data['reviewed_local_date'])
+    reviewed = date.fromisoformat(data['reviewed_local_date'])
+    lock_sha256 = sha256((ROOT / 'flake.lock').read_bytes()).hexdigest()
     output = GENERATED + f'# Linux browser and computer-use support\n\n**Reviewed:** {data["reviewed_local_date"]}. **Scope:** {data["scope"]}\n\n'
     output += '''This dated upstream evidence is separate from Assbox qualification. Each row
 records its own Assbox status and evidence. The selected application,
@@ -158,13 +224,11 @@ as an installer resolver rule or fetched at boot.
         if row['id'] in seen or not re.fullmatch(r'CU[0-9]{2}', row['id']):
             raise ValueError('invalid dated evidence identifier')
         seen.add(row['id'])
-        date.fromisoformat(row['reviewed_local_date'])
-        if not set(row['requirements']) <= requirements:
+        if not set(row['requirements']) <= acceptance.keys():
             raise ValueError('unknown dated evidence requirement')
-        if row['assbox_status'] == 'passed' and not row['evidence']:
-            raise ValueError('qualification pass requires evidence')
+        status = computer_use_status(row, acceptance, lock_sha256, reviewed)
         source_links = sources(row['sources'], anchors)
-        values = [row['path'], row['browser'], row['desktop'], source_links, row['assbox_status'].replace('_', ' ')]
+        values = [row['path'], row['browser'], row['desktop'], source_links, status]
         output += '| ' + ' | '.join(cell(v) for v in values) + ' |\n'
     output += '\n## Exact-path qualifications\n\nRequirement IDs identify acceptance work in the [release ledger](../../qualification/acceptance.json). Upstream evidence cannot silently promote a row to an Assbox pass.\n'
     for row in data['rows']:

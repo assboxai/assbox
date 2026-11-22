@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Validate local documentation navigation without fetching external services."""
 from __future__ import annotations
+from datetime import date
 import json
 import re
 import subprocess
@@ -11,7 +12,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from product_docs import CONTROLLER_ROUTE_CASES, controller_route_status
+from product_docs import CONTROLLER_ROUTE_CASES, computer_use_status, controller_route_status
 
 
 def heading_ids(text: str) -> set[str]:
@@ -67,6 +68,54 @@ class DocumentationTests(unittest.TestCase):
         acceptance['A059']['evidence'] = 'S53'
         with self.assertRaisesRegex(ValueError, 'own reviewed A059'):
             controller_route_status({**linux, 'evidence': linux_receipt}, acceptance)
+
+    def test_computer_use_receipt_matches_the_exact_build_and_surface(self):
+        data = json.loads((ROOT / 'qualification/linux-computer-use.json').read_text())
+        row = next(row for row in data['rows'] if row['id'] == 'CU07')
+        reviewed = date.fromisoformat(data['reviewed_local_date'])
+        lock = '1' * 64
+        scope = {'architecture': 'x86_64-linux', 'surface': 'desktop', 'authentication': 'fixture account',
+                 'package_sha256': '2' * 64, 'helper_sha256': {'display': '3' * 64},
+                 'compiled_features': ['x11 capture', 'x11 input'], 'display_backend': 'x11'}
+        identity = {'row': row['id'], 'product_path': row['path'], 'source': '4' * 40, 'lock_sha256': lock,
+                    'observed_on': row['reviewed_local_date'], 'scope': scope}
+        checks = {case: '5' * 64 for case in row['requirements'] if case != 'A114'}
+        acceptance = {case: {'status': 'passed',
+                             'evidence': {'linux_computer_use': {row['id']: {**identity, 'sha256': digest}}}}
+                      for case, digest in checks.items()}
+        receipt = {**identity, 'checks': checks}
+        passed = {**row, 'assbox_status': 'passed', 'evidence': receipt}
+        self.assertEqual(computer_use_status(row, acceptance, lock, reviewed), 'not run')
+        self.assertEqual(computer_use_status(passed, acceptance, lock, reviewed), 'passed (desktop, x86_64-linux, x11)')
+
+        with self.assertRaisesRegex(ValueError, 'requires null evidence'):
+            computer_use_status({**row, 'evidence': receipt}, acceptance, lock, reviewed)
+        for unreviewed in (None, row['sources'][0]):
+            with self.subTest(unreviewed=unreviewed), self.assertRaisesRegex(ValueError, 'product path and lock'):
+                computer_use_status({**passed, 'evidence': unreviewed}, acceptance, lock, reviewed)
+        with self.assertRaisesRegex(ValueError, 'product path and lock'):
+            computer_use_status(passed, acceptance, '6' * 64, reviewed)
+        with self.assertRaisesRegex(ValueError, 'product path and lock'):
+            computer_use_status({**passed, 'path': 'different OMP product path'}, acceptance, lock, reviewed)
+        with self.assertRaisesRegex(ValueError, 'reviewed date range'):
+            computer_use_status({**passed, 'evidence': {**receipt, 'observed_on': '2026-01-01'}},
+                                acceptance, lock, reviewed)
+        with self.assertRaisesRegex(ValueError, 'own runtime acceptance checks'):
+            computer_use_status({**passed, 'evidence': {**receipt, 'checks': {'A114': '5' * 64}}},
+                                acceptance, lock, reviewed)
+
+        for field, value in (
+            ('package_sha256', '7' * 64),
+            ('compiled_features', []),
+            ('display_backend', 'wayland'),
+            ('surface', 'browser'),
+            ('architecture', 'aarch64-linux'),
+            ('authentication', 'other account scope'),
+            ('helper_sha256', {'display': '8' * 64}),
+        ):
+            other = {**passed, 'evidence': {**receipt, 'scope': {**scope, field: value}}}
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'matching reviewed'):
+                computer_use_status(other, acceptance, lock, reviewed)
 
     def test_relative_files_and_heading_links_resolve(self):
         checked = 0
