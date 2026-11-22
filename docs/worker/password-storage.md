@@ -1,14 +1,22 @@
 # Independent Desktop credential-storage qualification
 
-Worker isolation does not change the Desktop credential-storage backend. The main source retains the appliance's `--password-store=basic` argument. A change to libsecret is deferred and no optional backend patch is shipped in this tranche.
+Worker enablement leaves credential storage to the selected native Desktop
+package. Assbox's native launch policy invokes the pinned client executable and
+the graphical session supplies GNOME Secret Service with ordinary first-use
+prompts. Check which backend that package actually uses. The optional execution
+browser uses disposable profile storage; review its separate
+[computer-use contract](../product/computer-use.md).
 
 Chromium documents `basic` as plaintext storage and documents fallback when a selected backend is unavailable. A libsecret flag is therefore neither an encryption guarantee nor proof of unattended startup. An unlocked keyring also does not isolate a secret from every process sharing the Desktop user's authority. [S3](sources.md#s3--chromium-linux-password-storage)
 
-The worker boundary is different: worker processes must not obtain filesystem/process access to the controller Desktop profile at all. Keeping an existing login backend avoids making VM deployment depend on an unqualified credential migration. It does not endorse plaintext storage as protection against stolen disks or a compromised controller.
+Worker processes must have no filesystem or process access to the controller
+Desktop profile. Qualify any credential-backend migration independently of the
+worker and plan recovery from a retained profile.
 
-## Future backend qualification
+## Backend qualification
 
-If a later change adopts libsecret, update both launcher paths together and test it separately from worker integration.
+Record the effective behavior for each managed launch path when a package or
+keyring configuration changes.
 
 Build the resulting controller through the ordinary Assbox transaction. Do not copy a production browser profile or publish credential-bearing logs to demonstrate a migration. Record the Desktop build, keyring service/version, display session and actual selected backend without recording tokens.
 
@@ -16,6 +24,7 @@ Qualify fresh login, reopening the application, controlled reboot, cold unattend
 
 Test keyring-service failure, locked/password-protected keyrings, an unavailable secret service, and the appliance's empty-password/unattended keyring policy. Record fallback or failure explicitly. Never store a keyring-unlock password in Nix, service definitions, source control or an environment file merely to make the test green.
 
-Test rollback of the controller generation and the same persistent Desktop profile. An OS rollback does not roll back application data; retain a protected recovery path. Confirm that both launcher paths request the intended backend. Require a separate approval of these results before adopting that change in the appliance baseline.
+Test rollback of the controller generation and the same persistent Desktop profile. An OS rollback does not roll back application data; retain a protected recovery path. Confirm the backend selected by each qualified launch path. Require a separate approval of these results before adopting that change in the appliance baseline.
 
-No credential migration, deletion, keyring password change, provider session revocation or migration acceptance is performed by this source package.
+Credential migration, old-state retirement and provider session revocation
+require deliberate owner action.

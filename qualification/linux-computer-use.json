@@ -1,6 +1,6 @@
 {
-  "reviewed_local_date": "2026-10-02",
-  "scope": "Dated upstream Linux capability evidence; not installed Assbox qualification or installer policy.",
+  "reviewed_local_date": "2026-11-22",
+  "scope": "Dated upstream Linux capability and package observations. Each row carries its own review date and Assbox qualification status.",
   "rows": [
     {
       "id": "CU01",
@@ -128,14 +128,14 @@
     },
     {
       "id": "CU07",
-      "path": "OMP v18.1.19 computer prelude / selected Nix build",
-      "browser": "Separate browser prelude is documented; browser runtime/helper still needs its own test.",
-      "desktop": "Versioned docs describe Linux X11 input/capture and conditional Wayland support.",
-      "scope": "Upstream release-binary capture limits differ from the baseline-referenced Nix build enabling wayland-pipewire. Neither establishes compositor/portal success.",
-      "implementation": "Qualify exact compiled features, permissions and capabilities on each display backend. Keep computer use off until selected; no generic Wayland pass from X11 results.",
+      "path": "OMP 18.8.3 computer prelude and selected Nix recipe",
+      "browser": "Versioned documentation describes a separate browser prelude. The selected runtime and helper require their own test.",
+      "desktop": "Versioned documentation describes Linux X11 capture/input and conditional Wayland capture. The computer prelude starts disabled.",
+      "scope": "Assbox selects OMP 18.8.3 from recipe d6e0728e. Its Linux Cargo build requests wayland-pipewire, and a later N-API step can run before packaging. Upstream release binaries omit the Wayland capture feature. The selected addon and compositor behavior still need evidence.",
+      "implementation": "Inspect the actual installed addon and qualify permissions and capabilities on each display backend. Keep computer use off until selected and record X11 and Wayland results independently.",
       "sources": [
-        "S29",
-        "S33"
+        "S60",
+        "S61"
       ],
       "requirements": [
         "A068",
@@ -143,7 +143,7 @@
         "A071",
         "A114"
       ],
-      "reviewed_local_date": "2026-10-02",
+      "reviewed_local_date": "2026-11-22",
       "assbox_status": "not_run",
       "evidence": null
     }

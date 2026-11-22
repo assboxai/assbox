@@ -24,7 +24,7 @@ This tree uses **direct QEMU/KVM and the existing pinned nixpkgs**. It does not 
 | Release audit | Separate vulnerability scanning of image-contained worker closures, including configured worker-enabled release targets |
 | Native gates | Module/worker assertions, artifact closure, effective worker `sshd -T` policy, boot-state behavior, networking, disabled-state activation/reboot and actual-KVM acceptance procedures |
 | Git onboarding | Recommended fine-grained PAT limited to selected agent/staging repositories, independently reviewed CI, and human promotion from a separate trusted workstation or service |
-| Password backend | Existing backend retained; libsecret migration is deferred and no optional patch is shipped |
+| Password backend | Native package chooses the effective backend. Graphical sessions provide GNOME Secret Service. See [credential-storage qualification](password-storage.md). |
 
 The source includes the Rust management and installer integration, not merely Nix examples. However, presence of these code paths is not evidence that they compile, build or execute successfully on the target. A controller's final SSH-project selection in Desktop remains a documented one-time user step; Assbox does not edit undocumented application databases.
 
@@ -56,9 +56,8 @@ from package builds, runtime networking and authenticated Desktop routing.
 
 ## Deferred qualification
 
-Heavy checks are deliberately deferred while other work runs on the development
-machine. No Actions runs, production activation or provider logins are part of
-this integration. Do not interpret deferred checks as absent requirements.
+The October 2 lightweight pass deferred the checks below. Current release
+qualification needs its own source-bound results.
 
 - Full static suite, release-closure compilation/tests, mutation checks and refreshed coverage.
 - Nix evaluation, system and image builds, artifact closure and separate worker vulnerability scans.
@@ -68,10 +67,10 @@ this integration. Do not interpret deferred checks as absent requirements.
 - Resource measurements and physical Intel MacBook qualification.
 - Actual Linux Desktop/SSH/mobile routing and provider authentication with synthetic data.
 
-The current development host lacks `/dev/kvm`. Emulated test VMs can exercise
-some gates later, but cannot establish production-worker KVM behavior. Tests using
-synthetic sparse disks or an immutable fixture health checker must remain labeled
-as such. Source assertions do not replace actual lifecycle or packet tests.
+Record usable `/dev/kvm` and the actual QEMU runtime for each native worker
+test. Emulated runs, synthetic sparse disks, and fixture health checkers have
+their own evidence scope. Qualify the production worker lifecycle and packet
+policy in the target environment.
 
 Prior successful Assbox results apply only where their inputs are unchanged.
 Worker placement and maintenance integration affect existing gates; the old green

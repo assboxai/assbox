@@ -12,9 +12,15 @@ The worker is not the machine containing the Desktop session merely because
 both are sometimes called a host. See [terminology](terminology.md) for the
 mapping and stable configuration names.
 
-## The product contract
+## Protected local Code
 
-Assbox manages a trusted controller and an untrusted execution environment. Protected Code uses a native Linux controller connected over a private SSH link to one generated KVM worker. ChatGPT and Claude routes require independent native qualification. A None kiosk can be staged without a worker and still requires the exact native gate. The mobile client continues to use Desktop Remote. Linux Remote availability is the deployment premise; actual routing and permissions must be qualified on the installed client.
+[Product architecture](../product/architecture.md) defines the deployment choices.
+This guide describes the protected local Code model, where a native Linux
+controller uses a private SSH link to one generated KVM worker. ChatGPT and
+Claude routes require independent native qualification. A kiosk requesting
+no local execution can be staged without a worker and activates through its
+exact native policy gate. Any Linux Desktop Remote path requires evidence for
+the installed client, account and actual routing.
 
 The user installs and administers **one Assbox**. The outer configuration builds, provisions, starts, updates, checks and replaces the headless worker. There is no worker installer, nested desktop, separate update subscription, second editable Assbox configuration, or user-managed QEMU command. The worker is a separate NixOS evaluation owned by the controller release, not an independently enrolled Assbox controller.
 
@@ -43,7 +49,12 @@ The catalog records three placement capabilities for every component: `controlle
 
 A sensitive controller rejects curated execution components on the controller. Protected ChatGPT Code requires worker Codex; protected Claude Code requires worker Claude Code. Native None can be staged without a worker but is inactive until exact policy verification. Managed controller `package add` is also refused; durable custom toolchains are declared through `assbox.worker.extraGuestConfig`. Unprivileged controller users are not admitted to the controller Nix daemon. Administrative builds still use the privileged management path.
 
-Only `chatgpt-desktop` and its `chatgpt-remote` integration are currently approved controller selections. Sensitive clients without a qualified adapter, including the catalog's Claude Desktop/Cowork integration, are rejected rather than represented as safe. IDE front ends, external controllers and additional transports can be qualified later. Their potential is not a claim that their local extension/tool execution is isolated today. Ordinary deployments without a sensitive controller and without a worker can continue using the standalone component model.
+`chatgpt-desktop` and `claude-desktop` are eligible native controller
+selections. Each selected app stays inactive until its own client, platform and
+account policy contract passes. `chatgpt-remote` adds a separate mobile-host
+surface. Local Cowork requires its own entitled build and provider-VM contract.
+Standalone deployments use the same catalog under the standalone component
+and network policies.
 
 These rules cover **supported Assbox selection and management**, not arbitrary administrator edits or code shipped/downloaded by Desktop itself. The supported coding session targets `assbox-worker`. Its shell and project-file operations are expected to execute in the worker, not on the controller. This is the SSH-project contract, not an assumption that every upstream use of “host” means the hypervisor host.
 

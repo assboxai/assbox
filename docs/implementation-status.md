@@ -1,8 +1,13 @@
 # Implementation candidate and qualification status
 
-This source implements the accepted greenfield product contract against exported master `3ca0032cf026c9883a60fa03425a1c9bf2ef4b76`. The 244 baseline file hashes matched before changes. No donor application tree was imported. The architecture is frozen; native, authenticated and hardware qualification remains outstanding.
+The initial implementation candidate was assembled against exported master
+`3ca0032cf026c9883a60fa03425a1c9bf2ef4b76`. The 244 baseline file hashes matched
+before changes. The table records implementation scope and observations from
+the [October 2 lightweight pass](../qualification/candidate-checks.json).
+Use the [verification guide](verification.md#publication-and-acceptance) for
+the evidence required to qualify a current release.
 
-| Work | Mechanisms in this candidate | Qualification |
+| Work | Mechanisms in the initial candidate | October 2 qualification observations |
 |---|---|---|
 | W01–W02 | Product documentation, retired component/backend removal, base recovery tools retained | Baseline reviewed; release acceptance not run |
 | W03–W04 | Independently held Happier/Hermes/Pi/OMP families, pinned Happier artifacts, minimal Hermes extras, guarded native launchers, existing portals/keyring | Both architecture builds and exact native prerequisites not run |
@@ -19,7 +24,10 @@ The [acceptance ledger](../qualification/acceptance.json) preserves the supplied
 
 The remaining contract-dependent paths are explicit. Antigravity Remote and experimental direct Codex relay require an immutable reviewed foreground argv; an empty contract stages them without starting a service. Native policy needs an exact qualified probe and account scope; installer selection alone cannot establish this. Conditional local Cowork requires independent provider-VM evidence. Hermes authenticated HTTPS requires an exact public URL, native dashboard authentication and owner-approved exposure; tunnel-only is a separate explicit Advanced choice.
 
-No Nix package build, system rebuild, VM run, native login, authenticated provider task, disk operation or production release publication was performed for this candidate pass. Lightweight checks use a separate temporary Rust target directory. Their tool-path environment is for compilation only and is not a release tool closure.
+The October 2 pass covered source checks and the fixtures listed in its record.
+Nix package and system builds, VM runs, authenticated provider tasks, disk
+operations and release publication were outside that pass. Lightweight checks
+use a separate temporary Rust target directory. Their tool-path environment is for compilation only and is not a release tool closure.
 
 Happier currently uses the reviewed artifact manifest because its held package-recipe snapshot has no Happier derivation. A changed recipe revision without a Happier derivation fails the family gate and remains held; it cannot masquerade as a runtime update. When an upstream recipe supplies Happier, its independently pinned derivation and compatibility gate become the normal path. Updating the fallback artifact manifest requires a reviewed source change.
 
@@ -27,4 +35,5 @@ The [lightweight candidate check record](../qualification/candidate-checks.json)
 
 The continued scope audit added a settings diff to reconfiguration, connected the selected egress policy to the actual managed worker, exposed read-only native gate states and route locations, removed the default desktop closure, bounded manual desktop sessions and native GUI services, and generated preset/catalog/Linux evidence pages from reviewed data. Private Chromium now has a resource entry point with ephemeral profile/cache and loopback debugging; a real browser/display substrate VM gate is wired but unrun. Reviewed scripted selection transcripts cover all presets, cancellation, Back, exclusions and mixed native gate states. The focused lease, gate and selection fixtures pass. External Coder now has an owner-run, source-bound canary/outage/reconnect fixture with guest-only counters; its temporary-directory self-checks pass and native route qualification remains unrun. Tailscale deselection omits its Serve backend closure, and native stop/checkpoint controls name the actual desktop units.
 
-The final source audit repaired an unguarded duplicate Claude autostart, unqualified simultaneous direct-Codex/Happier services, missing custom provider-home checkpoints, incomplete web-kiosk/GUI lifecycle and resource integration, stale plan-only installer inputs, and inconsistent Hermes public-origin validation. It identified no remaining obvious source-scope omission after mapping every requirement. The candidate implements the requested paths or stages them behind explicit contracts with a qualification handoff. This is the owner-requested source candidate state; W21/W22 execution and provider-specific browser, pairing, native-policy, network and hardware results remain deferred, and no release acceptance entry was promoted.
+The final source audit repaired an unguarded duplicate Claude autostart, unqualified simultaneous direct-Codex/Happier services, missing custom provider-home checkpoints, incomplete web-kiosk/GUI lifecycle and resource integration, stale plan-only installer inputs, and inconsistent Hermes public-origin validation. It identified no remaining obvious source-scope omission after mapping every requirement. The candidate implements the requested paths or stages them behind explicit contracts with a qualification handoff. At that point, the acceptance ledger still recorded W21/W22 and provider-specific
+browser, pairing, native-policy, network and hardware cases as unrun.

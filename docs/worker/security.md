@@ -1,6 +1,11 @@
 # Worker security contract
 
-The [controller/worker model](controller-model.md) is the normative product policy: sensitive controllers require a worker, curated controller agent packages are rejected, and there is no supported placement bypass. This is not a sandbox for Desktop's built-in tools. The [staging-repository guide](git-workflow.md) covers the independent credential and promotion boundary.
+[Product architecture](../product/architecture.md) defines execution placement.
+The [controller/worker model](controller-model.md) describes the boundary for
+protected local Code. Each native app requires a qualified effective policy for
+its built-in tools, including when it requests no local execution and runs
+without a worker. The [staging-repository guide](git-workflow.md) covers the
+credential and promotion boundary.
 
 
 ## Scope and status
@@ -84,7 +89,12 @@ permissions or pairing require the affected routing checks again.
 
 ## Keyring and disk-at-rest policy
 
-The source does not couple a password-backend change to worker enablement. A libsecret migration is deferred; the appliance baseline retains `basic` pending separate qualification. Chromium can fall back when a backend is unavailable, and a password-protected keyring can require human unlock. Read [password storage](password-storage.md). No backend flag is a boundary against all arbitrary same-user processes, and no encryption/unattended-unlock guarantee is made. [S3]
+Worker enablement leaves Desktop credential storage to the selected native
+application package. Graphical sessions provide the standard GNOME Secret
+Service with first-use prompts. Verify the effective backend, fallback and
+unlock behavior for the qualified build and account. An unlocked keyring is
+accessible to processes with the same Desktop user authority. Read
+[password storage](password-storage.md) and the [Chromium storage notes](sources.md#s3--chromium-linux-password-storage).
 
 Full-disk encryption is a separate physical-security decision. Unattended reboot requires a reviewed unlock method and recovery story; this implementation does not add one. The same distinction applies to the worker image, home disk, seed, controller SSH key and backups. Filesystem permissions are not disk-theft protection.
 

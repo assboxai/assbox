@@ -1,6 +1,6 @@
 # Dated provider and package evidence
 
-Primary sources recorded 1–2 October 2026 for the accepted target, with individual review dates below. Deployment begins on or after 6 October 2026. Provider facts are not permanent architecture rules or proof of an installed release. Check actual client, account, runtime and platform in the [implementation ledger](../implementation-status.md).
+The accepted target uses dated primary sources. Each entry records its review date. Deployment begins on or after 6 October 2026. Provider facts are not permanent architecture rules or proof of an installed release. Check actual client, account, runtime and platform in the [implementation ledger](../implementation-status.md).
 
 <a id="s01"></a>
 
@@ -591,3 +591,32 @@ https://hermes-agent.nousresearch.com/docs/user-guide/features/bot-screen
 **Reviewed:** 2026-10-02. **Evidence type:** current-primary-documentation.
 
 Documents per-profile Xfce/TigerVNC work surfaces on headless Linux and provider viewing/control with short-lived viewer tickets. It explicitly treats same-UID screens as work surfaces rather than isolation from hostile peers, and notes that loopback browser debugging is not per-user protected. Prefer this upstream lifecycle when present in the selected pin; qualify viewer authorization and do not infer support in older packages.
+
+<a id="s60"></a>
+
+## S60 — OMP computer use at v18.8.3
+
+https://raw.githubusercontent.com/can1357/oh-my-pi/v18.8.3/docs/computer-use.md
+
+**Reviewed:** 2026-11-22. **Evidence type:** versioned-primary-source.
+
+This version documents separate browser and computer preludes. On Linux, the
+computer prelude starts disabled. The X11 path uses X11 capture, input and
+accessibility. Wayland capture needs a native addon built with
+`wayland-pipewire`, plus working ScreenCast and PipeWire support. The
+documentation says upstream release binaries omit the capture feature.
+
+<a id="s61"></a>
+
+## S61 — OMP package at the selected Assbox pin
+
+https://raw.githubusercontent.com/numtide/llm-agents.nix/d6e0728e247621456c3c119f9c22857f281f158b/packages/omp/package.nix
+
+https://raw.githubusercontent.com/numtide/llm-agents.nix/d6e0728e247621456c3c119f9c22857f281f158b/packages/omp/hashes.json
+
+**Reviewed:** 2026-11-22. **Evidence type:** versioned-package-source.
+
+This pin selects OMP 18.8.3 and requests `wayland-pipewire` during the Linux
+Cargo build. The recipe can run a later N-API build before packaging the addon.
+Inspect the artifact shipped by the selected build and exercise the compositor
+and permissions before qualifying either display backend.
