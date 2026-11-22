@@ -4,7 +4,7 @@ name: Assbox x86 live checkpoint qualification
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-physical-checkpoint-x86-v1
+  group: assbox-physical-checkpoint-x86-v2
   cancel-in-progress: false
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v1' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v2' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04
     timeout-minutes: 360
@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: d6f1c2e33cd66691dde98ca30ef202cad7f36daa
+          ref: 9a552a4b768d3f59368ed45286c7b320507eb812
           path: product
           persist-credentials: false
       - name: Clear unused SDKs on the ephemeral hosted runner
@@ -66,18 +66,18 @@ jobs:
           path: ${{ runner.temp }}/assbox-checkpoint-logs/
           if-no-files-found: warn
           retention-days: 14
-  publish:
+  attest:
     if: >-
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v1' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v2' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
-      contents: write
+      contents: read
       id-token: write
       attestations: write
     steps:
@@ -98,20 +98,16 @@ jobs:
           subject-path: |
             ${{ runner.temp }}/assbox-checkpoint-assets/assbox-physical-checkpoint.json
             ${{ runner.temp }}/assbox-checkpoint-assets/assbox-physical-checkpoint-x86_64-linux.iso
-      - name: Publish immutable x86 live checkpoint prerelease
+      - name: Retain the build provenance bundle
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}
         run: |
           set -euo pipefail
-          test "$(gh api repos/assboxai/assbox/git/ref/heads/test/physical-checkpoint-x86-v1 --jq '.object.sha')" = "$GITHUB_SHA"
-          cd "$RUNNER_TEMP/assbox-checkpoint-assets"
-          cp -- "$BUNDLE" assbox-physical-checkpoint.sigstore.json
-          tag="physical-checkpoint-${GITHUB_RUN_ID}-1-x86_64-linux-dev"
-          gh release create "$tag" assbox-physical-checkpoint.json assbox-physical-checkpoint.sigstore.json \
-            assbox-physical-checkpoint-x86_64-linux.iso bios-serial.log uefi-serial.log \
-            --repo assboxai/assbox --target "$GITHUB_SHA" --prerelease --latest=false \
-            --title 'Assbox x86 live hardware checkpoint' \
-            --notes 'Development live image from product commit d6f1c2e33cd66691dde98ca30ef202cad7f36daa. The source passed the native finite gates. The exact ISO passed the BIOS and UEFI VM boot checks. Physical hardware, authenticated installation, and updates are separate qualification.'
-          test "$(gh api "repos/assboxai/assbox/releases/tags/$tag" --jq '.immutable and .prerelease')" = true
+          install -m 0600 -- "$BUNDLE" "$RUNNER_TEMP/assbox-physical-checkpoint.sigstore.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: attested-x86-live-checkpoint-provenance
+          path: ${{ runner.temp }}/assbox-physical-checkpoint.sigstore.json
+          if-no-files-found: error
+          retention-days: 14
