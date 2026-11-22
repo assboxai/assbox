@@ -16,6 +16,15 @@ import release_data
 
 
 class ComponentCatalogTests(unittest.TestCase):
+    def test_happier_selection_summary_matches_the_reviewed_cli_version(self):
+        source = json.loads((ROOT / 'nix/happier-source.json').read_text())
+        summary = ROOT / 'crates/imperative-shell/assbox-cli/src/wizard/agent_summary.rs'
+        self.assertIn(
+            f'const HAPPIER_REVIEWED_VERSION: &str = "{source["version"]}";',
+            summary.read_text(),
+            'Review the per-agent maturity labels when the Happier pin changes',
+        )
+
     def test_generated_metadata_and_release_families_match(self):
         subprocess.run([sys.executable, 'scripts/component_catalog.py', '--check'], cwd=ROOT, check=True)
         rows = catalog.read_catalog()

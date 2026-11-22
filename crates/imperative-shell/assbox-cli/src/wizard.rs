@@ -3,6 +3,8 @@ use assbox_domain::*;
 use assbox_system::{commands::Commands, files, probe};
 use std::io::{self, IsTerminal, Write};
 
+mod agent_summary;
+
 pub(crate) fn ask(label: &str, default: Option<&str>) -> Result<String> {
     if !io::stdin().is_terminal() {
         return Err(Error::new("the installer requires an interactive terminal"));
@@ -39,6 +41,9 @@ trait SelectionUi {
     fn ask(&mut self, label: &str, default: Option<&str>) -> Result<String>;
     fn show(&mut self, text: &str);
     fn native_status(&mut self, app: Component, requested: &str) -> Result<(String, String)>;
+    fn installed_host_components(&mut self) -> Option<Components> {
+        None
+    }
     fn yes(&mut self, label: &str, default: Option<bool>) -> Result<bool> {
         loop {
             match self
@@ -64,6 +69,9 @@ impl SelectionUi for TerminalSelectionUi {
     }
     fn native_status(&mut self, app: Component, requested: &str) -> Result<(String, String)> {
         super::user::native_policy_status(app, requested)
+    }
+    fn installed_host_components(&mut self) -> Option<Components> {
+        probe::runtime(&Commands).ok()?.first()?.parse().ok()
     }
 }
 
@@ -264,16 +272,7 @@ fn selection_with_ui(
             && purpose != Purpose::Assistant
             && ui.yes("Add all eight curated coding agents?", Some(false))?
         {
-            for c in [
-                Component::Codex,
-                Component::ClaudeCode,
-                Component::AntigravityCli,
-                Component::CursorAgent,
-                Component::Grok,
-                Component::Opencode,
-                Component::Pi,
-                Component::Omp,
-            ] {
+            for c in agent_summary::CURATED {
                 selected.insert(c);
             }
         }
@@ -430,6 +429,7 @@ fn selection_with_ui(
             resolved.config.egress,
             resolved.config.tailscale
         ));
+        agent_summary::show(ui, &resolved, installed);
         if ui.yes("Use this selection?", Some(true))? {
             return Ok(resolved);
         }

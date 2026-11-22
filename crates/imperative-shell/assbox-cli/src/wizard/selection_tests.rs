@@ -8,6 +8,7 @@ struct Scripted {
     transcript: String,
     gates: VecDeque<&'static str>,
     gate_calls: Vec<(Component, String)>,
+    installed_components: Option<Components>,
 }
 impl Scripted {
     fn new(answers: &[&str]) -> Self {
@@ -16,6 +17,7 @@ impl Scripted {
             transcript: String::new(),
             gates: VecDeque::new(),
             gate_calls: vec![],
+            installed_components: None,
         }
     }
 }
@@ -49,6 +51,63 @@ impl SelectionUi for Scripted {
             "fixture installed observations".into(),
         ))
     }
+    fn installed_host_components(&mut self) -> Option<Components> {
+        self.installed_components
+    }
+}
+
+#[test]
+fn selection_summary_keeps_installation_and_adapter_observations_separate() {
+    let mut ui = Scripted::new(&["coder", "happier", "", "", "", "", "", ""]);
+    ui.installed_components = Some("codex,grok".parse().unwrap());
+    let selected = selection_with_ui(&mut ui, true).unwrap();
+    assert_eq!(selected.config.preset, "coder-happier");
+    assert!(ui.answers.is_empty() && ui.gate_calls.is_empty());
+    assert_eq!(ui.transcript.matches(" | host | ").count(), 8);
+    for line in [
+        "codex | host | installed | unobserved | Happier binding | unobserved",
+        "grok | host | installed | unobserved | Happier binding, experimental upstream resume | unobserved",
+        "antigravity-cli | host | requested | unobserved | Happier CLI binding, experimental remote ACP helper | unobserved",
+        "omp | host | requested | unobserved | CLI only | unobserved",
+        "pi | host | requested | unobserved | Named upstream Happier adapter | unobserved",
+    ] {
+        assert!(
+            ui.transcript.lines().any(|observed| observed == line),
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn host_installation_does_not_observe_the_proposed_managed_worker() {
+    let mut ui = Scripted::new(&["custom", "codex", "n", "y", "", "n", "offline", "", ""]);
+    ui.installed_components = Some(Component::Codex.into());
+    let selected = selection_with_ui(&mut ui, true).unwrap();
+    assert_eq!(selected.worker, Component::Codex.into());
+    assert!(ui.answers.is_empty() && ui.gate_calls.is_empty());
+    assert!(ui.transcript.lines().any(|line| {
+        line == "codex | managed worker | unobserved | unobserved | CLI only | unobserved"
+    }));
+}
+
+#[test]
+fn summary_shows_multiple_explicit_frontends_for_one_agent() {
+    let mut ui = Scripted::new(&[]);
+    let selected = assbox_policy::instances::resolve(
+        "custom",
+        Some(
+            "cursor-agent,cursor-worker,happier,happier-daemon"
+                .parse()
+                .unwrap(),
+        ),
+        Components::default(),
+        false,
+    )
+    .unwrap();
+    agent_summary::show(&mut ui, &selected, false);
+    assert!(ui.transcript.lines().any(|line| {
+        line == "cursor-agent | host | requested | unobserved | Happier binding + Cursor worker selected | unobserved"
+    }));
 }
 
 fn scenario(
