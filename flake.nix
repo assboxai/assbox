@@ -266,20 +266,7 @@
           installBoot = import ./tests/nix/install-boot-vm.nix {
             inherit module;
             inherit (p) pkgs assbox;
-            inputs = {
-              inherit
-                nixpkgs
-                antigravity-packages
-                chatgpt-packages
-                claude-code-packages
-                claude-desktop-packages
-                codex-packages
-                cursor-packages
-                grok-packages
-                openclaw-packages
-                opencode-packages
-                ;
-            };
+            inputs = self.inputs;
           };
         in
         p.matrix.checks
@@ -398,20 +385,7 @@
           activation-recovery-vm = import ./tests/nix/activation-recovery-vm.nix {
             inherit module;
             inherit (p) pkgs assbox;
-            inputs = {
-              inherit
-                nixpkgs
-                antigravity-packages
-                chatgpt-packages
-                claude-code-packages
-                claude-desktop-packages
-                codex-packages
-                cursor-packages
-                grok-packages
-                openclaw-packages
-                opencode-packages
-                ;
-            };
+            inputs = self.inputs;
           };
           authenticated-release-vm = import ./tests/nix/authenticated-release-vm.nix {
             inherit (p) pkgs assbox;

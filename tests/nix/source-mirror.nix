@@ -2,25 +2,39 @@
 # Offline HTTPS responses for the exact input sources recorded in flake.lock.
 { pkgs, inputs }:
 let
-  sources = builtins.genericClosure {
-    startSet = map (value: {
-      key = toString value.outPath;
-      inherit value;
-    }) (builtins.attrValues inputs);
+  inherit (pkgs) lib;
+  lock = builtins.fromJSON (builtins.readFile ../../flake.lock);
+  # The same source tree can appear in several lock nodes with different inputs.
+  # Follow node IDs so a shared source path cannot hide one node's dependencies.
+  closure = builtins.genericClosure {
+    startSet = [
+      {
+        key = lock.root;
+        value = { inherit inputs; };
+      }
+    ];
     operator =
       item:
-      map (value: {
-        key = toString value.outPath;
-        inherit value;
-      }) (builtins.attrValues (item.value.inputs or { }));
+      # Follow references alias nodes reached through their direct inputs.
+      lib.mapAttrsToList (name: key: {
+        inherit key;
+        value = item.value.inputs.${name};
+      }) (lib.filterAttrs (_: builtins.isString) (lock.nodes.${item.key}.inputs or { }));
   };
-  lock = builtins.fromJSON (builtins.readFile ../../flake.lock);
-  nodes = builtins.filter (node: node ? locked) (builtins.attrValues lock.nodes);
-  records = map (
-    node:
+  sources = builtins.listToAttrs (
+    map (item: {
+      name = item.key;
+      inherit (item) value;
+    }) closure
+  );
+  records = lib.mapAttrsToList (
+    name: node:
     let
-      source = builtins.head (builtins.filter (item: item.value.narHash == node.locked.narHash) sources);
+      source = sources.${name};
     in
+    assert lib.assertMsg (
+      source.narHash == node.locked.narHash
+    ) "Assbox source mirror: lock hash does not match input ${name}";
     {
       inherit (node.locked)
         owner
@@ -29,9 +43,9 @@ let
         narHash
         lastModified
         ;
-      path = source.key;
+      path = source.outPath;
     }
-  ) nodes;
+  ) (lib.filterAttrs (_: node: node ? locked) lock.nodes);
 in
 pkgs.runCommand "assbox-input-source-mirror"
   {
@@ -42,8 +56,8 @@ pkgs.runCommand "assbox-input-source-mirror"
       pkgs.nix
     ];
     sourceRecords = builtins.toJSON records;
-    # Preserve references that JSON/path conversion would otherwise discard.
-    sourcePaths = map (item: item.value.outPath) sources;
+    # Keep the matched source trees as explicit build dependencies.
+    sourcePaths = map (record: record.path) records;
   }
   ''
     mkdir -p "$out"
