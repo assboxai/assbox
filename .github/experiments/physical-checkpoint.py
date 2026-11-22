@@ -16,7 +16,7 @@ import sys
 REPO = 'assboxai/assbox'
 REPO_ID = '1402455771'
 OWNER_ID = '327835666'
-REF = 'refs/heads/test/physical-checkpoint-x86-v5'
+REF = 'refs/heads/test/physical-checkpoint-x86-v6'
 SOURCE = '24b3a4f3773d61aa236c22d8ee48ab42a39797e0'
 TREE = 'dded0799163d8ca63d8e91948402fa633a401be8'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
@@ -29,6 +29,8 @@ FILE_LIMITS = {ISO: 2_147_483_647, **{name: 16 * 1024 * 1024 for name in LOGS}}
 NIX_FLAGS = ('--no-update-lock-file', '--no-write-lock-file')
 GATES = (('setup', '--no-hooks'), ('verify-lite',), ('verify-prepare',))
 FILE_PATH = re.compile(r'/nix/store/[a-z0-9]{32}-[^/]+')
+SQLITE_DRV = '/nix/store/9c4c1sxhr50h2blkr8x46306mygns01k-sqlite-3.54.1.drv'
+SQLITE_BIN = '/nix/store/m7l1rwbyq8hicv2dmnpaiwfkccx6hbxv-sqlite-3.54.1-bin'
 
 
 def run(*args, cwd):
@@ -90,6 +92,27 @@ def validate(files, scope):
     print(json.dumps(manifest, sort_keys=True))
 
 
+def build_sqlite(source, logs):
+    attribute = '.#nixosConfigurations.x86_64-linux-physical-checkpoint.pkgs.sqlite'
+    selected = run('nix', 'eval', '--raw', *NIX_FLAGS, attribute + '.drvPath', cwd=source)
+    output = run('nix', 'eval', '--raw', *NIX_FLAGS, attribute + '.bin.outPath', cwd=source)
+    if selected != SQLITE_DRV or output != SQLITE_BIN:
+        raise ValueError('SQLite differs from the reviewed checkpoint dependency')
+    with (logs / 'sqlite-build.log').open('xb') as log:
+        built = subprocess.run(
+            ('nix', 'build', '--max-jobs', '1', '--cores', '2', '--keep-failed', '--no-link',
+             '--print-out-paths', '-L', *NIX_FLAGS, selected + '^bin'),
+            cwd=source, stdout=log, stderr=subprocess.STDOUT,
+        )
+    (logs / 'sqlite-status.tsv').write_text(f'{built.returncode}\t{selected}\t{output}\n')
+    if built.returncode:
+        with (logs / 'sqlite-derivation.log').open('xb') as log:
+            subprocess.run(('nix', 'log', selected), cwd=source, stdout=log, stderr=subprocess.STDOUT)
+        built.check_returncode()
+    if run('nix', 'path-info', '--offline', output, cwd=source) != output:
+        raise ValueError('SQLite build did not register the reviewed output')
+
+
 def build(files, scope, logs):
     if platform.system() != 'Linux' or platform.machine() != 'x86_64':
         raise ValueError('Checkpoint qualification requires native Linux x86-64')
@@ -105,6 +128,7 @@ def build(files, scope, logs):
                            stdout=output, stderr=subprocess.STDOUT, timeout=1200, check=True)
         verify_checkout(source, SOURCE)
 
+    build_sqlite(source, logs)
     boot_attr = f'.#checks.{SYSTEM}.physical-checkpoint-boot'
     image_attr = f'.#packages.{SYSTEM}.physical-checkpoint-iso'
     boot_drv = run('nix', 'eval', '--raw', *NIX_FLAGS, boot_attr + '.drvPath', cwd=source)
