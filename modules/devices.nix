@@ -30,6 +30,7 @@ let
     camera = cfg.devices.camera.enable;
   };
   deniedModules = if assboxDeviceModuleDeny then disabledModules else [ ];
+  checkDisabledDevices = assboxDeviceModuleDeny && disabledModules != [ ];
   blockDisabledRadios =
     if allRadiosDisabled then
       "${pkgs.util-linux}/bin/rfkill block all"
@@ -183,23 +184,23 @@ in
         fi
       '';
     };
-    systemd.services.assbox-device-policy-check =
-      lib.mkIf (assboxDeviceModuleDeny && disabledModules != [ ])
-        {
-          description = "Verify the Assbox disabled-device boundary before networking";
-          requiredBy = [ devicePolicyNetworkUnit ];
-          before = [
-            devicePolicyNetworkUnit
-            "network-pre.target"
-          ];
-          after = [ "systemd-udev-settle.service" ];
-          requires = [ "systemd-udev-settle.service" ];
-          serviceConfig = {
-            Type = "oneshot";
-            RemainAfterExit = true;
-            ExecStart = devicePolicyCheck;
-          };
-        };
+    # NixOS leaves this packaged upstream unit out of the system unit set.
+    systemd.additionalUpstreamSystemUnits = lib.optional checkDisabledDevices "systemd-udev-settle.service";
+    systemd.services.assbox-device-policy-check = lib.mkIf checkDisabledDevices {
+      description = "Verify the Assbox disabled-device boundary before networking";
+      requiredBy = [ devicePolicyNetworkUnit ];
+      before = [
+        devicePolicyNetworkUnit
+        "network-pre.target"
+      ];
+      after = [ "systemd-udev-settle.service" ];
+      requires = [ "systemd-udev-settle.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = devicePolicyCheck;
+      };
+    };
     # The immediate udev action closes the hotplug window. Reassert the policy
     # after the selected network service as well. NetworkManager can restore a
     # saved preference; networkd needs only the rfkill backstop.

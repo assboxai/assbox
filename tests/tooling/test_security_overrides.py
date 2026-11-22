@@ -108,6 +108,20 @@ class SecurityOverrideTests(unittest.TestCase):
         self.assertIn('sqlite-doc-3540100.zip', module)
         self.assertIn('sha256-6fY0rCikx7SPXDieSwjAOWVOwUh1EgkrMwzPz9wIFuA=', module)
 
+    def test_reviewed_zlib_release_uses_the_native_package_and_minizip(self):
+        result = subprocess.run([
+            'nix', 'eval', '--json', '--no-update-lock-file', '--no-write-lock-file',
+            '.#nixosConfigurations.x86_64-linux-physical-checkpoint.pkgs', '--apply',
+            'pkgs: { inherit (pkgs.zlib) version; '
+            'archive = pkgs.zlib.src.outputHash; minizip = pkgs.minizip.version; }',
+        ], cwd=ROOT, capture_output=True, text=True, timeout=180)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {
+            'version': '1.4',
+            'archive': 'sha256-At0Vl4NnenScBK290CtVuKK8x+BU9Rt2tUkZmpFq1YQ=',
+            'minizip': '1.4',
+        })
+
     def test_ffmpeg_point_release_source_is_exact_and_version_gated(self):
         module = (ROOT / 'modules/security-overrides.nix').read_text()
         self.assertIn('ffmpegVersion = "8.1.3";', module)

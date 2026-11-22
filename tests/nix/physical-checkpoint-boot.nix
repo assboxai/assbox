@@ -86,28 +86,42 @@ pkgs.runCommand "assbox-physical-checkpoint-boot"
     }
     trap stop_qemu EXIT INT TERM
 
+    print_boot_logs() {
+      for boot_log in "$@"; do
+        if test -f "$boot_log"; then
+          cat "$boot_log" >&2
+        fi
+      done
+    }
+
     wait_for_ready() {
       log="$1"
+      qemu_log="$2"
       ready=0
       for ignored in $(seq 1 420); do
-        if grep -Fq ${pkgs.lib.escapeShellArg marker} "$log"; then
+        if test -f "$log" && grep -Fq ${pkgs.lib.escapeShellArg marker} "$log"; then
           ready=1
           break
         fi
         if ! kill -0 "$qemu_pid" 2>/dev/null; then
-          cat "$log" >&2
+          print_boot_logs "$qemu_log" "$log"
           echo "checkpoint VM exited before its readiness marker" >&2
           exit 1
         fi
         sleep 1
       done
       if test "$ready" != 1; then
-        cat "$log" >&2
+        print_boot_logs "$qemu_log" "$log"
         echo "checkpoint VM did not reach its readiness marker" >&2
         exit 1
       fi
       stop_qemu
     }
+
+    # Start each guest from the exact ISO bytes. Writable overlays are private
+    # to each VM and keep the backing image immutable.
+    qemu-img create -q -f qcow2 -F raw -b "$iso" "$PWD/bios-media.qcow2"
+    qemu-img create -q -f qcow2 -F raw -b "$iso" "$PWD/uefi-media.qcow2"
 
     # Exercise the boot path used by a legacy PC after the hybrid image is
     # written directly to a USB drive.
@@ -123,11 +137,11 @@ pkgs.runCommand "assbox-physical-checkpoint-boot"
       -serial "file:$bios_log" \
       -netdev user,id=network \
       -device virtio-net-pci,netdev=network \
-      -drive "if=ide,format=raw,readonly=on,file=$iso" \
+      -drive "if=ide,format=qcow2,file=$PWD/bios-media.qcow2" \
       -boot order=c \
       > "$out/bios-qemu.log" 2>&1 &
     qemu_pid=$!
-    wait_for_ready "$bios_log"
+    wait_for_ready "$bios_log" "$out/bios-qemu.log"
 
     # Exercise the Intel Mac path with UEFI firmware and the same image exposed
     # as USB mass storage. The copied variables image is private to this boot.
@@ -148,11 +162,11 @@ pkgs.runCommand "assbox-physical-checkpoint-boot"
       -netdev user,id=network \
       -device virtio-net-pci,netdev=network \
       -device qemu-xhci,id=xhci \
-      -drive "if=none,format=raw,readonly=on,file=$iso,id=checkpoint" \
+      -drive "if=none,format=qcow2,file=$PWD/uefi-media.qcow2,id=checkpoint" \
       -device usb-storage,drive=checkpoint,bootindex=1 \
       > "$out/uefi-qemu.log" 2>&1 &
     qemu_pid=$!
-    wait_for_ready "$uefi_log"
+    wait_for_ready "$uefi_log" "$out/uefi-qemu.log"
 
     printf '%s\n' ${pkgs.lib.escapeShellArg marker} > "$out/passed"
   ''

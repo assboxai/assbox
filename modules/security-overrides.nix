@@ -16,6 +16,7 @@ let
   node24Version = "24.22.3";
   opensshVersion = "10.6p2";
   sqliteVersion = "3.54.1";
+  zlibVersion = "1.4";
   busyboxSecurityPatches = [
     ../nix/patches/busybox-f5e1bf966b19ea1821f00a8c9ecd7774598689b4.patch
   ];
@@ -90,6 +91,7 @@ in
       (
         final: previous:
         let
+          finalLinuxStage = previous.stdenv.name == "stdenv-linux";
           upgradeFfmpeg =
             package:
             if package.version == "8.1.2" then
@@ -134,6 +136,22 @@ in
               package;
         in
         {
+          # Nixpkgs inherits bootstrap zlib after applying user overlays. Keep
+          # the compiler derivation and bootstrapping stages, but let the final
+          # package set select the reviewed runtime library.
+          stdenv =
+            previous.stdenv
+            // lib.optionalAttrs finalLinuxStage {
+              overrides =
+                self: super:
+                let
+                  inherited = previous.stdenv.overrides self super;
+                in
+                if (inherited.zlib.version or null) == "1.3.2" then
+                  builtins.removeAttrs inherited [ "zlib" ]
+                else
+                  inherited;
+            };
           # The stable channel still carries 8.1.2 after upstream's 8.1.3
           # security/bug-fix point release. Preserve each feature variant and
           # the major ABI, and stop overriding as soon as Nixpkgs advances.
@@ -285,6 +303,22 @@ in
             else
               previous.tinysparql;
           sqlite-interactive = upgradeSqlite previous.sqlite-interactive;
+          zlib =
+            if finalLinuxStage && previous.zlib.version == "1.3.2" then
+              previous.zlib.overrideAttrs (old: {
+                version = zlibVersion;
+                # Curl links against zlib, so fetch the archive with the bootstrap fetcher.
+                src = previous.stdenv.fetchurlBoot {
+                  url = "https://zlib.net/zlib-${zlibVersion}.tar.gz";
+                  hash = "sha256-At0Vl4NnenScBK290CtVuKK8x+BU9Rt2tUkZmpFq1YQ=";
+                };
+                # 1.4 incorporates the portability fix for the configure export.
+                patches = builtins.filter (patch: builtins.baseNameOf (toString patch) != "export-variable.patch") (
+                  old.patches or [ ]
+                );
+              })
+            else
+              previous.zlib;
         }
       )
     ];
@@ -359,6 +393,10 @@ in
       {
         assertion = pkgs.openssh.version != "10.5p1";
         message = "OpenSSH 10.5p1 must be advanced to the reviewed security release.";
+      }
+      {
+        assertion = pkgs.zlib.version != "1.3.2";
+        message = "zlib 1.3.2 must be advanced to the reviewed security release.";
       }
     ];
   };

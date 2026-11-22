@@ -82,6 +82,7 @@ class DevicePolicyTests(unittest.TestCase):
         self.assertEqual(check['requiredBy'], ['NetworkManager.service'])
         self.assertIn('NetworkManager.service', check['before'])
         self.assertEqual(check['requires'], ['systemd-udev-settle.service'])
+        self.assertIn('systemd-udev-settle.service', value['additionalSystemUnits'])
         script = check['serviceConfig']['ExecStart']
         self.assertIn('Assbox disabled-device policy failed', script)
         self.assertIn('/sys/class/net/*', script)
@@ -107,6 +108,7 @@ class DevicePolicyTests(unittest.TestCase):
         self.assertEqual(value['blacklistedKernelModules'], [])
         self.assertEqual(value['kernelParams'], [])
         self.assertIsNone(value['devicePolicyCheck'])
+        self.assertNotIn('systemd-udev-settle.service', value['additionalSystemUnits'])
 
     def test_radio_startup_handles_missing_node_and_propagates_failure(self):
         # Execute the actual rendered postStart with fake command effects. This

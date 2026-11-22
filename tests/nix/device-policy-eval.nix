@@ -62,6 +62,7 @@ in
   radioStartup = result.config.systemd.services.NetworkManager.postStart;
   radioHotplug = result.config.systemd.services."assbox-radio-hotplug" or null;
   devicePolicyCheck = result.config.systemd.services."assbox-device-policy-check" or null;
+  additionalSystemUnits = result.config.systemd.additionalUpstreamSystemUnits;
   radioInput = kernelConfig.config.settings.RFKILL_INPUT;
   unmanaged = result.config.networking.networkmanager.unmanaged;
   bluetoothEnabled = result.config.hardware.bluetooth.enable;
