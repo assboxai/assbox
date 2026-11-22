@@ -113,10 +113,14 @@ class SecurityOverrideTests(unittest.TestCase):
             'nix', 'eval', '--json', '--no-update-lock-file', '--no-write-lock-file',
             '.#nixosConfigurations.x86_64-linux-physical-checkpoint.pkgs', '--apply',
             'pkgs: { inherit (pkgs.zlib) version; '
-            'archive = pkgs.zlib.src.outputHash; minizip = pkgs.minizip.version; }',
+            'archive = pkgs.zlib.src.outputHash; minizip = pkgs.minizip.version; '
+            'minizipPatches = map toString pkgs.minizip.patches; }',
         ], cwd=ROOT, capture_output=True, text=True, timeout=180)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {
+        packages = json.loads(result.stdout)
+        self.assertFalse(any(path.endswith('-add-int.h.patch')
+                             for path in packages.pop('minizipPatches')))
+        self.assertEqual(packages, {
             'version': '1.4',
             'archive': 'sha256-At0Vl4NnenScBK290CtVuKK8x+BU9Rt2tUkZmpFq1YQ=',
             'minizip': '1.4',

@@ -92,6 +92,7 @@ in
         final: previous:
         let
           finalLinuxStage = previous.stdenv.name == "stdenv-linux";
+          upgradeRuntimeZlib = finalLinuxStage && previous.zlib.version == "1.3.2";
           upgradeFfmpeg =
             package:
             if package.version == "8.1.2" then
@@ -304,7 +305,7 @@ in
               previous.tinysparql;
           sqlite-interactive = upgradeSqlite previous.sqlite-interactive;
           zlib =
-            if finalLinuxStage && previous.zlib.version == "1.3.2" then
+            if upgradeRuntimeZlib then
               previous.zlib.overrideAttrs (old: {
                 version = zlibVersion;
                 # Curl links against zlib, so fetch the archive with the bootstrap fetcher.
@@ -319,6 +320,16 @@ in
               })
             else
               previous.zlib;
+          minizip =
+            if upgradeRuntimeZlib then
+              previous.minizip.overrideAttrs (old: {
+                # The zlib 1.4 source already installs the ints.h header.
+                patches = builtins.filter (
+                  patch: !(builtins.isAttrs patch && (patch.name or "") == "add-int.h.patch")
+                ) (old.patches or [ ]);
+              })
+            else
+              previous.minizip;
         }
       )
     ];
