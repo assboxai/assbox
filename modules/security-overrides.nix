@@ -12,7 +12,7 @@ let
   capstoneVersion = "5.0.9";
   libusbVersion = "1.0.30";
   nghttp2Version = "1.70.0";
-  sqliteVersion = "3.53.3";
+  sqliteVersion = "3.54.1";
   busyboxSecurityPatches = [
     ../nix/patches/busybox-f5e1bf966b19ea1821f00a8c9ecd7774598689b4.patch
   ];
@@ -105,25 +105,26 @@ in
               package.overrideAttrs (old: {
                 version = sqliteVersion;
                 src = previous.fetchurl {
-                  url = "https://sqlite.org/2026/sqlite-src-3530300.zip";
-                  hash = "sha256-u4C/ijv/wZJBzoq6WkvHTpw5gAE8sLXw8JdqmVFpQq8=";
+                  url = "https://sqlite.org/2026/sqlite-src-3540100.zip";
+                  hash = "sha256-OH5/bK1Hl7F4SMB9RT3GYGkXuzVqbP5aOrr9OMJAxxs=";
                 };
                 docsrc = previous.fetchurl {
-                  url = "https://sqlite.org/2026/sqlite-doc-3530300.zip";
-                  hash = "sha256-Fo+Zhph2vPTbjZPvoqSDqcgVNlN9AZAMWM110KZ8yic=";
+                  url = "https://sqlite.org/2026/sqlite-doc-3540100.zip";
+                  hash = "sha256-6fY0rCikx7SPXDieSwjAOWVOwUh1EgkrMwzPz9wIFuA=";
                 };
-                patches = (old.patches or [ ]) ++ [
-                  (previous.fetchpatch {
-                    name = "sqlite-tests-report-failure.patch";
-                    url = "https://github.com/sqlite/sqlite/commit/4e4962f6b303688412746b54200ff5402c047aee.patch";
-                    includes = [ "test/testrunner.tcl" ];
-                    hash = "sha256-DLV2ML2zzjd1nEVScDF1sFDdZm1CrOWt5M10rRwXYCY=";
-                  })
-                ];
+                preCheck = (old.preCheck or "") + ''
+                  # The upstream runner defaults to twenty concurrent jobs even
+                  # when the Nix build has a smaller core allocation.
+                  sqliteTestJobs=''${NIX_BUILD_CORES:-1}
+                  if ((sqliteTestJobs < 1 || sqliteTestJobs > 4)); then
+                    sqliteTestJobs=4
+                  fi
+                  checkFlagsArray+=("TSTRNNR_OPTS=--jobs $sqliteTestJobs")
+                '';
                 postInstall = ''
                   mkdir -p $doc/share/doc
                   unzip $docsrc
-                  mv sqlite-doc-3530300 $doc/share/doc/sqlite
+                  mv sqlite-doc-3540100 $doc/share/doc/sqlite
                 '';
               })
             else

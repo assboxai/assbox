@@ -94,8 +94,8 @@ class SecurityOverrideTests(unittest.TestCase):
                 'sha256-qgs8h1vSqJg2muBDWN5nJlvaMjGYZnwMg1m07rqzHco=',
             'nghttp2Version = "1.70.0";':
                 'sha256-j6yh94qpmsO8F2ina34PazbY5qYsE4GHUbHSBfAvlAU=',
-            'sqliteVersion = "3.53.3";':
-                'sha256-u4C/ijv/wZJBzoq6WkvHTpw5gAE8sLXw8JdqmVFpQq8=',
+            'sqliteVersion = "3.54.1";':
+                'sha256-OH5/bK1Hl7F4SMB9RT3GYGkXuzVqbP5aOrr9OMJAxxs=',
         }
         for version, source_hash in expected.items():
             self.assertIn(version, module)
@@ -103,8 +103,8 @@ class SecurityOverrideTests(unittest.TestCase):
         for vulnerable in ('5.0.7', '1.0.29', '1.69.0', '3.51.2'):
             self.assertIn(f'package.version == "{vulnerable}"' if vulnerable == '3.51.2'
                           else f'version == "{vulnerable}"', module)
-        self.assertIn('sqlite-doc-3530300.zip', module)
-        self.assertIn('4e4962f6b303688412746b54200ff5402c047aee.patch', module)
+        self.assertIn('sqlite-doc-3540100.zip', module)
+        self.assertIn('sha256-6fY0rCikx7SPXDieSwjAOWVOwUh1EgkrMwzPz9wIFuA=', module)
 
     def test_ffmpeg_point_release_source_is_exact_and_version_gated(self):
         module = (ROOT / 'modules/security-overrides.nix').read_text()
@@ -230,8 +230,8 @@ class SecurityOverrideTests(unittest.TestCase):
             'capstone': '5.0.9',
             'libusb': '1.0.30',
             'nghttp2': '1.70.0',
-            'sqlite': '3.53.3',
-            'sqliteInteractive': '3.53.3',
+            'sqlite': '3.54.1',
+            'sqliteInteractive': '3.54.1',
         })
 
     def test_application_overlay_does_not_change_the_default_kernel_derivation(self):

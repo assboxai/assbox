@@ -25,6 +25,8 @@ class TinySparqlCompatibilityTests(unittest.TestCase):
           patches = map toString p.tinysparql.patches;
           sqliteVersion = p.sqlite.version;
           interactiveVersion = p.sqlite-interactive.version;
+          sqliteCheck = p.sqlite.doCheck;
+          interactiveCheck = p.sqlite-interactive.doCheck;
         }'''
         result = subprocess.run([
             'nix', 'eval', '--impure', '--json', '--no-update-lock-file',
@@ -36,8 +38,10 @@ class TinySparqlCompatibilityTests(unittest.TestCase):
         self.assertIs(data['check'], True)
         self.assertTrue(any(path.endswith('/nix/patches/tinysparql-sqlite-precision.patch')
                             for path in data['patches']))
-        self.assertEqual(data['sqliteVersion'], '3.53.3')
-        self.assertEqual(data['interactiveVersion'], '3.53.3')
+        self.assertEqual(data['sqliteVersion'], '3.54.1')
+        self.assertEqual(data['interactiveVersion'], '3.54.1')
+        self.assertIs(data['sqliteCheck'], True)
+        self.assertIs(data['interactiveCheck'], True)
 
 
 if __name__ == '__main__':
