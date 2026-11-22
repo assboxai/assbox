@@ -64,6 +64,36 @@ class BootstrapTests(unittest.TestCase):
         self.save_reports(candidate=False)
         self.assertEqual(b.select(self.assets, self.reports)[1], self.current)
 
+    def test_native_gate_uses_a_committed_candidate_and_rejects_source_mutation(self):
+        core = {"flake.lock": (0o644, self.current),
+                "scripts/release-check": (0o755, b"#!/bin/bash\nexit 0\n")}
+        report = self.reports / "native.json"
+        for mutation in (None, "source", "revision"):
+            with self.subTest(mutation=mutation):
+                def run(*args):
+                    if args[1] == "eval":
+                        return b"x86_64-linux"
+                    tree = Path(args[-1])
+                    revision = b.candidate_snapshot.git(tree, "rev-parse", "HEAD").decode().strip()
+                    self.assertEqual(args[4], f"git+{tree.as_uri()}?rev={revision}#release-check")
+                    self.assertEqual(args[5:], ("--command", "bash", str(tree / "scripts/release-check"),
+                                               "--bootstrap", str(tree)))
+                    self.assertFalse((tree / "release-context.json").exists())
+                    self.assertEqual(b.candidate_snapshot.git(tree, "show", "HEAD:flake.lock"), self.candidate)
+                    self.assertFalse(b.candidate_snapshot.git(tree, "status", "--porcelain"))
+                    self.assertEqual((tree / "scripts/release-check").stat().st_mode & 0o777, 0o755)
+                    if mutation == "source":
+                        (tree / "scripts/release-check").write_text("changed")
+                    elif mutation == "revision":
+                        (tree / ".git" / "HEAD").write_text("ref: refs/heads/missing\n")
+                    return b""
+
+                with patch.object(b, "source", return_value=core), patch.object(b.rel, "run", side_effect=run):
+                    b.native(self.assets, "candidate", "x86_64-linux", report)
+                result = json.loads(report.read_text())
+                self.assertEqual(result["passed"], mutation is None)
+                self.assertEqual(result["gates"], list(b.GATES) if mutation is None else [])
+
     def test_each_native_result_is_independent_and_required(self):
         for variant in b.VARIANTS:
             for system in b.data.SYSTEMS:

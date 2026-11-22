@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import candidate_snapshot
 import release as rel
 import release_data as data
 
@@ -226,9 +227,21 @@ def native(assets: Path, variant: str, system: str, report: Path) -> None:
         try:
             with tempfile.TemporaryDirectory(prefix="assbox-bootstrap-native-") as temp:
                 tree = Path(temp) / "source"
-                rel.materialize(files, tree)
-                rel.run("nix", "develop", "--no-update-lock-file", "--no-write-lock-file", "path:" + str(tree) + "#release-check",
+                # The checkpoint verifies its source revision. Give the
+                # approved source and selected lock a reproducible Git identity.
+                git_files = {name: (f"{mode | 0o100000:o}", raw) for name, (mode, raw) in files.items()}
+                snapshot = candidate_snapshot.materialize(git_files, tree)
+                revision = snapshot["synthetic_commit_oid"]
+                flake = f"git+{tree.as_uri()}?rev={revision}#release-check"
+                rel.run("nix", "develop", "--no-update-lock-file", "--no-write-lock-file", flake,
                         "--command", "bash", str(tree / "scripts/release-check"), "--bootstrap", str(tree))
+                git_directory = tree / ".git"
+                if (git_directory.is_symlink() or not git_directory.is_dir()
+                        or candidate_snapshot.git(tree, "rev-parse", "HEAD").decode().strip() != revision):
+                    raise ValueError("verification changed bootstrap snapshot Git identity")
+                # Check the original source inventory independently of the
+                # temporary Git metadata needed by the checkpoint build.
+                git_directory.rename(Path(temp) / "snapshot.git")
                 clean_tree(tree, files)
                 passed = True
         except (OSError, ValueError, subprocess.SubprocessError) as error:
