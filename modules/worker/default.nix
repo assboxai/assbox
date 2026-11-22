@@ -30,6 +30,19 @@ let
     inherit (config.assbox) acceptUnfree;
     timeZone = config.time.timeZone;
     computerUseMode = cfg.computerUseMode;
+    # The host enforces these permissions for the guest's provider services.
+    remoteAccess = {
+      inherit (cfg)
+        egress
+        allowGuestSudo
+        hostAddress
+        guestAddress
+        ;
+    }
+    // lib.optionalAttrs (cfg.egress != "offline") {
+      inherit (cfg) nameservers;
+      uplinkInterfaces = lib.sort builtins.lessThan (lib.unique cfg.uplinkInterfaces);
+    };
   };
   guest = import (pkgs.path + "/nixos/lib/eval-config.nix") {
     system = pkgs.stdenv.hostPlatform.system;

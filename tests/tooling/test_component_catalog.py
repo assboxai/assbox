@@ -45,7 +45,8 @@ class ComponentCatalogTests(unittest.TestCase):
 
     def evaluate(self, selected, *, presentation='headless', network=None, autostart=None,
                  accept_unfree=True, unfree_packages=None, package_revision='',
-                 substrate=False, instance=None, poison_tailscale=False):
+                 substrate=False, instance=None, poison_tailscale=False,
+                 provider_runtime='', worker_authority=None):
         if not self.lib:
             self.skipTest('Nix module library unavailable; run in the development shell')
         def nix_json(value):
@@ -59,6 +60,8 @@ class ComponentCatalogTests(unittest.TestCase):
                 '--argstr', 'packageRevision', package_revision,
                 '--arg', 'substrate', 'true' if substrate else 'false',
                 '--arg', 'instance', nix_json(instance or {}),
+                '--argstr', 'providerRuntime', provider_runtime,
+                '--arg', 'workerAuthority', nix_json(worker_authority),
                 '--arg', 'poisonTailscale', 'true' if poison_tailscale else 'false']
         result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -331,6 +334,45 @@ class ComponentCatalogTests(unittest.TestCase):
                 self.assertEqual(unit['serviceConfig']['WorkingDirectory'], '/home/agent/projects')
                 self.assertEqual(unit['unitConfig']['ConditionUser'], 'agent')
                 self.assertTrue(any('onboarded/' + id in p for p in unit['unitConfig']['ConditionPathExists']))
+
+    def test_remote_onboarding_tracks_effective_network_and_helper_permissions(self):
+        selection = {name: {'enable': True} for name in ('hermes', 'hermes-gateway')}
+
+        def marker(service='hermes-gateway', **settings):
+            result = self.evaluate(selection, substrate=True, **settings)
+            self.assertFalse(result['failures'])
+            conditions = result['services']['user']['services']['assbox-' + service]['unitConfig']['ConditionPathExists']
+            start = '%h/.config/assbox/onboarded/' + service + '-'
+            match, = [path for path in conditions if path.startswith(start)]
+            self.assertIn('touch "$HOME/' + match.removeprefix('%h/') + '"',
+                          result['scripts']['assbox/onboarding/' + service])
+            return match
+
+        exceptions = [{'address': '192.0.2.9', 'port': 8443},
+                      {'address': '192.0.2.10', 'port': 8000}]
+        restricted = marker(network={'execution': {'egress': 'offline'}})
+        self.assertNotEqual(restricted, marker(network={'execution': {'egress': 'normal'}}))
+        self.assertEqual(restricted, marker(network={'execution': {'egress': 'offline', 'exceptions': exceptions}}))
+        with_exceptions = marker(network={'execution': {'exceptions': exceptions}})
+        self.assertNotEqual(with_exceptions, marker())
+        self.assertEqual(with_exceptions, marker(network={'execution': {'exceptions': list(reversed(exceptions))}}))
+        self.assertEqual(marker(), marker(instance={'resources': {'agentCPUWeight': 90}}))
+        self.assertEqual(marker(), marker(provider_runtime='unused-helper'))
+        browser = {'computerUse': {'mode': 'browser'}}
+        self.assertNotEqual(marker(instance=browser), marker(instance=browser, provider_runtime='new-helper'))
+
+        worker = {'egress': 'offline', 'allowGuestSudo': False}
+        worker_marker = marker(worker_authority=worker)
+        self.assertNotEqual(worker_marker, marker(worker_authority=worker | {'egress': 'internet'}))
+        self.assertNotEqual(worker_marker, marker(worker_authority=worker | {'allowGuestSudo': True}))
+
+        public_url = 'https://fixture.example/'
+        selection['hermes-dashboard'] = {'enable': True, 'publicUrl': public_url}
+        serve = {'tailscale': {'enable': True, 'serveMappings': [
+            {'component': 'hermes-dashboard', 'publicUrl': public_url, 'port': 9119},
+        ]}}
+        self.assertEqual(marker(), marker(network=serve))
+        self.assertNotEqual(marker('hermes-dashboard'), marker('hermes-dashboard', network=serve))
 
     def test_editor_hosts_require_agent_access_and_consent(self):
         selected = {'zed-remote-host': {'enable': True, 'allowMutableCode': True}}

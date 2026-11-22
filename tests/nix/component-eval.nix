@@ -10,6 +10,8 @@
   packageRevision ? "",
   substrate ? false,
   instance ? { },
+  providerRuntime ? "",
+  workerAuthority ? null,
   poisonTailscale ? false,
 }:
 let
@@ -106,7 +108,8 @@ let
       inherit pkgs;
       assboxApplications = apps;
       assboxPackage = pkg "assbox";
-    };
+    }
+    // lib.optionalAttrs (workerAuthority != null) { workerSettings.remoteAccess = workerAuthority; };
     modules =
       lib.optionals substrate [
         ../../modules/instances.nix
@@ -215,6 +218,9 @@ let
               components = selection;
               inherit network presentation;
               session.autostart = autostart;
+            }
+            // lib.optionalAttrs (providerRuntime != "") {
+              computerUse.providerRuntime = pkg providerRuntime;
             }
             // lib.optionalAttrs (!substrate) {
               controller = {

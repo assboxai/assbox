@@ -4,6 +4,7 @@
   lib,
   pkgs,
   assboxApplications,
+  specialArgs,
   ...
 }:
 let
@@ -233,6 +234,43 @@ let
       else
         builtins.match "[a-z].*" (lib.last parts) != null
     );
+  workerSettings = specialArgs.workerSettings or null;
+  executionNetwork = cfg.network.execution or null;
+  sortedSet = values: lib.sort builtins.lessThan (lib.unique values);
+  networkScope =
+    if workerSettings != null then
+      workerSettings.remoteAccess
+    else if executionNetwork == null then
+      null
+    else
+      {
+        inherit (executionNetwork) enable;
+      }
+      // lib.optionalAttrs executionNetwork.enable (
+        {
+          inherit (executionNetwork) egress;
+        }
+        // lib.optionalAttrs (executionNetwork.egress != "offline") {
+          inherit (executionNetwork) loopbackIpc;
+          exceptions = sortedSet (map builtins.toJSON executionNetwork.exceptions);
+        }
+        // lib.optionalAttrs (executionNetwork.egress == "internet") {
+          additionalDenied4 = sortedSet executionNetwork.additionalDenied4;
+          additionalDenied6 = sortedSet executionNetwork.additionalDenied6;
+        }
+      );
+  computerUseScope = {
+    inherit (cfg.computerUse) mode;
+  }
+  // lib.optionalAttrs (cfg.computerUse.mode != "none") {
+    runtime = toString cfg.computerUse.runtime;
+    providerRuntime =
+      if (cfg.computerUse.providerRuntime or null) == null then
+        null
+      else
+        toString cfg.computerUse.providerRuntime;
+    tools = config.environment.etc."assbox/computer-use-tools.json".text or null;
+  };
   marker =
     id:
     ".config/assbox/onboarded/${id}-${
@@ -242,7 +280,9 @@ let
             settings = cfg.components.${id};
             argv = command.${id};
             environment = environmentFor id;
-            computerUse = cfg.computerUse.mode;
+            computerUse = computerUseScope;
+            network = networkScope;
+            serve = lib.filter (mapping: mapping.component == id) (cfg.network.tailscale.serveMappings or [ ]);
           }
         )
       )
