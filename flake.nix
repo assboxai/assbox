@@ -49,34 +49,58 @@
         else
           null;
       sourceRevision = if releaseContext != null then releaseContext.coreCommit else self.rev or "";
+      buildAssbox =
+        pkgs: pkgs.callPackage ./nix/package.nix { inherit pkgs sourceRevision releasePolicy; };
+      codexPackages =
+        system:
+        let
+          recipes = codex-packages.packages.${system};
+          original = recipes.codex;
+          hasOldTls = builtins.any (
+            package: (package.pname or "") == "openssl" && package.version == "3.6.4"
+          ) original.buildInputs;
+          appPkgs = import codex-packages.inputs.nixpkgs { inherit system; };
+          # Keep Codex on its locked application's toolchain and package set.
+          # OpenSSL 3.6 has reached end of life; use the reviewed 3.5 LTS fix.
+          openssl =
+            assert appPkgs.openssl_3_5.version == "3.5.8";
+            appPkgs.openssl_3_5.overrideAttrs {
+              version = "3.5.9";
+              src = appPkgs.fetchurl {
+                url = "https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz";
+                hash = "sha256-YD9WAuLu8A13+9Qp003NWCK7MBdXobyc2yTGcPHrhZo=";
+              };
+            };
+        in
+        recipes // { codex = if hasOldTls then original.override { inherit openssl; } else original; };
+      happierRecipes = pkgs: happier-packages.packages.${pkgs.stdenv.hostPlatform.system};
+      buildHappier =
+        pkgs:
+        let
+          recipes = happierRecipes pkgs;
+          artifact = builtins.fromJSON (builtins.readFile ./nix/happier-source.json);
+        in
+        if recipes ? happier then
+          recipes.happier
+        else
+          # Keep the fallback bound to the exact reviewed recipe snapshot.
+          assert happier-packages.rev == artifact.reviewedPackageRecipeRevision;
+          pkgs.callPackage ./nix/happier.nix { };
       # Resolve packages from the consuming machine's architecture, never from a
       # developer's workstation or a captured x86-only package set.
       module = { pkgs, ... }: {
         imports = [ ./modules ];
-        _module.args.assboxPackage = self.packages.${pkgs.stdenv.hostPlatform.system}.assbox;
+        _module.args.assboxPackage = buildAssbox pkgs;
         _module.args.assboxApplications = {
           antigravity = antigravity-packages.packages.${pkgs.stdenv.hostPlatform.system};
           chatgpt = chatgpt-packages.packages.${pkgs.stdenv.hostPlatform.system};
           claude-code = claude-code-packages.packages.${pkgs.stdenv.hostPlatform.system};
           claude-desktop = claude-desktop-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          codex = codex-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          codex = codexPackages pkgs.stdenv.hostPlatform.system;
           cursor = cursor-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          happier =
-            let
-              recipes = happier-packages.packages.${pkgs.stdenv.hostPlatform.system};
-              artifact = builtins.fromJSON (builtins.readFile ./nix/happier-source.json);
-            in
-            recipes
-            // {
-              happier =
-                if recipes ? happier then
-                  recipes.happier
-                else
-                  # The reviewed recipe snapshot has no Happier package. Never
-                  # report a newer unrelated recipe revision as an app update.
-                  assert happier-packages.rev == artifact.reviewedPackageRecipeRevision;
-                  pkgs.callPackage ./nix/happier.nix { };
-            };
+          happier = happierRecipes pkgs // {
+            happier = buildHappier pkgs;
+          };
           hermes = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
             hermes-agent = pkgs.callPackage ./nix/hermes.nix {
               raw = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent;
@@ -102,7 +126,18 @@
         let
           pkgs = import nixpkgs { inherit system; };
           tools = import ./nix/tool-environment.nix { inherit pkgs; };
-          assbox = pkgs.callPackage ./nix/package.nix { inherit pkgs sourceRevision releasePolicy; };
+          # The standalone release installer needs the same security overrides
+          # when it is built on a generic live or bootstrap system.
+          installerPkgs =
+            (nixpkgs.lib.nixosSystem {
+              inherit system;
+              modules = [
+                ./modules/options.nix
+                ./modules/security-overrides.nix
+                { assbox.enable = true; }
+              ];
+            }).pkgs;
+          assbox = buildAssbox installerPkgs;
           fixture =
             args:
             nixpkgs.lib.nixosSystem {
@@ -126,75 +161,72 @@
       );
       physicalCheckpoint =
         system:
-        let
-          p = platform.${system};
-          checkpointSystemd = p.pkgs.systemd.override {
-            pname = "systemd-assbox-checkpoint";
-            withBootloader = false;
-            withCoredump = false;
-            withCryptsetup = false;
-            withEfi = false;
-            withFido2 = false;
-            withHomed = false;
-            withImportd = false;
-            withLibBPF = false;
-            withMachined = false;
-            withNspawn = false;
-            withPortabled = false;
-            withRemote = false;
-            withRepart = false;
-            withSysupdate = false;
-            withTpm2Tss = false;
-            withVmspawn = false;
-          };
-          # The live checkpoint cannot install or update a machine. Give its
-          # real Assbox binary only the immutable diagnostic tools available in
-          # the image instead of retaining the production installer/rebuild
-          # tool closure (including Nix and disk-management programs).
-          checkpointTools = with p.pkgs; [
-            curl
-            cacert
-            git
-            jq
-            checkpointSystemd
-            util-linux
-            coreutils
-            findutils
-            gnugrep
-            gnused
-            gnutar
-            iproute2
-            pciutils
-            usbutils
-            openssh
-          ];
-          checkpointAssbox = p.assbox.overrideAttrs (_old: {
-            ASSBOX_TOOL_PATH = p.pkgs.lib.makeBinPath checkpointTools;
-            # The full package is tested by the ordinary native gates. Avoid a
-            # second package-test closure in the published live image build.
-            doCheck = false;
-            nativeCheckInputs = [ ];
-            GI_TYPELIB_PATH = "";
-          });
-          recipes = happier-packages.packages.${system};
-          artifact = builtins.fromJSON (builtins.readFile ./nix/happier-source.json);
-          happier =
-            if recipes ? happier then
-              recipes.happier
-            else
-              assert happier-packages.rev == artifact.reviewedPackageRecipeRevision;
-              p.pkgs.callPackage ./nix/happier.nix { };
-        in
         nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            assboxPackage = checkpointAssbox;
-            assboxCodex = codex-packages.packages.${system}.codex;
-            assboxHappier = happier;
-            assboxCheckpointSystemd = checkpointSystemd;
+            assboxCodex = (codexPackages system).codex;
             inherit sourceRevision;
           };
-          modules = [ ./nix/physical-checkpoint-iso.nix ];
+          modules = [
+            ./nix/physical-checkpoint-iso.nix
+            (
+              { pkgs, ... }:
+              let
+                checkpointSystemd = pkgs.systemd.override {
+                  pname = "systemd-assbox-checkpoint";
+                  withBootloader = false;
+                  withCoredump = false;
+                  withCryptsetup = false;
+                  withEfi = false;
+                  withFido2 = false;
+                  withHomed = false;
+                  withImportd = false;
+                  withLibBPF = false;
+                  withMachined = false;
+                  withNspawn = false;
+                  withPortabled = false;
+                  withRemote = false;
+                  withRepart = false;
+                  withSysupdate = false;
+                  withTpm2Tss = false;
+                  withVmspawn = false;
+                };
+                # Use the system's security-overlaid packages, with only the
+                # diagnostic tools available in the read-only image.
+                checkpointTools = with pkgs; [
+                  curl
+                  cacert
+                  git
+                  jq
+                  checkpointSystemd
+                  util-linux
+                  coreutils
+                  findutils
+                  gnugrep
+                  gnused
+                  gnutar
+                  iproute2
+                  pciutils
+                  usbutils
+                  openssh
+                ];
+                checkpointAssbox = (buildAssbox pkgs).overrideAttrs (_old: {
+                  ASSBOX_TOOL_PATH = pkgs.lib.makeBinPath checkpointTools;
+                  # The full package is tested by the ordinary native gates.
+                  doCheck = false;
+                  nativeCheckInputs = [ ];
+                  GI_TYPELIB_PATH = "";
+                });
+              in
+              {
+                _module.args = {
+                  assboxPackage = checkpointAssbox;
+                  assboxHappier = buildHappier pkgs;
+                  assboxCheckpointSystemd = checkpointSystemd;
+                };
+              }
+            )
+          ];
         };
     in
     {

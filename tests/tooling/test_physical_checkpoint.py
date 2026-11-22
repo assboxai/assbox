@@ -35,21 +35,64 @@ class PhysicalCheckpointTests(unittest.TestCase):
 
     def test_checkpoint_assbox_does_not_retain_installer_or_rebuild_tools(self):
         flake = (ROOT / 'flake.nix').read_text()
-        tools = flake.split('checkpointTools = with p.pkgs; [', 1)[1].split('];', 1)[0]
-        self.assertNotIn('\n            nix\n', tools)
+        tools = flake.split('checkpointTools = with pkgs; [', 1)[1].split('];', 1)[0]
+        self.assertNotIn('nix', tools.split())
         self.assertNotIn('nixos-install', tools)
         self.assertNotIn('nixos-rebuild', tools)
         self.assertNotIn('gptfdisk', tools)
-        self.assertIn('checkpointAssbox = p.assbox.overrideAttrs', flake)
-        self.assertIn('checkpointSystemd = p.pkgs.systemd.override', flake)
+        self.assertIn('checkpointAssbox = (buildAssbox pkgs).overrideAttrs', flake)
+        self.assertIn('checkpointSystemd = pkgs.systemd.override', flake)
         self.assertIn('withLibBPF = false;', flake)
         self.assertIn('withTpm2Tss = false;', flake)
-        self.assertIn('ASSBOX_TOOL_PATH = p.pkgs.lib.makeBinPath checkpointTools;', flake)
+        self.assertIn('ASSBOX_TOOL_PATH = pkgs.lib.makeBinPath checkpointTools;', flake)
         self.assertIn('doCheck = false;', flake)
         self.assertIn('assboxMode = "diagnostic-only";',
                       (ROOT / 'nix/physical-checkpoint-iso.nix').read_text())
         self.assertIn('checkpointDbus = pkgs.dbus.override { x11Support = false; };',
                       (ROOT / 'nix/physical-checkpoint-iso.nix').read_text())
+
+    def test_runtime_tools_use_the_system_security_overlay(self):
+        expression = '''systems:
+          let
+            checkpoint = systems.x86_64-linux-physical-checkpoint;
+            installed = systems.x86_64-linux-uefi-none-headless;
+            package = system: name: builtins.head (builtins.filter
+              (p: (p.pname or null) == name) system.config.environment.systemPackages);
+            toolPaths = system: let
+              inherit (system) pkgs;
+            in map (p: "${p}/bin")
+              [ pkgs.curl pkgs.git pkgs.openssh ];
+            checkTools = system: let
+              tools = system.pkgs.lib.splitString ":" (package system "assbox").ASSBOX_TOOL_PATH;
+            in builtins.all (path: builtins.elem path tools) (toolPaths system);
+            happier = package checkpoint "happier";
+          in {
+            checkpointTools = checkTools checkpoint;
+            installedTools = checkTools installed;
+            installedToolPaths = toolPaths installed;
+            happierNode = checkpoint.pkgs.lib.hasInfix
+              (builtins.unsafeDiscardStringContext "${checkpoint.pkgs.nodejs}/bin/node")
+              (builtins.unsafeDiscardStringContext happier.installPhase);
+            happierTls = builtins.any (p: p.drvPath == checkpoint.pkgs.openssl.drvPath)
+              happier.buildInputs;
+          }'''
+        result = subprocess.run([
+            'nix', 'eval', '--json', '--no-update-lock-file', '--no-write-lock-file',
+            '.#nixosConfigurations', '--apply', expression,
+        ], cwd=ROOT, capture_output=True, text=True, timeout=180)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        resolved = json.loads(result.stdout)
+        installed_tool_paths = resolved.pop('installedToolPaths')
+        self.assertEqual(resolved, {
+            'checkpointTools': True, 'installedTools': True,
+            'happierNode': True, 'happierTls': True,
+        })
+        installer = subprocess.run([
+            'nix', 'eval', '--raw', '--no-update-lock-file', '--no-write-lock-file',
+            '.#packages.x86_64-linux.assbox.ASSBOX_TOOL_PATH',
+        ], cwd=ROOT, capture_output=True, text=True, timeout=180)
+        self.assertEqual(installer.returncode, 0, installer.stderr)
+        self.assertLessEqual(set(installed_tool_paths), set(installer.stdout.split(':')))
 
     def test_boot_check_uses_the_same_image_for_bios_and_uefi_usb(self):
         source = (ROOT / 'tests/nix/physical-checkpoint-boot.nix').read_text()

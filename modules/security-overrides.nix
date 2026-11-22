@@ -9,9 +9,12 @@ let
   cfg = config.assbox;
   ffmpegVersion = "8.1.3";
   ffmpegSourceHash = "sha256-cTjSjJbZ0+OvTuPYytcnQfj/tA2pDBESI13qPs0xeKM=";
+  brotliVersion = "1.2.1";
   capstoneVersion = "5.0.9";
   libusbVersion = "1.0.30";
   nghttp2Version = "1.70.0";
+  node24Version = "24.22.3";
+  opensshVersion = "10.6p2";
   sqliteVersion = "3.54.1";
   busyboxSecurityPatches = [
     ../nix/patches/busybox-f5e1bf966b19ea1821f00a8c9ecd7774598689b4.patch
@@ -228,6 +231,47 @@ in
               })
             else
               previous.nghttp2;
+          brotli =
+            if previous.brotli.version == "1.2.0" then
+              previous.brotli.overrideAttrs (_old: {
+                version = brotliVersion;
+                src = previous.fetchFromGitHub {
+                  owner = "google";
+                  repo = "brotli";
+                  tag = "v${brotliVersion}";
+                  hash = "sha256-llY72cYffDv0ugsH0p89xIPEbElV4L8u7U/Fe8hT3gI=";
+                };
+              })
+            else
+              previous.brotli;
+          nodejs-slim_24 =
+            if previous.nodejs-slim_24.version == "24.21.0" then
+              previous.nodejs-slim_24.override {
+                # Change the source arguments before the version-dependent
+                # builder selects its flags, patches and upstream tests.
+                callPackage =
+                  recipe: dependencies: source:
+                  final.callPackage recipe dependencies (
+                    source
+                    // {
+                      version = node24Version;
+                      sha256 = "48ca3aa8a9b02133356922ef4fc80200e00598c80a4ef446f7c39a459222593d";
+                    }
+                  );
+              }
+            else
+              previous.nodejs-slim_24;
+          openssh =
+            if previous.openssh.version == "10.5p1" then
+              previous.openssh.overrideAttrs (_old: {
+                version = opensshVersion;
+                src = previous.fetchurl {
+                  url = "mirror://openbsd/OpenSSH/portable/openssh-${opensshVersion}.tar.gz";
+                  hash = "sha256-muRIcgkM8vBrPPn/FH5/FvMJZxNAdj7S+ZJIOYrinVs=";
+                };
+              })
+            else
+              previous.openssh;
           sqlite = upgradeSqlite previous.sqlite;
           tinysparql =
             # Keep 3.11.1's public double-to-text representation and complete
@@ -301,11 +345,20 @@ in
       }
       {
         assertion =
-          pkgs.capstone.version != "5.0.7"
+          pkgs.brotli.version != "1.2.0"
+          && pkgs.capstone.version != "5.0.7"
           && pkgs.libusb1.version != "1.0.29"
           && pkgs.nghttp2.version != "1.69.0"
           && pkgs.sqlite.version != "3.51.2";
         message = "Reviewed security point releases must replace the affected library versions.";
+      }
+      {
+        assertion = pkgs.nodejs-slim_24.version != "24.21.0";
+        message = "Node.js 24.21.0 must be advanced to the reviewed security release.";
+      }
+      {
+        assertion = pkgs.openssh.version != "10.5p1";
+        message = "OpenSSH 10.5p1 must be advanced to the reviewed security release.";
       }
     ];
   };

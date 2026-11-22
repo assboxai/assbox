@@ -88,6 +88,8 @@ class SecurityOverrideTests(unittest.TestCase):
     def test_reviewed_library_point_releases_are_exact_and_version_gated(self):
         module = (ROOT / 'modules/security-overrides.nix').read_text()
         expected = {
+            'brotliVersion = "1.2.1";':
+                'sha256-llY72cYffDv0ugsH0p89xIPEbElV4L8u7U/Fe8hT3gI=',
             'capstoneVersion = "5.0.9";':
                 'sha256-uAiiKWKGjEATPE0Xc3g+aOLCz5ffIlDmf+7jaGwaZ4I=',
             'libusbVersion = "1.0.30";':
@@ -100,7 +102,7 @@ class SecurityOverrideTests(unittest.TestCase):
         for version, source_hash in expected.items():
             self.assertIn(version, module)
             self.assertIn(source_hash, module)
-        for vulnerable in ('5.0.7', '1.0.29', '1.69.0', '3.51.2'):
+        for vulnerable in ('1.2.0', '5.0.7', '1.0.29', '1.69.0', '3.51.2'):
             self.assertIn(f'package.version == "{vulnerable}"' if vulnerable == '3.51.2'
                           else f'version == "{vulnerable}"', module)
         self.assertIn('sqlite-doc-3540100.zip', module)
@@ -112,6 +114,18 @@ class SecurityOverrideTests(unittest.TestCase):
         self.assertIn('package.version == "8.1.2"', module)
         self.assertIn('https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz', module)
         self.assertIn('sha256-cTjSjJbZ0+OvTuPYytcnQfj/tA2pDBESI13qPs0xeKM=', module)
+
+    def test_openssh_security_upgrade_uses_the_reviewed_archive(self):
+        module = (ROOT / 'modules/security-overrides.nix').read_text()
+        self.assertIn('previous.openssh.version == "10.5p1"', module)
+        self.assertIn('opensshVersion = "10.6p2";', module)
+        self.assertIn('sha256-muRIcgkM8vBrPPn/FH5/FvMJZxNAdj7S+ZJIOYrinVs=', module)
+        result = subprocess.run([
+            'nix', 'eval', '--raw', '--no-update-lock-file', '--no-write-lock-file',
+            '.#nixosConfigurations.x86_64-linux-bios-gpt-none.pkgs.openssh.version',
+        ], cwd=ROOT, capture_output=True, text=True, timeout=180)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '10.6p2')
         for attribute in ('ffmpeg_8', 'ffmpeg_8-headless', 'ffmpeg_8-full'):
             self.assertIn(attribute + ' = upgradeFfmpeg previous.' + attribute, module)
 
@@ -221,18 +235,68 @@ class SecurityOverrideTests(unittest.TestCase):
         result = subprocess.run([
             'nix', 'eval', '--json', '--no-update-lock-file', '--no-write-lock-file',
             '.#nixosConfigurations.x86_64-linux-bios-gpt-none.pkgs',
-            '--apply', 'p: { capstone = p.capstone.version; libusb = p.libusb1.version; '
+            '--apply', 'p: { brotli = p.brotli.version; '
+                       'nodeSharedBrotli = builtins.elem "--shared-brotli-libpath=${p.lib.getLib p.brotli}/lib" '
+                       'p.nodejs-slim.configureFlags; '
+                       'capstone = p.capstone.version; libusb = p.libusb1.version; '
                        'nghttp2 = p.nghttp2.version; sqlite = p.sqlite.version; '
                        'sqliteInteractive = p.sqlite-interactive.version; }',
         ], cwd=ROOT, capture_output=True, text=True, timeout=180)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {
+            'brotli': '1.2.1',
+            'nodeSharedBrotli': True,
             'capstone': '5.0.9',
             'libusb': '1.0.30',
             'nghttp2': '1.70.0',
             'sqlite': '3.54.1',
             'sqliteInteractive': '3.54.1',
         })
+
+    def test_node_24_wrapper_uses_the_security_updated_native_runtime(self):
+        expression = '''p: {
+          runtime = p.nodejs-slim.version;
+          wrapper = p.nodejs.version;
+          source = p.nodejs-slim.src.urls;
+          doCheck = p.nodejs-slim.doCheck;
+        }'''
+        result = subprocess.run([
+            'nix', 'eval', '--json', '--no-update-lock-file', '--no-write-lock-file',
+            '.#nixosConfigurations.x86_64-linux-physical-checkpoint.pkgs', '--apply', expression,
+        ], cwd=ROOT, capture_output=True, text=True, timeout=180)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {
+            'runtime': '24.22.3', 'wrapper': '24.22.3',
+            'source': ['https://nodejs.org/dist/v24.22.3/node-v24.22.3.tar.xz'],
+            'doCheck': True,
+        })
+
+    def test_codex_uses_supported_tls_in_systems_and_the_checkpoint(self):
+        expression = '''systems:
+          let
+            checked = system:
+              let
+                codex = builtins.head (builtins.filter (p: (p.pname or null) == "codex")
+                  system.config.environment.systemPackages);
+              in {
+                version = codex.version;
+                installCheck = codex.doInstallCheck;
+                openssl = map (p: p.version) (builtins.filter
+                  (p: (p.pname or "") == "openssl") codex.buildInputs);
+              };
+          in map checked [
+            systems.x86_64-linux-physical-checkpoint
+            systems.x86_64-linux-component-codex
+            systems.aarch64-linux-component-codex
+          ]'''
+        result = subprocess.run([
+            'nix', 'eval', '--json', '--no-update-lock-file', '--no-write-lock-file',
+            '.#nixosConfigurations', '--apply', expression,
+        ], cwd=ROOT, capture_output=True, text=True, timeout=180)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), [
+            {'version': '0.160.1', 'installCheck': True, 'openssl': ['3.5.9']},
+        ] * 3)
 
     def test_application_overlay_does_not_change_the_default_kernel_derivation(self):
         expression = '''let
