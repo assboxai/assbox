@@ -9,12 +9,20 @@ SURFACES={
  'claude-desktop':{'code-local','code-ssh','cowork','browser','local-helpers','connectors','provider-vm'},
 }
 class Refusal(Exception):pass
+
+def json_object(value, description):
+ if not isinstance(value, dict):
+  raise Refusal(f'{description} must be a JSON object')
+ return value
+
 def trusted_json(path,owner=0):
  fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
  try:
   st=os.fstat(fd)
   if not stat.S_ISREG(st.st_mode) or st.st_uid!=owner or st.st_mode&0o022 or st.st_size>65536:raise Refusal('untrusted or excessive policy record')
-  with os.fdopen(fd,'r') as f:fd=None;return json.load(f)
+  with os.fdopen(fd,'r') as f:
+   fd=None
+   return json_object(json.load(f), 'native policy record')
  finally:
   if fd is not None:os.close(fd)
 def scope(config):return hashlib.sha256(json.dumps(config,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -34,7 +42,7 @@ def probe_observation(probe,row):
      if len(output)+len(chunk)>65536:raise Refusal('native policy probe exceeded its output bound')
      output.extend(chunk)
   if child.wait(timeout=max(0.001,deadline-time.monotonic())):raise Refusal('native policy probe failed')
-  return json.loads(output)
+  return json_object(json.loads(output), 'native policy observation')
  finally:
   # Observers cannot leave privileged descendants behind after a timeout or exit.
   try:os.killpg(child.pid,signal.SIGKILL)
@@ -74,7 +82,7 @@ def validate_observation(app,row,observation,qualification):
  if any(qualification.get(k)!=v for k,v in expected.items()) or qualification.get('status')!='passed':raise Refusal('qualification does not bind this exact native client and account')
  if any(observation.get(k)!=v for k,v in expected.items()) or observation.get('policyRequestDigest')!=scope(row) or not observation.get('effectivePolicyDigest'):raise Refusal('incomplete or mismatched effective policy scope')
  if not re.fullmatch('[0-9a-f]{64}',str(observation.get('effectivePolicyDigest',''))):raise Refusal('invalid effective policy digest')
- surfaces=observation.get('surfaces',{})
+ surfaces=json_object(observation.get('surfaces',{}), 'native surface inventory')
  if set(surfaces)!=SURFACES[app]:raise Refusal('native surface inventory changed')
  required={'browser':'denied','local-helpers':'denied'}
  if app=='chatgpt-desktop':

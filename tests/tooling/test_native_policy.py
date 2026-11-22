@@ -37,6 +37,21 @@ class NativePolicyTests(unittest.TestCase):
             probe.write_text(f'#!{sys.executable}\nimport os\nprint(os.environ["ASSBOX_NATIVE_REQUEST"])\n')
             probe.chmod(0o700)
             self.assertEqual(policy.probe_observation(probe,row),row)
+    def test_probe_rejects_non_object_json(self):
+        row, _, _ = self.fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            probe = Path(directory) / 'probe'
+            probe.write_text(f'#!{sys.executable}\nprint("[]")\n')
+            probe.chmod(0o700)
+            with self.assertRaisesRegex(policy.Refusal, 'observation must be a JSON object'):
+                policy.probe_observation(probe, row)
+    def test_trusted_json_rejects_non_object_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'record.json'
+            path.write_text('[]\n')
+            path.chmod(0o600)
+            with self.assertRaisesRegex(policy.Refusal, 'record must be a JSON object'):
+                policy.trusted_json(path, owner=path.stat().st_uid)
     def fixture(self):
         row={'client':'/nix/store/fixture/bin/chatgpt','platform':'x86_64-linux','mode':'none','cloud':False,'localCowork':False,'providerVmContract':None,'contract':{'id':'fixture','accountScopeDigest':'a'*64}}
         qualification={'app':'chatgpt-desktop','contract':'fixture','client':row['client'],'platform':row['platform'],'accountScopeDigest':'a'*64,'status':'passed'}
@@ -49,6 +64,14 @@ class NativePolicyTests(unittest.TestCase):
         for surface in ['codex-local','work-local','work-cloud-local-access','computer-use','local-helpers','browser','codex-ssh','cloud-only']:
             bad=copy.deepcopy(o);bad['surfaces'][surface]='restricted'
             with self.subTest(surface=surface),self.assertRaises(policy.Refusal):policy.validate_observation('chatgpt-desktop',row,bad,q)
+    def test_surface_inventory_requires_an_object(self):
+        row, qualification, observation = self.fixture()
+        for inventory in (None, [], 'unavailable'):
+            with self.subTest(inventory=inventory):
+                with self.assertRaisesRegex(policy.Refusal, 'inventory must be a JSON object'):
+                    policy.validate_observation(
+                        'chatgpt-desktop', row, observation | {'surfaces': inventory}, qualification,
+                    )
     def test_account_build_inventory_and_request_changes_revoke(self):
         row,q,o=self.fixture()
         for key in ['accountScopeDigest','client','platform','contract','policyRequestDigest','effectivePolicyDigest']:
