@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Private application-state checkpoints; OS rollback never implies data rollback."""
 import argparse, fcntl, hashlib, resource, json, os, pwd, shutil, stat, subprocess, sys, tarfile, tempfile, time
+from contextlib import ExitStack
 from pathlib import Path
 class Refusal(Exception): pass
 
@@ -53,8 +54,7 @@ def metadata(config):
             'consistency':'managed services stopped; direct CLI sessions must be quiesced',
             'created':int(time.time())}
 
-def checked_root(config):
-    root=Path(config['directory'])
+def private_directory(root):
     for parent in root.parents:
         st=parent.lstat()
         if not stat.S_ISDIR(st.st_mode) or st.st_uid!=0 or st.st_mode&0o022: raise Refusal('Unsafe backup parent')
@@ -62,6 +62,54 @@ def checked_root(config):
     st=root.lstat()
     if not stat.S_ISDIR(st.st_mode) or st.st_uid!=0 or stat.S_IMODE(st.st_mode)!=0o700: raise Refusal('Backup directory must be root-owned 0700')
     return root
+
+def checked_root(config):
+    return private_directory(Path(config['directory']))
+
+def mount_id(descriptor):
+    for line in Path(f'/proc/self/fdinfo/{descriptor}').read_text().splitlines():
+        if line.startswith('mnt_id:'):
+            return int(line.split()[1])
+    raise Refusal('The restore mount could not be identified')
+
+def open_directory(stack, path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    stack.callback(os.close, descriptor)
+    return descriptor
+
+def restore_workspace(root):
+    with ExitStack() as descriptors:
+        home_mount = mount_id(open_directory(descriptors, '/home/agent'))
+        if mount_id(open_directory(descriptors, root)) == home_mount:
+            return root, home_mount
+        recovery_root = private_directory(Path('/home/.assbox-state-recovery'))
+        if mount_id(open_directory(descriptors, recovery_root)) != home_mount:
+            raise Refusal('No private recovery directory on the execution home mount')
+        return recovery_root, home_mount
+
+def restore_destinations(descriptors, restored, paths, account, expected_mount):
+    destinations = {}
+    for name in paths:
+        if not (restored / name).exists():
+            continue
+        parent = home_parent(name, account)
+        descriptors.callback(os.close, parent)
+        if mount_id(parent) != expected_mount:
+            raise Refusal('A selected application path uses a different mount')
+        leaf = Path(name).name
+        try:
+            existing = os.open(leaf, os.O_PATH | os.O_NOFOLLOW, dir_fd=parent)
+        except FileNotFoundError:
+            exists = False
+        else:
+            try:
+                if mount_id(existing) != expected_mount:
+                    raise Refusal('A selected application path is a mount point')
+            finally:
+                os.close(existing)
+            exists = True
+        destinations[name] = (parent, leaf, exists)
+    return destinations
 
 def userctl(config,*args,check=True):
     env={'HOME':'/home/agent','XDG_RUNTIME_DIR':'/run/user/1000','DBUS_SESSION_BUS_ADDRESS':'unix:path=/run/user/1000/bus','PATH':'/run/current-system/sw/bin'}
@@ -124,7 +172,9 @@ def restore(config,name,apply):
             try:
                 if entry.stat().st_uid==1000: raise Refusal('Execution processes remain; stop them before restoring state')
             except FileNotFoundError: pass
-    root=checked_root(config);stage=Path(tempfile.mkdtemp(prefix='recovery-',dir=root))
+    root=checked_root(config)
+    workspace, expected_mount=restore_workspace(root)
+    stage=Path(tempfile.mkdtemp(prefix='recovery-',dir=workspace))
     restored=stage/'restored';restored.mkdir(mode=0o700)
     account=pwd.getpwnam('agent')
     # The archive is local and root-private. Still reject devices and links;
@@ -136,18 +186,15 @@ def restore(config,name,apply):
             if path.is_absolute() or '..' in path.parts or not any(member.name==p or member.name.startswith(p+'/') for p in record['paths']): raise Refusal('Unexpected archive path')
             if not (member.isfile() or member.isdir()): raise Refusal('Links/devices need explicit manual export; automatic restore refused')
         archive.extractall(restored,members=members,filter='data')
-    journal={'snapshot':name,'moved':[],'installed':[],'operation':None,'state':'prepared'}
+    journal={'snapshot':name,'checkpointDirectory':str(root),'moved':[],'installed':[],'operation':None,'state':'prepared'}
     def persist(): durable_json(stage/'journal.json',journal)
     persist()
     try:
-        for name in record['paths']:
-            source=restored/name
-            if not source.exists(): continue
-            parent=home_parent(name,account);leaf=Path(name).name
-            try:
+        with ExitStack() as descriptors:
+            destinations=restore_destinations(descriptors,restored,record['paths'],account,expected_mount)
+            for name,(parent,leaf,exists) in destinations.items():
+                source=restored/name
                 old=stage/'previous'/name;old.parent.mkdir(parents=True,exist_ok=True)
-                try: os.stat(leaf,dir_fd=parent,follow_symlinks=False);exists=True
-                except FileNotFoundError: exists=False
                 if exists:
                     journal['operation']={'path':name,'phase':'move-old'};persist()
                     os.rename(leaf,old,src_dir_fd=parent);os.fsync(parent);sync_directory(old.parent)
@@ -161,11 +208,10 @@ def restore(config,name,apply):
                         for item in files: os.chown(item,account.pw_uid,account.pw_gid,dir_fd=descriptor,follow_symlinks=False)
                         os.fchown(descriptor,account.pw_uid,account.pw_gid)
                 else: os.chown(leaf,account.pw_uid,account.pw_gid,dir_fd=parent,follow_symlinks=False)
-            finally: os.close(parent)
         journal['state']='restored';persist()
     except BaseException:
         journal['state']='needs-recovery';persist();raise
-    print('State restored; execution remains stopped. Previous state and a recovery journal remain in '+stage.name+'. Review before restarting or deleting them.')
+    print('State restored; execution remains stopped. Previous state and a recovery journal remain in '+str(stage)+'. Review before restarting or deleting them.')
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('mode',choices=['backup','list','restore']);parser.add_argument('name',nargs='?');parser.add_argument('--apply',action='store_true');args=parser.parse_args()
@@ -180,5 +226,7 @@ def main():
     else: raise Refusal('Select a snapshot name')
 if __name__=='__main__':
     try: main()
-    except (Refusal,OSError,ValueError,KeyError,subprocess.SubprocessError):
+    except Refusal as error:
+        print(f'Assbox state operation refused: {error}',file=sys.stderr);sys.exit(78)
+    except (OSError,ValueError,KeyError,subprocess.SubprocessError):
         print('Assbox state operation refused or incomplete; inspect root-private records. No state compatibility or credential migration is inferred from an OS rollback.',file=sys.stderr);sys.exit(78)

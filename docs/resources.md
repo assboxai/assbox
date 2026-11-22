@@ -84,4 +84,11 @@ Selected web-kiosk profiles and the autostart OpenClaw dashboard profile are inc
 
 A restore preview shows the source generation and integrity metadata. `--apply` stops the execution user and requires no remaining execution processes, so keep an independent administrator connection. It preserves previous state and an explicit recovery journal and leaves execution stopped for review. It does not infer provider schema compatibility or start migrated credentials. `backupBeforeUpdate` is an explicit opt-in for scheduled update checkpoints. Worker application state is checkpointed inside its own guest; the existing host worker-disk admission and identity rules remain authoritative.
 
+Restore stages data and keeps the previous state on the execution home mount so
+the helper can move each selected path atomically. When the checkpoint directory
+uses a different mount, the helper places the recovery journal and previous state
+under the root-private `/home/.assbox-state-recovery` directory and prints the exact
+recovery path. A selected application path on its own mount requires manual export
+and recovery. The helper checks mount identities before moving application data.
+
 Guest checkpoints and their local checkpoint identity live in root-private `/home/.assbox-state-backups`, so the disposable worker root does not erase them. Guest root administration is disabled by default; invoke the state helper only through explicitly authorized guest administration or declare a reviewed guest maintenance job. Otherwise export scoped application data through the normal SSH workflow. Copying the entire backup directory, including its identity record, is not a supported cross-instance import.
