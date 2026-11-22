@@ -44,9 +44,23 @@ assert lib.all (
 ) dependencies;
 raw.overridePythonAttrs (old: {
   inherit dependencies;
-  makeWrapperArgs = map (
-    arg: if lib.hasSuffix "/bin/python3" arg then "${python}/bin/python3" else arg
-  ) old.makeWrapperArgs;
+  makeWrapperArgs =
+    map (
+      arg: if lib.hasSuffix "/bin/python3" arg then "${python}/bin/python3" else arg
+    ) old.makeWrapperArgs
+    ++ [
+      "--set"
+      "HERMES_BUNDLED_LOCALES"
+      "${placeholder "out"}/share/hermes/locales"
+    ];
+  # Hermes looks up message catalogs outside the Python wheel.
+  postInstall =
+    (old.postInstall or "")
+    + "\n"
+    + ''
+      mkdir -p "$out/share/hermes/locales"
+      cp ${old.src}/locales/*.yaml "$out/share/hermes/locales/"
+    '';
   # Keep a core import gate for the resulting interpreter instead of requiring
   # the deliberately unselected voice/model extras in the upstream smoke test.
   installCheckPhase = ''
@@ -63,7 +77,15 @@ raw.overridePythonAttrs (old: {
     test -d "$out/share/hermes/optional-skills"
     test -d "$out/share/hermes/plugins"
     grep -q HERMES_WEB_DIST "$out/bin/hermes"
+    grep -q HERMES_BUNDLED_LOCALES "$out/bin/hermes"
+    HERMES_BUNDLED_LOCALES="$out/share/hermes/locales" \
     PYTHONPATH="$out/${pythonBase.sitePackages}" \
-      ${python}/bin/python3 -c 'import hermes_cli.dashboard_auth, tui_gateway.slash_worker, yaml'
+      ${python}/bin/python3 -c '
+    import hermes_cli.dashboard_auth, tui_gateway.slash_worker, yaml
+    from agent.i18n import SUPPORTED_LANGUAGES, _load_catalog, t
+
+    assert all(_load_catalog(language) for language in SUPPORTED_LANGUAGES)
+    assert "fixture-session" in t("gateway.status.session_id", lang="en", session_id="fixture-session")
+    '
   '';
 })

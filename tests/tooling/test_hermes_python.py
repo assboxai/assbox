@@ -27,6 +27,8 @@ class HermesPythonTests(unittest.TestCase):
             dependencies = DEPENDENCIES;
             overridePythonAttrs = adapt: adapt {
               makeWrapperArgs = [ "--run" "/original/bin/python3" ];
+              postInstall = "original-install";
+              src = "/locked-hermes-source";
             };
           } // INTERPRETER;
           adapted = import ADAPTER {
@@ -37,6 +39,7 @@ class HermesPythonTests(unittest.TestCase):
           wrappers = adapted.makeWrapperArgs;
           imports = adapted.installCheckPhase;
           retained = adapted.postInstallCheck;
+          installed = adapted.postInstall;
           dependencies = map (p: p.pname) adapted.dependencies;
         }
         '''.replace('LIBRARY', json.dumps(library)).replace(
@@ -53,10 +56,20 @@ class HermesPythonTests(unittest.TestCase):
         ]''')
         self.assertEqual(result.returncode, 0, result.stderr)
         value = json.loads(result.stdout)
-        self.assertEqual(value['wrappers'], ['--run', '/declared-python-env/bin/python3'])
+        self.assertEqual(value['wrappers'][:2], ['--run', '/declared-python-env/bin/python3'])
         self.assertIn('/declared-python-env/bin/python3', value['imports'])
         self.assertIn('lib/python3.14/site-packages', value['retained'])
         self.assertEqual(value['dependencies'], ['openai', 'watchfiles'])
+
+    def test_packaged_gateway_uses_catalogs_from_the_same_locked_source(self):
+        result = self.evaluate('[ { pname = "openai"; pythonModule = python; } ]')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        value = json.loads(result.stdout)
+        self.assertEqual(value['wrappers'][2:4], ['--set', 'HERMES_BUNDLED_LOCALES'])
+        self.assertTrue(value['wrappers'][4].endswith('/share/hermes/locales'))
+        self.assertIn('original-install', value['installed'])
+        self.assertIn('/locked-hermes-source/locales/*.yaml', value['installed'])
+        self.assertIn('gateway.status.session_id', value['retained'])
 
     def test_existing_watchfiles_dependency_is_preserved_without_duplication(self):
         result = self.evaluate('''[
