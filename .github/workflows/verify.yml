@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox native ARM candidate gates and bounded closure collection
+name: Assbox native ARM Nix checks
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-closure-audit-v3
+  group: assbox-arm-native-checks-v1
   cancel-in-progress: false
 jobs:
-  collect:
+  verify:
     if: >-
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-closure-audit-v3' &&
+      github.ref == 'refs/heads/test/arm-native-checks-v1' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
@@ -49,66 +49,9 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Verify candidate identity and run native finite gates
+      - name: Verify the locked source and run the native Nix test phase
         shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
-          test "$RUNNER_ENVIRONMENT" = github-hosted
-          test "$(uname -m)" = aarch64
-          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test -z "$(git -C authority status --porcelain)"
-          cd product
-          test "$(git rev-parse HEAD)" = "$PRODUCT_COMMIT"
-          test "$(git rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
-          test -z "$(git status --porcelain)"
-          printf '%s\n' \
-            'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
-            'fe99c58c845e96a6d4c4e45d829a716d0b8fe3ca498eda5d62acca56803a0a09  scripts/release-check' \
-            | sha256sum --check
-          evidence="$RUNNER_TEMP/assbox-arm-closure-audit"
-          mkdir -m 0700 "$evidence"
-          {
-            date -u +%FT%TZ
-            printf 'workflowCommit\t%s\nrunId\t%s\nrunAttempt\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
-            git rev-parse HEAD 'HEAD^{tree}'
-            sha256sum flake.lock scripts/release-check
-            uname -sm
-            df -h /nix/store "$RUNNER_TEMP"
-            nix --version
-          } > "$evidence/scope.txt"
-          export XDG_STATE_HOME="$RUNNER_TEMP/assbox-arm-chainman-state"
-          mkdir -m 0700 "$XDG_STATE_HOME"
-          run_finite() {
-            local command_name=$1
-            local result=0
-            nix run path:./nix/dev#just -- "$@" > "$evidence/finite-$command_name.log" 2>&1 || result=$?
-            printf '%s\t%s\t%s\n' "$command_name" "$result" "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
-            return "$result"
-          }
-          run_finite setup --no-hooks
-          run_finite doctor
-          run_finite explain verify --json
-          run_finite deps-check
-          run_finite deps-coverage
-          run_finite deps-policy-report
-          run_finite verify-lite
-          run_finite verify-prepare
-          test -z "$(git status --porcelain)"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        if: always()
-        with:
-          name: native-arm-finite-before-closure
-          path: |
-            ${{ runner.temp }}/assbox-arm-closure-audit/scope.txt
-            ${{ runner.temp }}/assbox-arm-closure-audit/finite.tsv
-            ${{ runner.temp }}/assbox-arm-closure-audit/finite-*.log
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Collect the exact native closure inventory with bounded parallelism
         working-directory: product
-        shell: bash
         env:
           NIX_CONFIG: |
             max-jobs = 1
@@ -117,54 +60,51 @@ jobs:
           set -euo pipefail
           umask 077
           unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(uname -m)" = aarch64
+          test "$(git -C ../authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git -C ../authority status --porcelain)"
           test "$(git rev-parse HEAD)" = "$PRODUCT_COMMIT"
           test "$(git rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
           test -z "$(git status --porcelain)"
-          evidence="$RUNNER_TEMP/assbox-arm-closure-audit"
-          nix config show --json | python3 -I -B -c '
-          import json, sys
-          settings=json.load(sys.stdin)
-          assert settings["max-jobs"]["value"] == 1 and settings["cores"]["value"] == 2
-          print("Nix build parallelism verified")'
-          record_resources() {
+          printf '%s\n' \
+            'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
+            'fe99c58c845e96a6d4c4e45d829a716d0b8fe3ca498eda5d62acca56803a0a09  scripts/release-check' \
+            | sha256sum --check
+          evidence="$RUNNER_TEMP/assbox-arm-native-checks"
+          export XDG_STATE_HOME="$evidence/state"
+          mkdir -m 0700 "$evidence" "$XDG_STATE_HOME"
+          {
             date -u +%FT%TZ
-            df -PB1 /nix/store "$RUNNER_TEMP"
-            free -b
-          }
-          record_resources | tee "$evidence/resource-at-start.txt"
-          (while sleep 60; do record_resources; done) &
-          resource_monitor=$!
-          trap 'kill "$resource_monitor" 2>/dev/null || true
-                wait "$resource_monitor" 2>/dev/null || true' EXIT
-          status=0
-          nix develop .#release-check --no-update-lock-file --no-write-lock-file \
-            --command bash "$GITHUB_WORKSPACE/authority/.github/experiments/collect-closures.sh" "$evidence" \
-            > "$evidence/collection.log" 2>&1 || status=$?
-          printf '%s\t%s\n' "$status" "$(date -u +%FT%TZ)" > "$evidence/collection-exit.tsv"
-          record_resources > "$evidence/resource-at-exit.txt"
-          if test -f "$evidence/cache/Data.fs"; then
-            sha256sum "$evidence/cache/Data.fs" > "$evidence/vulnix-data-sha256.txt"
-          fi
+            printf 'workflowCommit\t%s\nrunId\t%s\nrunAttempt\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+            git rev-parse HEAD 'HEAD^{tree}'
+            sha256sum flake.lock scripts/release-check
+            uname -sm
+            df -h /nix/store "$RUNNER_TEMP"
+            nix --version
+            if test -r /dev/kvm && test -w /dev/kvm; then
+              printf '%s\n' 'KVM device readable and writable by the runner'
+            else
+              printf '%s\n' 'KVM device unavailable to the runner'
+            fi
+          } | tee "$evidence/scope.txt"
+          nix run path:./nix/dev#just -- setup --no-hooks
+          set +e
+          nix run path:./nix/dev#just -- verify-nix 2>&1 | tee "$evidence/verify-nix.log"
+          pipeline_status=("${PIPESTATUS[@]}")
+          set -e
+          printf 'verify_nix\t%s\nlog\t%s\n' "${pipeline_status[0]}" "${pipeline_status[1]}" > "$evidence/result.tsv"
           test -z "$(git status --porcelain)"
-          exit "$status"
-      - name: Encrypt the report and collection evidence for the owner
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          evidence="$RUNNER_TEMP/assbox-arm-closure-audit"
-          if ! test -d "$evidence"; then exit 0; fi
-          keyring=$(mktemp -d "$RUNNER_TEMP/assbox-arm-gpg.XXXXXXXX")
-          gpg --batch --homedir "$keyring" --import authority/.github/experiments/arm-audit-recipient.asc
-          fingerprint=$(gpg --batch --homedir "$keyring" --with-colons --list-keys | awk -F: '$1 == "fpr" && !found { print $10; found=1 }')
-          test "$fingerprint" = 599CB031260C404BC8A94AE5F50F23A3C788889D
-          tar --exclude='./cache' -cf - -C "$evidence" . | gpg --batch --homedir "$keyring" --trust-model always \
-            --recipient "$fingerprint" --output "$RUNNER_TEMP/assbox-arm-closure-audit.tar.gpg" --encrypt
+          if (( pipeline_status[0] != 0 )); then exit "${pipeline_status[0]}"; fi
+          exit "${pipeline_status[1]}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: encrypted-native-arm-closure-audit
-          path: ${{ runner.temp }}/assbox-arm-closure-audit.tar.gpg
+          name: native-arm-nix-checks
+          path: |
+            ${{ runner.temp }}/assbox-arm-native-checks/scope.txt
+            ${{ runner.temp }}/assbox-arm-native-checks/result.tsv
+            ${{ runner.temp }}/assbox-arm-native-checks/verify-nix.log
+            ${{ runner.temp }}/assbox-verification/nix.jsonl
           if-no-files-found: warn
           retention-days: 14
