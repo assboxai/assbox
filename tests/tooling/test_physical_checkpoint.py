@@ -148,6 +148,9 @@ class PhysicalCheckpointTests(unittest.TestCase):
 
     def test_release_gate_scans_the_exact_iso_closure(self):
         source = (ROOT / 'scripts/release-check').read_text()
+        checkpoint = source.index('if [[ "$system" == x86_64-linux-physical-checkpoint ]]; then\n    continue\n  fi')
+        self.assertLess(source.index('closure_targets+=("$path")'), checkpoint)
+        self.assertLess(checkpoint, source.index('.config.assbox.worker.enable'))
         self.assertIn('".#packages.$architecture.physical-checkpoint-iso"', source)
         self.assertIn('closure_targets+=("$checkpoint_iso")', source)
         self.assertIn('scan_closures "reports/vulnix-$architecture-release-closures.json"',

@@ -58,6 +58,11 @@ for system in "${systems[@]}"; do
   # Preserve every raw finding. The exact lock-bound policy below adjudicates
   # patched and false product matches without hiding them from Vulnix.
   closure_targets+=("$path")
+  # The standalone checkpoint declares no worker module. Its toplevel and ISO
+  # remain audit roots.
+  if [[ "$system" == x86_64-linux-physical-checkpoint ]]; then
+    continue
+  fi
   worker_enabled=$(nix eval --json --no-update-lock-file --no-write-lock-file ".#nixosConfigurations.$system.config.assbox.worker.enable")
   if [[ "$worker_enabled" == true ]]; then
     worker_audit=$(nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file ".#nixosConfigurations.$system.config.system.build.assboxWorkerAudit")
