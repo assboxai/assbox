@@ -16,9 +16,9 @@ import sys
 REPO = 'assboxai/assbox'
 REPO_ID = '1402455771'
 OWNER_ID = '327835666'
-REF = 'refs/heads/test/physical-checkpoint-x86-v2'
-SOURCE = '9a552a4b768d3f59368ed45286c7b320507eb812'
-TREE = '442beb368dfe81e6a400032585529619fe8983cd'
+REF = 'refs/heads/test/physical-checkpoint-x86-v3'
+SOURCE = 'ab4a9da8ec8098beadbf7689f2e7dc9f21113570'
+TREE = 'e21dc69775c2272572a193981c457acc5fbd7f6d'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
 SYSTEM = 'x86_64-linux'
 MARKER = b'ASSBOX_PHYSICAL_CHECKPOINT_READY ' + SOURCE.encode()
