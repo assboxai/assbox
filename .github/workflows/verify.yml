@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox native ARM release closure collection
+name: Assbox native ARM candidate gates and closure collection
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-closure-audit-v1
+  group: assbox-arm-closure-audit-v2
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-closure-audit-v1' &&
+      github.ref == 'refs/heads/test/arm-closure-audit-v2' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: d6f1c2e33cd66691dde98ca30ef202cad7f36daa
+          ref: 9a552a4b768d3f59368ed45286c7b320507eb812
           path: product
           persist-credentials: false
       - name: Clear unused SDKs on the ephemeral hosted runner
@@ -46,7 +46,7 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Collect the exact native release-check closure inventory
+      - name: Run native finite gates and collect the exact release-check closure inventory
         shell: bash
         run: |
           set -euo pipefail
@@ -57,8 +57,8 @@ jobs:
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git -C authority status --porcelain)"
           cd product
-          test "$(git rev-parse HEAD)" = d6f1c2e33cd66691dde98ca30ef202cad7f36daa
-          test "$(git rev-parse 'HEAD^{tree}')" = c890db01df742598abe77fd86eb6fa43f41a2db6
+          test "$(git rev-parse HEAD)" = 9a552a4b768d3f59368ed45286c7b320507eb812
+          test "$(git rev-parse 'HEAD^{tree}')" = 442beb368dfe81e6a400032585529619fe8983cd
           test -z "$(git status --porcelain)"
           printf '%s\n' \
             'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
@@ -75,6 +75,24 @@ jobs:
             df -h /nix/store "$RUNNER_TEMP"
             nix --version
           } > "$evidence/scope.txt"
+          export XDG_STATE_HOME="$RUNNER_TEMP/assbox-arm-chainman-state"
+          mkdir -m 0700 "$XDG_STATE_HOME"
+          run_finite() {
+            local command_name=$1
+            local result=0
+            nix run path:./nix/dev#just -- "$@" > "$evidence/finite-$command_name.log" 2>&1 || result=$?
+            printf '%s\t%s\t%s\n' "$command_name" "$result" "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
+            return "$result"
+          }
+          run_finite setup --no-hooks
+          run_finite doctor
+          run_finite explain verify --json
+          run_finite deps-check
+          run_finite deps-coverage
+          run_finite deps-policy-report
+          run_finite verify-lite
+          run_finite verify-prepare
+          test -z "$(git status --porcelain)"
           status=0
           nix develop .#release-check --no-update-lock-file --no-write-lock-file \
             --command bash "$GITHUB_WORKSPACE/authority/.github/experiments/collect-closures.sh" "$evidence" \
