@@ -79,8 +79,13 @@ class ComputerUseTests(unittest.TestCase):
                 desktop.run('display', ['true'], {'modes': ['browser']})
 
     def test_physical_session_and_agent_socket_are_scrubbed(self):
-        with patch.dict(desktop.os.environ, {'DISPLAY': ':0', 'DBUS_SESSION_BUS_ADDRESS': 'sensitive',
-                                           'SSH_AUTH_SOCK': '/sensitive', 'KEEP': 'value'}, clear=True):
+        inherited = {
+            'DISPLAY': ':0', 'WAYLAND_DISPLAY': 'wayland-0', 'WAYLAND_SOCKET': '14',
+            'DBUS_SESSION_BUS_ADDRESS': 'sensitive', 'DBUS_STARTER_ADDRESS': 'sensitive',
+            'DBUS_STARTER_BUS_TYPE': 'session', 'XDG_RUNTIME_DIR': '/run/user/1000',
+            'SSH_AUTH_SOCK': '/sensitive', 'KEEP': 'value',
+        }
+        with patch.dict(desktop.os.environ, inherited, clear=True):
             self.assertEqual(desktop.clean_environment(), {'KEEP': 'value'})
 
 

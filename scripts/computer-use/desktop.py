@@ -20,9 +20,10 @@ class Refusal(Exception):
 
 
 SCRUB = {
-    'DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS',
+    'DISPLAY', 'WAYLAND_DISPLAY', 'WAYLAND_SOCKET', 'XAUTHORITY',
+    'DBUS_SESSION_BUS_ADDRESS', 'DBUS_STARTER_ADDRESS', 'DBUS_STARTER_BUS_TYPE',
     'AT_SPI_BUS_ADDRESS', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP',
-    'DESKTOP_SESSION', 'SSH_AUTH_SOCK',
+    'DESKTOP_SESSION', 'SSH_AUTH_SOCK', 'XDG_RUNTIME_DIR',
 }
 
 
@@ -136,6 +137,11 @@ def run(mode, command, tools):
             try:
                 d = Path(temporary)
                 d.chmod(0o700)
+                # With the explicit addresses cleared, Wayland and D-Bus
+                # clients can still look for sockets in XDG_RUNTIME_DIR.
+                session_runtime = d / 'runtime'
+                session_runtime.mkdir(mode=0o700)
+                env['XDG_RUNTIME_DIR'] = str(session_runtime)
                 if mode == 'chromium':
                     profile, cache = d / 'browser', d / 'cache'
                     profile.mkdir(mode=0o700)

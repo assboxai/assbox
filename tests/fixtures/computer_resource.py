@@ -11,9 +11,14 @@ import time
 assert os.geteuid() == 1000
 assert os.environ['DISPLAY'] == ':90'
 assert 'WAYLAND_DISPLAY' not in os.environ and 'SSH_AUTH_SOCK' not in os.environ
+assert 'WAYLAND_SOCKET' not in os.environ and 'DBUS_STARTER_ADDRESS' not in os.environ
+assert 'DBUS_STARTER_BUS_TYPE' not in os.environ
 assert os.environ['DBUS_SESSION_BUS_ADDRESS'].startswith('unix:')
 auth = Path(os.environ['XAUTHORITY'])
 assert auth.is_file() and auth.stat().st_mode & 0o777 == 0o600
+runtime = Path(os.environ['XDG_RUNTIME_DIR'])
+assert runtime == auth.parent / 'runtime'
+assert runtime.is_dir() and runtime.stat().st_uid == 1000 and runtime.stat().st_mode & 0o777 == 0o700
 root = Path('/home/agent')
 xdotool, ffmpeg, xmessage = sys.argv[1:]
 window = subprocess.Popen([xmessage, '-bg', 'blue', '-geometry', '300x200+10+10', 'Assbox private display'])
