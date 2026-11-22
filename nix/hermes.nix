@@ -15,7 +15,7 @@ let
     "elevenlabs"
     "modal"
   ];
-  dependencies = builtins.filter (
+  retainedDependencies = builtins.filter (
     p: !(builtins.elem (p.pname or (lib.getName p)) excluded)
   ) raw.dependencies;
   # Python applications need not expose pythonModule. Their declared Python
@@ -23,7 +23,7 @@ let
   # Python can have a different native extension ABI.
   pythonDependency = lib.findFirst (
     p: p ? pythonModule && !(builtins.isBool p.pythonModule)
-  ) null dependencies;
+  ) null retainedDependencies;
   pythonBase =
     if raw ? pythonModule && !(builtins.isBool raw.pythonModule) then
       raw.pythonModule
@@ -31,6 +31,12 @@ let
       pythonDependency.pythonModule
     else
       throw "Hermes dependencies do not identify their Python interpreter";
+  # The pinned Hermes wheel requires watchfiles. The package recipe omits it.
+  dependencies =
+    retainedDependencies
+    ++ lib.optional (
+      !(lib.any (p: (p.pname or (lib.getName p)) == "watchfiles") retainedDependencies)
+    ) pythonBase.pkgs.watchfiles;
   python = pythonBase.withPackages (_: dependencies);
 in
 assert lib.all (
@@ -45,7 +51,7 @@ raw.overridePythonAttrs (old: {
   # the deliberately unselected voice/model extras in the upstream smoke test.
   installCheckPhase = ''
     runHook preInstallCheck
-    ${python}/bin/python3 -c 'import openai, anthropic, dotenv, tenacity'
+    ${python}/bin/python3 -c 'import openai, anthropic, dotenv, tenacity, watchfiles'
     test -x "$out/bin/hermes"
     grep -q HERMES_DISABLE_LAZY_INSTALLS "$out/bin/hermes"
     runHook postInstallCheck

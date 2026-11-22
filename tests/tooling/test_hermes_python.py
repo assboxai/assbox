@@ -17,6 +17,7 @@ class HermesPythonTests(unittest.TestCase):
           python = rec {
             outPath = "/declared-python";
             sitePackages = "lib/python3.14/site-packages";
+            pkgs.watchfiles = { pname = "watchfiles"; pythonModule = python; };
             withPackages = choose:
               assert lib.all (p: p.pythonModule == python) (choose {});
               { outPath = "/declared-python-env"; };
@@ -55,7 +56,15 @@ class HermesPythonTests(unittest.TestCase):
         self.assertEqual(value['wrappers'], ['--run', '/declared-python-env/bin/python3'])
         self.assertIn('/declared-python-env/bin/python3', value['imports'])
         self.assertIn('lib/python3.14/site-packages', value['retained'])
-        self.assertEqual(value['dependencies'], ['openai'])
+        self.assertEqual(value['dependencies'], ['openai', 'watchfiles'])
+
+    def test_existing_watchfiles_dependency_is_preserved_without_duplication(self):
+        result = self.evaluate('''[
+          { pname = "openai"; pythonModule = python; }
+          { pname = "watchfiles"; pythonModule = python; }
+        ]''')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['dependencies'], ['openai', 'watchfiles'])
 
     def test_mixed_native_extension_interpreters_are_refused(self):
         result = self.evaluate('''[
