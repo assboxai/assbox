@@ -217,7 +217,7 @@ fn selection_with_ui(
             "coder-happier" => ("Happier provider connection", "external Happier client"),
             "coder-codex-ssh" => (
                 "SSH; ChatGPT owns its app-server channel",
-                "external ChatGPT Desktop (Mac to Parallels is supported topology)",
+                "external ChatGPT Desktop (macOS SSH documented upstream; Assbox qualification pending)",
             ),
             "coder-claude-ssh" => (
                 "SSH; native helper behavior requires qualification",

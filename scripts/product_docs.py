@@ -77,6 +77,67 @@ def sources(values, anchors):
     return ', '.join(f'[{value}](sources.md#{value.lower()})' for value in values)
 
 
+CONTROLLER_ROUTE_CASES = {
+    'macos-desktop-ssh': ('A099', 'A100', 'A101'),
+    'mobile-through-macos-ssh': ('A102',),
+    'linux-desktop-worker-ssh': ('A059',),
+    'mobile-through-linux-worker': ('A111',),
+    'direct-cli-relay': ('A104',),
+}
+CONTROLLER_ROUTES_START = '<!-- BEGIN REVIEWED CONTROLLER ROUTES -->'
+CONTROLLER_ROUTES_END = '<!-- END REVIEWED CONTROLLER ROUTES -->'
+
+
+def controller_route_status(row, acceptance):
+    route = row['id']
+    cases = CONTROLLER_ROUTE_CASES[route]
+    evidence = row['evidence']
+    if evidence is None:
+        return 'not run'
+    if (not isinstance(evidence, dict) or set(evidence) != {'route', 'source', 'checks'}
+            or evidence['route'] != route or not isinstance(evidence['source'], str)
+            or not re.fullmatch(r'[a-f0-9]{40}', evidence['source'])
+            or not isinstance(evidence['checks'], dict) or set(evidence['checks']) != set(cases)):
+        raise ValueError('qualification evidence does not bind the exact controller route')
+    for case in cases:
+        check = acceptance[case]
+        digest = evidence['checks'][case]
+        if (not isinstance(digest, str) or not re.fullmatch(r'[a-f0-9]{64}', digest)
+                or check['status'] != 'passed'
+                or check['evidence'] != {'route': route, 'source': evidence['source'], 'sha256': digest}):
+            raise ValueError(f'{route} requires its own reviewed {case} acceptance receipt')
+    return 'passed'
+
+
+def coder_routes_page():
+    data = json.loads((ROOT / 'qualification/codex-controller-routes.json').read_text())
+    acceptance = {row['id']: row for row in json.loads((ROOT / 'qualification/acceptance.json').read_text())}
+    anchors = set(re.findall(r'<a id="([^"]+)"', (ROOT / 'docs/product/sources.md').read_text()))
+    reviewed = date.fromisoformat(data['reviewed_local_date'])
+    if [row['id'] for row in data['routes']] != list(CONTROLLER_ROUTE_CASES):
+        raise ValueError('incomplete or duplicate controller evidence routes')
+    if any(case not in acceptance for cases in CONTROLLER_ROUTE_CASES.values() for case in cases):
+        raise ValueError('unknown controller route acceptance requirement')
+    lines = [
+        f'**Upstream evidence reviewed on {reviewed}.** Assbox qualification records an exact route.',
+        '',
+        '| Route | Upstream evidence | Assbox status | Assbox qualification |',
+        '|---|---|---|---|',
+    ]
+    for row in data['routes']:
+        status = controller_route_status(row, acceptance)
+        upstream = f'{row["upstream"]} {sources(row["sources"], anchors)}.'
+        cases = ', '.join(CONTROLLER_ROUTE_CASES[row['id']])
+        qualification = f'{row["qualification"]} {cases}.'
+        lines.append('| ' + ' | '.join(map(cell, (row['path'], upstream, status, qualification))) + ' |')
+    document = (ROOT / 'docs/product/coder-options.md').read_text()
+    if document.count(CONTROLLER_ROUTES_START) != 1 or document.count(CONTROLLER_ROUTES_END) != 1:
+        raise ValueError('controller evidence table boundaries are missing or duplicated')
+    before, body = document.split(CONTROLLER_ROUTES_START)
+    _, after = body.split(CONTROLLER_ROUTES_END)
+    return before + CONTROLLER_ROUTES_START + '\n' + '\n'.join(lines) + '\n' + CONTROLLER_ROUTES_END + after
+
+
 def evidence_page():
     data = json.loads((ROOT / 'qualification/linux-computer-use.json').read_text())
     requirements = {r['id'] for r in json.loads((ROOT / 'qualification/acceptance.json').read_text())}
@@ -134,6 +195,7 @@ def outputs():
     return {
         ROOT / 'docs/product/component-presets.md': catalog_page(),
         ROOT / 'docs/product/linux-computer-use-support.md': evidence_page(),
+        ROOT / 'docs/product/coder-options.md': coder_routes_page(),
     }
 
 

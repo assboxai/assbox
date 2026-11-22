@@ -84,7 +84,7 @@ RESULT: coder-happier | host antigravity-cli,claude-code,codex,cursor-agent,grok
 Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
 What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
 Coder: happier / codex / claude / more / ssh / desktop / back [happier]: codex
-Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (Mac to Parallels is supported topology)
+Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (macOS SSH documented upstream; Assbox qualification pending)
 Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
 Initially checked components: codex
 Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
@@ -364,7 +364,7 @@ Selected components, comma-separated; remove unwanted entries, none, or back [an
 Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
 What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
 Coder: happier / codex / claude / more / ssh / desktop / back [happier]: codex
-Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (Mac to Parallels is supported topology)
+Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (macOS SSH documented upstream; Assbox qualification pending)
 Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
 Initially checked components: codex
 Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.
@@ -426,7 +426,7 @@ CANCELLED/REFUSED: input closed; installation cancelled
 Purpose: Assistant / Coder / Kiosk / Custom. Type back in a branch to choose again. No authentication or enrollment occurs here.
 What will this Assbox primarily do? assistant / coder / kiosk / custom: coder
 Coder: happier / codex / claude / more / ssh / desktop / back [happier]: codex
-Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (Mac to Parallels is supported topology)
+Transport: SSH; ChatGPT owns its app-server channel | controller: external ChatGPT Desktop (macOS SSH documented upstream; Assbox qualification pending)
 Installation: requested, not applied | authentication: unobserved | integration qualification: not established by preset selection
 Initially checked components: codex
 Curated agent tools can be removed individually. Installing a CLI does not authenticate it or qualify every frontend adapter.

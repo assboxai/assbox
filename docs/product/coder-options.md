@@ -24,15 +24,17 @@ Grok's dashboard is a terminal interface, Pi RPC is a machine interface, and OMP
 
 ## Platform-specific evidence boundary
 
-Upstream topology documentation and empirical Assbox qualification are separate fields. The following is a dated evidence assessment, not a universal compatibility table. All exact Assbox client/account/image combinations remain unqualified until their acceptance gates run.
+<!-- BEGIN REVIEWED CONTROLLER ROUTES -->
+**Upstream evidence reviewed on 2026-10-02.** Assbox qualification records an exact route.
 
-| Route | Upstream evidence | Assbox qualification requirement |
-|---|---|---|
-| macOS ChatGPT Desktop -> SSH execution host | Explicitly documented topology | Real macOS app -> standalone Assbox/Parallels guest; selected and deselected Tailscale variants |
-| Phone -> macOS ChatGPT Desktop -> SSH execution host | Explicitly documented chained topology; Mac remains coordinator | Actual phone/Mac/guest workflow, outages and no fallback |
-| Linux ChatGPT Desktop -> Assbox managed-worker SSH | Generic Desktop SSH mechanism documented; exact Linux-client combination not explicitly established by the reviewed sources | Exact Linux client, account, helper and policy; not a borrowed macOS pass |
-| Phone -> Linux Desktop -> worker | Linux GUI availability is not evidence that Linux is a supported Remote host; reviewed host documentation names macOS/Windows | Separate support and authenticated mobile-host evidence before advertising; never inferred from Linux SSH success |
-| Independently enrolled direct Codex CLI relay | Experimental developer commands documented | Separate supported client, enrollment, authority and lifetime evidence |
+| Route | Upstream evidence | Assbox status | Assbox qualification |
+|---|---|---|---|
+| macOS ChatGPT Desktop → standalone Assbox over SSH | Desktop SSH topology documented. The reviewed Assbox target uses a Parallels guest. [S19](sources.md#s19), [S45](sources.md#s45). | not run | Guest-only tasks, authorized reachability, and explicit handoff after a controller or guest outage. A099, A100, A101. |
+| Phone → macOS ChatGPT Desktop → Assbox over SSH | The chained topology is documented and the Mac remains the coordinator. [S19](sources.md#s19). | not run | Actual phone, Mac, and Assbox workflow with coordinator and guest interruptions. A102. |
+| Linux ChatGPT Desktop → Assbox managed-worker SSH | The reviewed sources document Desktop SSH and Linux app availability separately. [S19](sources.md#s19), [S53](sources.md#s53). | not run | Exact Linux client, account, helper, worker image, and policy. Verify each selected surface and failed SSH or resume. A059. |
+| Phone → Linux Desktop → Assbox worker | The reviewed Remote-host documentation names macOS and Windows. [S19](sources.md#s19), [S53](sources.md#s53). | not run | Exact Linux Remote-host support and authenticated phone-to-Linux-to-worker execution. A111. |
+| Independently enrolled direct Codex CLI relay | Experimental developer commands are documented. [S38](sources.md#s38). | not run | Supported client, independent enrollment, authority, and lifecycle on the explicitly selected experimental route. A104. |
+<!-- END REVIEWED CONTROLLER ROUTES -->
 
 The absence of explicit Linux route documentation is not a claim that the route cannot work. Keep implementation/qualification in scope and record an actual result. Likewise, “upstream documented” does not certify NixOS, a selected Parallels build or every tool/connector. [S19](sources.md#s19), [S38](sources.md#s38), [S53](sources.md#s53)
 

@@ -1,0 +1,45 @@
+{
+  "reviewed_local_date": "2026-10-02",
+  "routes": [
+    {
+      "id": "macos-desktop-ssh",
+      "path": "macOS ChatGPT Desktop → standalone Assbox over SSH",
+      "upstream": "Desktop SSH topology documented. The reviewed Assbox target uses a Parallels guest.",
+      "sources": ["S19", "S45"],
+      "qualification": "Guest-only tasks, authorized reachability, and explicit handoff after a controller or guest outage.",
+      "evidence": null
+    },
+    {
+      "id": "mobile-through-macos-ssh",
+      "path": "Phone → macOS ChatGPT Desktop → Assbox over SSH",
+      "upstream": "The chained topology is documented and the Mac remains the coordinator.",
+      "sources": ["S19"],
+      "qualification": "Actual phone, Mac, and Assbox workflow with coordinator and guest interruptions.",
+      "evidence": null
+    },
+    {
+      "id": "linux-desktop-worker-ssh",
+      "path": "Linux ChatGPT Desktop → Assbox managed-worker SSH",
+      "upstream": "The reviewed sources document Desktop SSH and Linux app availability separately.",
+      "sources": ["S19", "S53"],
+      "qualification": "Exact Linux client, account, helper, worker image, and policy. Verify each selected surface and failed SSH or resume.",
+      "evidence": null
+    },
+    {
+      "id": "mobile-through-linux-worker",
+      "path": "Phone → Linux Desktop → Assbox worker",
+      "upstream": "The reviewed Remote-host documentation names macOS and Windows.",
+      "sources": ["S19", "S53"],
+      "qualification": "Exact Linux Remote-host support and authenticated phone-to-Linux-to-worker execution.",
+      "evidence": null
+    },
+    {
+      "id": "direct-cli-relay",
+      "path": "Independently enrolled direct Codex CLI relay",
+      "upstream": "Experimental developer commands are documented.",
+      "sources": ["S38"],
+      "qualification": "Supported client, independent enrollment, authority, and lifecycle on the explicitly selected experimental route.",
+      "evidence": null
+    }
+  ]
+}
