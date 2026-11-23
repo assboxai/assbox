@@ -18,13 +18,18 @@ let
   ];
   ffmpeg = appPkgs.ffmpeg;
   ffmpegVersion = "9.1";
-  reviewedFfmpeg = ffmpeg.overrideAttrs {
+  reviewedFfmpeg = ffmpeg.overrideAttrs (old: {
     version = ffmpegVersion;
     src = appPkgs.fetchurl {
       url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
       hash = "sha256-Gk05SuY9GQpSbNBS60QVwVa1xeLfN++rQafeC4/eJDM=";
     };
-  };
+    # FFmpeg 9.1 includes this backport.
+    patches = builtins.filter (
+      patch:
+      !lib.hasSuffix "0001-swscale-loongarch-fix-buffer-underflow-in-yuv2plane1.patch" (toString patch)
+    ) (old.patches or [ ]);
+  });
   retainedDependencies = map (
     package:
     if (package.pname or null) == "discord.py" && ffmpeg.version == "9.0.1" then
