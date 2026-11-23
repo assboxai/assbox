@@ -283,18 +283,24 @@ class KernelCache(unittest.TestCase):
         release=self.directory/'release.json'
         release.write_bytes(cache.encoded({'tag':'r-1','coreCommit':'b'*40,'lockSha256':'c'*64}))
         expected={key:self.index[key] for key in ('outputs','derivation','kernelVersion')}
+        formatter = {'output': '/nix/store/' + '6' * 32 + '-nixfmt'}
+        downloads = []
         def download(tag, name, destination, limit):
+            downloads.append(name)
             destination.write_bytes(b'untrusted metadata')
         with patch.object(cache, 'require_system'), patch.object(cache, 'kernel_identity', return_value=expected), \
-             patch.object(cache, 'registered', side_effect=[False, True]), \
+             patch.object(cache, 'formatter_identity', return_value=formatter), \
+             patch.object(cache, 'registered', side_effect=lambda _env, _paths, store=None: store is None), \
              patch.object(cache, 'download', side_effect=download), \
              patch.object(cache, 'verify_provenance', side_effect=ValueError('public proof refused')), \
              patch.object(cache, 'run', side_effect=cache.subprocess.CalledProcessError(1, ['nix','copy'])) as command:
             with self.assertRaisesRegex(ValueError, 'public proof refused'):
                 cache.consume(ROOT, release, self.directory/'local', 'x86_64-linux', 10, 20, 'local?root=/disposable')
-            self.assertEqual(command.call_args.args[1:7], ('nix','copy','--to','local?root=/disposable','--option','require-sigs'))
-            self.assertEqual(command.call_args.args[7], 'true')
-            self.assertEqual(command.call_count, 1)
+            command.assert_called_once()
+            self.assertEqual(command.call_args.args[1:8],
+                             ('nix', 'copy', '--to', 'local?root=/disposable', '--option', 'require-sigs', 'true'))
+            self.assertEqual(set(command.call_args.args[8:]), {*expected['outputs'].values(), formatter['output']})
+        self.assertEqual(downloads, ['kernel-x86_64-linux.json', 'kernel-x86_64-linux.sigstore.json'])
 
 
 def formatter_fixture(directory):
@@ -399,6 +405,38 @@ class DefaultFormatterCache(unittest.TestCase):
             self.assertEqual(registered.call_args_list[1].args[1], [self.index['formatter']['output']])
             download.assert_not_called()
             command.assert_not_called()
+
+    def test_signed_installer_store_supplies_missing_kernel_and_formatter_outputs(self):
+        release = self.directory / 'release.json'
+        release.write_bytes(cache.encoded({'tag': 'r-1', 'coreCommit': 'b' * 40, 'lockSha256': 'c' * 64}))
+        expected = {key: self.index[key] for key in ('outputs', 'derivation', 'kernelVersion')}
+        formatter = self.index['formatter']
+        kernel = set(expected['outputs'].values())
+        required = kernel | {formatter['output']}
+        target_store = self.directory / 'target-store'
+        for name, initial in (('empty', set()), ('kernel', kernel), ('formatter', {formatter['output']})):
+            with self.subTest(initial=name):
+                target = set(initial)
+                installer = required - target
+
+                def registered(_env, paths, store=None):
+                    return set(paths) <= (target if store == target_store else installer)
+
+                def copy_outputs(_env, *arguments):
+                    self.assertEqual(arguments[:7], ('nix', 'copy', '--to', target_store,
+                                                       '--option', 'require-sigs', 'true'))
+                    self.assertEqual(set(arguments[7:]), installer)
+                    target.update(arguments[7:])
+
+                with patch.object(cache, 'require_system'), patch.object(cache, 'kernel_identity', return_value=expected), \
+                     patch.object(cache, 'formatter_identity', return_value=formatter), \
+                     patch.object(cache, 'registered', side_effect=registered), \
+                     patch.object(cache, 'run', side_effect=copy_outputs) as command, patch.object(cache, 'download') as download:
+                    result = cache.consume(ROOT, release, self.directory / name, 'x86_64-linux', 10, 20, target_store)
+                    self.assertEqual(result['status'], 'copied-local-kernel')
+                    self.assertEqual(target, required)
+                    command.assert_called_once()
+                    download.assert_not_called()
 
     def test_signed_other_formatter_cannot_select_archives_or_imports(self):
         release = self.directory / 'release.json'

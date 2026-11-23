@@ -379,24 +379,29 @@ def consume(source, release_path, directory, system, repository_id, owner_id, st
     env = environment(directory)
     expected = kernel_identity(env, source, system)
     paths = list(expected['outputs'].values())
-    if not force_download and registered(env, paths, store):
-        formatter = formatter_identity(env, source, system)
-        if registered(env, [formatter['output']], store):
-            return {'status': 'already-registered', 'kernelBuildInvoked': False, **expected}
-    if not force_download and store is not None and registered(env, paths):
-        # Reuse complete, already trusted installer-store outputs when Nix can
-        # import them with signature verification enabled. Unsigned local paths
-        # do not authorize disabling verification or compiling a replacement.
-        try:
-            run(env, 'nix', 'copy', '--to', store, '--option', 'require-sigs', 'true', *paths)
-        except subprocess.CalledProcessError:
-            pass
-        else:
-            if not registered(env, paths, store):
-                raise ValueError('Local kernel copy did not register all exact target outputs')
+    if not force_download:
+        target_has_kernel = registered(env, paths, store)
+        if target_has_kernel or (store is not None and registered(env, paths)):
             formatter = formatter_identity(env, source, system)
-            if registered(env, [formatter['output']], store):
-                return {'status': 'copied-local-kernel', 'kernelBuildInvoked': False, **expected}
+            formatter_path = formatter['output']
+            target_has_formatter = registered(env, [formatter_path], store)
+            if target_has_kernel and target_has_formatter:
+                return {'status': 'already-registered', 'kernelBuildInvoked': False, **expected}
+            if store is not None:
+                missing = [] if target_has_kernel else list(paths)
+                if not target_has_formatter:
+                    missing.append(formatter_path)
+                # Reuse the exact outputs already trusted by the installer.
+                # Nix must verify every missing path before it enters the target.
+                if registered(env, missing):
+                    try:
+                        run(env, 'nix', 'copy', '--to', store, '--option', 'require-sigs', 'true', *missing)
+                    except subprocess.CalledProcessError:
+                        pass
+                    else:
+                        if not registered(env, [*paths, formatter_path], store):
+                            raise ValueError('Local kernel cache copy did not register all exact target outputs')
+                        return {'status': 'copied-local-kernel', 'kernelBuildInvoked': False, **expected}
     index_path = directory / index_name(system)
     bundle = directory / (index_name(system).removesuffix('.json') + '.sigstore.json')
     download(release['tag'], index_path.name, index_path, MAX_INDEX)
