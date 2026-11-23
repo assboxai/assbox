@@ -24,8 +24,13 @@ let
     let
       cups = import ./reviewed-cups.nix { pkgs = previous; };
       gnutls = import ./reviewed-gnutls.nix { pkgs = previous; };
+      ffmpeg-headless = import ./reviewed-ffmpeg.nix {
+        pkgs = previous;
+        ffmpeg = previous.ffmpeg-headless;
+      };
     in
     {
+      chromaprint = previous.chromaprint.override { inherit ffmpeg-headless; };
       gtk3 = previous.gtk3.override { inherit cups; };
       gtk4 = previous.gtk4.override { inherit cups; };
       libnice = previous.libnice.override { inherit gnutls; };
