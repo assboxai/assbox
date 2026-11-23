@@ -309,6 +309,7 @@ in
               })
             else
               previous.rsync;
+          libsoup_3 = import ../nix/reviewed-libsoup.nix { pkgs = previous; };
           sqlite = upgradeSqlite previous.sqlite;
           tinysparql =
             # Keep 3.11.1's public double-to-text representation and complete
