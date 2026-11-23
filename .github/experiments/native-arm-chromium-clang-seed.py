@@ -96,7 +96,7 @@ def main():
     require(os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted' and os.environ.get('GITHUB_RUN_ATTEMPT') == '1',
             'Expected the first attempt of the qualified hosted seed experiment')
     require(os.environ.get('GITHUB_REPOSITORY_ID') == '1402455771' and os.environ.get('GITHUB_REPOSITORY_OWNER_ID') == '327835666'
-            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-chromium-clang-seeded-v2'
+            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-chromium-clang-seeded-v3'
             and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch', 'Unexpected seed authority')
     workflow = os.environ['GITHUB_SHA']
     run = os.environ['GITHUB_RUN_ID']
@@ -109,7 +109,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='assbox-arm-chromium-clang-seed-', dir=evidence.parent) as temporary:
         workspace = Path(temporary)
         env = cache_tools.environment(workspace)
-        env['NIX_CONFIG'] += 'max-jobs = 1\ncores = 4\neval-cores = 2\n'
+        build_cores = os.environ['ASSBOX_CLANG_BUILD_CORES']
+        require(build_cores in ('2', '3'), 'Unexpected native Clang compiler concurrency')
+        env['NIX_CONFIG'] += f'max-jobs = 1\ncores = {build_cores}\neval-cores = 2\n'
         selector = source.as_uri().replace('file:', 'git+file:', 1) + '?rev=' + SOURCE
         attribute = selector + '#nixosConfigurations.aarch64-linux-uefi-none-headless.pkgs.llvmPackages_21.clang-unwrapped'
         flags = ('--no-update-lock-file', '--no-write-lock-file')
@@ -124,7 +126,7 @@ def main():
         names = sorted(actual['outputs'])
         paths = [actual['outputs'][name] for name in names]
         with (evidence / 'native-build.log').open('xb') as log:
-            command = ['nix', 'build', *flags, '--no-link', '--max-jobs', '1', '--cores', '4', '-L',
+            command = ['nix', 'build', *flags, '--no-link', '--max-jobs', '1', '--cores', build_cores, '-L',
                        actual['derivation'] + '^' + ','.join(names)]
             subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, check=True)
         executable = Path(actual['outputs']['out']) / 'bin/clang'

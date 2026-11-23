@@ -4,7 +4,7 @@ name: Assbox exact native ARM Clang cache for Chromium
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-chromium-clang-seeded-v2
+  group: assbox-arm-chromium-clang-seeded-v3
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-chromium-clang-seeded-v2' &&
+      github.ref == 'refs/heads/test/arm-chromium-clang-seeded-v3' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
@@ -80,11 +80,36 @@ jobs:
           test "$(git -C product rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
           evidence="$RUNNER_TEMP/assbox-arm-chromium-clang-seed-evidence"
           mkdir -m 0700 "$evidence"
+          # Reserve memory and CPU for the runner while the native compiler links.
+          export ASSBOX_CLANG_BUILD_CORES=3
+          memory_kib=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
+          swap_kib=$(awk '/^SwapTotal:/ { print $2 }' /proc/meminfo)
+          free_kib=$(df -Pk "$RUNNER_TEMP" | awk 'NR == 2 { print $4 }')
+          if [ "$swap_kib" -lt 8388608 ] && [ "$free_kib" -ge 33554432 ]; then
+            swap_file=$(mktemp "$RUNNER_TEMP/assbox-clang-swap.XXXXXX")
+            if sudo chown root:root "$swap_file" &&
+               sudo fallocate -l 8G "$swap_file" &&
+               sudo mkswap "$swap_file" >/dev/null &&
+               sudo swapon "$swap_file"; then
+              swap_kib=$(awk '/^SwapTotal:/ { print $2 }' /proc/meminfo)
+            else
+              rm -f -- "$swap_file"
+            fi
+          fi
+          if [ "$swap_kib" -lt 8388608 ]; then
+            export ASSBOX_CLANG_BUILD_CORES=2
+          fi
+          if systemctl is-active --quiet nix-daemon.service; then
+            sudo systemctl set-property --runtime nix-daemon.service \
+              CPUWeight=60 "MemoryHigh=$((memory_kib * 1024 * 3 / 4))" ||
+              echo 'Could not set Nix daemon weights. Compiler core limits still apply.'
+          fi
           {
             printf 'workflowCommit\t%s\nrunId\t%s\nrunAttempt\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
             git -C product rev-parse HEAD 'HEAD^{tree}'
             uname -sm
             nproc
+            printf 'compilerCores\t%s\n' "$ASSBOX_CLANG_BUILD_CORES"
             df -PB1 /nix/store "$RUNNER_TEMP"
             free -b
           } > "$evidence/scope.txt"
