@@ -26,14 +26,12 @@ let
     "apple-efi"
   ];
   usb = targetTransport == "usb";
-  internalDrive = [
-    "-drive file=\"$SHARED_DIR/assbox-internal.qcow2\",if=none,id=assbox-internal,format=qcow2"
-    "-device virtio-blk-pci,drive=assbox-internal,serial=assbox-internal,bootindex=2"
-  ];
-  usbDrive = [
+  usbTargetDrives = firmwareBoot: [
     "-device usb-ehci,id=assbox-usb"
     "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
-    "-device usb-storage,bus=assbox-usb.0,drive=assbox-target,serial=assbox-target,bootindex=1"
+    "-device usb-storage,bus=assbox-usb.0,drive=assbox-target,serial=assbox-target${lib.optionalString firmwareBoot ",bootindex=1"}"
+    "-drive file=\"$SHARED_DIR/assbox-internal.qcow2\",if=none,id=assbox-internal,format=qcow2"
+    "-device virtio-blk-pci,drive=assbox-internal,serial=assbox-internal${lib.optionalString firmwareBoot ",bootindex=2"}"
   ];
   ca = ../fixtures/mirror-cert.crt;
   harness = import ./acceptance-harness.nix {
@@ -306,7 +304,8 @@ pkgs.testers.runNixOSTest {
         ]
         ++ (
           if usb then
-            usbDrive ++ internalDrive
+            # The direct-kernel installer already assigns indexes to its root and offline store.
+            usbTargetDrives false
           else
             [
               "-drive file=\"$SHARED_DIR/assbox-target.qcow2\",if=none,id=assbox-target,format=qcow2"
@@ -349,7 +348,7 @@ pkgs.testers.runNixOSTest {
           }
         ]
       );
-      virtualisation.qemu.options = lib.optionals usb (usbDrive ++ internalDrive);
+      virtualisation.qemu.options = lib.optionals usb (usbTargetDrives true);
 
       virtualisation.fileSystems."/" = {
         device = "/dev/vda";
