@@ -51,6 +51,42 @@
       sourceRevision = if releaseContext != null then releaseContext.coreCommit else self.rev or "";
       buildAssbox =
         pkgs: pkgs.callPackage ./nix/package.nix { inherit pkgs sourceRevision releasePolicy; };
+      claudeDesktopPackages =
+        system:
+        let
+          recipes = claude-desktop-packages.packages.${system};
+          original = recipes.claude-desktop;
+          appPkgs = import claude-desktop-packages.inputs.nixpkgs { inherit system; };
+          gzipVersion = "1.15";
+          appPkgsWithReviewedGzip = appPkgs.extend (
+            _: previous: {
+              gzip = previous.gzip.overrideAttrs (old: {
+                version = gzipVersion;
+                src = previous.fetchurl {
+                  url = "mirror://gnu/gzip/gzip-${gzipVersion}.tar.xz";
+                  hash = "sha256-mqDMeA3sFWuCgoRIM7NCq3ywjCXSzZoYac3Q3zHe/0g=";
+                };
+                # These two security patches are included in 1.15, along with
+                # the second upstream fix for CVE-2026-41992.
+                patches = builtins.filter (
+                  patch:
+                  !builtins.any (suffix: nixpkgs.lib.hasSuffix suffix (toString patch)) [
+                    "CVE-2026-41991.patch"
+                    "CVE-2026-41992.patch"
+                  ]
+                ) (old.patches or [ ]);
+              });
+            }
+          );
+        in
+        recipes
+        // {
+          claude-desktop =
+            if appPkgs.gzip.version == "1.14" then
+              original.override { inherit (appPkgsWithReviewedGzip) buildFHSEnv; }
+            else
+              original;
+        };
       codexPackages =
         system:
         let
@@ -95,7 +131,7 @@
           antigravity = antigravity-packages.packages.${pkgs.stdenv.hostPlatform.system};
           chatgpt = chatgpt-packages.packages.${pkgs.stdenv.hostPlatform.system};
           claude-code = claude-code-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          claude-desktop = claude-desktop-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          claude-desktop = claudeDesktopPackages pkgs.stdenv.hostPlatform.system;
           codex = codexPackages pkgs.stdenv.hostPlatform.system;
           cursor = cursor-packages.packages.${pkgs.stdenv.hostPlatform.system};
           happier = happierRecipes pkgs // {
