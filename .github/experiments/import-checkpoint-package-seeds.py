@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Authenticate planned native prerequisite artifacts before a fresh checkpoint boot."""
 from datetime import datetime, timezone
-from hashlib import sha256
+from hashlib import file_digest, sha256
 from importlib.util import module_from_spec, spec_from_file_location
 import json
 import os
@@ -16,13 +16,15 @@ import tempfile
 from zipfile import ZipFile
 
 EXPERIMENT = Path(__file__).resolve().parent
-PLAN = EXPERIMENT / "checkpoint-package-seed-plan.json"
-PINS = EXPERIMENT / "checkpoint-package-seed-pins.json"
 REPO = "assboxai/assbox"
 REPO_ID = 1402455771
 OWNER_ID = 327835666
-SEED_REF = "refs/heads/test/checkpoint-x86-package-seeds-v1"
-CHECKPOINT_REF = "refs/heads/test/physical-checkpoint-x86-v10"
+CHECKPOINT_REF = "refs/heads/test/physical-checkpoint-x86-v11"
+SEED_SOURCES = {
+    "checkpoint-package-seed": "refs/heads/test/checkpoint-x86-package-seeds-v1",
+    "checkpoint-runtime-prerequisites": "refs/heads/test/checkpoint-x86-runtime-seeds-v2",
+    "checkpoint-rust-compiler": "refs/heads/test/checkpoint-x86-rust-compiler-v3",
+}
 SYSTEM = "x86_64-linux"
 FIELDS = ("narHash", "narSize", "references")
 MAX_BYTES = 2 * 1024**3
@@ -55,7 +57,7 @@ def hosted_authority(product, plan):
             and not git(product,"status","--porcelain"), "Unexpected checkpoint source during package import")
 
 
-def stage(cache_tools, plan, group, archive, scratch, pin, seed_run, seed_workflow, plan_hash, forbidden):
+def stage(cache_tools, plan, group, archive, scratch, pin, pins, forbidden):
     require(archive.is_file() and not archive.is_symlink() and 0 < pin["archiveSize"] <= MAX_BYTES
             and archive.stat().st_size == pin["archiveSize"]
             and cache_tools.file_digest(archive) == pin["archiveSha256"], "Wrong checkpoint seed archive")
@@ -75,9 +77,9 @@ def stage(cache_tools, plan, group, archive, scratch, pin, seed_run, seed_workfl
         expected={
             "schema":1, "kind":"assbox-native-x86-checkpoint-package-seed", "group":group,
             "source":plan["source"], "tree":plan["tree"], "lockSha256":plan["lockSha256"],
-            "planSha256":plan_hash, "architecture":SYSTEM, "repository":REPO,
-            "repositoryId":REPO_ID, "ownerId":OWNER_ID, "workflow":seed_workflow, "runId":seed_run,
-            "runAttempt":1, "ref":SEED_REF, "bootDerivation":plan["bootDerivation"],
+            "planSha256":pins["planSha256"], "architecture":SYSTEM, "repository":REPO,
+            "repositoryId":REPO_ID, "ownerId":OWNER_ID, "workflow":pins["seedWorkflow"], "runId":pins["seedRun"],
+            "runAttempt":1, "ref":pins["seedRef"], "bootDerivation":plan["bootDerivation"],
             "isoDerivation":plan["isoDerivation"], "roots":roots, "packages":package_rows,
             "wrongKeyRefused":True, "correctKeyColdImportPassed":True, "publicKey":pin["publicKey"],
         }
@@ -100,25 +102,43 @@ def stage(cache_tools, plan, group, archive, scratch, pin, seed_run, seed_workfl
     return roots,index,cache
 
 
+def seed_sets():
+    groups = {}
+    reviewed = {}
+    common = ("source", "tree", "lockSha256", "isoDerivation", "bootDerivation")
+    checkpoint = None
+    for name, ref in SEED_SOURCES.items():
+        plan_file = EXPERIMENT / (name + "-plan.json")
+        plan = json.loads(plan_file.read_text())
+        with plan_file.open("rb") as stream:
+            plan_hash = file_digest(stream, "sha256").hexdigest()
+        pins = json.loads((EXPERIMENT / (name + "-pins.json")).read_text())
+        require(pins["schema"] == plan["schema"] == 1
+                and pins["source"] == plan["source"] and pins["tree"] == plan["tree"]
+                and pins["planSha256"] == plan_hash and pins["seedRef"] == ref
+                and pins["repositoryId"] == REPO_ID and pins["ownerId"] == OWNER_ID
+                and pins["groups"].keys() == plan["groups"].keys() and groups.keys().isdisjoint(plan["groups"]),
+                "Unexpected reviewed checkpoint seed pins: " + name)
+        scope = {field: plan[field] for field in common}
+        require(checkpoint is None or checkpoint == scope, "Checkpoint seed sets describe different product graphs")
+        checkpoint = scope
+        groups.update({group: (plan, pins) for group in plan["groups"]})
+        reviewed[name] = pins
+    return checkpoint, groups, reviewed
+
+
 def main():
     product,download,receipt=map(Path,sys.argv[1:])
     product=product.resolve(strict=True)
     download=download.resolve(strict=True)
-    plan=json.loads(PLAN.read_text())
-    pins=json.loads(PINS.read_text())
-    hosted_authority(product,plan)
+    checkpoint, groups, reviewed = seed_sets()
+    hosted_authority(product, checkpoint)
+    require({child.name for child in download.iterdir()} == groups.keys(), "Unexpected checkpoint seed downloads")
     sys.path.insert(0,str(product/"scripts"))
     import kernel_cache as cache_tools
     spec=spec_from_file_location("native_checkpoint_seed",EXPERIMENT/"native-x86-checkpoint-package-seed.py")
     seed=module_from_spec(spec)
     spec.loader.exec_module(seed)
-    plan_hash=cache_tools.file_digest(PLAN)
-    require(pins["schema"]==1 and pins["source"]==plan["source"] and pins["tree"]==plan["tree"]
-            and pins["planSha256"]==plan_hash and pins["seedRef"]==SEED_REF
-            and pins["repositoryId"]==REPO_ID and pins["ownerId"]==OWNER_ID
-            and pins["groups"].keys()==plan["groups"].keys()
-            and set(child.name for child in download.iterdir())==set(plan["groups"]),
-            "Unexpected reviewed checkpoint seed pins")
     with tempfile.TemporaryDirectory(prefix="assbox-checkpoint-seeds-",dir=download.parent) as temporary:
         scratch=Path(temporary)
         workspace=scratch/"work"
@@ -126,23 +146,22 @@ def main():
         environment=cache_tools.environment(workspace)
         bound = {
             group: seed.verify_product(cache_tools,product,plan,environment,group)[1]
-            for group in pins["groups"]
+            for group, (plan, _) in groups.items()
         }
         forbidden=set()
-        for derivation in (plan["bootDerivation"],plan["isoDerivation"]):
+        for derivation in (checkpoint["bootDerivation"],checkpoint["isoDerivation"]):
             data=cache_tools.decoded(cache_tools.run(environment,"nix","derivation","show",derivation))["derivations"]
             forbidden.update("/nix/store/"+item["path"] for item in data[Path(derivation).name]["outputs"].values())
         for output in forbidden:
             require(not cache_tools.registered(environment,[output]), "Checkpoint ISO or boot proof was already registered")
         staged={}
         shared={}
-        for group,pin in sorted(pins["groups"].items()):
+        for group,(plan,pins) in sorted(groups.items()):
             folder=download/group
             require(folder.is_dir() and not folder.is_symlink(),"Unsafe checkpoint seed download folder")
             archive,=folder.iterdir()
             independent=scratch/group
-            roots,index,cache=stage(cache_tools,plan,group,archive,independent,pin,
-                                    pins["seedRun"],pins["seedWorkflow"],plan_hash,forbidden)
+            roots,index,cache=stage(cache_tools,plan,group,archive,independent,pins["groups"][group],pins,forbidden)
             require(roots==bound[group],"Native checkpoint seed evaluation differs from artifact")
             for path,metadata in index["closure"].items():
                 require(path not in shared or shared[path]==metadata, "Conflicting independent seed NAR: "+path)
@@ -165,7 +184,7 @@ def main():
             require(not cache_tools.registered(environment,[output]), "Package cache unexpectedly registered a protected result")
         require(not git(product,"status","--porcelain"), "Product checkout changed during prerequisite import")
     with receipt.open("x") as output:
-        json.dump({**pins,"independentSignatureChecksPassed":True,"effectivePackageClosurePaths":len(shared),
+        json.dump({"seedSets":reviewed,"independentSignatureChecksPassed":True,"effectivePackageClosurePaths":len(shared),
                    "isoAndBootNotRegistered":True,"importedAt":datetime.now(timezone.utc).isoformat()},output,indent=2)
         output.write("\n")
     print("Imported",len(staged),"native x86 package caches with",len(shared),"consistent paths",flush=True)

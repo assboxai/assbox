@@ -23,7 +23,7 @@ SYSTEM = 'x86_64-linux'
 TAG = 'kernel-formatter-45038354435-1-dev'
 REPOSITORY = 'assboxai/assbox'
 RELEASE_ID = 454755949
-REF = 'refs/heads/test/physical-checkpoint-x86-v10'
+REF = 'refs/heads/test/physical-checkpoint-x86-v11'
 STORE_FIELDS = ('narHash', 'narSize', 'references')
 
 

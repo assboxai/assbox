@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "source": "9df40f0d019211de6d7d161b4cf64c32327e3ccf",
+  "tree": "9ab8b19ce79baf10b3ce4a4e0c2594c33f497569",
+  "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+  "architecture": "x86_64-linux",
+  "bootDerivation": "/nix/store/647hfsgjmmc7ilrxwg5pka29wmg6bkav-assbox-physical-checkpoint-boot.drv",
+  "isoDerivation": "/nix/store/kqlzn176glv2c48km66x3rrilixml8cl-assbox-checkpoint-9df40f0d0192-x86_64-linux.iso.drv",
+  "groups": {
+    "llvm-native": [
+      {
+        "derivation": "/nix/store/9im9rvw9gzyq0g35kqgdpr5d5gx19rfw-llvm-tblgen-21.1.8.drv",
+        "outputs": {
+          "out": "/nix/store/ir1x38fcm97gdavm4p3sfvqb8cbwbsx2-llvm-tblgen-21.1.8"
+        }
+      },
+      {
+        "derivation": "/nix/store/f3pzdx8q4x82akcabb84msnrv3lfh252-llvm-21.1.8.drv",
+        "outputs": {
+          "dev": "/nix/store/bzb4hxrpp9k6jjlih40m3x24gcj5si9k-llvm-21.1.8-dev",
+          "lib": "/nix/store/aiyvj7wj81ygrcna0ki37dq38jqvhqp1-llvm-21.1.8-lib",
+          "out": "/nix/store/q50d8jvhwhvkj2mblnnaarjwldk2js7f-llvm-21.1.8",
+          "python": "/nix/store/zr1kcy7bnq2w8rshcb15z5gs7qwa9wmg-llvm-21.1.8-python"
+        }
+      }
+    ],
+    "node-runtime": [
+      {
+        "derivation": "/nix/store/9v8di0xmpycn3ppf95zlc0k3i7g0pzgr-nodejs-slim-24.22.3.drv",
+        "outputs": {
+          "corepack": "/nix/store/jshb93bavdsijib5xfps4mm32yaz2pdd-nodejs-slim-24.22.3-corepack",
+          "dev": "/nix/store/dr3s2za1wbw1cfk1fmq07ys27kgjbrz6-nodejs-slim-24.22.3-dev",
+          "libv8": "/nix/store/kfk89pz23d2iai5gxb8jgii9yiz9vgiv-nodejs-slim-24.22.3-libv8",
+          "npm": "/nix/store/yhnqg7jmdn20g1vdwm996fr94x30gp7n-nodejs-slim-24.22.3-npm",
+          "out": "/nix/store/dn0qn1nz9i3iq22fa3g5w35ciw3kq8nz-nodejs-slim-24.22.3"
+        }
+      },
+      {
+        "derivation": "/nix/store/h5nfvdw3qqhj2fpyhhwzd9yy9a3v5m2y-nodejs-24.22.3.drv",
+        "outputs": {
+          "out": "/nix/store/xkkr66l7z74kmzip2sr34kh00408xc4b-nodejs-24.22.3"
+        }
+      },
+      {
+        "derivation": "/nix/store/37gpwdgbm7bzfspfn6gf67bbx6g6fq5q-happier-0.2.14.drv",
+        "outputs": {
+          "out": "/nix/store/6nrca7j9v33hcj76j89ddprfzcxby3ws-happier-0.2.14"
+        }
+      }
+    ],
+    "rust-bootstrap": [
+      {
+        "derivation": "/nix/store/8psdb09rygq2ypjnwbvyfsqrz657201v-rustc-bootstrap-1.95.0.drv",
+        "outputs": {
+          "out": "/nix/store/vv4shdbmqradzg30zk6vi8nnj06gbs33-rustc-bootstrap-1.95.0"
+        }
+      }
+    ]
+  }
+}

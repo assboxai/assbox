@@ -4,7 +4,7 @@ name: Assbox x86 live checkpoint qualification
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-physical-checkpoint-x86-v10
+  group: assbox-physical-checkpoint-x86-v11
   cancel-in-progress: false
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v10' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v11' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04
     timeout-minutes: 360
@@ -109,6 +109,42 @@ jobs:
           run-id: '45140156638'
           path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/build-support
           skip-decompress: true
+      - name: Download verified llvm-native package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14864676325'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45235413783'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/llvm-native
+          skip-decompress: true
+      - name: Download verified node-runtime package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14862303389'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45235413783'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/node-runtime
+          skip-decompress: true
+      - name: Download verified rust-bootstrap package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14854496288'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45235413783'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/rust-bootstrap
+          skip-decompress: true
+      - name: Download verified rust-compiler package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14872068130'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45270851454'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/rust-compiler
+          skip-decompress: true
       - name: Import only the independently verified signed native package caches
         shell: bash
         run: |
@@ -141,7 +177,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v10' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v11' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     needs: build
     runs-on: ubuntu-24.04

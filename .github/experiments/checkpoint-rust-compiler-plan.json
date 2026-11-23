@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "source": "9df40f0d019211de6d7d161b4cf64c32327e3ccf",
+  "tree": "9ab8b19ce79baf10b3ce4a4e0c2594c33f497569",
+  "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+  "architecture": "x86_64-linux",
+  "bootDerivation": "/nix/store/647hfsgjmmc7ilrxwg5pka29wmg6bkav-assbox-physical-checkpoint-boot.drv",
+  "isoDerivation": "/nix/store/kqlzn176glv2c48km66x3rrilixml8cl-assbox-checkpoint-9df40f0d0192-x86_64-linux.iso.drv",
+  "groups": {
+    "rust-compiler": [
+      {
+        "derivation": "/nix/store/b9q7vnm27sk0nqnm6rg8qjkmx2avnfrf-rustc-1.95.0.drv",
+        "outputs": {
+          "doc": "/nix/store/vjqg662f139hahbp6dnrii737cg6m4pw-rustc-1.95.0-doc",
+          "man": "/nix/store/9mnhgkjn6jhjmhb1wjfwclmxa6mgx954-rustc-1.95.0-man",
+          "out": "/nix/store/b5y9pg635b36lvj7c0jxhxsn1pbnwgmp-rustc-1.95.0"
+        }
+      },
+      {
+        "derivation": "/nix/store/l9hrwd200lzpk7iwb10bgahgfan5y4bs-rustc-wrapper-1.95.0.drv",
+        "outputs": {
+          "out": "/nix/store/19p7pda3cs7ydwxg4ldawbk1x56alqyh-rustc-wrapper-1.95.0"
+        }
+      }
+    ]
+  }
+}

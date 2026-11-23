@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "source": "9df40f0d019211de6d7d161b4cf64c32327e3ccf",
+  "tree": "9ab8b19ce79baf10b3ce4a4e0c2594c33f497569",
+  "planSha256": "6200a926b30b0cd3080cb25b7318ef8826e3499e552c038688a060e329d5355c",
+  "seedRun": 45235413783,
+  "seedWorkflow": "99b17ab572b0ce4bf6d3dfa99cecbace8076d54f",
+  "seedRef": "refs/heads/test/checkpoint-x86-runtime-seeds-v2",
+  "repositoryId": 1402455771,
+  "ownerId": 327835666,
+  "groups": {
+    "llvm-native": {
+      "artifact": 14864676325,
+      "job": 137905711716,
+      "archiveSha256": "020bce8c9b61ae619522d4b529fcdc2fcbac378c29b66758b23b866a9bcc443c",
+      "archiveSize": 177072385,
+      "indexSha256": "86388e6b138713a7e59131daf20d1116630bb8c46627183eaafb56b2908ea21a",
+      "publicKey": "assbox-x86-checkpoint-llvm-native-45235413783:IRq7cHpuzo+qDdLV6SeoKAPWTGJ8bWpNJbQJ76fsRrI=",
+      "roots": [
+        "/nix/store/aiyvj7wj81ygrcna0ki37dq38jqvhqp1-llvm-21.1.8-lib",
+        "/nix/store/bzb4hxrpp9k6jjlih40m3x24gcj5si9k-llvm-21.1.8-dev",
+        "/nix/store/ir1x38fcm97gdavm4p3sfvqb8cbwbsx2-llvm-tblgen-21.1.8",
+        "/nix/store/q50d8jvhwhvkj2mblnnaarjwldk2js7f-llvm-21.1.8",
+        "/nix/store/zr1kcy7bnq2w8rshcb15z5gs7qwa9wmg-llvm-21.1.8-python"
+      ]
+    },
+    "node-runtime": {
+      "artifact": 14862303389,
+      "job": 137905711547,
+      "archiveSha256": "9e6ac57cf73a99ed3d6a27e60f631f3b533b1af6d3b399ba0e73964d3f22f1f9",
+      "archiveSize": 145295405,
+      "indexSha256": "17902e6d778db70621d862220b2e9a2948fc890b76ef7dab1b69a1af817e24cc",
+      "publicKey": "assbox-x86-checkpoint-node-runtime-45235413783:aO6uQ4EDIAX0bCPfSOB1cu0o2JspkNj8cBNipf9HRYU=",
+      "roots": [
+        "/nix/store/6nrca7j9v33hcj76j89ddprfzcxby3ws-happier-0.2.14",
+        "/nix/store/dn0qn1nz9i3iq22fa3g5w35ciw3kq8nz-nodejs-slim-24.22.3",
+        "/nix/store/dr3s2za1wbw1cfk1fmq07ys27kgjbrz6-nodejs-slim-24.22.3-dev",
+        "/nix/store/jshb93bavdsijib5xfps4mm32yaz2pdd-nodejs-slim-24.22.3-corepack",
+        "/nix/store/kfk89pz23d2iai5gxb8jgii9yiz9vgiv-nodejs-slim-24.22.3-libv8",
+        "/nix/store/xkkr66l7z74kmzip2sr34kh00408xc4b-nodejs-24.22.3",
+        "/nix/store/yhnqg7jmdn20g1vdwm996fr94x30gp7n-nodejs-slim-24.22.3-npm"
+      ]
+    },
+    "rust-bootstrap": {
+      "artifact": 14854496288,
+      "job": 137905711998,
+      "archiveSha256": "eb34c3411fe2f8bcf24b2bc24a93b600f39afb7e07b90e45ff4545878f35ebfc",
+      "archiveSize": 171888441,
+      "indexSha256": "c0011515362aabade6d628b9f66d2ab402a1dc9b0aec51d2ac249fd7684e04f8",
+      "publicKey": "assbox-x86-checkpoint-rust-bootstrap-45235413783:sSW94fiiPXK/JAoq+Ucp4agKWPU+T6GsTZgoZaJz0Lc=",
+      "roots": [
+        "/nix/store/vv4shdbmqradzg30zk6vi8nnj06gbs33-rustc-bootstrap-1.95.0"
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "source": "9df40f0d019211de6d7d161b4cf64c32327e3ccf",
+  "tree": "9ab8b19ce79baf10b3ce4a4e0c2594c33f497569",
+  "planSha256": "ecf8ee45f923f12f3d717da9d5371bdcac24abad42507b72ce765f442a60c37f",
+  "seedRun": 45270851454,
+  "seedWorkflow": "5add03776127ae40646719542b4a32a39202729b",
+  "seedRef": "refs/heads/test/checkpoint-x86-rust-compiler-v3",
+  "repositoryId": 1402455771,
+  "ownerId": 327835666,
+  "groups": {
+    "rust-compiler": {
+      "artifact": 14872068130,
+      "job": 138029938665,
+      "archiveSha256": "a440f26ee0253fafcd75c7fb817eb796ef9812742976f989aff0ae1cd0a0af89",
+      "archiveSize": 443817270,
+      "indexSha256": "9e2d038efae692c9035f971c71facd86cd4782419dfebe82de86363f0331bf9c",
+      "publicKey": "assbox-x86-checkpoint-rust-compiler-45270851454:JGJKkFKXMAlwPdvR5JXgXnna1bo6xI3HAGs7CZsxEcU=",
+      "roots": [
+        "/nix/store/19p7pda3cs7ydwxg4ldawbk1x56alqyh-rustc-wrapper-1.95.0",
+        "/nix/store/9mnhgkjn6jhjmhb1wjfwclmxa6mgx954-rustc-1.95.0-man",
+        "/nix/store/b5y9pg635b36lvj7c0jxhxsn1pbnwgmp-rustc-1.95.0",
+        "/nix/store/vjqg662f139hahbp6dnrii737cg6m4pw-rustc-1.95.0-doc"
+      ]
+    }
+  }
+}
