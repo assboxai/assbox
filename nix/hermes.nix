@@ -3,6 +3,7 @@
 # closure. Browser/CUA tools are selected separately; missing extras stay off.
 {
   lib,
+  appPkgs,
   pkgs,
   raw,
 }:
@@ -15,9 +16,22 @@ let
     "elevenlabs"
     "modal"
   ];
-  retainedDependencies = builtins.filter (
-    p: !(builtins.elem (p.pname or (lib.getName p)) excluded)
-  ) raw.dependencies;
+  ffmpeg = appPkgs.ffmpeg;
+  ffmpegVersion = "9.1";
+  reviewedFfmpeg = ffmpeg.overrideAttrs {
+    version = ffmpegVersion;
+    src = appPkgs.fetchurl {
+      url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
+      hash = "sha256-Gk05SuY9GQpSbNBS60QVwVa1xeLfN++rQafeC4/eJDM=";
+    };
+  };
+  retainedDependencies = map (
+    package:
+    if (package.pname or null) == "discord.py" && ffmpeg.version == "9.0.1" then
+      package.override { ffmpeg = reviewedFfmpeg; }
+    else
+      package
+  ) (builtins.filter (p: !(builtins.elem (p.pname or (lib.getName p)) excluded)) raw.dependencies);
   # Python applications need not expose pythonModule. Their declared Python
   # dependencies still identify the upstream interpreter; the consuming host's
   # Python can have a different native extension ABI.

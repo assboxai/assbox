@@ -147,6 +147,9 @@
           hermes = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
             hermes-agent = pkgs.callPackage ./nix/hermes.nix {
               raw = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent;
+              appPkgs = import hermes-packages.inputs.nixpkgs {
+                inherit (pkgs.stdenv.hostPlatform) system;
+              };
             };
           };
           pi = pi-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
