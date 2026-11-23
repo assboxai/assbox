@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox installed activation ARM finite verification
+name: Assbox runtime dependencies ARM finite verification
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-finite-installed-activation-profile-path
+  group: assbox-arm-finite-runtime-dependencies
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-finite-installed-activation-profile-path' &&
+      github.ref == 'refs/heads/test/arm-finite-runtime-dependencies' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 110
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: e99bbcbcb335c218a762dfbf7710d64aa89fbe4d
-      PRODUCT_TREE: 3420b79c9a8deea662ef7bdfcc6375843544282b
+      PRODUCT_COMMIT: 5af792f01db608a242c9b4e10b31f5631d623f81
+      PRODUCT_TREE: 7759d149652500593ea98c1ad02da8a22b895df2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -99,7 +99,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: installed-activation-profile-path-native-arm-finite
+          name: runtime-dependencies-native-arm-finite
           path: |
             ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
             ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
