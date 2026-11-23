@@ -58,12 +58,27 @@
           original = recipes.chatgpt;
           appPkgs = import chatgpt-packages.inputs.nixpkgs { inherit system; };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
+          gtk3 = appPkgs.gtk3.override { inherit cups; };
+          qt5 = appPkgs.qt5 // {
+            qtbase = appPkgs.qt5.qtbase.override { inherit cups gtk3; };
+          };
+          qt6 = appPkgs.qt6 // {
+            qtbase = appPkgs.qt6.qtbase.override { inherit cups gtk3; };
+          };
           pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
         in
         recipes
         // {
           chatgpt = original.override {
-            chatgpt-unwrapped = original.unwrapped.override { inherit cups pipewire; };
+            chatgpt-unwrapped = original.unwrapped.override {
+              inherit
+                cups
+                gtk3
+                pipewire
+                qt5
+                qt6
+                ;
+            };
           };
         };
       claudeDesktopPackages =
@@ -73,6 +88,7 @@
           original = recipes.claude-desktop;
           appPkgs = import claude-desktop-packages.inputs.nixpkgs { inherit system; };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
+          gtk3 = appPkgs.gtk3.override { inherit cups; };
           pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
           gzipVersion = "1.15";
           gzip = appPkgs.gzip.overrideAttrs (old: {
@@ -100,7 +116,7 @@
                 args
                 // {
                   pkgs = appPkgs // {
-                    inherit gzip;
+                    inherit cups gtk3 gzip;
                   };
                 }
               );
@@ -110,7 +126,7 @@
         // {
           claude-desktop = original.override (
             {
-              inherit cups pipewire;
+              inherit cups gtk3 pipewire;
             }
             // nixpkgs.lib.optionalAttrs (appPkgs.gzip.version == "1.14") { inherit buildFHSEnv; }
           );
