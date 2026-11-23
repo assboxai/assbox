@@ -58,11 +58,12 @@
           original = recipes.chatgpt;
           appPkgs = import chatgpt-packages.inputs.nixpkgs { inherit system; };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
+          pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
         in
         recipes
         // {
           chatgpt = original.override {
-            chatgpt-unwrapped = original.unwrapped.override { inherit cups; };
+            chatgpt-unwrapped = original.unwrapped.override { inherit cups pipewire; };
           };
         };
       claudeDesktopPackages =
@@ -72,6 +73,7 @@
           original = recipes.claude-desktop;
           appPkgs = import claude-desktop-packages.inputs.nixpkgs { inherit system; };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
+          pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
           gzipVersion = "1.15";
           gzip = appPkgs.gzip.overrideAttrs (old: {
             version = gzipVersion;
@@ -108,7 +110,7 @@
         // {
           claude-desktop = original.override (
             {
-              inherit cups;
+              inherit cups pipewire;
             }
             // nixpkgs.lib.optionalAttrs (appPkgs.gzip.version == "1.14") { inherit buildFHSEnv; }
           );
@@ -174,7 +176,17 @@
           pi = pi-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
             pi = pi-packages.packages.${pkgs.stdenv.hostPlatform.system}.pi.override { useBun = false; };
           };
-          omp = omp-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          omp =
+            let
+              inherit (pkgs.stdenv.hostPlatform) system;
+              recipes = omp-packages.packages.${system};
+              appPkgs = import omp-packages.inputs.nixpkgs { inherit system; };
+              pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
+            in
+            recipes
+            // {
+              omp = recipes.omp.override { inherit pipewire; };
+            };
           grok = grok-packages.packages.${pkgs.stdenv.hostPlatform.system};
           openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
             openclaw = import ./nix/openclaw.nix {

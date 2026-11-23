@@ -17,22 +17,10 @@ let
     "modal"
   ];
   ffmpeg = appPkgs.ffmpeg;
-  ffmpegVersion = "9.1";
-  gnutls = import ./reviewed-gnutls.nix { pkgs = appPkgs; };
-  reviewedFfmpeg = (ffmpeg.override { inherit gnutls; }).overrideAttrs (old: {
-    version = ffmpegVersion;
-    src = appPkgs.fetchurl {
-      url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
-      hash = "sha256-Gk05SuY9GQpSbNBS60QVwVa1xeLfN++rQafeC4/eJDM=";
-    };
-    # The OpenGL output device and its configure flag were removed in 9.1.
-    configureFlags = builtins.filter (flag: flag != "--disable-opengl") old.configureFlags;
-    # FFmpeg 9.1 includes this backport.
-    patches = builtins.filter (
-      patch:
-      !lib.hasSuffix "0001-swscale-loongarch-fix-buffer-underflow-in-yuv2plane1.patch" (toString patch)
-    ) (old.patches or [ ]);
-  });
+  reviewedFfmpeg = import ./reviewed-ffmpeg.nix {
+    pkgs = appPkgs;
+    inherit ffmpeg;
+  };
   retainedDependencies = map (
     package:
     if appPkgs != null && (package.pname or null) == "discord.py" && ffmpeg.version == "9.0.1" then
