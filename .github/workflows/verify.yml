@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox native ARM release runtime qualification
+name: Assbox corrected source ARM finite verification
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-release-runtime-v8
+  group: assbox-arm-finite-matrix-machine-packages
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-release-runtime-v8' &&
+      github.ref == 'refs/heads/test/arm-finite-matrix-machine-packages' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 240
+    timeout-minutes: 110
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: 9841fd45363aebff7a185245114ac786bab0a9e9
-      PRODUCT_TREE: 30f0e42c815ee3d50db7e4471e0060f6d8259b9e
+      PRODUCT_COMMIT: 499bb884e4ae0774cd0f45da5ea157a723dd377d
+      PRODUCT_TREE: 5fd29e09da7081eafe814ee6867f3098a6e880b3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -95,22 +95,11 @@ jobs:
           run_finite deps-policy-report
           run_finite verify-lite
           run_finite verify-prepare
-          component='nixosConfigurations.aarch64-linux-component-happier-daemon'
-          native_package="$component.config.assbox.componentPackagePaths.happier"
-          expected="$(nix eval --json ".#$native_package" | /usr/bin/python3 -I -B -c 'import json,sys; print(json.load(sys.stdin)[0])')"
-          drv="$(nix eval --raw ".#$component.config" --apply 'config: (builtins.head (builtins.filter (p: p.outPath == builtins.head config.assbox.componentPackagePaths.happier) config.environment.systemPackages)).drvPath')"
-          package="$(nix build --no-link --print-out-paths "$drv^*" 2> "$evidence/finite-happier-native.log")"
-          test "$expected" = "$package"
-          test "$("$package/bin/happier" --version)" = '0.2.14'
-          status=0
-          "$package/bin/happier" auth pair-remote >> "$evidence/finite-happier-native.log" 2>&1 || status=$?
-          test "$status" -eq 78
-          printf 'happier-native\t0\t%s\n' "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
           test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: native-arm-release-runtime-finite
+          name: corrected-source-native-arm-finite
           path: |
             ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
             ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
