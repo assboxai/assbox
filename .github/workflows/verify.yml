@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox signed installer cache ARM finite verification
+name: Assbox administrator-session fixture ARM finite verification
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-finite-signed-installer-cache
+  group: assbox-arm-finite-admin-session-bound
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-finite-signed-installer-cache' &&
+      github.ref == 'refs/heads/test/arm-finite-admin-session-bound' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 110
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: 28bf6a68aad8860e412e5cd3d4f3788caef7edc1
-      PRODUCT_TREE: 304515456bbb2d19c47226caf38a5a2c1083544a
+      PRODUCT_COMMIT: 72faa6e92877a1098e5ce4e09e101b6bd78b5861
+      PRODUCT_TREE: 8a13432ee579273be10a297c6d8078c67ebe15b5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -99,7 +99,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: corrected-source-native-arm-finite
+          name: admin-session-bound-native-arm-finite
           path: |
             ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
             ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
