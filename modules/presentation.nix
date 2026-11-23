@@ -87,13 +87,32 @@ in
         # systemd transient unit's default umask. Patch the selector write itself
         # so its non-secret name cannot weaken the private keyring directory.
         nixpkgs.overlays = [
-          (_final: previous: {
-            gnome-keyring = previous.gnome-keyring.overrideAttrs (old: {
-              patches = (old.patches or [ ]) ++ [
-                ../nix/patches/gnome-keyring-private-default.patch
-              ];
-            });
-          })
+          (
+            _final: previous:
+            let
+              gst = previous.gst_all_1;
+              goodPlugins = gst.gst-plugins-good;
+            in
+            {
+              xdg-desktop-portal =
+                if goodPlugins.version == "1.26.11" then
+                  previous.xdg-desktop-portal.override {
+                    gst_all_1 = gst // {
+                      gst-plugins-good = goodPlugins.overrideAttrs (old: {
+                        # GStreamer-SA-2026-0018 for the pinned stable plugin package.
+                        patches = (old.patches or [ ]) ++ [ ../nix/patches/gstreamer-sa-2026-0018.patch ];
+                      });
+                    };
+                  }
+                else
+                  previous.xdg-desktop-portal;
+              gnome-keyring = previous.gnome-keyring.overrideAttrs (old: {
+                patches = (old.patches or [ ]) ++ [
+                  ../nix/patches/gnome-keyring-private-default.patch
+                ];
+              });
+            }
+          )
         ];
         xdg.portal.config.${
           if cfg.presentation == "x11" then "openbox" else "labwc"
