@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox native ARM release runtime qualification
+name: Assbox native ARM policy matrix qualification
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-release-runtime-v8
+  group: assbox-arm-matrix-machine-packages
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-release-runtime-v8' &&
+      github.ref == 'refs/heads/test/arm-matrix-machine-packages' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 240
+    timeout-minutes: 110
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: 9841fd45363aebff7a185245114ac786bab0a9e9
-      PRODUCT_TREE: 30f0e42c815ee3d50db7e4471e0060f6d8259b9e
+      PRODUCT_COMMIT: 499bb884e4ae0774cd0f45da5ea157a723dd377d
+      PRODUCT_TREE: 5fd29e09da7081eafe814ee6867f3098a6e880b3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -49,7 +49,7 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Verify candidate identity and run native finite gates
+      - name: Build every policy check on native ARM
         shell: bash
         run: |
           set -euo pipefail
@@ -65,55 +65,44 @@ jobs:
           test -z "$(git status --porcelain)"
           printf '%s\n' \
             'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
-            '10e9eb6ad0cc12447dbea4fd76160c1b8a14ba1bdaa3e5ff0eadc1ae218b4997  scripts/release-check' \
+            'ce121be6af0bf7e76c599e99905167096e62631ba048e77370a88a275e772d36  scripts/verify' \
             | sha256sum --check
-          evidence="$RUNNER_TEMP/assbox-arm-release-runtime"
+          echo "EVALUATING ALL NATIVE ARM CHECK NAMES"
+          evidence="$RUNNER_TEMP/arm-matrix-machine-packages"
           mkdir -m 0700 "$evidence"
           {
-            date -u +%FT%TZ
-            printf 'workflowCommit\t%s\nrunId\t%s\nrunAttempt\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
-            git rev-parse HEAD 'HEAD^{tree}'
-            sha256sum flake.lock scripts/release-check
-            uname -sm
-            df -h /nix/store "$RUNNER_TEMP"
+            printf 'authority\t%s\nrun\t%s\nattempt\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+            printf 'source\t%s\ntree\t%s\n' "$PRODUCT_COMMIT" "$PRODUCT_TREE"
+            printf 'platform\t%s\n' "$(nix eval --impure --raw --expr builtins.currentSystem)"
+            sha256sum flake.lock scripts/verify
             nix --version
-          } > "$evidence/scope.txt"
-          export XDG_STATE_HOME="$RUNNER_TEMP/assbox-arm-chainman-state"
-          mkdir -m 0700 "$XDG_STATE_HOME"
-          run_finite() {
-            local command_name=$1
-            local result=0
-            nix run path:./nix/dev#just -- "$@" > "$evidence/finite-$command_name.log" 2>&1 || result=$?
-            printf '%s\t%s\t%s\n' "$command_name" "$result" "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
-            return "$result"
-          }
-          run_finite setup --no-hooks
-          run_finite doctor
-          run_finite explain verify --json
-          run_finite deps-check
-          run_finite deps-coverage
-          run_finite deps-policy-report
-          run_finite verify-lite
-          run_finite verify-prepare
-          component='nixosConfigurations.aarch64-linux-component-happier-daemon'
-          native_package="$component.config.assbox.componentPackagePaths.happier"
-          expected="$(nix eval --json ".#$native_package" | /usr/bin/python3 -I -B -c 'import json,sys; print(json.load(sys.stdin)[0])')"
-          drv="$(nix eval --raw ".#$component.config" --apply 'config: (builtins.head (builtins.filter (p: p.outPath == builtins.head config.assbox.componentPackagePaths.happier) config.environment.systemPackages)).drvPath')"
-          package="$(nix build --no-link --print-out-paths "$drv^*" 2> "$evidence/finite-happier-native.log")"
-          test "$expected" = "$package"
-          test "$("$package/bin/happier" --version)" = '0.2.14'
-          status=0
-          "$package/bin/happier" auth pair-remote >> "$evidence/finite-happier-native.log" 2>&1 || status=$?
-          test "$status" -eq 78
-          printf 'happier-native\t0\t%s\n' "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
+          } > "$evidence/source.txt"
+          test "$(nix eval --impure --raw --expr builtins.currentSystem)" = aarch64-linux
+          nix eval --json --no-update-lock-file --no-write-lock-file '.#checks.aarch64-linux' \
+            --apply builtins.attrNames > "$evidence/check-names.json"
+          expected=../authority/qualification/arm-matrix-machine-packages-checks.json
+          cmp <(jq -c . "$expected") <(jq -c . "$evidence/check-names.json")
+          mapfile -t policy_checks < <(jq -r '.[] | select(startswith("policy-aarch64-linux-"))' "$expected")
+          test "${#policy_checks[@]}" -eq 49
+          result=0
+          for name in "${policy_checks[@]}"; do
+            echo "NATIVE ARM POLICY $name"
+            code=0
+            nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file --keep-going \
+              ".#checks.aarch64-linux.$name" > "$evidence/$name.output" 2> "$evidence/$name.log" || code=$?
+            printf '%s\t%s\n' "$name" "$code" >> "$evidence/policy-results.tsv"
+            if test "$code" -ne 0; then
+              result=$code
+              tail -35 "$evidence/$name.log"
+            fi
+          done
+          printf '%s\n' "$result" > "$evidence/collector.exit"
           test -z "$(git status --porcelain)"
+          exit "$result"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: native-arm-release-runtime-finite
-          path: |
-            ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
-            ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
-            ${{ runner.temp }}/assbox-arm-release-runtime/finite-*.log
+          name: native-arm-matrix-machine-packages
+          path: ${{ runner.temp }}/arm-matrix-machine-packages
           if-no-files-found: warn
           retention-days: 14
