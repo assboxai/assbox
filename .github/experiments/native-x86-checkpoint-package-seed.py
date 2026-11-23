@@ -14,7 +14,7 @@ from urllib.parse import urlencode
 
 FIELDS = ("narHash", "narSize", "references")
 MAX_BYTES = 2 * 1024**3
-REF = "refs/heads/test/checkpoint-x86-package-seeds-v1"
+REF = "refs/heads/test/checkpoint-x86-runtime-seeds-v2"
 FLAGS = ("--no-update-lock-file", "--no-write-lock-file")
 PLAN = Path(__file__).with_name("checkpoint-package-seed-plan.json")
 

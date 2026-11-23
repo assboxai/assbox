@@ -7,110 +7,52 @@
   "bootDerivation": "/nix/store/647hfsgjmmc7ilrxwg5pka29wmg6bkav-assbox-physical-checkpoint-boot.drv",
   "isoDerivation": "/nix/store/kqlzn176glv2c48km66x3rrilixml8cl-assbox-checkpoint-9df40f0d0192-x86_64-linux.iso.drv",
   "groups": {
-    "sqlite": [
+    "llvm-native": [
       {
-        "derivation": "/nix/store/9c4c1sxhr50h2blkr8x46306mygns01k-sqlite-3.54.1.drv",
+        "derivation": "/nix/store/9im9rvw9gzyq0g35kqgdpr5d5gx19rfw-llvm-tblgen-21.1.8.drv",
         "outputs": {
-          "bin": "/nix/store/m7l1rwbyq8hicv2dmnpaiwfkccx6hbxv-sqlite-3.54.1-bin",
-          "debug": "/nix/store/6dxqg04dcbh6g8b805m4hbqvk2s2k0fn-sqlite-3.54.1-debug",
-          "dev": "/nix/store/0m9y9xds9xhjf5xxddxsvp5q8h00c6ml-sqlite-3.54.1-dev",
-          "doc": "/nix/store/wk9w3qmsqqb0ncmdqkl69gp1xxgp2nlm-sqlite-3.54.1-doc",
-          "man": "/nix/store/mi26rqdk4dkxg7z259yskgp04iz8lhd8-sqlite-3.54.1-man",
-          "out": "/nix/store/2f26mkcf9xrpndhhfrr0vfcq3qypfc9f-sqlite-3.54.1"
+          "out": "/nix/store/ir1x38fcm97gdavm4p3sfvqb8cbwbsx2-llvm-tblgen-21.1.8"
+        }
+      },
+      {
+        "derivation": "/nix/store/f3pzdx8q4x82akcabb84msnrv3lfh252-llvm-21.1.8.drv",
+        "outputs": {
+          "dev": "/nix/store/bzb4hxrpp9k6jjlih40m3x24gcj5si9k-llvm-21.1.8-dev",
+          "lib": "/nix/store/aiyvj7wj81ygrcna0ki37dq38jqvhqp1-llvm-21.1.8-lib",
+          "out": "/nix/store/q50d8jvhwhvkj2mblnnaarjwldk2js7f-llvm-21.1.8",
+          "python": "/nix/store/zr1kcy7bnq2w8rshcb15z5gs7qwa9wmg-llvm-21.1.8-python"
         }
       }
     ],
-    "codex": [
+    "node-runtime": [
       {
-        "derivation": "/nix/store/fz0n6mzrhxfhnywqh59s322q6ly3spsl-codex-0.160.1.drv",
+        "derivation": "/nix/store/9v8di0xmpycn3ppf95zlc0k3i7g0pzgr-nodejs-slim-24.22.3.drv",
         "outputs": {
-          "out": "/nix/store/h34wrzgziaq5cjbb3z18r474q1wrcvwh-codex-0.160.1"
+          "corepack": "/nix/store/jshb93bavdsijib5xfps4mm32yaz2pdd-nodejs-slim-24.22.3-corepack",
+          "dev": "/nix/store/dr3s2za1wbw1cfk1fmq07ys27kgjbrz6-nodejs-slim-24.22.3-dev",
+          "libv8": "/nix/store/kfk89pz23d2iai5gxb8jgii9yiz9vgiv-nodejs-slim-24.22.3-libv8",
+          "npm": "/nix/store/yhnqg7jmdn20g1vdwm996fr94x30gp7n-nodejs-slim-24.22.3-npm",
+          "out": "/nix/store/dn0qn1nz9i3iq22fa3g5w35ciw3kq8nz-nodejs-slim-24.22.3"
+        }
+      },
+      {
+        "derivation": "/nix/store/h5nfvdw3qqhj2fpyhhwzd9yy9a3v5m2y-nodejs-24.22.3.drv",
+        "outputs": {
+          "out": "/nix/store/xkkr66l7z74kmzip2sr34kh00408xc4b-nodejs-24.22.3"
+        }
+      },
+      {
+        "derivation": "/nix/store/37gpwdgbm7bzfspfn6gf67bbx6g6fq5q-happier-0.2.14.drv",
+        "outputs": {
+          "out": "/nix/store/6nrca7j9v33hcj76j89ddprfzcxby3ws-happier-0.2.14"
         }
       }
     ],
-    "toolchain": [
+    "rust-bootstrap": [
       {
-        "derivation": "/nix/store/p6rmf5wqcpjzvnx5iw87d4lqanyzjlrs-gcc-15.3.0.drv",
+        "derivation": "/nix/store/8psdb09rygq2ypjnwbvyfsqrz657201v-rustc-bootstrap-1.95.0.drv",
         "outputs": {
-          "info": "/nix/store/xiir55lrsvcgz0aa20jd1cc4manr7pa4-gcc-15.3.0-info",
-          "lib": "/nix/store/152caf6kh0q8y6m33lrrv1lwcpf3y1ss-gcc-15.3.0-lib",
-          "man": "/nix/store/w6rrgjsjjnv5mvmflrzapsqwfrrnlkis-gcc-15.3.0-man",
-          "out": "/nix/store/skyr97qpf66k5lfaf9ypiq8b8c3l75zi-gcc-15.3.0"
-        }
-      },
-      {
-        "derivation": "/nix/store/0drzdn2avrmb4m1pvyi1mxj1k2lhmzvc-x86_64-unknown-linux-musl-gcc-15.3.0.drv",
-        "outputs": {
-          "info": "/nix/store/a8vrxya271xjmimxscr41mr0c2i9fv3q-x86_64-unknown-linux-musl-gcc-15.3.0-info",
-          "lib": "/nix/store/ra4346wcmh0lnlxb4qg4f55hsfmldamz-x86_64-unknown-linux-musl-gcc-15.3.0-lib",
-          "man": "/nix/store/wm8r1da11f8wp734g431h8b4xgw4hs15-x86_64-unknown-linux-musl-gcc-15.3.0-man",
-          "out": "/nix/store/j3l2kv87b0f5wiwg2ximc776qvpldmdi-x86_64-unknown-linux-musl-gcc-15.3.0"
-        }
-      },
-      {
-        "derivation": "/nix/store/3ivpn2ihdn6cmcc7lnv0sf6d9ca3l2bw-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0.drv",
-        "outputs": {
-          "info": "/nix/store/ddw6fadnpcm2y47jifgarsc7rjvv6ll6-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0-info",
-          "lib": "/nix/store/y2vb3jix1lh3pl7ba1fimk0wyd9zr6x0-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0-lib",
-          "man": "/nix/store/wd10djs6cd862fk6rxg4bsw2xk419kws-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0-man",
-          "out": "/nix/store/pxsiwssbdzxcnwrn5jz6lk5l2fjbdd4m-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0"
-        }
-      }
-    ],
-    "bootloader": [
-      {
-        "derivation": "/nix/store/zawd40mrnpx08xw5gcfammgdypd8pzvz-grub-2.12.drv",
-        "outputs": {
-          "out": "/nix/store/bl23vnwd27y4mrvg85l6i9fzwvamca8y-grub-2.12"
-        }
-      }
-    ],
-    "live-systemd": [
-      {
-        "derivation": "/nix/store/hgh36808zw249z6pvk1ln8s5gs25qfpm-systemd-assbox-checkpoint-260.5.drv",
-        "outputs": {
-          "man": "/nix/store/a3sfydnnxavbksq997r6ffch8bnvqkyg-systemd-assbox-checkpoint-260.5-man",
-          "out": "/nix/store/054fpbyxcgnb7g0b464fmwh0kxrivm0l-systemd-assbox-checkpoint-260.5"
-        }
-      }
-    ],
-    "build-support": [
-      {
-        "derivation": "/nix/store/19n1hxj5nwd51wxj1xn5g6x4pf85nqd2-openssl-3.5.9.drv",
-        "outputs": {
-          "dev": "/nix/store/wipks60faabkbl04sas67ddc1b925wzx-openssl-3.5.9-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/yh8l7l0z7ngvwyx4wqd6aikbvazxwyip-openssl-3.6.5.drv",
-        "outputs": {
-          "bin": "/nix/store/gnvnzdgrmrshp1l7y1m0401301vpkl47-openssl-3.6.5-bin",
-          "dev": "/nix/store/cmshxp8cmb11jvacy93402qs9pfqw8ww-openssl-3.6.5-dev",
-          "out": "/nix/store/yl0y2psi0wihl9v60nclgqbqp04gidaw-openssl-3.6.5"
-        }
-      },
-      {
-        "derivation": "/nix/store/9r7sfmhh0p7lcvwa7rgp39a1smbiz4fq-gnutls-3.8.13.drv",
-        "outputs": {
-          "dev": "/nix/store/9mwp0dqkcpgyzl0qccr0ba38y068r00a-gnutls-3.8.13-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/dq9sz0kc4sgjri6qzrcagp8v9f3648xq-cmake-4.1.6.drv",
-        "outputs": {
-          "out": "/nix/store/lscrkcp33f6k2ir6dv65ygsmyr96dx5s-cmake-4.1.6"
-        }
-      },
-      {
-        "derivation": "/nix/store/mfdw9f6rria2ij9d1g56jjl17rs5md24-python3.13-mypy-1.20.1.drv",
-        "outputs": {
-          "out": "/nix/store/pdq7rvi11lk8yj91kwgnzfkr0wfyaa8b-python3.13-mypy-1.20.1"
-        }
-      },
-      {
-        "derivation": "/nix/store/9wnnyla4ri84xhmg64qjnjb85ijfjs61-python3-3.13.15.drv",
-        "outputs": {
-          "out": "/nix/store/5y2324vfnxwk5rg4mg34m08kpgmp7i6r-python3-3.13.15"
+          "out": "/nix/store/vv4shdbmqradzg30zk6vi8nnj06gbs33-rustc-bootstrap-1.95.0"
         }
       }
     ]
