@@ -1,0 +1,31 @@
+{
+  "tag": "kernel-formatter-45038354435-1-dev",
+  "releaseId": 454755949,
+  "manifestSha256": "88bd98a9babebf5c9f38dd3b6541349782103b956c954a81e82779651b6844e9",
+  "indexSha256": "a01c3b0cbe6d5734cd5a3b2d82aa9708baf3ee6eea2384746f62873f9c5998c7",
+  "publisher": "e8a5b87432b76dc85c4fc20a988c13a726bf762a",
+  "publishedProduct": "049bee6da79511e37051662b6346ba0ec7871bc9",
+  "publishedTree": "566afbcf99738ced4eafcc7c85ab63c27ed737e0",
+  "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+  "cacheControllerSha256": "6f92f8aecb740c860094e9ab4207858e42f5ab263a8d6df6239d5fbacf599e0c",
+  "product": "72faa6e92877a1098e5ce4e09e101b6bd78b5861",
+  "tree": "8a13432ee579273be10a297c6d8078c67ebe15b5",
+  "architecture": "aarch64-linux",
+  "nativeColdImportArtifact": 14773776807,
+  "closurePaths": 76,
+  "inputs": {
+    "derivation": "/nix/store/iy9lmhqpi2qmllvaq3dw5jdgn80qak4a-linux-6.18.55.drv",
+    "formatter": {
+      "derivation": "/nix/store/nzsg7drd2ya7fq6qjdm08ig8njhpbd12-nixfmt-1.5.0.drv",
+      "output": "/nix/store/j8zqd61rir9k8w0g7sjyi9pknrxbg29c-nixfmt-1.5.0",
+      "version": "1.5.0"
+    },
+    "kernelVersion": "6.18.55",
+    "outputs": {
+      "dev": "/nix/store/6p4dpj1mmxsgvh65g5yxjzv2lrsj35z5-linux-6.18.55-dev",
+      "modules": "/nix/store/k7jw53qwghvlccj5ipv1ba7d4i3a9yxm-linux-6.18.55-modules",
+      "out": "/nix/store/n7yhqjgkw2qsvjin1cd2c1r3b5vhmc1i-linux-6.18.55"
+    }
+  },
+  "candidateControllerSha256": "92555510c6e9ad971d499a711b2c8103446c85b4f07ad7bd11aec3ff4818a77e"
+}
