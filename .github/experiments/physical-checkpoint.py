@@ -16,7 +16,7 @@ import sys
 REPO = 'assboxai/assbox'
 REPO_ID = '1402455771'
 OWNER_ID = '327835666'
-REF = 'refs/heads/test/physical-checkpoint-x86-v8'
+REF = 'refs/heads/test/physical-checkpoint-x86-v9'
 SOURCE = '9df40f0d019211de6d7d161b4cf64c32327e3ccf'
 TREE = '9ab8b19ce79baf10b3ce4a4e0c2594c33f497569'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
@@ -98,13 +98,13 @@ def build_sqlite(source, logs):
     output = run('nix', 'eval', '--raw', *NIX_FLAGS, attribute + '.bin.outPath', cwd=source)
     if selected != SQLITE_DRV or output != SQLITE_BIN:
         raise ValueError('SQLite differs from the reviewed checkpoint dependency')
-    print('Building exact SQLite with the full native test suite and four test workers', flush=True)
+    print('Building exact SQLite with the full native test suite, four test workers and a three-hour build limit', flush=True)
     try:
         with (logs / 'sqlite-build.log').open('xb') as log:
             built = subprocess.run(
                 ('nix', 'build', '--max-jobs', '1', '--cores', '4', '--keep-failed', '--no-link',
                  '--print-out-paths', '-L', *NIX_FLAGS, selected + '^bin'),
-                cwd=source, stdout=log, stderr=subprocess.STDOUT, timeout=3600,
+                cwd=source, stdout=log, stderr=subprocess.STDOUT, timeout=10800,
             )
     except subprocess.TimeoutExpired:
         (logs / 'sqlite-status.tsv').write_text(f'124\t{selected}\t{output}\n')

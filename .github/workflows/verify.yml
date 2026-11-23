@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v8' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v9' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04
     timeout-minutes: 360
@@ -79,7 +79,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v8' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v9' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     needs: build
     runs-on: ubuntu-24.04
