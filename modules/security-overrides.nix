@@ -263,6 +263,14 @@ in
                 version = rsyncVersion;
                 # Keep the locked package's hostname handling and dependency set.
                 configureFlags = (old.configureFlags or [ ]) ++ [ "--disable-idn" ];
+                preBuild = (old.preBuild or "") + ''
+                  # Both upstream tests generate executables with embedded
+                  # shebangs, which patchShebangs cannot see before test setup.
+                  substituteInPlace testsuite/rrsync-receiver-file-arg_test.py \
+                    --replace-fail '#!/usr/bin/env python3' '#!${previous.python3}/bin/python3'
+                  substituteInPlace testsuite/rsync-ssl-type-option_test.py \
+                    --replace-fail '#!/usr/bin/env bash' '#!${previous.stdenv.shell}'
+                '';
                 src = previous.fetchurl {
                   url = "mirror://samba/rsync/src/rsync-${rsyncVersion}.tar.gz";
                   hash = "sha256-oQ1ZGCUlHgcPdMmN89qtGV3vTtgbSi3hYWkCauoz9sg=";
