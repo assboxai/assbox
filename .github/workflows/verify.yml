@@ -4,7 +4,7 @@ name: Assbox native ARM release runtime qualification
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-release-runtime-v7
+  group: assbox-arm-release-runtime-v8
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,10 +12,10 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-release-runtime-v7' &&
+      github.ref == 'refs/heads/test/arm-release-runtime-v8' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 90
+    timeout-minutes: 240
     permissions:
       contents: read
     env:
