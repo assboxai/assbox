@@ -24,6 +24,8 @@ let
       url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
       hash = "sha256-Gk05SuY9GQpSbNBS60QVwVa1xeLfN++rQafeC4/eJDM=";
     };
+    # The OpenGL output device and its configure flag were removed in 9.1.
+    configureFlags = builtins.filter (flag: flag != "--disable-opengl") old.configureFlags;
     # FFmpeg 9.1 includes this backport.
     patches = builtins.filter (
       patch:
