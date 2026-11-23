@@ -56,7 +56,11 @@
         let
           recipes = chatgpt-packages.packages.${system};
           original = recipes.chatgpt;
-          appPkgs = import chatgpt-packages.inputs.nixpkgs { inherit system; };
+          sqlite = nixpkgs.legacyPackages.${system}.sqlite;
+          appPkgs = import chatgpt-packages.inputs.nixpkgs {
+            inherit system;
+            overlays = [ (_final: _previous: { inherit sqlite; }) ];
+          };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
           gtk3 = appPkgs.gtk3.override { inherit cups; };
           qt5 = appPkgs.qt5 // {
@@ -73,7 +77,9 @@
         recipes
         // {
           chatgpt = original.override {
+            inherit (appPkgs) nss;
             chatgpt-unwrapped = original.unwrapped.override {
+              inherit (appPkgs) nss;
               inherit
                 cups
                 gtk3
