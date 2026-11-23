@@ -149,11 +149,11 @@ pkgs.testers.runNixOSTest {
     box.succeed("nft list table inet assbox-execution | grep -F 'socket cgroupv2 level 2 \"user.slice/user-1000.slice\"'")
     client.wait_for_unit("network.target")
     client.succeed("cp ${keys}/agent /tmp/agent; cp ${keys}/admin /tmp/admin; chmod 600 /tmp/agent /tmp/admin")
-    def ssh(user, key, host, command="id -un"):
+    def ssh(user, key, host, command="id -un", timeout=15):
         # Bound the whole SSH session, not only connection establishment.  A
         # server can authenticate and close its session without delivering a
         # channel EOF; OpenSSH's ConnectTimeout does not cover that state.
-        return "timeout --foreground --kill-after=5s 15s ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3 -i /tmp/" + key + " " + user + "@" + host + " " + shlex.quote(command)
+        return f"timeout --foreground --kill-after=5s {timeout}s ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3 -i /tmp/" + key + " " + user + "@" + host + " " + shlex.quote(command)
     for host in ["192.168.20.1", "fd00:20::1"]:
         client.fail(ssh("agent", "agent", host))
     if ${if exposure == "tailscale" then "True" else "False"}:
@@ -163,7 +163,9 @@ pkgs.testers.runNixOSTest {
         box.succeed("ip -6 address replace fd00:10::1/64 dev tailscale0 nodad")
     for host in ["192.168.10.1", "fd00:10::1"]:
         client.wait_until_succeeds(ssh("agent", "agent", host), timeout=60)
-        client.succeed(ssh("admin", "admin", host))
+        # With no administrator linger, both address-family probes can start
+        # a fresh PAM user manager. Bound the whole expected-success session.
+        client.succeed(ssh("admin", "admin", host, timeout=60))
         client.fail(ssh("admin", "agent", host))
         client.fail(ssh("root", "agent", host))
         client.fail(ssh("agent", "agent", host, "sudo -n true"))
