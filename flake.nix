@@ -89,6 +89,7 @@
           appPkgs = import claude-desktop-packages.inputs.nixpkgs { inherit system; };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
           gtk3 = appPkgs.gtk3.override { inherit cups; };
+          trayPkgs = appPkgs.extend (_final: _previous: { inherit cups; });
           pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
           gzipVersion = "1.15";
           gzip = appPkgs.gzip.overrideAttrs (old: {
@@ -127,6 +128,7 @@
           claude-desktop = original.override (
             {
               inherit cups gtk3 pipewire;
+              inherit (trayPkgs) libayatana-appindicator;
             }
             // nixpkgs.lib.optionalAttrs (appPkgs.gzip.version == "1.14") { inherit buildFHSEnv; }
           );
