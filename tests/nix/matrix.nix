@@ -236,7 +236,7 @@ let
             "zed"
           ])
           || (
-            builtins.elem pkgs.chromium machine.config.environment.systemPackages
+            builtins.elem machine.pkgs.chromium machine.config.environment.systemPackages
             && machine.config.xdg.mime.defaultApplications."x-scheme-handler/http" == "chromium-browser.desktop"
             &&
               machine.config.xdg.mime.defaultApplications."x-scheme-handler/https" == "chromium-browser.desktop"
@@ -247,7 +247,7 @@ let
           || (
             machine.config.xdg.portal.enable
             && machine.config.services.gnome.gnome-keyring.enable
-            && builtins.elem pkgs.xdg-desktop-portal-gtk machine.config.xdg.portal.extraPortals
+            && builtins.elem machine.pkgs.xdg-desktop-portal-gtk machine.config.xdg.portal.extraPortals
             && portalBackendsMatch a.presentation machine.config.xdg.portal.config
           )
         )
