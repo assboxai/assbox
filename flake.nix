@@ -96,7 +96,11 @@
         let
           recipes = claude-desktop-packages.packages.${system};
           original = recipes.claude-desktop;
-          appPkgs = import claude-desktop-packages.inputs.nixpkgs { inherit system; };
+          sqlite = nixpkgs.legacyPackages.${system}.sqlite;
+          appPkgs = import claude-desktop-packages.inputs.nixpkgs {
+            inherit system;
+            overlays = [ (_final: _previous: { inherit sqlite; }) ];
+          };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
           gtk3 = appPkgs.gtk3.override { inherit cups; };
           trayPkgs = appPkgs.extend (_final: _previous: { inherit cups; });
@@ -138,6 +142,7 @@
           claude-desktop = original.override (
             {
               inherit cups gtk3 pipewire;
+              inherit (appPkgs) nss;
               inherit (trayPkgs) libayatana-appindicator;
             }
             // nixpkgs.lib.optionalAttrs (appPkgs.gzip.version == "1.14") { inherit buildFHSEnv; }
