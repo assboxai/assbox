@@ -58,6 +58,7 @@ def format_target():
             # The fallback copy uses its own directory for configuration.
             installer.succeed('cp /mnt/esp/EFI/refind/refind.conf /mnt/esp/EFI/BOOT/refind.conf')
         installer.succeed('sync; umount /mnt/esp')
+        installer.succeed('udevadm trigger --action=change --settle --name-match=' + esp)
 
 
 def before_boot_bytes():
@@ -330,14 +331,17 @@ if retained_digest:
 installer.succeed('mkdir -p /mnt/backup; mount -o ro /dev/disk/by-id/virtio-assbox-backup-part1 /mnt/backup')
 installer.succeed('for manifest in /mnt/backup/assbox-*/SHA256SUMS; do (cd "$(dirname "$manifest")"; sha256sum -c SHA256SUMS); done')
 installer.succeed('umount /mnt/backup')
-installer.succeed('mount ' + root + ' /mnt/inspect')
-# Copy only test harness dependencies/evidence, using real Nix closure transfer.
-# The installed assbox executable remains the normal production package.
-installer.succeed('nix copy --to /mnt/inspect ' + shlex.quote(harness.rsplit('/libexec/', 1)[0]) + ' ' + shlex.quote(dependencies), timeout=900)
-# Keep the offline build closure and test runner rooted across real GC tests.
-installer.succeed('mkdir -p /mnt/inspect/nix/var/nix/gcroots; ln -s ' + dependencies + ' /mnt/inspect/nix/var/nix/gcroots/acceptance-inputs; ln -s ' + shlex.quote(harness.rsplit('/libexec/', 1)[0]) + ' /mnt/inspect/nix/var/nix/gcroots/acceptance-harness')
-installer.succeed('mkdir -p /mnt/inspect' + CASE + '; cp -a ' + CASE + '/. /mnt/inspect' + CASE)
-installer.succeed('rm -f /mnt/inspect' + CASE + '/cut /mnt/inspect' + CASE + '/reached; sync; umount /mnt/inspect')
+# Only the activation scenario runs the test harness on the installed system.
+if scenario == 'activation':
+    installer.succeed('mount ' + root + ' /mnt/inspect')
+    # Copy only test harness dependencies/evidence, using real Nix closure transfer.
+    # The installed assbox executable remains the normal production package.
+    # Flush the fixture on unmount after the copy completes.
+    installer.succeed('nix copy --option fsync-metadata false --to /mnt/inspect ' + shlex.quote(harness.rsplit('/libexec/', 1)[0]) + ' ' + shlex.quote(dependencies), timeout=900)
+    # Keep the offline build closure and test runner rooted across real GC tests.
+    installer.succeed('mkdir -p /mnt/inspect/nix/var/nix/gcroots; ln -s ' + dependencies + ' /mnt/inspect/nix/var/nix/gcroots/acceptance-inputs; ln -s ' + shlex.quote(harness.rsplit('/libexec/', 1)[0]) + ' /mnt/inspect/nix/var/nix/gcroots/acceptance-harness')
+    installer.succeed('mkdir -p /mnt/inspect' + CASE + '; cp -a ' + CASE + '/. /mnt/inspect' + CASE)
+    installer.succeed('rm -f /mnt/inspect' + CASE + '/cut /mnt/inspect' + CASE + '/reached; sync; umount /mnt/inspect')
 installer.shutdown()  # Releases QEMU's disk lock; target has no live ISO attached.
 target.start()
 target.wait_for_unit('multi-user.target', timeout=600)
