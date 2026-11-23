@@ -15,6 +15,7 @@ let
   nghttp2Version = "1.70.0";
   node24Version = "24.22.3";
   opensshVersion = "10.6p2";
+  rsyncVersion = "3.5.2";
   sqliteVersion = "3.54.1";
   vimVersion = "9.2.1393";
   zlibVersion = "1.4";
@@ -256,6 +257,19 @@ in
               })
             else
               previous.openssh;
+          rsync =
+            if previous.rsync.version == "3.5.0" then
+              previous.rsync.overrideAttrs (old: {
+                version = rsyncVersion;
+                # Keep the locked package's hostname handling and dependency set.
+                configureFlags = (old.configureFlags or [ ]) ++ [ "--disable-idn" ];
+                src = previous.fetchurl {
+                  url = "mirror://samba/rsync/src/rsync-${rsyncVersion}.tar.gz";
+                  hash = "sha256-oQ1ZGCUlHgcPdMmN89qtGV3vTtgbSi3hYWkCauoz9sg=";
+                };
+              })
+            else
+              previous.rsync;
           sqlite = upgradeSqlite previous.sqlite;
           tinysparql =
             # Keep 3.11.1's public double-to-text representation and complete
@@ -365,6 +379,10 @@ in
           && pkgs.nghttp2.version != "1.69.0"
           && pkgs.sqlite.version != "3.51.2";
         message = "Reviewed security point releases must replace the affected library versions.";
+      }
+      {
+        assertion = pkgs.rsync.version != "3.5.0";
+        message = "Rsync 3.5.0 must be advanced to the reviewed security release.";
       }
       {
         assertion = pkgs.vim.version != "9.2.0541";
