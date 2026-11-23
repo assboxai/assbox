@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox exact native x86 checkpoint runtime prerequisites
+name: Assbox exact native x86 checkpoint Rust compiler
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-checkpoint-x86-runtime-seeds-v2
+  group: assbox-checkpoint-x86-rust-compiler-v3
   cancel-in-progress: false
 jobs:
   seed:
@@ -13,16 +13,17 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/checkpoint-x86-runtime-seeds-v2' &&
+      github.ref == 'refs/heads/test/checkpoint-x86-rust-compiler-v3' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [llvm-native, node-runtime, rust-bootstrap]
+        group: [rust-compiler]
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     permissions:
       contents: read
+      actions: read
     env:
       PRODUCT_COMMIT: 9df40f0d019211de6d7d161b4cf64c32327e3ccf
       PRODUCT_TREE: 9ab8b19ce79baf10b3ce4a4e0c2594c33f497569
@@ -55,6 +56,29 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14864676325'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45235413783'
+          path: ${{ runner.temp }}/assbox-checkpoint-runtime-prerequisites/llvm-native
+          skip-decompress: true
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14854496288'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45235413783'
+          path: ${{ runner.temp }}/assbox-checkpoint-runtime-prerequisites/rust-bootstrap
+          skip-decompress: true
+      - name: Import independently verified runtime prerequisite caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
+          /usr/bin/python3 -I -B authority/.github/experiments/import-checkpoint-runtime-prerequisites.py \
+            product "$RUNNER_TEMP/assbox-checkpoint-runtime-prerequisites" "$RUNNER_TEMP/checkpoint-runtime-import.json"
       - name: Build exact native packages and verify the signed cache in two cold stores
         shell: bash
         run: |
