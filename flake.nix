@@ -195,9 +195,19 @@
               };
             };
           };
-          pi = pi-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
-            pi = pi-packages.packages.${pkgs.stdenv.hostPlatform.system}.pi.override { useBun = false; };
-          };
+          pi =
+            let
+              inherit (pkgs.stdenv.hostPlatform) system;
+              recipes = pi-packages.packages.${system};
+              appPkgs = import pi-packages.inputs.nixpkgs { inherit system; };
+            in
+            recipes
+            // {
+              pi = recipes.pi.override {
+                useBun = false;
+                buildNpmPackage = appPkgs.buildNpmPackage.override { nodejs = pkgs.nodejs_24; };
+              };
+            };
           omp =
             let
               inherit (pkgs.stdenv.hostPlatform) system;
