@@ -242,6 +242,7 @@ in
   # payload with the bounded console tools needed by this live coding image.
   environment.systemPackages = lib.mkForce [
     assboxPackage
+    assboxCheckpointSystemd
     assboxCodex
     assboxHappier
     pkgs.bashInteractive
