@@ -257,7 +257,8 @@ in
               })
             else
               previous.openssh;
-          rsync =
+          # Replace the installed tool without changing Nix's manual build inputs.
+          assboxReviewedRsync =
             if previous.rsync.version == "3.5.0" then
               previous.rsync.overrideAttrs (old: {
                 version = rsyncVersion;
@@ -389,7 +390,7 @@ in
         message = "Reviewed security point releases must replace the affected library versions.";
       }
       {
-        assertion = pkgs.rsync.version != "3.5.0";
+        assertion = pkgs.assboxReviewedRsync.version != "3.5.0";
         message = "Rsync 3.5.0 must be advanced to the reviewed security release.";
       }
       {

@@ -226,7 +226,7 @@ in
       iproute2
       tmux
       nano
-      rsync
+      assboxReviewedRsync
       openssh
       cacert
     ];

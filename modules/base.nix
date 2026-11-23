@@ -75,7 +75,7 @@ in
         tmux
         nano
         nixos-rebuild
-        rsync
+        assboxReviewedRsync
         openssh
       ]
       ++ lib.optionals (!cfg.controller.active) (
