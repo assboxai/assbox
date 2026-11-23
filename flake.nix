@@ -63,7 +63,10 @@
             qtbase = appPkgs.qt5.qtbase.override { inherit cups gtk3; };
           };
           qt6 = appPkgs.qt6 // {
-            qtbase = appPkgs.qt6.qtbase.override { inherit cups gtk3; };
+            qtbase = appPkgs.qt6.qtbase.override {
+              inherit cups gtk3;
+              systemd = appPkgs.systemdLibs;
+            };
           };
           pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
         in
