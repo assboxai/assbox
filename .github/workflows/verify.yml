@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox signed installer cache ARM finite verification
+name: Assbox native ARM coverage and advisory audit
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-finite-signed-installer-cache
+  group: assbox-arm-coverage-audit-signed-installer-cache
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-finite-signed-installer-cache' &&
+      github.ref == 'refs/heads/test/arm-coverage-audit-signed-installer-cache' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 110
@@ -49,7 +49,7 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Verify candidate identity and run native finite gates
+      - name: Verify candidate identity and run native core coverage and advisory audit
         shell: bash
         run: |
           set -euo pipefail
@@ -67,7 +67,7 @@ jobs:
             'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
             '10e9eb6ad0cc12447dbea4fd76160c1b8a14ba1bdaa3e5ff0eadc1ae218b4997  scripts/release-check' \
             | sha256sum --check
-          evidence="$RUNNER_TEMP/assbox-arm-release-runtime"
+          evidence="$RUNNER_TEMP/assbox-arm-coverage-audit"
           mkdir -m 0700 "$evidence"
           {
             date -u +%FT%TZ
@@ -78,31 +78,22 @@ jobs:
             df -h /nix/store "$RUNNER_TEMP"
             nix --version
           } > "$evidence/scope.txt"
-          export XDG_STATE_HOME="$RUNNER_TEMP/assbox-arm-chainman-state"
-          mkdir -m 0700 "$XDG_STATE_HOME"
-          run_finite() {
-            local command_name=$1
-            local result=0
-            nix run path:./nix/dev#just -- "$@" > "$evidence/finite-$command_name.log" 2>&1 || result=$?
-            printf '%s\t%s\t%s\n' "$command_name" "$result" "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
-            return "$result"
-          }
-          run_finite setup --no-hooks
-          run_finite doctor
-          run_finite explain verify --json
-          run_finite deps-check
-          run_finite deps-coverage
-          run_finite deps-policy-report
-          run_finite verify-lite
-          run_finite verify-prepare
+          nix develop .#release-check --no-update-lock-file --no-write-lock-file --command bash \
+            ../authority/.github/experiments/native-arm-coverage-and-audit.sh "$evidence"
           test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: corrected-source-native-arm-finite
+          name: corrected-source-native-arm-coverage-audit
           path: |
-            ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
-            ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
-            ${{ runner.temp }}/assbox-arm-release-runtime/finite-*.log
+            ${{ runner.temp }}/assbox-arm-coverage-audit/scope.txt
+            ${{ runner.temp }}/assbox-arm-coverage-audit/platform.txt
+            ${{ runner.temp }}/assbox-arm-coverage-audit/release-inputs.sha256
+            ${{ runner.temp }}/assbox-arm-coverage-audit/release-tools.tsv
+            ${{ runner.temp }}/assbox-arm-coverage-audit/stages.tsv
+            ${{ runner.temp }}/assbox-arm-coverage-audit/core-coverage.json
+            ${{ runner.temp }}/assbox-arm-coverage-audit/core-coverage.log
+            ${{ runner.temp }}/assbox-arm-coverage-audit/cargo-audit.log
+            ${{ runner.temp }}/assbox-arm-coverage-audit/advisory-db-head.txt
           if-no-files-found: warn
           retention-days: 14
