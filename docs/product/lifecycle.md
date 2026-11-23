@@ -27,7 +27,7 @@ Release qualification and effective local policy must both cover the current nat
 
 ## Happier setup ownership
 
-Use the supported upstream headless login (`happier auth login --no-open --method web`) or owner-initiated SSH pairing (`happier auth pair-remote --ssh user@host`) only after setup consent. The latter runs on an already authenticated trusted client and requires an approved target/host key; neither is an Assbox-created enrollment protocol. These are upstream interfaces, not certification of the selected binary. [S01](sources.md#s01)
+Run `assbox component setup happier-daemon` to pair using the one-time URL from the upstream headless login (`happier auth login --no-open --method web`). The pinned SSH pairing flow can invoke an interactive repair of the vendor service, so SSH pairing is unavailable on this version. The managed CLI keeps vendor repair report-only and permits the install dry run for inspection. Assbox starts its declarative user service after successful setup. [S01](sources.md#s01)
 
 Qualify expiry, interruption, cancellation, retry and revocation; protect every emitted URL/code and credential. Inspect whether pairing starts a daemon, installs code or changes a service. Preserve one Nix-declared supervisor and the owner's disabled state; a flow that cannot do so stays unavailable rather than weakening management. Happier authentication is distinct from the agent provider's authentication.
 

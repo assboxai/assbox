@@ -35,6 +35,8 @@ stdenvNoCC.mkDerivation {
   sourceRoot = "happier-v${source.version}-linux-${
     if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"
   }";
+  # Apply the Assbox ownership rules after the vendor CLI has parsed its aliases.
+  patches = [ ./patches/happier-managed-service.patch ];
   installPhase = ''
     runHook preInstall
     mkdir -p "$out/lib/happier" "$out/bin"
@@ -53,6 +55,9 @@ stdenvNoCC.mkDerivation {
     rm "$out/lib/happier/happier"
     makeWrapper ${nodejs}/bin/node "$out/bin/happier" \
       --add-flags "$entrypoint" \
+      --set HAPPIER_CLI_RUNTIME_DISABLE 1 \
+      --set HAPPIER_CLI_UPDATE_CHECK 0 \
+      --set HAPPIER_DEFER_SERVER_SELECTION_FOLLOW_UP 1 \
       --set HAPPIER_NO_BROWSER_OPEN 1 \
       --set HAPPIER_ENCRYPTION_REQUIREMENT require_e2ee \
       --set SSL_CERT_FILE ${cacert}/etc/ssl/certs/ca-bundle.crt \
@@ -66,6 +71,15 @@ stdenvNoCC.mkDerivation {
     export HAPPIER_HOME_DIR="$HOME/.happier"
     mkdir -p "$HOME"
     "$out/bin/happier" --version | grep -Fx ${lib.escapeShellArg source.version}
+    # Check the packaged entrypoint used by the Nix supervisor and component setup.
+    refuseManagedAction() {
+      local status=0
+      "$out/bin/happier" "$@" || status=$?
+      test "$status" -eq 78
+    }
+    refuseManagedAction auth pair-remote
+    refuseManagedAction service install --json
+    refuseManagedAction doctor repair --yes --json
     runHook postInstallCheck
   '';
   meta = {

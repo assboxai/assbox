@@ -1,0 +1,116 @@
+--- a/package-dist/index-RcVbDwC7.mjs
++++ b/package-dist/index-RcVbDwC7.mjs
+@@ -2355,34 +2355,6 @@
+     services
+   });
+ }
+-async function reconcileDefaultFollowingBackgroundServicesAfterAuthentication(params = {}) {
+-  const log = params.log ?? console.log;
+-  const runAction = params.runCliAction ?? runCliAction;
+-  const services = params.services ?? await resolveInstalledDaemonServiceInventoryForCurrentRelay(
+-    resolveDaemonServiceCliRuntimeFromEnv({ processEnv: process.env })
+-  );
+-  const modes = resolveInstalledDefaultFollowingDaemonServiceModes(services);
+-  if (modes.length === 0) {
+-    return true;
+-  }
+-  if (hasMissingHomeMetadataDefaultFollowingService(services)) {
+-    for (const line of renderMissingHomeRepairGuidance({ modes })) log(line);
+-    return false;
+-  }
+-  if (countInstalledDefaultFollowingServices(services) > 1 || hasDuplicateDefaultFollowingModes(modes)) {
+-    for (const line of renderRepairGuidance({ modes })) log(line);
+-    return false;
+-  }
+-  try {
+-    await restartDefaultFollowingBackgroundServices({ modes, runCliAction: runAction });
+-    return true;
+-  } catch {
+-    log("Authentication succeeded, but the background service could not be restarted.");
+-    for (const line of renderManualRestartFollowUp({ subject: "the active relay", modes })) log(line);
+-    return false;
+-  }
+-}
+-
+ function resolveAuthMethodFlag(args) {
+   const idx = args.findIndex((a) => a === "--method");
+   if (idx !== -1) {
+@@ -2508,10 +2480,7 @@
+     const result = await authAndSetupMachineIfNeeded({ callerIntent });
+     console.log(chalk.green("\n\u2713 Authentication successful"));
+     console.log(chalk.gray(`  Machine ID: ${result.machineId}`));
+-    const backgroundServiceReady = await reconcileDefaultFollowingBackgroundServicesAfterAuthentication();
+-    if (!backgroundServiceReady && callerIntent === "setup-managed") {
+-      process.exitCode = 1;
+-    }
++    // Assbox starts its declarative user service after successful component setup.
+   } catch (error) {
+     console.error(chalk.red("Authentication failed:"), error instanceof Error ? error.message : "Unknown error");
+     process.exit(1);
+@@ -3561,6 +3530,11 @@
+   const subcommand = args[0];
+   if (!subcommand || subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+     showAuthHelp();
++    return;
++  }
++  if (["pair-remote", "request", "wait"].includes(subcommand)) {
++    console.error("SSH pairing is unavailable in Assbox because the pinned Happier flow can invoke vendor service repair. Use assbox component setup happier-daemon for URL pairing.");
++    process.exitCode = 78;
+     return;
+   }
+   switch (subcommand) {
+@@ -44296,7 +44270,12 @@
+   };
+ }
+ async function handleServiceRepairCliCommand(params) {
+-  const parsed = parseRepairInvocation(params.argv);
++  const parsed = parseRepairInvocation([...params.argv, "--report-only"]);
++  if (parsed.execute) {
++    console.error("Use the Nix-owned Happier supervisor. Vendor service repair is report-only.");
++    process.exitCode = 78;
++    return;
++  }
+   const systemUser = resolveBackgroundServiceRepairSystemUser({
+     preferredMode: parsed.mode,
+     systemUser: parsed.systemUser
+@@ -51946,16 +51925,13 @@
+       await cmdCheck(argv.slice(1), context.rawArgv);
+       return;
+     }
+-    if (sub === "update") {
+-      await cmdUpdate(argv.slice(1), context.rawArgv);
++    if (sub === "update" || sub === "__install-payload") {
++      console.error("This executable is Nix-managed. Use Assbox release updates.");
++      process.exitCode = 78;
+       return;
+     }
+     if (sub === "migrate") {
+       await handleSelfMigrateCommand(argv.slice(1));
+-      return;
+-    }
+-    if (sub === "__install-payload") {
+-      await cmdInternalInstallPayload(argv.slice(1), context.rawArgv);
+       return;
+     }
+     console.error(chalk.red("Error:"), `Unknown self subcommand: ${sub}`);
+--- a/package-dist/api-xTIAcnds.mjs
++++ b/package-dist/api-xTIAcnds.mjs
+@@ -70518,9 +70518,16 @@
+   return argv.filter((a) => a !== "--local-relay");
+ }
+ async function runDaemonServiceCliCommand(params) {
+-  const argvAfterLocalRelay = await handleLocalRelayFlag(params.argv);
+-  const parsed = parseDaemonServiceCliInvocation(argvAfterLocalRelay);
++  const parsed = parseDaemonServiceCliInvocation(params.argv.filter((arg) => arg !== "--local-relay"));
+   const flags = parsed.flags;
++  const lifecycleAction = ["install", "uninstall", "start", "stop", "restart"].includes(parsed.action);
++  const previewInstall = parsed.action === "install" && flags.dryRun;
++  if (!flags.help && lifecycleAction && !previewInstall) {
++    console.error("Use Assbox component setup and the Nix-owned Happier supervisor.");
++    process.exitCode = 78;
++    return;
++  }
++  if (!flags.help && !flags.dryRun) await handleLocalRelayFlag(params.argv);
+   const mode = parsed.mode;
+   const systemUser = parsed.systemUser;
+   const targetMode = flags.ring || flags.instanceId ? "pinned" : resolveDaemonServiceTargetModeFromText(process.env.HAPPIER_DAEMON_SERVICE_TARGET_MODE || "default-following");
