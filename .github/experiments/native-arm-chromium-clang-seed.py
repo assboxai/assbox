@@ -96,7 +96,7 @@ def main():
     require(os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted' and os.environ.get('GITHUB_RUN_ATTEMPT') == '1',
             'Expected the first attempt of the qualified hosted seed experiment')
     require(os.environ.get('GITHUB_REPOSITORY_ID') == '1402455771' and os.environ.get('GITHUB_REPOSITORY_OWNER_ID') == '327835666'
-            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-chromium-clang-seeded-v1'
+            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-chromium-clang-seeded-v2'
             and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch', 'Unexpected seed authority')
     workflow = os.environ['GITHUB_SHA']
     run = os.environ['GITHUB_RUN_ID']
