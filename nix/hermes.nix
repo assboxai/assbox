@@ -17,9 +17,24 @@ let
     "modal"
   ];
   ffmpeg = appPkgs.ffmpeg;
+  # Keep the SDL stack's GUI and audio features while updating the libraries
+  # this FFmpeg build and its PipeWire and GStreamer dependencies use.
+  mediaPkgs = appPkgs.extend (
+    _final: previous:
+    let
+      cups = import ./reviewed-cups.nix { pkgs = previous; };
+      gnutls = import ./reviewed-gnutls.nix { pkgs = previous; };
+    in
+    {
+      gtk3 = previous.gtk3.override { inherit cups; };
+      gtk4 = previous.gtk4.override { inherit cups; };
+      libnice = previous.libnice.override { inherit gnutls; };
+      pipewire = import ./reviewed-pipewire.nix { pkgs = previous; };
+    }
+  );
   reviewedFfmpeg = import ./reviewed-ffmpeg.nix {
-    pkgs = appPkgs;
-    inherit ffmpeg;
+    pkgs = mediaPkgs;
+    inherit (mediaPkgs) ffmpeg;
   };
   retainedDependencies = map (
     package:
