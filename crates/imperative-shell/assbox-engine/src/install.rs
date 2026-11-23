@@ -842,7 +842,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
     #[cfg(test)]
     crate::acceptance::checkpoint("install-activating")?;
     // Install this already-built closure. Never evaluate/refetch the machine flake here.
-    cancellation::run(
+    cancellation::run_with_system_tools(
         &c,
         "nixos-install",
         &[
@@ -854,6 +854,7 @@ fn apply_inner(plan: InstallPlan, release_tag: Option<&str>) -> Result<()> {
             "--no-channel-copy",
         ],
         &logs,
+        &system,
     )?;
     #[cfg(test)]
     crate::acceptance::checkpoint("install-activated")?;

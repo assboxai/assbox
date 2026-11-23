@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Installer-only cooperative cancellation. Effects run in a systemd cgroup so
 //! cancellation stops builders and grandchildren before owned mounts are dropped.
-use crate::{commands::Commands, files};
+use crate::{
+    commands::{Commands, valid_store_system},
+    files,
+};
 use assbox_domain::{Error, Result};
 use rustix::termios::{self, OptionalActions, Termios};
 use std::{
@@ -184,6 +187,37 @@ pub fn password(c: &Commands, prompt: &str) -> Result<Vec<u8>> {
 /// stdout/stderr go to private files, never unbounded in-memory capture. The
 /// service gets the same fixed environment as ordinary privileged commands.
 pub fn run(c: &Commands, program: &str, args: &[&str], logs: &Path) -> Result<String> {
+    run_with_path(c, program, args, logs, None)
+}
+
+/// Run activation with tools from the verified system built in the target store.
+pub fn run_with_system_tools(
+    c: &Commands,
+    program: &str,
+    args: &[&str],
+    logs: &Path,
+    system: &str,
+) -> Result<String> {
+    let path = install_tool_path(system)?;
+    run_with_path(c, program, args, logs, Some(&path))
+}
+
+fn install_tool_path(system: &str) -> Result<String> {
+    if !valid_store_system(system) {
+        return Err(Error::new("invalid built system for installation"));
+    }
+    // nixos-enter carries PATH into the target root. The newly built profile
+    // supplies tools such as mount when the installer's store paths are absent there.
+    Ok(format!("{}:{system}/sw/bin", Commands::path()))
+}
+
+fn run_with_path(
+    c: &Commands,
+    program: &str,
+    args: &[&str],
+    logs: &Path,
+    path: Option<&str>,
+) -> Result<String> {
     check()?;
     files::create_private(logs)?;
     let id = files::random_id()?;
@@ -205,7 +239,10 @@ pub fn run(c: &Commands, program: &str, args: &[&str], logs: &Path) -> Result<St
             .open(&errors),
     )?;
     let executable = c.executable(program)?;
-    let command = c.command(program, args)?;
+    let mut command = c.command(program, args)?;
+    if let Some(path) = path {
+        command.env("PATH", path);
+    }
     let mut invocation = vec![
         "--quiet".to_owned(),
         "--wait".to_owned(),
@@ -290,4 +327,20 @@ pub fn run(c: &Commands, program: &str, args: &[&str], logs: &Path) -> Result<St
         return Err(Error::new("installer command output exceeds limit"));
     }
     files::text(&output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn installation_uses_the_built_system_tools_after_the_trusted_path() {
+        let system = "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-assbox";
+        assert_eq!(
+            install_tool_path(system).unwrap(),
+            format!("{}:{system}/sw/bin", Commands::path()),
+        );
+        assert!(install_tool_path(&format!("{system}:/tmp")).is_err());
+        assert!(install_tool_path("/run/current-system").is_err());
+    }
 }
