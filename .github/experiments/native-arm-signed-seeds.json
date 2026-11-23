@@ -1,0 +1,6 @@
+[
+  "chromium-rustc",
+  "llvm",
+  "nix",
+  "rustc"
+]

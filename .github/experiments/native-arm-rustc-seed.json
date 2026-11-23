@@ -1,0 +1,17 @@
+{
+  "run": 45113607681,
+  "job": 137491306398,
+  "artifact": 14796242324,
+  "sizeInBytes": 427627780,
+  "transportDigest": "sha256:781c3364c4a0ea25aabffd7937fcb777b0bf43016791cd2dee2c63ae9ed0fca4",
+  "indexSha256": "28c01a328ea0c7ce7bcd313a0e1ac8890ceb1bcee0115d77c44168b9e6a7940d",
+  "publicKey": "assbox-arm-rustc-seed-45113607681:OiSg9lHBOxC7KERagkloDZLY5F2R9dHE8HrNpzgq87g=",
+  "package": {
+    "derivation": "/nix/store/mn1242q63sn822n5mj78a7zi9v10b93a-rustc-1.95.0.drv",
+    "outputs": {
+      "doc": "/nix/store/4qhz9gvrrqb6cgc3hzgcdg9fvrnxfvkj-rustc-1.95.0-doc",
+      "man": "/nix/store/n9cj2zppji0nlilc6fnzrm9z2ivw8r97-rustc-1.95.0-man",
+      "out": "/nix/store/2pzywc9bpkrayfw7a6ppymwal9hzbylm-rustc-1.95.0"
+    }
+  }
+}
