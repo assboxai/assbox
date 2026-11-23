@@ -99,8 +99,7 @@ let
       ${lib.escapeShellArgs command.openclaw-node} || test "$?" -eq 130
     '';
     happier-daemon = ''
-      ${assboxApplications.happier.happier}/bin/happier auth login --no-open --method web
-      ${assboxApplications.happier.happier}/bin/happier daemon stop
+      ${assboxApplications.happier.happier}/bin/happier auth login --no-open --method web --no-daemon-start
       echo "Happier pairing complete; provider authentication remains independent."
     '';
     hermes-gateway = "${assboxApplications.hermes.hermes-agent}/bin/hermes setup";
