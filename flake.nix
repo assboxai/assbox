@@ -51,12 +51,27 @@
       sourceRevision = if releaseContext != null then releaseContext.coreCommit else self.rev or "";
       buildAssbox =
         pkgs: pkgs.callPackage ./nix/package.nix { inherit pkgs sourceRevision releasePolicy; };
+      chatgptPackages =
+        system:
+        let
+          recipes = chatgpt-packages.packages.${system};
+          original = recipes.chatgpt;
+          appPkgs = import chatgpt-packages.inputs.nixpkgs { inherit system; };
+          cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
+        in
+        recipes
+        // {
+          chatgpt = original.override {
+            chatgpt-unwrapped = original.unwrapped.override { inherit cups; };
+          };
+        };
       claudeDesktopPackages =
         system:
         let
           recipes = claude-desktop-packages.packages.${system};
           original = recipes.claude-desktop;
           appPkgs = import claude-desktop-packages.inputs.nixpkgs { inherit system; };
+          cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
           gzipVersion = "1.15";
           gzip = appPkgs.gzip.overrideAttrs (old: {
             version = gzipVersion;
@@ -91,8 +106,12 @@
         in
         recipes
         // {
-          claude-desktop =
-            if appPkgs.gzip.version == "1.14" then original.override { inherit buildFHSEnv; } else original;
+          claude-desktop = original.override (
+            {
+              inherit cups;
+            }
+            // nixpkgs.lib.optionalAttrs (appPkgs.gzip.version == "1.14") { inherit buildFHSEnv; }
+          );
         };
       codexPackages =
         system:
@@ -136,7 +155,7 @@
         _module.args.assboxPackage = buildAssbox pkgs;
         _module.args.assboxApplications = {
           antigravity = antigravity-packages.packages.${pkgs.stdenv.hostPlatform.system};
-          chatgpt = chatgpt-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          chatgpt = chatgptPackages pkgs.stdenv.hostPlatform.system;
           claude-code = claude-code-packages.packages.${pkgs.stdenv.hostPlatform.system};
           claude-desktop = claudeDesktopPackages pkgs.stdenv.hostPlatform.system;
           codex = codexPackages pkgs.stdenv.hostPlatform.system;

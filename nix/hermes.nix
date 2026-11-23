@@ -18,7 +18,8 @@ let
   ];
   ffmpeg = appPkgs.ffmpeg;
   ffmpegVersion = "9.1";
-  reviewedFfmpeg = ffmpeg.overrideAttrs (old: {
+  gnutls = import ./reviewed-gnutls.nix { pkgs = appPkgs; };
+  reviewedFfmpeg = (ffmpeg.override { inherit gnutls; }).overrideAttrs (old: {
     version = ffmpegVersion;
     src = appPkgs.fetchurl {
       url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
