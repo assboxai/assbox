@@ -35,11 +35,28 @@ def closure_metadata(cache_tools, environment, paths, *, store=None):
     require(0 < len(observed) <= 512 and set(paths) <= set(observed), 'Incomplete or excessive seed closure')
     result = {path: {key: row[key] for key in FIELDS} for path, row in observed.items()}
     require(sum(row['narSize'] for row in result.values()) <= 3 * MAX_BYTES, 'Unpacked seed exceeds its size bound')
-    return result
+    return result, {path: row.get('ca') for path, row in observed.items()}
+
+
+def normalize_signed_metadata(cache_tools, cache, content_addresses):
+    cache_tools.normalize_export(cache)
+    for info in sorted(cache.glob('*.narinfo')):
+        lines = cache_tools.bounded(info, 256 * 1024).decode().splitlines(keepends=True)
+        paths = [line.removeprefix('StorePath: ').rstrip('\n') for line in lines if line.startswith('StorePath: ')]
+        require(len(paths) == 1 and paths[0] in content_addresses, 'Unknown producer NAR store path')
+        expected = content_addresses[paths[0]]
+        fields = [line for line in lines if line.startswith('CA:')]
+        if expected is None:
+            require(not fields, 'Unexpected NAR content address')
+            continue
+        require(fields == [f'CA: {expected}\n'], 'NAR content address differs from the native store')
+        # Require the scoped signer even on content-addressed paths. Nix signatures bind store
+        # path, NAR hash and size, and references. Removing this field preserves that signature.
+        info.write_text(''.join(line for line in lines if not line.startswith('CA:')))
 
 
 def signed_cache(cache_tools, env, workspace, cache, paths, name):
-    closure = closure_metadata(cache_tools, env, paths)
+    closure, content_addresses = closure_metadata(cache_tools, env, paths)
     cache.mkdir(mode=0o700)
     secret = workspace / 'signing-key'
     public = workspace / 'signing-key.pub'
@@ -53,7 +70,7 @@ def signed_cache(cache_tools, env, workspace, cache, paths, name):
     finally:
         secret.unlink(missing_ok=True)
     key = public.read_text().strip()
-    cache_tools.normalize_export(cache)
+    normalize_signed_metadata(cache_tools, cache, content_addresses)
     inventory = {path.name: {'size': path.stat().st_size, 'sha256': cache_tools.file_digest(path)}
                  for path in sorted(cache.iterdir())}
     require(sum(asset['size'] for asset in inventory.values()) <= MAX_BYTES, 'Seed transport exceeds its size bound')
@@ -80,8 +97,8 @@ def verify_cold(cache_tools, env, cache, workspace, paths, index):
                     'Seed paths registered under a wrong signing key')
         else:
             require(result.returncode == 0, 'Signed seed import failed: ' + result.stderr.decode(errors='replace')[-1500:])
-            require(closure_metadata(cache_tools, env, paths, store=store) == index['closure'],
-                    'Cold store closure differs from the signed content')
+            closure, _ = closure_metadata(cache_tools, env, paths, store=store)
+            require(closure == index['closure'], 'Cold store closure differs from the signed content')
 
 
 def main():
@@ -90,7 +107,7 @@ def main():
     require(os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted' and os.environ.get('GITHUB_RUN_ATTEMPT') == '1',
             'Expected the first attempt of the qualified hosted seed experiment')
     require(os.environ.get('GITHUB_REPOSITORY_ID') == '1402455771' and os.environ.get('GITHUB_REPOSITORY_OWNER_ID') == '327835666'
-            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-nix-core-seed-v1'
+            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-nix-core-seed-v2'
             and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch', 'Unexpected seed authority')
     workflow = os.environ['GITHUB_SHA']
     run = os.environ['GITHUB_RUN_ID']
