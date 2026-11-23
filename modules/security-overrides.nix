@@ -19,6 +19,30 @@ let
   sqliteVersion = "3.54.1";
   vimVersion = "9.2.1393";
   zlibVersion = "1.4";
+  ffmpegSecurityPatches = [
+    # Upstream library helper required by the MOV fix.
+    ../nix/patches/ffmpeg-encryption-init-info-append.patch
+    # CVE-2026-107675
+    ../nix/patches/ffmpeg-2b822b7fb6ed195546bc9fd9bdb794e98222bdce.patch
+    # CVE-2026-107677
+    ../nix/patches/ffmpeg-ed27bfcbbbc0872c0195eaf4dd2c0c93b9f1778e.patch
+    # CVE-2026-107676
+    ../nix/patches/ffmpeg-2c2f6e96e31795ae95a8f8323a493ffbc493111f.patch
+    # CVE-2026-107696
+    ../nix/patches/ffmpeg-f5d4fd186c68913240c4f6e9cda98443e1518b34.patch
+    # CVE-2026-107678
+    ../nix/patches/ffmpeg-71403a21b02a92b925e26e609e9bd3e48df451cf.patch
+    # CVE-2026-125068
+    ../nix/patches/ffmpeg-5195d6f9729ad00b93e4d0f0bea309416fb4713e.patch
+    # CVE-2026-125067
+    ../nix/patches/ffmpeg-1206df65e54b6e9c01459c7cd9a95f9bde2736d7.patch
+    # CVE-2026-125066
+    ../nix/patches/ffmpeg-d40c1b12811814fc6c2d0816527b003d8510ea06.patch
+    # CVE-2026-125065
+    ../nix/patches/ffmpeg-9691e4fde64e14de73c298562c4e475f9412b5ad.patch
+    # CVE-2026-125064
+    ../nix/patches/ffmpeg-ec887b13a88afbaf44fb28c3045bda5d434da8dc.patch
+  ];
   busyboxSecurityPatches = [
     ../nix/patches/busybox-f5e1bf966b19ea1821f00a8c9ecd7774598689b4.patch
   ];
@@ -61,16 +85,25 @@ in
           upgradeRuntimeZlib = finalLinuxStage && previous.zlib.version == "1.3.2";
           upgradeFfmpeg =
             package:
-            if package.version == "8.1.2" then
-              package.overrideAttrs (_old: {
-                version = ffmpegVersion;
-                src = previous.fetchurl {
-                  url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
-                  hash = ffmpegSourceHash;
-                };
+            let
+              pointRelease =
+                if package.version == "8.1.2" then
+                  package.overrideAttrs (_old: {
+                    version = ffmpegVersion;
+                    src = previous.fetchurl {
+                      url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
+                      hash = ffmpegSourceHash;
+                    };
+                  })
+                else
+                  package;
+            in
+            if pointRelease.version == ffmpegVersion then
+              pointRelease.overrideAttrs (old: {
+                patches = (old.patches or [ ]) ++ ffmpegSecurityPatches;
               })
             else
-              package;
+              pointRelease;
           upgradeSqlite =
             package:
             if package.version == "3.51.2" then
@@ -120,19 +153,19 @@ in
                   inherited;
             };
           # The stable channel still carries 8.1.2 after upstream's 8.1.3
-          # security/bug-fix point release. Preserve each feature variant and
-          # the major ABI, and stop overriding as soon as Nixpkgs advances.
+          # point release. Apply reviewed upstream backports to that version
+          # while preserving the existing feature variants and library ABI.
           ffmpeg_8 = upgradeFfmpeg previous.ffmpeg_8;
           ffmpeg_8-headless = upgradeFfmpeg previous.ffmpeg_8-headless;
           ffmpeg_8-full = upgradeFfmpeg previous.ffmpeg_8-full;
-          ffmpeg = if previous.ffmpeg.version == "8.1.2" then final.ffmpeg_8 else previous.ffmpeg;
+          ffmpeg = if previous.ffmpeg.version == "8.1.2" then final.ffmpeg_8 else upgradeFfmpeg previous.ffmpeg;
           ffmpeg-headless =
             if previous.ffmpeg-headless.version == "8.1.2" then
               final.ffmpeg_8-headless
             else
-              previous.ffmpeg-headless;
+              upgradeFfmpeg previous.ffmpeg-headless;
           ffmpeg-full =
-            if previous.ffmpeg-full.version == "8.1.2" then final.ffmpeg_8-full else previous.ffmpeg-full;
+            if previous.ffmpeg-full.version == "8.1.2" then final.ffmpeg_8-full else upgradeFfmpeg previous.ffmpeg-full;
           busybox =
             if previous.busybox.version == "1.37.0" then
               previous.busybox.overrideAttrs (old: {
