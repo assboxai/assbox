@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-chromium-seeded-v1' &&
+      github.ref == 'refs/heads/test/arm-chromium-seeded-v2' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
@@ -20,8 +20,8 @@ jobs:
       contents: read
       actions: read
     env:
-      PRODUCT_COMMIT: c2d872c72ee0478f19e2ca28312deeaf77b446f6
-      PRODUCT_TREE: 91c656ad4debdb00c907c8d9147e058f5d3939ea
+      PRODUCT_COMMIT: 28bf6a68aad8860e412e5cd3d4f3788caef7edc1
+      PRODUCT_TREE: 304515456bbb2d19c47226caf38a5a2c1083544a
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -104,6 +104,24 @@ jobs:
           unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
           /usr/bin/python3 -I -B authority/.github/experiments/import-arm-chromium-rustc-seed.py \
             product "$RUNNER_TEMP/assbox-arm-chromium-rustc-seed-download" "$RUNNER_TEMP/assbox-arm-chromium-rustc-import.json"
+      - name: Download the independently verified ARM Clang seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14873761954'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45254317055'
+          path: ${{ runner.temp }}/assbox-arm-chromium-clang-seed-download
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Verify and import the signed ARM Clang seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
+          /usr/bin/python3 -I -B authority/.github/experiments/import-arm-chromium-clang-seed.py \
+            product "$RUNNER_TEMP/assbox-arm-chromium-clang-seed-download" "$RUNNER_TEMP/assbox-arm-chromium-clang-import.json"
       - name: Build exact ARM Chromium outputs and validate the signed cache in two cold stores
         shell: bash
         run: |
@@ -154,6 +172,7 @@ jobs:
             ${{ runner.temp }}/assbox-arm-llvm-import.json
             ${{ runner.temp }}/assbox-arm-rustc-import.json
             ${{ runner.temp }}/assbox-arm-chromium-rustc-import.json
+            ${{ runner.temp }}/assbox-arm-chromium-clang-import.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/expected.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-build.log
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/resources.log

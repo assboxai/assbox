@@ -1,0 +1,17 @@
+{
+  "run": 45254317055,
+  "job": 137971970196,
+  "artifact": 14873761954,
+  "sizeInBytes": 296621975,
+  "transportDigest": "sha256:988446ddfc9864ebbeff552a1581cd9415b7643a7a7c6812f04a24026ab7c1c7",
+  "indexSha256": "58814652ff4535aad1a614a8d1b23f55f511dc6f02ac8abe73ad601ec336e190",
+  "publicKey": "assbox-arm-chromium-clang-seed-45254317055:Q3UKvFOVXuQfQtB+0RwnFk0lkDSrSJLnb5+HyEcLGYM=",
+  "package": {
+    "derivation": "/nix/store/xl9xyi4sr0mlw8qpp02zc2kp0cs7h7wx-clang-21.1.8.drv",
+    "outputs": {
+      "lib": "/nix/store/jamycm4hb42m8mwnridnazp656r233qh-clang-21.1.8-lib",
+      "out": "/nix/store/c219gs6966jd09z36cc44nwi4v9mj0qr-clang-21.1.8",
+      "python": "/nix/store/7p5by0iz3iwa8mjxkgxhrs8kiqy3zmwk-clang-21.1.8-python"
+    }
+  }
+}
