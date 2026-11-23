@@ -78,6 +78,7 @@
                 qt5
                 qt6
                 ;
+              wrapGAppsHook3 = appPkgs.wrapGAppsHook3.override { inherit gtk3; };
             };
           };
         };
