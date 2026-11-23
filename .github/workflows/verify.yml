@@ -4,7 +4,7 @@ name: Assbox runtime dependencies ARM finite verification
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-finite-runtime-dependencies-compatible
+  group: assbox-arm-finite-runtime-rsync-defaults
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-finite-runtime-dependencies-compatible' &&
+      github.ref == 'refs/heads/test/arm-finite-runtime-rsync-defaults' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 110
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: 01e1082c5c06f8f1e07735f76454e0d20978a055
-      PRODUCT_TREE: 294e9c078ccde06ab829f1d7daefe30784cd5a4b
+      PRODUCT_COMMIT: 01f548cd42ff3203b35344cd95834aa8bba4d224
+      PRODUCT_TREE: 4fe05ef1d6bad989f24e6e468ad27b5d438bb191
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -99,7 +99,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: runtime-dependencies-compatible-native-arm-finite
+          name: runtime-rsync-defaults-native-arm-finite
           path: |
             ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
             ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
