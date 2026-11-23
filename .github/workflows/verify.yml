@@ -1,23 +1,32 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox x86 live checkpoint qualification
+name: Assbox exact native x86 checkpoint package seeds
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-physical-checkpoint-x86-v8
+  group: assbox-checkpoint-x86-package-seeds-v1
   cancel-in-progress: false
 jobs:
-  build:
+  seed:
+    name: checkpoint-seed-${{ matrix.group }}
     if: >-
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v9' &&
+      github.ref == 'refs/heads/test/checkpoint-x86-package-seeds-v1' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [sqlite, codex, toolchain, bootloader, live-systemd, build-support]
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     permissions:
       contents: read
+    env:
+      PRODUCT_COMMIT: 9df40f0d019211de6d7d161b4cf64c32327e3ccf
+      PRODUCT_TREE: 9ab8b19ce79baf10b3ce4a4e0c2594c33f497569
+      SEED_GROUP: ${{ matrix.group }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -26,96 +35,76 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 9df40f0d019211de6d7d161b4cf64c32327e3ccf
+          ref: ${{ env.PRODUCT_COMMIT }}
           path: product
           persist-credentials: false
-      - name: Clear unused SDKs on the ephemeral hosted runner
+      - name: Clear unused SDKs on the disposable hosted runner
         run: >-
-          sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,RUNNER_TEMP
+          sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_REPOSITORY_OWNER_ID,GITHUB_EVENT_NAME,GITHUB_SHA,GITHUB_RUN_ID,GITHUB_RUN_ATTEMPT,GITHUB_REF,RUNNER_TEMP,ImageOS
           /usr/bin/python3 -I -B authority/scripts/clear_unused_runner_tools.py
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
         with:
           install_url: https://releases.nixos.org/nix/nix-2.35.2/install
-          enable_kvm: true
+          enable_kvm: false
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = false
-      - name: Remove installer credentials before candidate execution
+      - name: Clear installer credentials before product execution
         run: |
           set -euo pipefail
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
-          nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Import only the verified signed development kernel and formatter
+          nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}'
+      - name: Build exact native packages and verify the signed cache in two cold stores
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
           unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
-          install -d -m 0700 "$RUNNER_TEMP/assbox-checkpoint-logs"
-          /usr/bin/python3 -I -B authority/.github/experiments/prefill-checkpoint-distribution.py \
-            product "$RUNNER_TEMP/assbox-checkpoint-logs/kernel-formatter-seed.json"
-      - name: Verify native finite gates and boot the exact hybrid image twice
-        shell: bash
-        run: |
-          set -euo pipefail
-          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
-          /usr/bin/python3 -I -B authority/.github/experiments/physical-checkpoint.py build
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git -C authority status --porcelain)"
+          test "$(git -C product rev-parse HEAD)" = "$PRODUCT_COMMIT"
+          test "$(git -C product rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
+          evidence="$RUNNER_TEMP/assbox-checkpoint-seed"
+          mkdir -m 0700 "$evidence"
+          {
+            printf 'workflowCommit\t%s\nrunId\t%s\nrunAttempt\t%s\ngroup\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$SEED_GROUP"
+            git -C product rev-parse HEAD 'HEAD^{tree}'
+            uname -sm
+            nproc
+            df -PB1 /nix/store "$RUNNER_TEMP"
+            free -b
+          } > "$evidence/scope.txt"
+          monitor_resources() {
+            while :; do
+              date -u +%FT%TZ
+              df -PB1 /nix/store "$RUNNER_TEMP"
+              free -b
+              sleep 60
+            done
+          }
+          monitor_resources >> "$evidence/resources.log" &
+          monitor=$!
+          trap 'kill "$monitor" 2>/dev/null || true; wait "$monitor" 2>/dev/null || true' EXIT
+          /usr/bin/python3 -I -B authority/.github/experiments/native-x86-checkpoint-package-seed.py "$PWD/product" "$evidence" "$SEED_GROUP"
+          test -s "$evidence/index.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: exact-x86-live-checkpoint
-          path: ${{ runner.temp }}/assbox-checkpoint-assets/
-          compression-level: 0
+          name: exact-native-x86-checkpoint-seed-${{ matrix.group }}
+          path: |
+            ${{ runner.temp }}/assbox-checkpoint-seed/index.json
+            ${{ runner.temp }}/assbox-checkpoint-seed/signed-cache
           if-no-files-found: error
-          retention-days: 14
+          compression-level: 0
+          retention-days: 7
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: x86-checkpoint-diagnostics
-          path: ${{ runner.temp }}/assbox-checkpoint-logs/
+          name: exact-native-x86-checkpoint-diagnostics-${{ matrix.group }}
+          path: |
+            ${{ runner.temp }}/assbox-checkpoint-seed/expected.json
+            ${{ runner.temp }}/assbox-checkpoint-seed/native-build.log
+            ${{ runner.temp }}/assbox-checkpoint-seed/resources.log
+            ${{ runner.temp }}/assbox-checkpoint-seed/scope.txt
           if-no-files-found: warn
-          retention-days: 14
-  attest:
-    if: >-
-      github.repository == 'assboxai/assbox' &&
-      github.repository_id == '1402455771' &&
-      github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v9' &&
-      github.event_name == 'workflow_dispatch' && github.run_attempt == 1
-    needs: build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          path: authority
-          persist-credentials: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: exact-x86-live-checkpoint
-          path: ${{ runner.temp }}/assbox-checkpoint-assets/
-      - name: Verify exact ISO and both boot observations before attestation
-        run: /usr/bin/python3 -I -B authority/.github/experiments/physical-checkpoint.py validate
-      - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
-        id: attest
-        with:
-          subject-path: |
-            ${{ runner.temp }}/assbox-checkpoint-assets/assbox-physical-checkpoint.json
-            ${{ runner.temp }}/assbox-checkpoint-assets/assbox-physical-checkpoint-x86_64-linux.iso
-      - name: Retain the build provenance bundle
-        shell: bash
-        env:
-          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
-        run: |
-          set -euo pipefail
-          install -m 0600 -- "$BUNDLE" "$RUNNER_TEMP/assbox-physical-checkpoint.sigstore.json"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: attested-x86-live-checkpoint-provenance
-          path: ${{ runner.temp }}/assbox-physical-checkpoint.sigstore.json
-          if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
