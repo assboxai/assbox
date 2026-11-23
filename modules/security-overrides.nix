@@ -16,6 +16,7 @@ let
   node24Version = "24.22.3";
   opensshVersion = "10.6p2";
   sqliteVersion = "3.54.1";
+  vimVersion = "9.2.1393";
   zlibVersion = "1.4";
   busyboxSecurityPatches = [
     ../nix/patches/busybox-f5e1bf966b19ea1821f00a8c9ecd7774598689b4.patch
@@ -268,6 +269,19 @@ in
             else
               previous.tinysparql;
           sqlite-interactive = upgradeSqlite previous.sqlite-interactive;
+          vim =
+            if previous.vim.version == "9.2.0541" then
+              previous.vim.overrideAttrs (_old: {
+                version = vimVersion;
+                src = previous.fetchFromGitHub {
+                  owner = "vim";
+                  repo = "vim";
+                  rev = "12b8ca12d0cfa252cbd344bbf4dd1f547df0abd1";
+                  hash = "sha256-haNvHoOwLtDNSs2qh+2ZkQ3+emePsMCBezWlLuAQ/3M=";
+                };
+              })
+            else
+              previous.vim;
           zlib =
             if upgradeRuntimeZlib then
               previous.zlib.overrideAttrs (old: {
@@ -351,6 +365,10 @@ in
           && pkgs.nghttp2.version != "1.69.0"
           && pkgs.sqlite.version != "3.51.2";
         message = "Reviewed security point releases must replace the affected library versions.";
+      }
+      {
+        assertion = pkgs.vim.version != "9.2.0541";
+        message = "Vim 9.2.0541 must be advanced to the reviewed security release.";
       }
       {
         assertion = pkgs.nodejs-slim_24.version != "24.21.0";
