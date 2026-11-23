@@ -58,34 +58,41 @@
           original = recipes.claude-desktop;
           appPkgs = import claude-desktop-packages.inputs.nixpkgs { inherit system; };
           gzipVersion = "1.15";
-          appPkgsWithReviewedGzip = appPkgs.extend (
-            _: previous: {
-              gzip = previous.gzip.overrideAttrs (old: {
-                version = gzipVersion;
-                src = previous.fetchurl {
-                  url = "mirror://gnu/gzip/gzip-${gzipVersion}.tar.xz";
-                  hash = "sha256-mqDMeA3sFWuCgoRIM7NCq3ywjCXSzZoYac3Q3zHe/0g=";
-                };
-                # These two security patches are included in 1.15, along with
-                # the second upstream fix for CVE-2026-41992.
-                patches = builtins.filter (
-                  patch:
-                  !builtins.any (suffix: nixpkgs.lib.hasSuffix suffix (toString patch)) [
-                    "CVE-2026-41991.patch"
-                    "CVE-2026-41992.patch"
-                  ]
-                ) (old.patches or [ ]);
-              });
-            }
-          );
+          gzip = appPkgs.gzip.overrideAttrs (old: {
+            version = gzipVersion;
+            src = appPkgs.fetchurl {
+              url = "mirror://gnu/gzip/gzip-${gzipVersion}.tar.xz";
+              hash = "sha256-mqDMeA3sFWuCgoRIM7NCq3ywjCXSzZoYac3Q3zHe/0g=";
+            };
+            # The release includes both fixes, including the second upstream
+            # change for CVE-2026-41992.
+            patches = builtins.filter (
+              patch:
+              !builtins.any (suffix: nixpkgs.lib.hasSuffix suffix (toString patch)) [
+                "CVE-2026-41991.patch"
+                "CVE-2026-41992.patch"
+              ]
+            ) (old.patches or [ ]);
+          });
+          # Pass the replacement only to the FHS root builder's package list.
+          # A package-set overlay would also change vendored bootstrap inputs.
+          buildFHSEnv = appPkgs.buildFHSEnv.override {
+            callPackage =
+              recipe: args:
+              appPkgs.callPackage recipe (
+                args
+                // {
+                  pkgs = appPkgs // {
+                    inherit gzip;
+                  };
+                }
+              );
+          };
         in
         recipes
         // {
           claude-desktop =
-            if appPkgs.gzip.version == "1.14" then
-              original.override { inherit (appPkgsWithReviewedGzip) buildFHSEnv; }
-            else
-              original;
+            if appPkgs.gzip.version == "1.14" then original.override { inherit buildFHSEnv; } else original;
         };
       codexPackages =
         system:
