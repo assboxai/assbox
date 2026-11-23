@@ -146,6 +146,8 @@ let
       assbox.cargoDeps
       releasedPackage
       releasedPackage.drvPath
+      # The installed target inherits xwininfo from NixOS test instrumentation.
+      seed.pkgs.xwininfo
       seed.config.boot.kernelPackages.kernel.out
       seed.config.boot.kernelPackages.kernel.modules
       seed.config.boot.kernelPackages.kernel.dev
