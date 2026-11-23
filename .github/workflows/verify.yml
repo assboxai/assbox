@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox exact native ARM seeded Chromium cache
+name: Assbox exact native ARM Clang cache for Chromium
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-chromium-seeded-v1
+  group: assbox-arm-chromium-clang-seeded-v1
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-chromium-seeded-v1' &&
+      github.ref == 'refs/heads/test/arm-chromium-clang-seeded-v1' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
@@ -20,8 +20,8 @@ jobs:
       contents: read
       actions: read
     env:
-      PRODUCT_COMMIT: c2d872c72ee0478f19e2ca28312deeaf77b446f6
-      PRODUCT_TREE: 91c656ad4debdb00c907c8d9147e058f5d3939ea
+      PRODUCT_COMMIT: 28bf6a68aad8860e412e5cd3d4f3788caef7edc1
+      PRODUCT_TREE: 304515456bbb2d19c47226caf38a5a2c1083544a
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -68,43 +68,7 @@ jobs:
           unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
           /usr/bin/python3 -I -B authority/.github/experiments/import-arm-llvm-seed.py \
             product "$RUNNER_TEMP/assbox-arm-llvm-seed-download" "$RUNNER_TEMP/assbox-arm-llvm-import.json"
-      - name: Download the independently verified ARM Rust compiler
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          artifact-ids: '14796242324'
-          github-token: ${{ github.token }}
-          repository: assboxai/assbox
-          run-id: '45113607681'
-          path: ${{ runner.temp }}/assbox-arm-rustc-seed-download
-          skip-decompress: true
-          digest-mismatch: error
-      - name: Verify and import the signed ARM Rust compiler
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
-          /usr/bin/python3 -I -B authority/.github/experiments/import-arm-rustc-seed.py \
-            product "$RUNNER_TEMP/assbox-arm-rustc-seed-download" "$RUNNER_TEMP/assbox-arm-rustc-import.json"
-      - name: Download the independently verified ARM Chromium compiler
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          artifact-ids: '14795754390'
-          github-token: ${{ github.token }}
-          repository: assboxai/assbox
-          run-id: '45113628269'
-          path: ${{ runner.temp }}/assbox-arm-chromium-rustc-seed-download
-          skip-decompress: true
-          digest-mismatch: error
-      - name: Verify and import the signed ARM Chromium compiler
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
-          /usr/bin/python3 -I -B authority/.github/experiments/import-arm-chromium-rustc-seed.py \
-            product "$RUNNER_TEMP/assbox-arm-chromium-rustc-seed-download" "$RUNNER_TEMP/assbox-arm-chromium-rustc-import.json"
-      - name: Build exact ARM Chromium outputs and validate the signed cache in two cold stores
+      - name: Build exact ARM Chromium Clang inputs and validate the signed cache in two cold stores
         shell: bash
         run: |
           set -euo pipefail
@@ -114,7 +78,7 @@ jobs:
           test -z "$(git -C authority status --porcelain)"
           test "$(git -C product rev-parse HEAD)" = "$PRODUCT_COMMIT"
           test "$(git -C product rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
-          evidence="$RUNNER_TEMP/assbox-arm-chromium-seed-evidence"
+          evidence="$RUNNER_TEMP/assbox-arm-chromium-clang-seed-evidence"
           mkdir -m 0700 "$evidence"
           {
             printf 'workflowCommit\t%s\nrunId\t%s\nrunAttempt\t%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
@@ -135,28 +99,26 @@ jobs:
           monitor_resources >> "$evidence/resources.log" &
           monitor=$!
           trap 'kill "$monitor" 2>/dev/null || true; wait "$monitor" 2>/dev/null || true' EXIT
-          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-chromium-seed.py "$PWD/product" "$evidence"
+          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-chromium-clang-seed.py "$PWD/product" "$evidence"
           test -s "$evidence/index.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: exact-native-arm-chromium-signed-seed
+          name: exact-native-arm-chromium-clang-signed-seed
           path: |
-            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/index.json
-            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/signed-cache
+            ${{ runner.temp }}/assbox-arm-chromium-clang-seed-evidence/index.json
+            ${{ runner.temp }}/assbox-arm-chromium-clang-seed-evidence/signed-cache
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: exact-native-arm-chromium-seed-diagnostics
+          name: exact-native-arm-chromium-clang-seed-diagnostics
           path: |
             ${{ runner.temp }}/assbox-arm-llvm-import.json
-            ${{ runner.temp }}/assbox-arm-rustc-import.json
-            ${{ runner.temp }}/assbox-arm-chromium-rustc-import.json
-            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/expected.json
-            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-build.log
-            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/resources.log
-            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/scope.txt
+            ${{ runner.temp }}/assbox-arm-chromium-clang-seed-evidence/expected.json
+            ${{ runner.temp }}/assbox-arm-chromium-clang-seed-evidence/native-build.log
+            ${{ runner.temp }}/assbox-arm-chromium-clang-seed-evidence/resources.log
+            ${{ runner.temp }}/assbox-arm-chromium-clang-seed-evidence/scope.txt
           if-no-files-found: warn
           retention-days: 7

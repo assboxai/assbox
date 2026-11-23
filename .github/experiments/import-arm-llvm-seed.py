@@ -15,8 +15,8 @@ import sys
 import tempfile
 from zipfile import ZipFile
 
-SOURCE = 'c2d872c72ee0478f19e2ca28312deeaf77b446f6'
-TREE = '91c656ad4debdb00c907c8d9147e058f5d3939ea'
+SOURCE = '28bf6a68aad8860e412e5cd3d4f3788caef7edc1'
+TREE = '304515456bbb2d19c47226caf38a5a2c1083544a'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
 SEED_RUN = 45085837980
 SEED_CONTROLLER = 'b8f812f0ab52b9a6c287ca6633394ead0b949d3f'
@@ -91,7 +91,7 @@ def require_hosted():
     expected = {'RUNNER_ENVIRONMENT': 'github-hosted', 'GITHUB_REPOSITORY': 'assboxai/assbox',
                 'GITHUB_REPOSITORY_ID': '1402455771', 'GITHUB_REPOSITORY_OWNER_ID': '327835666',
                 'GITHUB_EVENT_NAME': 'workflow_dispatch', 'GITHUB_RUN_ATTEMPT': '1',
-                'GITHUB_REF': 'refs/heads/test/arm-chromium-seeded-v1'}
+                'GITHUB_REF': 'refs/heads/test/arm-chromium-clang-seeded-v1'}
     require(all(os.environ.get(key) == value for key, value in expected.items()), 'Unexpected hosted authority')
     require(not any(key in os.environ for key in (
         'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN',

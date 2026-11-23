@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Produce and cold-check a scoped cache of the NixOS-selected ARM Chromium package."""
+"""Produce and cold-check a scoped cache of the NixOS-selected ARM Clang package required by Chromium."""
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -11,12 +11,19 @@ import sys
 import tempfile
 from urllib.parse import urlencode
 
-SOURCE = 'c2d872c72ee0478f19e2ca28312deeaf77b446f6'
-TREE = '91c656ad4debdb00c907c8d9147e058f5d3939ea'
+SOURCE = '28bf6a68aad8860e412e5cd3d4f3788caef7edc1'
+TREE = '304515456bbb2d19c47226caf38a5a2c1083544a'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
-EXPECTED = {'derivation': '/nix/store/zp1ixjw70x1laqjkdm8x3z095pl9qr6a-chromium-154.0.8037.97.drv',
- 'outputs': {'out': '/nix/store/vapzkaxsi9yaf9vf7xbi8hp7l4xzchgs-chromium-154.0.8037.97',
-             'sandbox': '/nix/store/bdj1jl1dpm8abcl43i2pk54yp89flm1w-chromium-154.0.8037.97-sandbox'}}
+ALL_EVALUATED = {'derivation': '/nix/store/xl9xyi4sr0mlw8qpp02zc2kp0cs7h7wx-clang-21.1.8.drv',
+ 'outputs': {'debug': '/nix/store/mizw12qhpbpwasp85sm6sh02wn0aq0xh-clang-21.1.8-debug',
+             'dev': '/nix/store/91s9j7mls34fsri4amalhg67ky7qjqf1-clang-21.1.8-dev',
+             'lib': '/nix/store/jamycm4hb42m8mwnridnazp656r233qh-clang-21.1.8-lib',
+             'out': '/nix/store/c219gs6966jd09z36cc44nwi4v9mj0qr-clang-21.1.8',
+             'python': '/nix/store/7p5by0iz3iwa8mjxkgxhrs8kiqy3zmwk-clang-21.1.8-python'}}
+EXPECTED = {'derivation': '/nix/store/xl9xyi4sr0mlw8qpp02zc2kp0cs7h7wx-clang-21.1.8.drv',
+ 'outputs': {'lib': '/nix/store/jamycm4hb42m8mwnridnazp656r233qh-clang-21.1.8-lib',
+             'out': '/nix/store/c219gs6966jd09z36cc44nwi4v9mj0qr-clang-21.1.8',
+             'python': '/nix/store/7p5by0iz3iwa8mjxkgxhrs8kiqy3zmwk-clang-21.1.8-python'}}
 FIELDS = ('narHash', 'narSize', 'references')
 MAX_BYTES = 4 * 1024**3
 
@@ -89,7 +96,7 @@ def main():
     require(os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted' and os.environ.get('GITHUB_RUN_ATTEMPT') == '1',
             'Expected the first attempt of the qualified hosted seed experiment')
     require(os.environ.get('GITHUB_REPOSITORY_ID') == '1402455771' and os.environ.get('GITHUB_REPOSITORY_OWNER_ID') == '327835666'
-            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-chromium-seeded-v1'
+            and os.environ.get('GITHUB_REF') == 'refs/heads/test/arm-chromium-clang-seeded-v1'
             and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch', 'Unexpected seed authority')
     workflow = os.environ['GITHUB_SHA']
     run = os.environ['GITHUB_RUN_ID']
@@ -99,38 +106,40 @@ def main():
     sys.path.insert(0, str(source / 'scripts'))
     import kernel_cache as cache_tools
     require(cache_tools.file_digest(source / 'flake.lock') == LOCK, 'Seed source lock changed')
-    with tempfile.TemporaryDirectory(prefix='assbox-arm-chromium-seed-', dir=evidence.parent) as temporary:
+    with tempfile.TemporaryDirectory(prefix='assbox-arm-chromium-clang-seed-', dir=evidence.parent) as temporary:
         workspace = Path(temporary)
         env = cache_tools.environment(workspace)
-        env['NIX_CONFIG'] += 'max-jobs = 2\ncores = 2\neval-cores = 2\n'
+        env['NIX_CONFIG'] += 'max-jobs = 1\ncores = 4\neval-cores = 2\n'
         selector = source.as_uri().replace('file:', 'git+file:', 1) + '?rev=' + SOURCE
-        attribute = selector + '#nixosConfigurations.aarch64-linux-uefi-none-headless.pkgs.chromium'
+        attribute = selector + '#nixosConfigurations.aarch64-linux-uefi-none-headless.pkgs.llvmPackages_21.clang-unwrapped'
         flags = ('--no-update-lock-file', '--no-write-lock-file')
         actual = cache_tools.decoded(cache_tools.run(
             env, 'nix', 'eval', '--json', *flags, attribute, '--apply',
             'p: { derivation = p.drvPath; outputs = builtins.listToAttrs (map (n: { name = n; value = p.${n}.outPath; }) p.outputs); }',
         ))
-        require(actual == EXPECTED, 'Native evaluated Chromium package does not match independent expectation')
+        require(actual == ALL_EVALUATED, 'Native evaluated Clang package differs from the browser graph')
+        actual = {'derivation': actual['derivation'], 'outputs': {n: actual['outputs'][n] for n in EXPECTED['outputs']}}
+        require(actual == EXPECTED, 'Selected Clang outputs differ from approved browser inputs')
         (evidence / 'expected.json').write_bytes(cache_tools.encoded(actual))
         names = sorted(actual['outputs'])
         paths = [actual['outputs'][name] for name in names]
         with (evidence / 'native-build.log').open('xb') as log:
-            command = ['nix', 'build', *flags, '--no-link', '--max-jobs', '2', '--cores', '2', '-L',
+            command = ['nix', 'build', *flags, '--no-link', '--max-jobs', '1', '--cores', '4', '-L',
                        actual['derivation'] + '^' + ','.join(names)]
             subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, check=True)
-        executable = Path(actual['outputs']['out']) / 'bin/chromium'
-        require(executable.is_file(), 'Native Chromium entrypoint is missing')
+        executable = Path(actual['outputs']['out']) / 'bin/clang'
+        require(executable.is_file(), 'Native Clang entrypoint is missing')
         version = cache_tools.run(env, str(executable), '--version').decode().strip()
-        require(re.search(r'\bChromium 154[.]0[.]8037[.]97\b', version), 'Unexpected native Chromium version')
+        require(re.search(r'\bclang version 21[.]1[.]8\b', version), 'Unexpected native Clang version')
         cache = evidence / 'signed-cache'
-        index = signed_cache(cache_tools, env, workspace, cache, paths, 'assbox-arm-chromium-seed-' + run)
+        index = signed_cache(cache_tools, env, workspace, cache, paths, 'assbox-arm-chromium-clang-seed-' + run)
         verify_cold(cache_tools, env, cache, workspace, paths, index)
-        index.update(schema=1, kind='assbox-native-arm-chromium-store-seed', source=SOURCE, tree=TREE, lockSha256=LOCK,
+        index.update(schema=1, kind='assbox-native-arm-chromium-clang-store-seed', source=SOURCE, tree=TREE, lockSha256=LOCK,
                      workflow=workflow, runId=int(run), attempt=1, architecture='aarch64-linux', nativeVersion=version,
                      testedColdCorrectAndWrongKeys=True, finishedAt=datetime.now(timezone.utc).isoformat(), **actual)
         require(not subprocess.check_output(['git', '-C', source, 'status', '--porcelain']), 'Seed modified the product checkout')
         (evidence / 'index.json').write_bytes(cache_tools.encoded(index))
-        print('Verified signed ARM Chromium seed with', len(index['closure']), 'store paths', flush=True)
+        print('Verified signed ARM Chromium Clang seed with', len(index['closure']), 'store paths', flush=True)
 
 
 if __name__ == '__main__':
