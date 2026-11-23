@@ -39,6 +39,17 @@ let
         lib.optional (!cfg.devices.wifi.enable) "${pkgs.util-linux}/bin/rfkill block wlan"
         ++ lib.optional (!cfg.devices.bluetooth.enable) "${pkgs.util-linux}/bin/rfkill block bluetooth"
       );
+  staticDeviceNodes = pkgs.writeShellScript "assbox-static-device-nodes" ''
+    set -euo pipefail
+    # kmod advertises on-demand ALSA device nodes even when their drivers
+    # cannot load. Keep other static nodes while sound is disabled.
+    nodes=/run/tmpfiles.d/static-nodes.conf
+    ${pkgs.coreutils}/bin/install -d -m 0755 /run/tmpfiles.d
+    ${pkgs.kmod}/bin/kmod static-nodes --format=tmpfiles \
+      | ${pkgs.gawk}/bin/awk '$2 != "/dev/snd" && index($2, "/dev/snd/") != 1' \
+      > "$nodes.tmp"
+    ${pkgs.coreutils}/bin/mv "$nodes.tmp" "$nodes"
+  '';
   devicePolicyCheck = pkgs.writeShellScript "assbox-device-policy-check" ''
     set -eu
     fail() {
@@ -186,6 +197,12 @@ in
     };
     # NixOS leaves this packaged upstream unit out of the system unit set.
     systemd.additionalUpstreamSystemUnits = lib.optional checkDisabledDevices "systemd-udev-settle.service";
+    systemd.services.kmod-static-nodes = lib.mkIf (checkDisabledDevices && !cfg.devices.audio.enable) {
+      serviceConfig.ExecStart = lib.mkForce [
+        ""
+        staticDeviceNodes
+      ];
+    };
     systemd.services.assbox-device-policy-check = lib.mkIf checkDisabledDevices {
       description = "Verify the Assbox disabled-device boundary before networking";
       requiredBy = [ devicePolicyNetworkUnit ];
