@@ -3,6 +3,7 @@
   config,
   lib,
   pkgs,
+  options,
   assboxPackage,
   ...
 }:
@@ -42,6 +43,11 @@ in
       package:
       builtins.elem lib.licenses.unfreeRedistributableFirmware (lib.toList (package.meta.license or [ ]));
     hardware.enableRedistributableFirmware = lib.mkDefault true;
+    environment.defaultPackages = lib.mkDefault (
+      import ../nix/default-packages.nix {
+        inherit lib options pkgs;
+      }
+    );
     environment.systemPackages =
       with pkgs;
       [

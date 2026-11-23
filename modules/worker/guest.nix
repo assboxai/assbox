@@ -4,6 +4,7 @@
   config,
   lib,
   pkgs,
+  options,
   assboxPackage,
   workerSettings,
   ...
@@ -198,6 +199,11 @@ in
     services.dbus.enable = true;
     services.timesyncd.enable = true;
     time.timeZone = workerSettings.timeZone;
+    environment.defaultPackages = lib.mkDefault (
+      import ../../nix/default-packages.nix {
+        inherit lib options pkgs;
+      }
+    );
     environment.systemPackages = with pkgs; [
       assboxPackage
       bash
