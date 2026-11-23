@@ -1,0 +1,16 @@
+{
+  "run": 45105620947,
+  "job": 137466102998,
+  "artifact": 14793257571,
+  "sizeInBytes": 79546360,
+  "transportDigest": "sha256:84e332c8dd6877bf5a82699f6e15f06683dcccbc417d31e8b60590d81d87ab13",
+  "indexSha256": "c8b252083d4eb574d95905252060fe148c31ed2f739266eb254053cc6f2f1ee0",
+  "publicKey": "assbox-arm-nix-core-seed-45105620947:SypdZAX564WjvCDXqGqSLHqZ43m12RLyomTBpaCD968=",
+  "package": {
+    "derivation": "/nix/store/yhmhsy4024ifc8ia2426lb1caxbargsd-nix-2.34.8.drv",
+    "outputs": {
+      "debug": "/nix/store/z0yz2rh3s3kwa6vf2x7qmhh23hrc60p1-nix-2.34.8-debug",
+      "out": "/nix/store/dmm67d25x2ly94a3g9jmzfplfsp4sszj-nix-2.34.8"
+    }
+  }
+}

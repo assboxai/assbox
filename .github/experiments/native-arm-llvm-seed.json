@@ -1,0 +1,18 @@
+{
+  "run": 45085837980,
+  "job": 137404123206,
+  "artifact": 14790289191,
+  "sizeInBytes": 162978162,
+  "transportDigest": "sha256:4fa093d127d24170ae061216fa5b108e36a164e31e1ad0501f6ad70f045b905d",
+  "indexSha256": "3cdc04edf11e5e2ed2cf7fb6bb7e3b6edde084ce5fa3fc7cbf1ff1ce2a3dfa6d",
+  "publicKey": "assbox-arm-llvm-seed-45085837980:Dzj2t97dIR5e0atZAry6l0UcXeuC+0guq8cqCfqSPMw=",
+  "package": {
+    "derivation": "/nix/store/sf1m5zznbj4ca5bgiamhdz4gzw8h0636-llvm-21.1.8.drv",
+    "outputs": {
+      "dev": "/nix/store/x969mp2nyzv87dgv4nrd4724nrn4xrxv-llvm-21.1.8-dev",
+      "lib": "/nix/store/qi2sj07fh7i7qh9vpy4r5qs1pba0q4g2-llvm-21.1.8-lib",
+      "out": "/nix/store/2mqi9z52w7ssdd0p7a68n7kp51izi5j8-llvm-21.1.8",
+      "python": "/nix/store/bva4yrsm3bl39blz8rc2yx0x62rj6dc9-llvm-21.1.8-python"
+    }
+  }
+}
