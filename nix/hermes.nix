@@ -3,7 +3,7 @@
 # closure. Browser/CUA tools are selected separately; missing extras stay off.
 {
   lib,
-  appPkgs,
+  appPkgs ? null,
   pkgs,
   raw,
 }:
@@ -34,7 +34,7 @@ let
   });
   retainedDependencies = map (
     package:
-    if (package.pname or null) == "discord.py" && ffmpeg.version == "9.0.1" then
+    if appPkgs != null && (package.pname or null) == "discord.py" && ffmpeg.version == "9.0.1" then
       package.override { ffmpeg = reviewedFfmpeg; }
     else
       package
