@@ -254,7 +254,10 @@ pkgs.testers.runNixOSTest {
           gptfdisk
           util-linux
         ]
-        ++ lib.optionals apple [ pkgs.refind ];
+        ++ lib.optionals apple [
+          pkgs.efibootmgr
+          pkgs.refind
+        ];
       nix.settings = {
         experimental-features = [
           "nix-command"
