@@ -1,6 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 { pkgs, raw }:
 let
+  oldNode = builtins.any (
+    package: (package.pname or "") == "nodejs" && package.version == "24.20.0"
+  ) raw.nativeBuildInputs;
+  application =
+    if oldNode then
+      # The locked application recipe selects Node before the October
+      # security release. Use Assbox's reviewed Node 24 build for the
+      # application and its normal launcher.
+      assert pkgs.lib.versionAtLeast pkgs.nodejs_24.version "24.22.3";
+      raw.override { nodejs = pkgs.nodejs_24; }
+    else
+      raw;
   healthClient = pkgs.writeText "assbox-openclaw-health.mjs" (
     builtins.readFile ./openclaw-health.mjs
   );
@@ -23,16 +35,16 @@ let
           ws://127.0.0.1:18789|--url=ws://127.0.0.1:18789)
             exec ${pkgs.nodejs}/bin/node \
               ${healthClient} \
-              ${raw}/lib/openclaw/dist/gateway-rpc.runtime.js \
+              ${application}/lib/openclaw/dist/gateway-rpc.runtime.js \
               "$@"
             ;;
         esac
       done
     fi
-    exec ${raw}/bin/openclaw "$@"
+    exec ${application}/bin/openclaw "$@"
   '';
 in
 wrapper.overrideAttrs (old: {
-  name = "${raw.name}-assbox-entrypoint";
-  inherit (raw) meta;
+  name = "${application.name}-assbox-entrypoint";
+  inherit (application) meta;
 })
