@@ -92,6 +92,7 @@ pkgs.runCommand "assbox-worker-artifact"
         builderKernelDrv = builderKernel.drvPath;
         kernelDrv = guest.config.boot.kernelPackages.kernel.drvPath;
         sshdConfig = guest.config.environment.etc."ssh/sshd_config".source;
+        corePackageDerivations = map (package: package.drvPath) guest.config.environment.corePackages;
         assertions = guest.config.assertions;
         mutableUsers = guest.config.users.mutableUsers;
         allowNoPasswordLogin = guest.config.users.allowNoPasswordLogin;

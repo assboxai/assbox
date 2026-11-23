@@ -26,42 +26,6 @@ let
     # CVE-2026-56289
     ../nix/patches/patch-faba04ef4f2b410257f76c1b9dc85e350929c4b9.patch
   ];
-  # NixOS exposes GNU patch directly through environment.corePackages. Keep
-  # the bootstrap/stdenv package set unchanged, but replace that user-visible
-  # profile entry with the reviewed derivation. This mirrors the locked
-  # NixOS core package list; the evaluation test below makes an upstream list
-  # change fail visibly instead of silently dropping a core tool.
-  corePackageNames = [
-    "acl"
-    "attr"
-    "bashInteractive"
-    "bzip2"
-    "coreutils-full"
-    "cpio"
-    "curl"
-    "diffutils"
-    "findutils"
-    "gawk"
-    "getent"
-    "getconf"
-    "gnugrep"
-    "gnupatch"
-    "gnused"
-    "gnutar"
-    "gzip"
-    "xz"
-    "less"
-    "libcap"
-    "ncurses"
-    "netcat"
-    "mkpasswd"
-    "procps"
-    "su"
-    "time"
-    "util-linux"
-    "which"
-    "zstd"
-  ];
   dhcpcdSecurityPatches = [
     ../nix/patches/dhcpcd-78ea09ed1633a583dbcde6e7bab9df4639ec8a34.patch
     ../nix/patches/dhcpcd-708b4a56bae080a5b18c2e0c4c6fbe103131a2b0.patch
@@ -333,16 +297,7 @@ in
         }
       )
     ];
-    environment.corePackages = lib.mkForce (
-      map (
-        name:
-        let
-          package = if name == "gnupatch" then pkgs.assboxPatchedPatch else pkgs.${name};
-        in
-        lib.setPrio ((package.meta.priority or lib.meta.defaultPriority) + 3) package
-      ) corePackageNames
-      ++ [ pkgs.stdenv.cc.libc ]
-    );
+    environment.corePackages = lib.mkForce (import ../nix/core-packages.nix { inherit lib pkgs; });
     assertions = [
       {
         assertion = builtins.all (package: package.version != "8.1.2") [

@@ -37,6 +37,8 @@ in
   };
 
   config = {
+    environment.corePackages = lib.mkForce (import ../../nix/core-packages.nix { inherit lib pkgs; });
+
     assbox = {
       enable = true;
       presentation = "headless";
