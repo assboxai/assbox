@@ -4,7 +4,7 @@ name: Assbox x86 live checkpoint qualification
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-physical-checkpoint-x86-v8
+  group: assbox-physical-checkpoint-x86-v10
   cancel-in-progress: false
 jobs:
   build:
@@ -12,12 +12,13 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v9' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v10' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -54,6 +55,67 @@ jobs:
           install -d -m 0700 "$RUNNER_TEMP/assbox-checkpoint-logs"
           /usr/bin/python3 -I -B authority/.github/experiments/prefill-checkpoint-distribution.py \
             product "$RUNNER_TEMP/assbox-checkpoint-logs/kernel-formatter-seed.json"
+      - name: Download verified sqlite package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14802903280'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45140156638'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/sqlite
+          skip-decompress: true
+      - name: Download verified codex package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14806420068'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45140156638'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/codex
+          skip-decompress: true
+      - name: Download verified toolchain package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14808045620'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45140156638'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/toolchain
+          skip-decompress: true
+      - name: Download verified bootloader package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14812096158'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45140156638'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/bootloader
+          skip-decompress: true
+      - name: Download verified live-systemd package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14813159793'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45140156638'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/live-systemd
+          skip-decompress: true
+      - name: Download verified build-support package cache
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14816571539'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45140156638'
+          path: ${{ runner.temp }}/assbox-checkpoint-package-seeds/build-support
+          skip-decompress: true
+      - name: Import only the independently verified signed native package caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
+          /usr/bin/python3 -I -B authority/.github/experiments/import-checkpoint-package-seeds.py \
+            product "$RUNNER_TEMP/assbox-checkpoint-package-seeds" "$RUNNER_TEMP/assbox-checkpoint-logs/package-seeds.json"
       - name: Verify native finite gates and boot the exact hybrid image twice
         shell: bash
         run: |
@@ -79,7 +141,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/physical-checkpoint-x86-v9' &&
+      github.ref == 'refs/heads/test/physical-checkpoint-x86-v10' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     needs: build
     runs-on: ubuntu-24.04

@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "source": "9df40f0d019211de6d7d161b4cf64c32327e3ccf",
+  "tree": "9ab8b19ce79baf10b3ce4a4e0c2594c33f497569",
+  "planSha256": "dc062edbece9af736442e3c7b5657c3f348ebae4e3c9688bf0c5edd2619a1eff",
+  "seedRun": 45140156638,
+  "seedWorkflow": "6729d74696717330b338a832579e082c63e49921",
+  "seedRef": "refs/heads/test/checkpoint-x86-package-seeds-v1",
+  "repositoryId": 1402455771,
+  "ownerId": 327835666,
+  "groups": {
+    "bootloader": {
+      "artifact": 14812096158,
+      "job": 137575870339,
+      "archiveSha256": "762e81f36b46cc877aed02572e6769a407f5d5ff1b1e2f09c8e925d1403d9f29",
+      "archiveSize": 25121491,
+      "indexSha256": "da46f26bdd5fd7588f017b0ccf4000ed3bed80b34d153442995ba88d1c2d8de5",
+      "publicKey": "assbox-x86-checkpoint-bootloader-45140156638:RV+25QysBq9HjLAbcdqy+qRtQQizXPEj/bI3mJlELZs=",
+      "roots": [
+        "/nix/store/bl23vnwd27y4mrvg85l6i9fzwvamca8y-grub-2.12"
+      ]
+    },
+    "build-support": {
+      "artifact": 14816571539,
+      "job": 137575870181,
+      "archiveSha256": "2d926669023605b6dedda000685f3300845ad01910a48e37a708b2330f66a6ca",
+      "archiveSize": 129814502,
+      "indexSha256": "6b2e6be705937f092704035a342d9c91082ea11675dfb4c4bf05b80bd0cec577",
+      "publicKey": "assbox-x86-checkpoint-build-support-45140156638:WUqWjmUKAkQ7gNKZvIM62DGxv3tl6ml27lQUFWw10oQ=",
+      "roots": [
+        "/nix/store/5y2324vfnxwk5rg4mg34m08kpgmp7i6r-python3-3.13.15",
+        "/nix/store/9mwp0dqkcpgyzl0qccr0ba38y068r00a-gnutls-3.8.13-dev",
+        "/nix/store/cmshxp8cmb11jvacy93402qs9pfqw8ww-openssl-3.6.5-dev",
+        "/nix/store/gnvnzdgrmrshp1l7y1m0401301vpkl47-openssl-3.6.5-bin",
+        "/nix/store/lscrkcp33f6k2ir6dv65ygsmyr96dx5s-cmake-4.1.6",
+        "/nix/store/pdq7rvi11lk8yj91kwgnzfkr0wfyaa8b-python3.13-mypy-1.20.1",
+        "/nix/store/wipks60faabkbl04sas67ddc1b925wzx-openssl-3.5.9-dev",
+        "/nix/store/yl0y2psi0wihl9v60nclgqbqp04gidaw-openssl-3.6.5"
+      ]
+    },
+    "codex": {
+      "artifact": 14806420068,
+      "job": 137575869783,
+      "archiveSha256": "d6cd658518292c73e27d82f1e6dc1a4c47c21187ed1daec9997f2baa787378b9",
+      "archiveSize": 160568301,
+      "indexSha256": "1db4619b980bfa78a6d80eb2c2f47385d6ab9e625cc6a0f46b7ff19f8f0d1430",
+      "publicKey": "assbox-x86-checkpoint-codex-45140156638:LActUQY6NwlmQRCJgfZ7l0w0Fqu2fUgWS4T9rJMwuoY=",
+      "roots": [
+        "/nix/store/h34wrzgziaq5cjbb3z18r474q1wrcvwh-codex-0.160.1"
+      ]
+    },
+    "live-systemd": {
+      "artifact": 14813159793,
+      "job": 137575870328,
+      "archiveSha256": "c79e5e7f677bb2fcb18fcee2c74e7546422b451573521b56ecfbb8bd69d54770",
+      "archiveSize": 40293483,
+      "indexSha256": "9271a74e6b8463aedbaafda65e9ed0c9df9381ee1e509b200f024484b8a03ede",
+      "publicKey": "assbox-x86-checkpoint-live-systemd-45140156638:mfVQnCP6zu1TkBZlfsZq7y3k2yzYxciX9mDJoUfcBUU=",
+      "roots": [
+        "/nix/store/054fpbyxcgnb7g0b464fmwh0kxrivm0l-systemd-assbox-checkpoint-260.5",
+        "/nix/store/a3sfydnnxavbksq997r6ffch8bnvqkyg-systemd-assbox-checkpoint-260.5-man"
+      ]
+    },
+    "sqlite": {
+      "artifact": 14802903280,
+      "job": 137575870586,
+      "archiveSha256": "9b88e38a343189138aa78cb76d8ed0e3269524ff40e086beb83829ca2cc57876",
+      "archiveSize": 45617986,
+      "indexSha256": "0a077b344bc9b3c798f7fbc5c64aed30b1753ae6c1277417a2e1c1c2061b7251",
+      "publicKey": "assbox-x86-checkpoint-sqlite-45140156638:AwYH7cL5Ahfyu/e0xFsG8wV2eEZYaNPYUMfggDJ0d6k=",
+      "roots": [
+        "/nix/store/0m9y9xds9xhjf5xxddxsvp5q8h00c6ml-sqlite-3.54.1-dev",
+        "/nix/store/2f26mkcf9xrpndhhfrr0vfcq3qypfc9f-sqlite-3.54.1",
+        "/nix/store/6dxqg04dcbh6g8b805m4hbqvk2s2k0fn-sqlite-3.54.1-debug",
+        "/nix/store/m7l1rwbyq8hicv2dmnpaiwfkccx6hbxv-sqlite-3.54.1-bin",
+        "/nix/store/mi26rqdk4dkxg7z259yskgp04iz8lhd8-sqlite-3.54.1-man",
+        "/nix/store/wk9w3qmsqqb0ncmdqkl69gp1xxgp2nlm-sqlite-3.54.1-doc"
+      ]
+    },
+    "toolchain": {
+      "artifact": 14808045620,
+      "job": 137575870353,
+      "archiveSha256": "8f42bcbfdc7c237ccc62c83bf18bece4fed4aceeb7f48178513dd8308f9e5fcf",
+      "archiveSize": 244219769,
+      "indexSha256": "1e44a0dd2037cda280a378102bc22f41864f57a9a2e665018cfe7d9ec0577055",
+      "publicKey": "assbox-x86-checkpoint-toolchain-45140156638:XR9uJPmmbT/ytkJ/pjNNYQuBmnb4ClOH0vRfnbG8Ixc=",
+      "roots": [
+        "/nix/store/152caf6kh0q8y6m33lrrv1lwcpf3y1ss-gcc-15.3.0-lib",
+        "/nix/store/a8vrxya271xjmimxscr41mr0c2i9fv3q-x86_64-unknown-linux-musl-gcc-15.3.0-info",
+        "/nix/store/ddw6fadnpcm2y47jifgarsc7rjvv6ll6-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0-info",
+        "/nix/store/j3l2kv87b0f5wiwg2ximc776qvpldmdi-x86_64-unknown-linux-musl-gcc-15.3.0",
+        "/nix/store/pxsiwssbdzxcnwrn5jz6lk5l2fjbdd4m-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0",
+        "/nix/store/ra4346wcmh0lnlxb4qg4f55hsfmldamz-x86_64-unknown-linux-musl-gcc-15.3.0-lib",
+        "/nix/store/skyr97qpf66k5lfaf9ypiq8b8c3l75zi-gcc-15.3.0",
+        "/nix/store/w6rrgjsjjnv5mvmflrzapsqwfrrnlkis-gcc-15.3.0-man",
+        "/nix/store/wd10djs6cd862fk6rxg4bsw2xk419kws-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0-man",
+        "/nix/store/wm8r1da11f8wp734g431h8b4xgw4hs15-x86_64-unknown-linux-musl-gcc-15.3.0-man",
+        "/nix/store/xiir55lrsvcgz0aa20jd1cc4manr7pa4-gcc-15.3.0-info",
+        "/nix/store/y2vb3jix1lh3pl7ba1fimk0wyd9zr6x0-x86_64-unknown-linux-musl-nolibc-gcc-15.3.0-lib"
+      ]
+    }
+  }
+}

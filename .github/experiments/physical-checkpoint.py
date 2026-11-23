@@ -16,7 +16,7 @@ import sys
 REPO = 'assboxai/assbox'
 REPO_ID = '1402455771'
 OWNER_ID = '327835666'
-REF = 'refs/heads/test/physical-checkpoint-x86-v9'
+REF = 'refs/heads/test/physical-checkpoint-x86-v10'
 SOURCE = '9df40f0d019211de6d7d161b4cf64c32327e3ccf'
 TREE = '9ab8b19ce79baf10b3ce4a4e0c2594c33f497569'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
@@ -130,6 +130,12 @@ def build(files, scope, logs):
     pin = json.loads((Path(__file__).resolve().parent / 'v71-x86-kernel-formatter.json').read_bytes())
     if any(prefill.get(key) != value for key, value in pin.items()) or prefill.get('signatureRequired') is not True:
         raise ValueError('Checkpoint cache receipt differs from the reviewed signed inputs')
+    package_pins = json.loads((Path(__file__).resolve().parent / 'checkpoint-package-seed-pins.json').read_bytes())
+    package_receipt = json.loads((logs / 'package-seeds.json').read_bytes())
+    if (any(package_receipt.get(key) != value for key, value in package_pins.items())
+            or package_receipt.get('independentSignatureChecksPassed') is not True
+            or package_receipt.get('isoAndBootNotRegistered') is not True):
+        raise ValueError('Checkpoint exact native package seeds were not verified')
     for gate in GATES:
         print(f'Running native checkpoint gate {gate[0]}', flush=True)
         with (logs / (gate[0] + '.log')).open('xb') as output:
