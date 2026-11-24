@@ -316,6 +316,9 @@
                     # Use the reviewed runtime for compilation after dependency setup.
                     preBuild = (old.preBuild or "") + ''
                       export PATH="${nixpkgs.lib.getBin bun}/bin:$PATH"
+                      # The standalone bundle also copies the entry script's shebang.
+                      substituteInPlace packages/coding-agent/src/cli.ts \
+                        --replace-fail '#!${nixpkgs.lib.getExe appPkgs.bun}' '#!${nixpkgs.lib.getExe bun}'
                     '';
                   })
                 else
