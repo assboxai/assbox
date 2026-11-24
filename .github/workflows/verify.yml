@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox runtime dependencies ARM finite verification
+name: Assbox reviewed OpenClaw native ARM runtime
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-finite-runtime-reviewed-qualification
+  group: assbox-arm-openclaw-runtime-reviewed-20261107
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,10 +12,10 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-finite-runtime-reviewed-qualification' &&
+      github.ref == 'refs/heads/test/arm-openclaw-runtime-reviewed-20261107' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 110
+    timeout-minutes: 260
     permissions:
       contents: read
     env:
@@ -49,7 +49,7 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Verify candidate identity and run native finite gates
+      - name: Build and check the exact native ARM OpenClaw runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -67,7 +67,7 @@ jobs:
             'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
             '10e9eb6ad0cc12447dbea4fd76160c1b8a14ba1bdaa3e5ff0eadc1ae218b4997  scripts/release-check' \
             | sha256sum --check
-          evidence="$RUNNER_TEMP/assbox-arm-release-runtime"
+          evidence="$RUNNER_TEMP/assbox-arm-reviewed-openclaw"
           mkdir -m 0700 "$evidence"
           {
             date -u +%FT%TZ
@@ -78,31 +78,79 @@ jobs:
             df -h /nix/store "$RUNNER_TEMP"
             nix --version
           } > "$evidence/scope.txt"
-          export XDG_STATE_HOME="$RUNNER_TEMP/assbox-arm-chainman-state"
-          mkdir -m 0700 "$XDG_STATE_HOME"
-          run_finite() {
-            local command_name=$1
-            local result=0
-            nix run path:./nix/dev#just -- "$@" > "$evidence/finite-$command_name.log" 2>&1 || result=$?
-            printf '%s\t%s\t%s\n' "$command_name" "$result" "$(date -u +%FT%TZ)" >> "$evidence/finite.tsv"
-            return "$result"
-          }
-          run_finite setup --no-hooks
-          run_finite doctor
-          run_finite explain verify --json
-          run_finite deps-check
-          run_finite deps-coverage
-          run_finite deps-policy-report
-          run_finite verify-lite
-          run_finite verify-prepare
+          profile="git+file://$PWD?rev=$PRODUCT_COMMIT#nixosConfigurations.aarch64-linux-uefi-openclaw-headless"
+          nix eval --json "$profile" --apply '
+            system: {
+              package = map (p: { inherit (p) drvPath; output = toString p; })
+                (builtins.filter (p: builtins.match "openclaw-.+-assbox-entrypoint" (p.name or "") != null)
+                  system.config.environment.systemPackages);
+              tools = map (p: { inherit (p) drvPath; output = toString p; })
+                (with system.pkgs; [ bubblewrap bash coreutils ]);
+            }
+          ' > "$evidence/bindings.json" 2> "$evidence/bindings.log"
+          wrapper=$(jq -er '.package|if length == 1 then .[0].drvPath else error("OpenClaw wrapper selection") end' "$evidence/bindings.json")
+          package=$(jq -er '.package[0].output' "$evidence/bindings.json")
+          test "$wrapper" = /nix/store/8sf2vxs3prbl90dmxim6qkjij5i8pigq-openclaw-2026.11.7-assbox-entrypoint.drv
+          test "$package" = /nix/store/mnxwpzck80dlq5hafljssgdkb68rs8l6-openclaw-2026.11.7-assbox-entrypoint
+          raw=$(nix-store --query --references "$wrapper" | grep -E -- '-openclaw-2026[.]11[.]7[.]drv$')
+          test "$raw" = /nix/store/c7ag4rxs2bmscqag6j52i3i334fl6h4c-openclaw-2026.11.7.drv
+          deps=$(nix-store --query --references "$raw" | grep -E -- '-openclaw-pnpm-deps[.]drv$')
+          pnpm=$(nix-store --query --references "$raw" | grep -E -- '-pnpm-12[.]23[.]0[.]drv$')
+          deps_output=$(nix-store --query --outputs "$deps")
+          pnpm_output=$(nix-store --query --outputs "$pnpm")
+          test "$deps_output" = /nix/store/2i5hfwwz0nhzikpbn2sg235jp1lzsxk4-openclaw-pnpm-deps
+          nix build --no-link --print-out-paths --max-jobs 1 --cores "$(nproc)" -L "$deps^out" > "$evidence/dependencies.txt" 2> "$evidence/dependencies.log"
+          test "$(cat "$evidence/dependencies.txt")" = "$deps_output"
+          nix build --no-link --print-out-paths --max-jobs 1 --cores "$(nproc)" -L "$wrapper^out" > "$evidence/package.txt" 2> "$evidence/package.log"
+          test "$(cat "$evidence/package.txt")" = "$package"
+          nix path-info --offline --recursive --json --json-format 1 "$package" > "$evidence/runtime-closure.json"
+          jq -e --arg deps "$deps_output" --arg pnpm "$pnpm_output" \
+            '(has($deps)|not) and (has($pnpm)|not) and any(keys[]; endswith("-nodejs-24.22.3"))'             "$evidence/runtime-closure.json" > "$evidence/runtime-policy.txt"
+          mapfile -t tool_drvs < <(jq -r '.tools[].drvPath + "^out"' "$evidence/bindings.json")
+          nix build --no-link -L "${tool_drvs[@]}" > "$evidence/smoke-tools.txt" 2> "$evidence/smoke-tools.log"
+          bubblewrap=$(jq -er '.tools[0].output' "$evidence/bindings.json")
+          bash=$(jq -er '.tools[1].output' "$evidence/bindings.json")
+          coreutils=$(jq -er '.tools[2].output' "$evidence/bindings.json")
+          timeout 125 "$bubblewrap/bin/bwrap" --unshare-net --unshare-ipc --unshare-pid --unshare-uts \
+            --new-session --die-with-parent --clearenv --ro-bind /nix/store /nix/store \
+            --dev /dev --proc /proc --tmpfs /tmp --tmpfs /run --dir /tmp/home             --setenv HOME /tmp/home --setenv XDG_RUNTIME_DIR /run --setenv TERM dumb --setenv USER agent \
+            --setenv OPENCLAW_DISABLE_BONJOUR 1 --setenv OPENCLAW_NO_RESPAWN 1 \
+            --setenv PATH "$coreutils/bin" "$bash/bin/bash" -e -s -- "$package/bin/openclaw" \
+            > "$evidence/native-smoke.log" 2> "$evidence/native-smoke.stderr" <<'SMOKE'
+          launcher=$1
+          mkdir -m 700 "$HOME/.openclaw"
+          printf '%s\n' '{"gateway":{"mode":"local","bind":"loopback","auth":{"mode":"token","token":"disposable-test-token"}}}' > "$HOME/.openclaw/openclaw.json"
+          "$launcher" --version
+          "$launcher" gateway run --bind loopback --port 18789 >/tmp/gateway.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; tail -30 /tmp/gateway.log' EXIT
+          deadline=$((SECONDS + 90))
+          while test "$SECONDS" -lt "$deadline"; do
+            if timeout 12 "$launcher" gateway health --url ws://127.0.0.1:18789 --token disposable-test-token > /tmp/health.log 2>&1; then
+              cat /tmp/health.log
+              printf 'Authenticated loopback health passed.\n'
+              rejected=0
+              timeout 12 "$launcher" gateway health --url ws://127.0.0.1:18789 --token incorrect-test-token > /tmp/negative.log 2>&1 || rejected=$?
+              cat /tmp/negative.log
+              test "$rejected" -ne 0 && test "$rejected" -ne 124 || exit 1
+              timeout 12 "$launcher" gateway health --url ws://127.0.0.1:18789 --token disposable-test-token >/tmp/recheck.log 2>&1
+              printf 'Incorrect disposable token rejected with exit %s.\n' "$rejected"
+              exit 0
+            fi
+            kill -0 "$pid"
+            sleep 1
+          done
+          cat /tmp/health.log
+          exit 1
+          SMOKE
+          grep -Fx 'OpenClaw 2026.11.7' "$evidence/native-smoke.log"
+          grep -Fx 'Authenticated loopback health passed.' "$evidence/native-smoke.log"
+          grep -E '^Incorrect disposable token rejected with exit [1-9][0-9]*[.]$' "$evidence/native-smoke.log"
           test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: runtime-reviewed-qualification-native-arm-finite
-          path: |
-            ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
-            ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
-            ${{ runner.temp }}/assbox-arm-release-runtime/finite-*.log
+          name: reviewed-openclaw-20261107-arm-native
+          path: ${{ runner.temp }}/assbox-arm-reviewed-openclaw
           if-no-files-found: warn
           retention-days: 14
