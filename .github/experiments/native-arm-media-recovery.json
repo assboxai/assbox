@@ -1,0 +1,648 @@
+{
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "architecture": "aarch64-linux",
+  "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+  "raw": "/nix/store/prlcql8f9n7zjvz14cam17fcy3imc0ka-chromium-unwrapped-154.0.8037.97.drv",
+  "wrapper": {
+    "derivation": "/nix/store/z8ya6xslkr6vwqj1512bz7q53681dll4-chromium-154.0.8037.97.drv",
+    "outputs": {
+      "out": "/nix/store/0bmzlfrh5wx5xw92ywg1c8xasg01f9kc-chromium-154.0.8037.97",
+      "sandbox": "/nix/store/2lj3l1pb0g98lv5kb60pk122z1k4zh97-chromium-154.0.8037.97-sandbox"
+    }
+  },
+  "groups": {
+    "media-ffmpeg": [
+      {
+        "derivation": "/nix/store/gkv926q4jm438ak4d72vh81z1v7w1wca-flac-1.5.0.drv",
+        "outputs": {
+          "dev": "/nix/store/iv07klyf0hnm3zz040kqdb2ij8qw9bms-flac-1.5.0-dev"
+        }
+      },
+      {
+        "derivation": "/nix/store/rvyza5l7m0b71fdc75py87riz2fm3az6-ffmpeg-8.1.3.drv",
+        "outputs": {
+          "dev": "/nix/store/439gg07jm7h8hvkdvc9sy50s8hlin5hv-ffmpeg-8.1.3-dev"
+        }
+      },
+      {
+        "derivation": "/nix/store/w59kqrp309snxyfaci9nz5p26smm5gxd-libva-2.23.0.drv",
+        "outputs": {
+          "dev": "/nix/store/c59ak9vqj6iw91lhd5sw9sjwdq1alf19-libva-2.23.0-dev"
+        }
+      }
+    ],
+    "media-pipewire": [
+      {
+        "derivation": "/nix/store/8rdlmbrxvs2bnv1jxx827kk2yvq1sscq-libpulseaudio-17.0.drv",
+        "outputs": {
+          "dev": "/nix/store/ysfyx36rspgg97zrdka76s53bvl95wl0-libpulseaudio-17.0-dev"
+        }
+      },
+      {
+        "derivation": "/nix/store/rzbyqg9yif4kl3sbk9snij93y0wmrg48-pipewire-1.6.6.drv",
+        "outputs": {
+          "dev": "/nix/store/6q8h1x1f2lmci2xf2j0kd1hqnq7p0hp5-pipewire-1.6.6-dev"
+        }
+      }
+    ],
+    "media-desktop": [
+      {
+        "derivation": "/nix/store/9cw61220bby8lkmpw3d7y94rlkrghl79-gtk+3-3.24.52.drv",
+        "outputs": {
+          "dev": "/nix/store/w1z55iqbl3s7snwlrkdx8jh7pl8scsps-gtk+3-3.24.52-dev"
+        }
+      },
+      {
+        "derivation": "/nix/store/9lz1hnidkqx5hc0fma577099d95w15b6-vulkan-loader-1.4.341.0.drv",
+        "outputs": {
+          "out": "/nix/store/x4kjjmbdyj9xwfcl70z0672fk8nnx9kj-vulkan-loader-1.4.341.0"
+        }
+      },
+      {
+        "derivation": "/nix/store/i7xipa2pmji7djnrq65lgl3pj6ig0azr-wayland-1.25.0.drv",
+        "outputs": {
+          "dev": "/nix/store/6da6pd27rvh6dlvf9bklsgws2n1a3fra-wayland-1.25.0-dev"
+        }
+      },
+      {
+        "derivation": "/nix/store/wqviripbnyj4bcxiaazly32jnhddidxp-libxkbcommon-1.13.1.drv",
+        "outputs": {
+          "dev": "/nix/store/gppfpqmagzi9cmkawsn6jl78krpqcikd-libxkbcommon-1.13.1-dev"
+        }
+      },
+      {
+        "derivation": "/nix/store/z9v2gsphcvwsgrk5c7inrn102q5zyb16-speech-dispatcher-0.12.1.drv",
+        "outputs": {
+          "out": "/nix/store/6ggzfm39jbqm5cpxx2bqir4r17alqsqj-speech-dispatcher-0.12.1"
+        }
+      }
+    ]
+  },
+  "seedInputs": {
+    "media-ffmpeg": [
+      {
+        "group": "compiler",
+        "artifact": 14911233205,
+        "zipBytes": 876284350,
+        "rawIndexSha256": "75dd5c0c90f6fb5c8b139733d70c0b79a8805674a3634c789992b514292a9244",
+        "artifactSha256": "sha256:7add9dfc5028a8a5d9e23cfdb7b9446de14a1eaa385ec99591ee6abde631cf88",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45358163413",
+          "GITHUB_SHA": "5133aeb71bb7d0cdd95119cf74c461ae59476e5d"
+        },
+        "publicKey": "assbox-arm-chromium-compiler-45358163413:IfbQx9T4/DKhiwfDEdkrBY0QHAAzUahikwF6elHGgn8=",
+        "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+        "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+        "selected": {
+          "/nix/store/59d6sf8bfg9pgv7khixxbbccg4ydclhz-ninja-1.13.2.drv": {
+            "out": "/nix/store/rwvxhwlnixph6914ll34mkz8pdcpljzd-ninja-1.13.2"
+          },
+          "/nix/store/mcf3wkz2z9r45g2pkdjap9b8isks8cfi-bison-3.8.2.drv": {
+            "out": "/nix/store/rz2r1axddqazy8a1v1144hw7mn6lhbpy-bison-3.8.2"
+          },
+          "/nix/store/qxq39yigcgirldcizybax0ygb76f9piz-nasm-3.02.drv": {
+            "out": "/nix/store/yfa4vsgljgcv7f5wx9i025n151b1p4i2-nasm-3.02"
+          }
+        }
+      },
+      {
+        "group": "language",
+        "artifact": 14903986546,
+        "zipBytes": 198276793,
+        "rawIndexSha256": "73046950046b7b0b232c0a559591a3101a8733525ea4b4edc9212f947c5760d9",
+        "artifactSha256": "sha256:e830bac41dc693ca239923918da190b8877dcc3640a3973cb223f11f5950c139",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45336837496",
+          "GITHUB_SHA": "22bf7a77a348700e7a6ddffcf0d49978355b4de9"
+        },
+        "publicKey": "assbox-arm-chromium-language-45336837496:F9FYBuk9FLA6WC0H/rHhJ6FExAYXUr6Fs6Mx24MlDEI=",
+        "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+        "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+        "selected": {
+          "/nix/store/4m3a90jmax2xlzkswvnd8n628zhafkjg-python3-3.13.15.drv": {
+            "out": "/nix/store/bc3097l52p0wilc3sffndalyijzc4frz-python3-3.13.15"
+          },
+          "/nix/store/vlgqbc03mmwhh0lpf3yjr48i7bc0ijlw-perl-5.42.3.drv": {
+            "out": "/nix/store/cwzkc29p7vard6xrxy1bf7dfgw650jqd-perl-5.42.3"
+          }
+        }
+      },
+      {
+        "artifact": 14916138050,
+        "artifactSha256": "sha256:374615951c5e12929b2884362ae8c9451b5d88b76d4944f1975b0fe3e937fe23",
+        "group": "platform-libraries",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-platform-libraries-45373207069:DNcnY5PIuMyQhGWZXhelxh8W2jAd0e3AsaGMKELlczA=",
+        "rawIndexSha256": "17a1ab21717390d9e130b661b927c431b01c8213d6a501de3b2435c7cf484d94",
+        "selected": {
+          "/nix/store/3v8kcyiw8898r0caipvrz22if55rw3fr-util-linux-minimal-2.42.3.drv": {
+            "dev": "/nix/store/kx2ffxa74p38s4vn5qd9mxcxf09ai7qv-util-linux-minimal-2.42.3-dev"
+          },
+          "/nix/store/3vkhkraki85inq56zpx25rn2g9mkxs46-curl-8.22.0.drv": {
+            "dev": "/nix/store/9hzcdsy61a2pxjscks4d9diq89ifqb8d-curl-8.22.0-dev"
+          },
+          "/nix/store/3zyycqi1bgv1nw6v58289rdvb0zrn300-libffi-3.8.0.drv": {
+            "dev": "/nix/store/sc4rs9sx3g727r2l57wwibgv89shc1q7-libffi-3.8.0-dev"
+          },
+          "/nix/store/69qzial9zj0b11wiav5ws8g64p3b8fjv-libxml2-2.15.4.drv": {
+            "dev": "/nix/store/fbas2swa30q2bq0i1fgm0xy2m5xnhywk-libxml2-2.15.4-dev"
+          },
+          "/nix/store/837gjms8kqkng5ryhj7vsy30xyr02jwh-systemd-minimal-libs-260.5.drv": {
+            "dev": "/nix/store/iw37k2bqklhgl9lw881fh1sg1p6fdin0-systemd-minimal-libs-260.5-dev"
+          },
+          "/nix/store/bk5wh1nxz064czggf63838z7n35y4j87-krb5-1.22.2.drv": {
+            "dev": "/nix/store/x2jadg7w45xraxjdn2f0qyhlil9qmmm5-krb5-1.22.2-dev"
+          },
+          "/nix/store/d5y15g3lilz7g0fwd18d1j5j76rxwicq-bash-interactive-5.3p9.drv": {
+            "dev": "/nix/store/lqss6yfrdhm3fhbb3gjzm0vchphydhmv-bash-interactive-5.3p9-dev"
+          },
+          "/nix/store/s1nxcnmy81qa52bq1cjpmjnq408g9aja-util-linux-2.42.3.drv": {
+            "dev": "/nix/store/khc49b59dffb9dniicidin0cgyfd16mp-util-linux-2.42.3-dev"
+          },
+          "/nix/store/sgbkb373mh8zyhy9swc7a78rvshabjab-libcap-2.77.drv": {
+            "dev": "/nix/store/7xisrsjfpvf0kvbqwr38x5c2wisxai12-libcap-2.77-dev"
+          },
+          "/nix/store/vrx9kp5745qm3nkmpa1fbxqfpkkr509j-libevent-2.1.13.drv": {
+            "dev": "/nix/store/p9xkh8iagj3034ys6cb3znbx2i64y3lg-libevent-2.1.13-dev"
+          },
+          "/nix/store/zxzcmw0pnx0qvqinvvh6cpd1zh2w22g9-libxslt-1.1.45.drv": {
+            "dev": "/nix/store/nmb6v2hj5f7cn87claqqdw8lk25vhq98-libxslt-1.1.45-dev"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 60518405
+      },
+      {
+        "artifact": 14919506082,
+        "artifactSha256": "sha256:1048e8faf426c507d3c71545283c55f29b372c5319112c0af6063714a0a77814",
+        "group": "display-libraries",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-display-libraries-45373207069:59ts49Js4hxkfe0rpzIKJ664sqALb6xMugJ1IyqTj0c=",
+        "rawIndexSha256": "82eedc1b365539bb510554dc875f376ab7c9da39ba6331bfe264afeb66e66577",
+        "selected": {
+          "/nix/store/1a837zyv8ack8f6998bkybba8f7f2v1v-libxcursor-1.2.3.drv": {
+            "dev": "/nix/store/3x5xxvxkywzcffzmkq2921s5j8wnl7ak-libxcursor-1.2.3-dev"
+          },
+          "/nix/store/9mymjy53nl5j2riz72d1qyjdg2fqzd8g-libjpeg-turbo-3.1.4.drv": {
+            "dev": "/nix/store/jmkqcxsaf67jfqriwqkhhb0ysy3s9pss-libjpeg-turbo-3.1.4-dev"
+          },
+          "/nix/store/9za5rh2hg8rnydsw4afk1dy2j86slgb6-libwebp-1.6.0.drv": {
+            "out": "/nix/store/9jz3viks36ig8bv51dkzdq76bx5jmp3n-libwebp-1.6.0"
+          },
+          "/nix/store/bkpz0nd9qrysdd3jivyaqsdmj708c5ls-mesa-libgbm-26.0.3.drv": {
+            "out": "/nix/store/2anjj5c1gvwyf5vzdf6bdjmivwq2qp3x-mesa-libgbm-26.0.3"
+          },
+          "/nix/store/dmzxfzfpf1kkwiicdyvdxdz9zg6awmmr-libxdamage-1.1.7.drv": {
+            "dev": "/nix/store/2fqhi9i4gvfvj1cwps1agr6qb0vfjgga-libxdamage-1.1.7-dev"
+          },
+          "/nix/store/h0kpbwn90dkd2ak3pxgqyrj2m5k5sbmz-libopus-1.6.1.drv": {
+            "dev": "/nix/store/zy0lmz7f3gnl05sbngnxj7nb9rz3x1x4-libopus-1.6.1-dev"
+          },
+          "/nix/store/hm59s7y77vvas75yr8gbbkp09vqgci10-libepoxy-1.5.10.drv": {
+            "dev": "/nix/store/cjnmvjqdmyh63j8qvb9f1sj8wgcwzlxc-libepoxy-1.5.10-dev"
+          },
+          "/nix/store/llwwjkv639r5bz42bmg5a3jya04980y9-libxtst-1.2.5.drv": {
+            "out": "/nix/store/znwgy7yda7f2jw4bnmd5i32h9avxds4v-libxtst-1.2.5"
+          },
+          "/nix/store/n2klkjnscc6p5lp957wndsj3grh02fjb-speex-1.2.1.drv": {
+            "dev": "/nix/store/g9i0jj99si8mkkigdxq2y2y8jvk7c8p7-speex-1.2.1-dev"
+          },
+          "/nix/store/n4fga6rr1kklxgdkid76wf31bfrphzjb-libxshmfence-1.3.3.drv": {
+            "dev": "/nix/store/p74p4npx6a6s01632w6z9yyj03hydh0a-libxshmfence-1.3.3-dev"
+          },
+          "/nix/store/nbshf8n471cxibxsn41ffz47ijj5wh2c-libxscrnsaver-1.2.5.drv": {
+            "out": "/nix/store/l02bp0b511rrc2j2cc1gc7ml311xs2sz-libxscrnsaver-1.2.5"
+          },
+          "/nix/store/qlcjpkqh3d7b63d8np5h9yjm12r49zyj-libdrm-2.4.133.drv": {
+            "dev": "/nix/store/6hr03kr3921az38jqjpgsavyasfk671p-libdrm-2.4.133-dev"
+          },
+          "/nix/store/sza5bnnr46fgjan2hh0qnk71gir8farc-libusb-1.0.30.drv": {
+            "dev": "/nix/store/hrcsabi9mx006q8ihsz84mdk3z55zsfh-libusb-1.0.30-dev"
+          },
+          "/nix/store/y172lpxkc5rajs03ms81pnd0nkvpaxrn-libglvnd-1.7.0.drv": {
+            "dev": "/nix/store/k7m7blcv6wlv5f1j0kmwa3jwmyp548a9-libglvnd-1.7.0-dev",
+            "out": "/nix/store/7d0dd4scbz5rb4gl8hgbsy9wn72cxffk-libglvnd-1.7.0"
+          },
+          "/nix/store/yvclmfqc028wjmj2hsac5wznagvwxmjl-alsa-lib-1.2.15.3.drv": {
+            "dev": "/nix/store/y14dymqddrji4kjgcfri4999h59d2jg2-alsa-lib-1.2.15.3-dev",
+            "out": "/nix/store/a2rkpzdgv5cgnfnrb3y7lgglixgz8khz-alsa-lib-1.2.15.3"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 30538271
+      },
+      {
+        "artifact": 14923465085,
+        "artifactSha256": "sha256:093746c69589e90fb67c847b76c30f31ae0f09ed79018ecb121e0f1a373b7286",
+        "group": "runtime-core",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45360839334",
+          "GITHUB_SHA": "35e3ac80aad78dee1331f3daa90c48d03114df2d"
+        },
+        "publicKey": "assbox-arm-chromium-runtime-core-45360839334:D10UJp/Ta7wjWOqb10uUQJXM6H5hRaY4H3qzA9M7z10=",
+        "rawIndexSha256": "a4197cf7a8294571cc051b229976ba0fcf68f6cee02172c97d0812623835a41f",
+        "selected": {
+          "/nix/store/4ca61l9g3lkc7kxbkal4l0309q965n17-glib-2.88.4.drv": {
+            "dev": "/nix/store/nf81yawx4kkslgi7lqc62vrb7spgbkss-glib-2.88.4-dev"
+          },
+          "/nix/store/bhnnqbdqll9j8csa3ziqjq5zbhm109ih-cups-2.4.19.drv": {
+            "dev": "/nix/store/c2bprpbrfl4nmzzmcwh19ik67piw13p6-cups-2.4.19-dev"
+          },
+          "/nix/store/isiimyns6gx2qypqnky0jsvnkp7n5n28-nodejs-24.22.3.drv": {
+            "out": "/nix/store/452664sh0qmzj9ck4py0v4q10lqg2iy4-nodejs-24.22.3"
+          },
+          "/nix/store/kyfv45djhh0pxzx58zkjivzkbcc957j9-dbus-glib-0.114.drv": {
+            "dev": "/nix/store/sd4hvqfb7q0v2q7lgl5v636igfv3af31-dbus-glib-0.114-dev"
+          },
+          "/nix/store/lwcqd0pg37xislwbvszwrs7nn8m0f538-npm-config-hook.drv": {
+            "out": "/nix/store/b39xp72jaqcm4pdsig0ygnzq0i570h4j-npm-config-hook"
+          },
+          "/nix/store/vfm1f0bzm43w87rglvhff8qfflhra189-at-spi2-core-2.60.7.drv": {
+            "dev": "/nix/store/dzqa0cjs0v1292waqbnyd3rb9qmbsrpb-at-spi2-core-2.60.7-dev"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 482658518,
+        "closureSelected": {
+          "/nix/store/34krnpyyfipqgabaivxizn5ws6x0193v-nodejs-slim-24.22.3.drv": {
+            "corepack": "/nix/store/dra3mpq662ajgzqf8044fia00pwv3dsa-nodejs-slim-24.22.3-corepack",
+            "npm": "/nix/store/3s19q346dpw4hbclbfaszsmbjqmnvw31-nodejs-slim-24.22.3-npm",
+            "out": "/nix/store/6iljwa6yrc0q0f8c5hyvfdbs1zkd4rvh-nodejs-slim-24.22.3"
+          }
+        }
+      }
+    ],
+    "media-pipewire": [
+      {
+        "group": "compiler",
+        "artifact": 14911233205,
+        "zipBytes": 876284350,
+        "rawIndexSha256": "75dd5c0c90f6fb5c8b139733d70c0b79a8805674a3634c789992b514292a9244",
+        "artifactSha256": "sha256:7add9dfc5028a8a5d9e23cfdb7b9446de14a1eaa385ec99591ee6abde631cf88",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45358163413",
+          "GITHUB_SHA": "5133aeb71bb7d0cdd95119cf74c461ae59476e5d"
+        },
+        "publicKey": "assbox-arm-chromium-compiler-45358163413:IfbQx9T4/DKhiwfDEdkrBY0QHAAzUahikwF6elHGgn8=",
+        "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+        "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+        "selected": {
+          "/nix/store/59d6sf8bfg9pgv7khixxbbccg4ydclhz-ninja-1.13.2.drv": {
+            "out": "/nix/store/rwvxhwlnixph6914ll34mkz8pdcpljzd-ninja-1.13.2"
+          },
+          "/nix/store/mcf3wkz2z9r45g2pkdjap9b8isks8cfi-bison-3.8.2.drv": {
+            "out": "/nix/store/rz2r1axddqazy8a1v1144hw7mn6lhbpy-bison-3.8.2"
+          },
+          "/nix/store/qxq39yigcgirldcizybax0ygb76f9piz-nasm-3.02.drv": {
+            "out": "/nix/store/yfa4vsgljgcv7f5wx9i025n151b1p4i2-nasm-3.02"
+          }
+        }
+      },
+      {
+        "group": "language",
+        "artifact": 14903986546,
+        "zipBytes": 198276793,
+        "rawIndexSha256": "73046950046b7b0b232c0a559591a3101a8733525ea4b4edc9212f947c5760d9",
+        "artifactSha256": "sha256:e830bac41dc693ca239923918da190b8877dcc3640a3973cb223f11f5950c139",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45336837496",
+          "GITHUB_SHA": "22bf7a77a348700e7a6ddffcf0d49978355b4de9"
+        },
+        "publicKey": "assbox-arm-chromium-language-45336837496:F9FYBuk9FLA6WC0H/rHhJ6FExAYXUr6Fs6Mx24MlDEI=",
+        "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+        "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+        "selected": {
+          "/nix/store/4m3a90jmax2xlzkswvnd8n628zhafkjg-python3-3.13.15.drv": {
+            "out": "/nix/store/bc3097l52p0wilc3sffndalyijzc4frz-python3-3.13.15"
+          },
+          "/nix/store/vlgqbc03mmwhh0lpf3yjr48i7bc0ijlw-perl-5.42.3.drv": {
+            "out": "/nix/store/cwzkc29p7vard6xrxy1bf7dfgw650jqd-perl-5.42.3"
+          }
+        }
+      },
+      {
+        "artifact": 14916138050,
+        "artifactSha256": "sha256:374615951c5e12929b2884362ae8c9451b5d88b76d4944f1975b0fe3e937fe23",
+        "group": "platform-libraries",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-platform-libraries-45373207069:DNcnY5PIuMyQhGWZXhelxh8W2jAd0e3AsaGMKELlczA=",
+        "rawIndexSha256": "17a1ab21717390d9e130b661b927c431b01c8213d6a501de3b2435c7cf484d94",
+        "selected": {
+          "/nix/store/3v8kcyiw8898r0caipvrz22if55rw3fr-util-linux-minimal-2.42.3.drv": {
+            "dev": "/nix/store/kx2ffxa74p38s4vn5qd9mxcxf09ai7qv-util-linux-minimal-2.42.3-dev"
+          },
+          "/nix/store/3vkhkraki85inq56zpx25rn2g9mkxs46-curl-8.22.0.drv": {
+            "dev": "/nix/store/9hzcdsy61a2pxjscks4d9diq89ifqb8d-curl-8.22.0-dev"
+          },
+          "/nix/store/3zyycqi1bgv1nw6v58289rdvb0zrn300-libffi-3.8.0.drv": {
+            "dev": "/nix/store/sc4rs9sx3g727r2l57wwibgv89shc1q7-libffi-3.8.0-dev"
+          },
+          "/nix/store/69qzial9zj0b11wiav5ws8g64p3b8fjv-libxml2-2.15.4.drv": {
+            "dev": "/nix/store/fbas2swa30q2bq0i1fgm0xy2m5xnhywk-libxml2-2.15.4-dev"
+          },
+          "/nix/store/837gjms8kqkng5ryhj7vsy30xyr02jwh-systemd-minimal-libs-260.5.drv": {
+            "dev": "/nix/store/iw37k2bqklhgl9lw881fh1sg1p6fdin0-systemd-minimal-libs-260.5-dev"
+          },
+          "/nix/store/bk5wh1nxz064czggf63838z7n35y4j87-krb5-1.22.2.drv": {
+            "dev": "/nix/store/x2jadg7w45xraxjdn2f0qyhlil9qmmm5-krb5-1.22.2-dev"
+          },
+          "/nix/store/d5y15g3lilz7g0fwd18d1j5j76rxwicq-bash-interactive-5.3p9.drv": {
+            "dev": "/nix/store/lqss6yfrdhm3fhbb3gjzm0vchphydhmv-bash-interactive-5.3p9-dev"
+          },
+          "/nix/store/s1nxcnmy81qa52bq1cjpmjnq408g9aja-util-linux-2.42.3.drv": {
+            "dev": "/nix/store/khc49b59dffb9dniicidin0cgyfd16mp-util-linux-2.42.3-dev"
+          },
+          "/nix/store/sgbkb373mh8zyhy9swc7a78rvshabjab-libcap-2.77.drv": {
+            "dev": "/nix/store/7xisrsjfpvf0kvbqwr38x5c2wisxai12-libcap-2.77-dev"
+          },
+          "/nix/store/vrx9kp5745qm3nkmpa1fbxqfpkkr509j-libevent-2.1.13.drv": {
+            "dev": "/nix/store/p9xkh8iagj3034ys6cb3znbx2i64y3lg-libevent-2.1.13-dev"
+          },
+          "/nix/store/zxzcmw0pnx0qvqinvvh6cpd1zh2w22g9-libxslt-1.1.45.drv": {
+            "dev": "/nix/store/nmb6v2hj5f7cn87claqqdw8lk25vhq98-libxslt-1.1.45-dev"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 60518405
+      },
+      {
+        "artifact": 14919506082,
+        "artifactSha256": "sha256:1048e8faf426c507d3c71545283c55f29b372c5319112c0af6063714a0a77814",
+        "group": "display-libraries",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-display-libraries-45373207069:59ts49Js4hxkfe0rpzIKJ664sqALb6xMugJ1IyqTj0c=",
+        "rawIndexSha256": "82eedc1b365539bb510554dc875f376ab7c9da39ba6331bfe264afeb66e66577",
+        "selected": {
+          "/nix/store/9mymjy53nl5j2riz72d1qyjdg2fqzd8g-libjpeg-turbo-3.1.4.drv": {
+            "dev": "/nix/store/jmkqcxsaf67jfqriwqkhhb0ysy3s9pss-libjpeg-turbo-3.1.4-dev"
+          },
+          "/nix/store/9za5rh2hg8rnydsw4afk1dy2j86slgb6-libwebp-1.6.0.drv": {
+            "out": "/nix/store/9jz3viks36ig8bv51dkzdq76bx5jmp3n-libwebp-1.6.0"
+          },
+          "/nix/store/h0kpbwn90dkd2ak3pxgqyrj2m5k5sbmz-libopus-1.6.1.drv": {
+            "dev": "/nix/store/zy0lmz7f3gnl05sbngnxj7nb9rz3x1x4-libopus-1.6.1-dev"
+          },
+          "/nix/store/n2klkjnscc6p5lp957wndsj3grh02fjb-speex-1.2.1.drv": {
+            "dev": "/nix/store/g9i0jj99si8mkkigdxq2y2y8jvk7c8p7-speex-1.2.1-dev"
+          },
+          "/nix/store/qlcjpkqh3d7b63d8np5h9yjm12r49zyj-libdrm-2.4.133.drv": {
+            "dev": "/nix/store/6hr03kr3921az38jqjpgsavyasfk671p-libdrm-2.4.133-dev"
+          },
+          "/nix/store/sza5bnnr46fgjan2hh0qnk71gir8farc-libusb-1.0.30.drv": {
+            "dev": "/nix/store/hrcsabi9mx006q8ihsz84mdk3z55zsfh-libusb-1.0.30-dev"
+          },
+          "/nix/store/y172lpxkc5rajs03ms81pnd0nkvpaxrn-libglvnd-1.7.0.drv": {
+            "dev": "/nix/store/k7m7blcv6wlv5f1j0kmwa3jwmyp548a9-libglvnd-1.7.0-dev"
+          },
+          "/nix/store/yvclmfqc028wjmj2hsac5wznagvwxmjl-alsa-lib-1.2.15.3.drv": {
+            "dev": "/nix/store/y14dymqddrji4kjgcfri4999h59d2jg2-alsa-lib-1.2.15.3-dev",
+            "out": "/nix/store/a2rkpzdgv5cgnfnrb3y7lgglixgz8khz-alsa-lib-1.2.15.3"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 30538271
+      },
+      {
+        "artifact": 14923465085,
+        "artifactSha256": "sha256:093746c69589e90fb67c847b76c30f31ae0f09ed79018ecb121e0f1a373b7286",
+        "group": "runtime-core",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45360839334",
+          "GITHUB_SHA": "35e3ac80aad78dee1331f3daa90c48d03114df2d"
+        },
+        "publicKey": "assbox-arm-chromium-runtime-core-45360839334:D10UJp/Ta7wjWOqb10uUQJXM6H5hRaY4H3qzA9M7z10=",
+        "rawIndexSha256": "a4197cf7a8294571cc051b229976ba0fcf68f6cee02172c97d0812623835a41f",
+        "selected": {
+          "/nix/store/4ca61l9g3lkc7kxbkal4l0309q965n17-glib-2.88.4.drv": {
+            "dev": "/nix/store/nf81yawx4kkslgi7lqc62vrb7spgbkss-glib-2.88.4-dev"
+          },
+          "/nix/store/isiimyns6gx2qypqnky0jsvnkp7n5n28-nodejs-24.22.3.drv": {
+            "out": "/nix/store/452664sh0qmzj9ck4py0v4q10lqg2iy4-nodejs-24.22.3"
+          },
+          "/nix/store/kyfv45djhh0pxzx58zkjivzkbcc957j9-dbus-glib-0.114.drv": {
+            "dev": "/nix/store/sd4hvqfb7q0v2q7lgl5v636igfv3af31-dbus-glib-0.114-dev"
+          },
+          "/nix/store/lwcqd0pg37xislwbvszwrs7nn8m0f538-npm-config-hook.drv": {
+            "out": "/nix/store/b39xp72jaqcm4pdsig0ygnzq0i570h4j-npm-config-hook"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 482658518,
+        "closureSelected": {
+          "/nix/store/34krnpyyfipqgabaivxizn5ws6x0193v-nodejs-slim-24.22.3.drv": {
+            "corepack": "/nix/store/dra3mpq662ajgzqf8044fia00pwv3dsa-nodejs-slim-24.22.3-corepack",
+            "npm": "/nix/store/3s19q346dpw4hbclbfaszsmbjqmnvw31-nodejs-slim-24.22.3-npm",
+            "out": "/nix/store/6iljwa6yrc0q0f8c5hyvfdbs1zkd4rvh-nodejs-slim-24.22.3"
+          }
+        }
+      }
+    ],
+    "media-desktop": [
+      {
+        "group": "compiler",
+        "artifact": 14911233205,
+        "zipBytes": 876284350,
+        "rawIndexSha256": "75dd5c0c90f6fb5c8b139733d70c0b79a8805674a3634c789992b514292a9244",
+        "artifactSha256": "sha256:7add9dfc5028a8a5d9e23cfdb7b9446de14a1eaa385ec99591ee6abde631cf88",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45358163413",
+          "GITHUB_SHA": "5133aeb71bb7d0cdd95119cf74c461ae59476e5d"
+        },
+        "publicKey": "assbox-arm-chromium-compiler-45358163413:IfbQx9T4/DKhiwfDEdkrBY0QHAAzUahikwF6elHGgn8=",
+        "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+        "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+        "selected": {
+          "/nix/store/59d6sf8bfg9pgv7khixxbbccg4ydclhz-ninja-1.13.2.drv": {
+            "out": "/nix/store/rwvxhwlnixph6914ll34mkz8pdcpljzd-ninja-1.13.2"
+          },
+          "/nix/store/mcf3wkz2z9r45g2pkdjap9b8isks8cfi-bison-3.8.2.drv": {
+            "out": "/nix/store/rz2r1axddqazy8a1v1144hw7mn6lhbpy-bison-3.8.2"
+          },
+          "/nix/store/qxq39yigcgirldcizybax0ygb76f9piz-nasm-3.02.drv": {
+            "out": "/nix/store/yfa4vsgljgcv7f5wx9i025n151b1p4i2-nasm-3.02"
+          }
+        }
+      },
+      {
+        "group": "language",
+        "artifact": 14903986546,
+        "zipBytes": 198276793,
+        "rawIndexSha256": "73046950046b7b0b232c0a559591a3101a8733525ea4b4edc9212f947c5760d9",
+        "artifactSha256": "sha256:e830bac41dc693ca239923918da190b8877dcc3640a3973cb223f11f5950c139",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45336837496",
+          "GITHUB_SHA": "22bf7a77a348700e7a6ddffcf0d49978355b4de9"
+        },
+        "publicKey": "assbox-arm-chromium-language-45336837496:F9FYBuk9FLA6WC0H/rHhJ6FExAYXUr6Fs6Mx24MlDEI=",
+        "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+        "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+        "selected": {
+          "/nix/store/4m3a90jmax2xlzkswvnd8n628zhafkjg-python3-3.13.15.drv": {
+            "out": "/nix/store/bc3097l52p0wilc3sffndalyijzc4frz-python3-3.13.15"
+          },
+          "/nix/store/vlgqbc03mmwhh0lpf3yjr48i7bc0ijlw-perl-5.42.3.drv": {
+            "out": "/nix/store/cwzkc29p7vard6xrxy1bf7dfgw650jqd-perl-5.42.3"
+          }
+        }
+      },
+      {
+        "artifact": 14916138050,
+        "artifactSha256": "sha256:374615951c5e12929b2884362ae8c9451b5d88b76d4944f1975b0fe3e937fe23",
+        "group": "platform-libraries",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-platform-libraries-45373207069:DNcnY5PIuMyQhGWZXhelxh8W2jAd0e3AsaGMKELlczA=",
+        "rawIndexSha256": "17a1ab21717390d9e130b661b927c431b01c8213d6a501de3b2435c7cf484d94",
+        "selected": {
+          "/nix/store/3v8kcyiw8898r0caipvrz22if55rw3fr-util-linux-minimal-2.42.3.drv": {
+            "dev": "/nix/store/kx2ffxa74p38s4vn5qd9mxcxf09ai7qv-util-linux-minimal-2.42.3-dev"
+          },
+          "/nix/store/3vkhkraki85inq56zpx25rn2g9mkxs46-curl-8.22.0.drv": {
+            "dev": "/nix/store/9hzcdsy61a2pxjscks4d9diq89ifqb8d-curl-8.22.0-dev"
+          },
+          "/nix/store/3zyycqi1bgv1nw6v58289rdvb0zrn300-libffi-3.8.0.drv": {
+            "dev": "/nix/store/sc4rs9sx3g727r2l57wwibgv89shc1q7-libffi-3.8.0-dev"
+          },
+          "/nix/store/69qzial9zj0b11wiav5ws8g64p3b8fjv-libxml2-2.15.4.drv": {
+            "dev": "/nix/store/fbas2swa30q2bq0i1fgm0xy2m5xnhywk-libxml2-2.15.4-dev"
+          },
+          "/nix/store/837gjms8kqkng5ryhj7vsy30xyr02jwh-systemd-minimal-libs-260.5.drv": {
+            "dev": "/nix/store/iw37k2bqklhgl9lw881fh1sg1p6fdin0-systemd-minimal-libs-260.5-dev"
+          },
+          "/nix/store/bk5wh1nxz064czggf63838z7n35y4j87-krb5-1.22.2.drv": {
+            "dev": "/nix/store/x2jadg7w45xraxjdn2f0qyhlil9qmmm5-krb5-1.22.2-dev"
+          },
+          "/nix/store/d5y15g3lilz7g0fwd18d1j5j76rxwicq-bash-interactive-5.3p9.drv": {
+            "dev": "/nix/store/lqss6yfrdhm3fhbb3gjzm0vchphydhmv-bash-interactive-5.3p9-dev"
+          },
+          "/nix/store/sgbkb373mh8zyhy9swc7a78rvshabjab-libcap-2.77.drv": {
+            "dev": "/nix/store/7xisrsjfpvf0kvbqwr38x5c2wisxai12-libcap-2.77-dev"
+          },
+          "/nix/store/vrx9kp5745qm3nkmpa1fbxqfpkkr509j-libevent-2.1.13.drv": {
+            "dev": "/nix/store/p9xkh8iagj3034ys6cb3znbx2i64y3lg-libevent-2.1.13-dev"
+          },
+          "/nix/store/zxzcmw0pnx0qvqinvvh6cpd1zh2w22g9-libxslt-1.1.45.drv": {
+            "dev": "/nix/store/nmb6v2hj5f7cn87claqqdw8lk25vhq98-libxslt-1.1.45-dev"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 60518405
+      },
+      {
+        "artifact": 14919506082,
+        "artifactSha256": "sha256:1048e8faf426c507d3c71545283c55f29b372c5319112c0af6063714a0a77814",
+        "group": "display-libraries",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-display-libraries-45373207069:59ts49Js4hxkfe0rpzIKJ664sqALb6xMugJ1IyqTj0c=",
+        "rawIndexSha256": "82eedc1b365539bb510554dc875f376ab7c9da39ba6331bfe264afeb66e66577",
+        "selected": {
+          "/nix/store/1a837zyv8ack8f6998bkybba8f7f2v1v-libxcursor-1.2.3.drv": {
+            "dev": "/nix/store/3x5xxvxkywzcffzmkq2921s5j8wnl7ak-libxcursor-1.2.3-dev"
+          },
+          "/nix/store/9mymjy53nl5j2riz72d1qyjdg2fqzd8g-libjpeg-turbo-3.1.4.drv": {
+            "dev": "/nix/store/jmkqcxsaf67jfqriwqkhhb0ysy3s9pss-libjpeg-turbo-3.1.4-dev"
+          },
+          "/nix/store/9za5rh2hg8rnydsw4afk1dy2j86slgb6-libwebp-1.6.0.drv": {
+            "out": "/nix/store/9jz3viks36ig8bv51dkzdq76bx5jmp3n-libwebp-1.6.0"
+          },
+          "/nix/store/dmzxfzfpf1kkwiicdyvdxdz9zg6awmmr-libxdamage-1.1.7.drv": {
+            "dev": "/nix/store/2fqhi9i4gvfvj1cwps1agr6qb0vfjgga-libxdamage-1.1.7-dev"
+          },
+          "/nix/store/h0kpbwn90dkd2ak3pxgqyrj2m5k5sbmz-libopus-1.6.1.drv": {
+            "dev": "/nix/store/zy0lmz7f3gnl05sbngnxj7nb9rz3x1x4-libopus-1.6.1-dev"
+          },
+          "/nix/store/hm59s7y77vvas75yr8gbbkp09vqgci10-libepoxy-1.5.10.drv": {
+            "dev": "/nix/store/cjnmvjqdmyh63j8qvb9f1sj8wgcwzlxc-libepoxy-1.5.10-dev"
+          },
+          "/nix/store/llwwjkv639r5bz42bmg5a3jya04980y9-libxtst-1.2.5.drv": {
+            "out": "/nix/store/znwgy7yda7f2jw4bnmd5i32h9avxds4v-libxtst-1.2.5"
+          },
+          "/nix/store/n4fga6rr1kklxgdkid76wf31bfrphzjb-libxshmfence-1.3.3.drv": {
+            "dev": "/nix/store/p74p4npx6a6s01632w6z9yyj03hydh0a-libxshmfence-1.3.3-dev"
+          },
+          "/nix/store/qlcjpkqh3d7b63d8np5h9yjm12r49zyj-libdrm-2.4.133.drv": {
+            "dev": "/nix/store/6hr03kr3921az38jqjpgsavyasfk671p-libdrm-2.4.133-dev"
+          },
+          "/nix/store/sza5bnnr46fgjan2hh0qnk71gir8farc-libusb-1.0.30.drv": {
+            "dev": "/nix/store/hrcsabi9mx006q8ihsz84mdk3z55zsfh-libusb-1.0.30-dev"
+          },
+          "/nix/store/y172lpxkc5rajs03ms81pnd0nkvpaxrn-libglvnd-1.7.0.drv": {
+            "dev": "/nix/store/k7m7blcv6wlv5f1j0kmwa3jwmyp548a9-libglvnd-1.7.0-dev",
+            "out": "/nix/store/7d0dd4scbz5rb4gl8hgbsy9wn72cxffk-libglvnd-1.7.0"
+          },
+          "/nix/store/yvclmfqc028wjmj2hsac5wznagvwxmjl-alsa-lib-1.2.15.3.drv": {
+            "dev": "/nix/store/y14dymqddrji4kjgcfri4999h59d2jg2-alsa-lib-1.2.15.3-dev"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 30538271
+      },
+      {
+        "artifact": 14923465085,
+        "artifactSha256": "sha256:093746c69589e90fb67c847b76c30f31ae0f09ed79018ecb121e0f1a373b7286",
+        "group": "runtime-core",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45360839334",
+          "GITHUB_SHA": "35e3ac80aad78dee1331f3daa90c48d03114df2d"
+        },
+        "publicKey": "assbox-arm-chromium-runtime-core-45360839334:D10UJp/Ta7wjWOqb10uUQJXM6H5hRaY4H3qzA9M7z10=",
+        "rawIndexSha256": "a4197cf7a8294571cc051b229976ba0fcf68f6cee02172c97d0812623835a41f",
+        "selected": {
+          "/nix/store/4ca61l9g3lkc7kxbkal4l0309q965n17-glib-2.88.4.drv": {
+            "dev": "/nix/store/nf81yawx4kkslgi7lqc62vrb7spgbkss-glib-2.88.4-dev"
+          },
+          "/nix/store/bhnnqbdqll9j8csa3ziqjq5zbhm109ih-cups-2.4.19.drv": {
+            "dev": "/nix/store/c2bprpbrfl4nmzzmcwh19ik67piw13p6-cups-2.4.19-dev"
+          },
+          "/nix/store/vfm1f0bzm43w87rglvhff8qfflhra189-at-spi2-core-2.60.7.drv": {
+            "dev": "/nix/store/dzqa0cjs0v1292waqbnyd3rb9qmbsrpb-at-spi2-core-2.60.7-dev"
+          }
+        },
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "zipBytes": 482658518
+      }
+    ]
+  }
+}
