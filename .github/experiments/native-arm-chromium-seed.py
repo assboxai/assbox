@@ -26,19 +26,19 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def closure_metadata(cache_tools, environment, paths, *, store=None):
+def closure_metadata(cache_tools, environment, paths, *, store=None, max_paths=512):
     options = ['--store', store] if store else []
     observed = cache_tools.decoded(cache_tools.run(
         environment, 'nix', 'path-info', '--offline', '--recursive', '--json', '--json-format', '1', *options, *paths,
     ))
-    require(0 < len(observed) <= 512 and set(paths) <= set(observed), 'Incomplete or excessive seed closure')
+    require(0 < len(observed) <= max_paths and set(paths) <= set(observed), 'Incomplete or excessive seed closure')
     result = {path: {key: row[key] for key in FIELDS} for path, row in observed.items()}
     require(sum(row['narSize'] for row in result.values()) <= 3 * MAX_BYTES, 'Unpacked seed exceeds its size bound')
     return result
 
 
-def signed_cache(cache_tools, env, workspace, cache, paths, name):
-    closure = closure_metadata(cache_tools, env, paths)
+def signed_cache(cache_tools, env, workspace, cache, paths, name, *, max_paths=512):
+    closure = closure_metadata(cache_tools, env, paths, max_paths=max_paths)
     cache.mkdir(mode=0o700)
     secret = workspace / 'signing-key'
     public = workspace / 'signing-key.pub'
@@ -61,7 +61,7 @@ def signed_cache(cache_tools, env, workspace, cache, paths, name):
     return index
 
 
-def verify_cold(cache_tools, env, cache, workspace, paths, index):
+def verify_cold(cache_tools, env, cache, workspace, paths, index, *, max_paths=512):
     expected = index['publicKey']
     wrong = expected.split(':', 1)[0] + ':AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
     for label, key in (('wrong', wrong), ('correct', expected)):
@@ -79,7 +79,7 @@ def verify_cold(cache_tools, env, cache, workspace, paths, index):
                     'Seed paths registered under a wrong signing key')
         else:
             require(result.returncode == 0, 'Signed seed import failed: ' + result.stderr.decode(errors='replace')[-1500:])
-            require(closure_metadata(cache_tools, env, paths, store=store) == index['closure'],
+            require(closure_metadata(cache_tools, env, paths, store=store, max_paths=max_paths) == index['closure'],
                     'Cold store closure differs from the signed content')
 
 

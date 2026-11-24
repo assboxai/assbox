@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox exact native ARM seeded Chromium cache
+name: Assbox exact native ARM Chromium build inputs
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-chromium-seeded-v1
+  group: assbox-arm-chromium-direct-inputs
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,14 +12,19 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-chromium-seeded-v2' &&
+      github.ref == 'refs/heads/test/arm-chromium-direct-inputs' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [compiler, language, libraries]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
       contents: read
       actions: read
     env:
+      INPUT_GROUP: ${{ matrix.group }}
       PRODUCT_COMMIT: 28bf6a68aad8860e412e5cd3d4f3788caef7edc1
       PRODUCT_TREE: 304515456bbb2d19c47226caf38a5a2c1083544a
     steps:
@@ -122,7 +127,7 @@ jobs:
           unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL
           /usr/bin/python3 -I -B authority/.github/experiments/import-arm-chromium-clang-seed.py \
             product "$RUNNER_TEMP/assbox-arm-chromium-clang-seed-download" "$RUNNER_TEMP/assbox-arm-chromium-clang-import.json"
-      - name: Build exact ARM Chromium outputs and validate the signed cache in two cold stores
+      - name: Build exact ARM Chromium prerequisites and validate the signed cache in two cold stores
         shell: bash
         run: |
           set -euo pipefail
@@ -153,11 +158,11 @@ jobs:
           monitor_resources >> "$evidence/resources.log" &
           monitor=$!
           trap 'kill "$monitor" 2>/dev/null || true; wait "$monitor" 2>/dev/null || true' EXIT
-          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-chromium-seed.py "$PWD/product" "$evidence"
+          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-chromium-direct-inputs.py "$PWD/product" "$evidence" "$INPUT_GROUP"
           test -s "$evidence/index.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: exact-native-arm-chromium-signed-seed
+          name: exact-native-arm-chromium-inputs-${{ matrix.group }}
           path: |
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/index.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/signed-cache
@@ -167,7 +172,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: exact-native-arm-chromium-seed-diagnostics
+          name: exact-native-arm-chromium-inputs-${{ matrix.group }}-diagnostics
           path: |
             ${{ runner.temp }}/assbox-arm-llvm-import.json
             ${{ runner.temp }}/assbox-arm-rustc-import.json
