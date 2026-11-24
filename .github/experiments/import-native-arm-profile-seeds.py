@@ -15,7 +15,7 @@ import sys
 import tempfile
 from zipfile import ZipFile
 
-BRANCH = 'refs/heads/test/arm-current-profile-signed-recovery'
+BRANCH = 'refs/heads/test/arm-current-profile-signed-archive-retry'
 AUTHORITY = {
     'RUNNER_ENVIRONMENT': 'github-hosted', 'GITHUB_REPOSITORY': 'assboxai/assbox',
     'GITHUB_REPOSITORY_ID': '1402455771', 'GITHUB_REPOSITORY_OWNER_ID': '327835666',

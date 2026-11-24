@@ -94,7 +94,7 @@ def recording(program, evidence):
         "GITHUB_REPOSITORY_OWNER_ID": "327835666",
         "GITHUB_EVENT_NAME": "workflow_dispatch",
         "GITHUB_RUN_ATTEMPT": "1",
-        "GITHUB_REF": "refs/heads/test/arm-current-profile-signed-recovery",
+        "GITHUB_REF": "refs/heads/test/arm-current-profile-signed-archive-retry",
     }
     if (platform.system() != "Linux" or platform.machine() != "aarch64"
             or any(os.environ.get(name) != value for name, value in specification.items())):
