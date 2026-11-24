@@ -312,9 +312,11 @@
               omp =
                 if appPkgs.bun.version == "1.4.2" then
                   (recipes.omp.override { inherit bun pipewire; }).overrideAttrs (old: {
-                    # The standalone executable embeds the first Bun on PATH.
-                    # Put the reviewed runtime ahead of the Bun propagated by bun2nix.
-                    nativeBuildInputs = [ bun ] ++ nixpkgs.lib.remove bun old.nativeBuildInputs;
+                    # bun2nix prepares the offline cache with its own Bun.
+                    # Use the reviewed runtime for compilation after dependency setup.
+                    preBuild = (old.preBuild or "") + ''
+                      export PATH="${nixpkgs.lib.getBin bun}/bin:$PATH"
+                    '';
                   })
                 else
                   recipes.omp.override { inherit pipewire; };
