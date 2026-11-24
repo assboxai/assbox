@@ -4,7 +4,7 @@ name: Assbox native ARM coverage and advisory audit
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-coverage-audit-signed-installer-cache
+  group: assbox-arm-coverage-audit-openclaw-ui
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-coverage-audit-signed-installer-cache' &&
+      github.ref == 'refs/heads/test/arm-coverage-audit-openclaw-ui' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 110
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: 28bf6a68aad8860e412e5cd3d4f3788caef7edc1
-      PRODUCT_TREE: 304515456bbb2d19c47226caf38a5a2c1083544a
+      PRODUCT_COMMIT: d3d36054d98d1ccf3ab37853fd4c23b5621e72d5
+      PRODUCT_TREE: ac7bc49124a59ad59bca1afde3d755dd88ec7370
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: corrected-source-native-arm-coverage-audit
+          name: openclaw-ui-native-arm-coverage-audit
           path: |
             ${{ runner.temp }}/assbox-arm-coverage-audit/scope.txt
             ${{ runner.temp }}/assbox-arm-coverage-audit/platform.txt
