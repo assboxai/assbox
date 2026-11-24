@@ -1,0 +1,16 @@
+{
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "architecture": "x86_64-linux",
+  "attribute": "checks.x86_64-linux.install-boot-case-uefi-512",
+  "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+  "groups": {
+    "install-boot-uefi-512": {
+      "install-boot-uefi-512": {
+        "derivation": "/nix/store/20xpzfmfdgi19gd8sarhsqzwwqfqmpc6-vm-test-run-assbox-install-uefi-512.drv",
+        "output": "/nix/store/w5z6l77hfb4ry42kfyir5jvg06y46fwc-vm-test-run-assbox-install-uefi-512",
+        "usesVerifiedKernel": true
+      }
+    }
+  }
+}
