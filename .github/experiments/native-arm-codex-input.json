@@ -1,0 +1,17 @@
+{
+  "architecture": "aarch64-linux",
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "parentProfile": "/nix/store/4x0m8m87w41nmafrn4z0hrgxawmvd327-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+  "frontierSha256": "ef6f1eed9ad99a3ecdc16cb06c9d9c885745b70f6c1b45abe0a56776037c8a10",
+  "groups": {
+    "codex": [
+      {
+        "derivation": "/nix/store/zkllgjc1vn4f825gw01mdy1y5mci7mig-codex-0.160.1.drv",
+        "outputs": {
+          "out": "/nix/store/cy2jcm8v0nf52kg87yjw7vz21pl7z241-codex-0.160.1"
+        }
+      }
+    ]
+  }
+}

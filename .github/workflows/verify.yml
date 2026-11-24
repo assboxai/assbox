@@ -4,7 +4,7 @@ name: Assbox exact native ARM Chromium build inputs
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-chromium-current-rust-sources-retry
+  group: assbox-arm-installed-current-codex-input
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,12 +12,12 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-chromium-current-rust-sources-retry' &&
+      github.ref == 'refs/heads/test/arm-installed-current-codex-input' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [rust-sources]
+        group: [codex]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -54,7 +54,7 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Build exact ARM Chromium prerequisites and validate the signed cache in two cold stores
+      - name: Build the exact native ARM Codex package and verify its signed cache
         shell: bash
         run: |
           set -euo pipefail
@@ -85,11 +85,11 @@ jobs:
           monitor_resources >> "$evidence/resources.log" &
           monitor=$!
           trap 'kill "$monitor" 2>/dev/null || true; wait "$monitor" 2>/dev/null || true' EXIT
-          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-chromium-direct-inputs.py "$PWD/product" "$evidence" "$INPUT_GROUP"
+          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-codex-input.py "$PWD/product" "$evidence" "$INPUT_GROUP"
           test -s "$evidence/index.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: exact-native-arm-chromium-inputs-${{ matrix.group }}
+          name: exact-native-arm-installed-codex-input-${{ matrix.group }}
           path: |
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/index.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/signed-cache
@@ -99,10 +99,11 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: exact-native-arm-chromium-inputs-${{ matrix.group }}-diagnostics
+          name: exact-native-arm-installed-codex-input-${{ matrix.group }}-diagnostics
           path: |
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/expected.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-build.log
+            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-version.txt
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/resources.log
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/scope.txt
           if-no-files-found: warn
