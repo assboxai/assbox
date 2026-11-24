@@ -309,10 +309,15 @@
             in
             recipes
             // {
-              # The standalone executable embeds the build's Bun runtime.
-              omp = recipes.omp.override (
-                { inherit pipewire; } // nixpkgs.lib.optionalAttrs (appPkgs.bun.version == "1.4.2") { inherit bun; }
-              );
+              omp =
+                if appPkgs.bun.version == "1.4.2" then
+                  (recipes.omp.override { inherit bun pipewire; }).overrideAttrs (old: {
+                    # The standalone executable embeds the first Bun on PATH.
+                    # Put the reviewed runtime ahead of the Bun propagated by bun2nix.
+                    nativeBuildInputs = [ bun ] ++ nixpkgs.lib.remove bun old.nativeBuildInputs;
+                  })
+                else
+                  recipes.omp.override { inherit pipewire; };
             };
           grok = grok-packages.packages.${pkgs.stdenv.hostPlatform.system};
           openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
