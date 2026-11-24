@@ -1,0 +1,29 @@
+{
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "architecture": "aarch64-linux",
+  "parentProfile": "/nix/store/p5r62dw24v5y2bm1l6ph9bpkrgpkn1jw-openclaw-2026.11.7-assbox-entrypoint.drv",
+  "parentOutput": "/nix/store/2qk3igx68n6fglqqdr5svlsd2xfcnpzl-openclaw-2026.11.7-assbox-entrypoint",
+  "groups": {
+    "node-inputs": [
+      {
+        "derivation": "/nix/store/34krnpyyfipqgabaivxizn5ws6x0193v-nodejs-slim-24.22.3.drv",
+        "outputs": {
+          "corepack": "/nix/store/dra3mpq662ajgzqf8044fia00pwv3dsa-nodejs-slim-24.22.3-corepack",
+          "dev": "/nix/store/1l38q9sij2mgyah7z3p424l799n2mbcg-nodejs-slim-24.22.3-dev",
+          "npm": "/nix/store/3s19q346dpw4hbclbfaszsmbjqmnvw31-nodejs-slim-24.22.3-npm",
+          "out": "/nix/store/6iljwa6yrc0q0f8c5hyvfdbs1zkd4rvh-nodejs-slim-24.22.3"
+        }
+      }
+    ],
+    "python-tools": [
+      {
+        "derivation": "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv",
+        "outputs": {
+          "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+        }
+      }
+    ]
+  },
+  "previousTerminalSha256": "d1d29510dfc94989d64800f32c03afee8cfa7e8479f7aae36a4d214f1338fd4e"
+}
