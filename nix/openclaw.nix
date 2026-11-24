@@ -21,6 +21,28 @@ let
         final: previous:
         let
           pnpm = import ./openclaw-pnpm-build-tool.nix pkgs;
+          # The sealed worker build uses the Darwin addons from this exact
+          # fs-safe release. Stage the upstream cache entries from its lock.
+          fsSafeVersion = "0.27.1";
+          workerAssets =
+            pkgs.lib.mapAttrsToList
+              (
+                target: integrity:
+                let
+                  package = "fs-safe-${target}";
+                in
+                {
+                  archive = pkgs.fetchurl {
+                    url = "https://registry.npmjs.org/@openclaw/${package}/-/${package}-${fsSafeVersion}.tgz";
+                    hash = integrity;
+                  };
+                  cachedName = "${target}-${fsSafeVersion}-${builtins.hashString "sha256" integrity}.tgz";
+                }
+              )
+              {
+                darwin-arm64 = "sha512-RXheLSPD8K0IiJ4p6KW8JVlrLd148OM84Z6wDerEmiF3/RbiiBUerNJ+LIzjyxDesZoCQIr8okq6zLdjSZkvdg==";
+                darwin-x64 = "sha512-2CfUUGJc4dwaTuvo4xiKq5zbF9p6p6Cp+zS+M0hTg2E8RLPH/i2+CtF1MOeeMY6q/7FlpS4AOBcf4NNQmLCZFA==";
+              };
           pnpmDeps = pkgs.fetchPnpmDeps {
             inherit (final) pname version src;
             inherit pnpm;
@@ -60,10 +82,19 @@ let
               pkgs.pnpmConfigHook
             ];
           inherit pnpmDeps;
-          disallowedRequisites = (previous.disallowedRequisites or [ ]) ++ [
-            pnpm
-            pnpmDeps
-          ];
+          preBuild = (previous.preBuild or "") + ''
+            mkdir -p .artifacts/worker-native-assets
+            ${pkgs.lib.concatMapStringsSep "\n" (
+              asset: "install -m 0600 ${asset.archive} .artifacts/worker-native-assets/${asset.cachedName}"
+            ) workerAssets}
+          '';
+          disallowedRequisites =
+            (previous.disallowedRequisites or [ ])
+            ++ [
+              pnpm
+              pnpmDeps
+            ]
+            ++ map (asset: asset.archive) workerAssets;
         }
       )
     else
