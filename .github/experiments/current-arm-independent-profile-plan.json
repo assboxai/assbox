@@ -8,182 +8,7 @@
   },
   "currentChromium": "/nix/store/prlcql8f9n7zjvz14cam17fcy3imc0ka-chromium-unwrapped-154.0.8037.97.drv",
   "groups": {
-    "workers-and-gateways": {
-      "aarch64-linux-chatgpt-multiagent.worker": {
-        "attribute": "nixosConfigurations.aarch64-linux-chatgpt-multiagent.config.system.build.assboxWorkerAudit",
-        "derivation": "/nix/store/x8xa0mxqqipf0hvn84cknynqz5nv3rx3-nixos-system-assbox-worker-26.05pre-git.drv",
-        "output": "/nix/store/sadijvlg8n0ixasv2vmfg2px1s8d9ccf-nixos-system-assbox-worker-26.05pre-git",
-        "aliases": [
-          "aarch64-linux-chatgpt-multiagent.worker"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-hermes-dashboard.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-hermes-dashboard.config.system.build.toplevel",
-        "derivation": "/nix/store/di83hla9bsl6jfx3csb7vbx8c1swgyfv-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/220ssl43sym96k0ml9zpqkfyjysdsrp4-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-hermes-dashboard.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-hermes-gateway.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-hermes-gateway.config.system.build.toplevel",
-        "derivation": "/nix/store/mg65x3z4k16xhhda9c9vdmnx5sm02969-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/c170cikcyd5mhp5k4zq5l2pvgxnxb4fb-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-hermes-gateway.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-hermes.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-hermes.config.system.build.toplevel",
-        "derivation": "/nix/store/mz4d1g49npq2w3ffyq5zmb4crwsp4n30-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/6h62f8l4a5pfdn8zvvpr5v2k8v4fax6k-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-hermes.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-omp.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-omp.config.system.build.toplevel",
-        "derivation": "/nix/store/x5gsmm09dq1y9ha3wgfjvhip3lya60m1-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/fav20slb5285y6y8yzibn1vz4bcjmjqx-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-omp.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-mixed-cli.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-mixed-cli.config.system.build.toplevel",
-        "derivation": "/nix/store/bl0ma9draxkf3fp6ys20hkqhnlhri4mh-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/3chh6sjp83dwqlzmsci2f5jfim9l7yhq-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-mixed-cli.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-uefi-chatgpt-x11.worker": {
-        "attribute": "nixosConfigurations.aarch64-linux-uefi-chatgpt-x11.config.system.build.assboxWorkerAudit",
-        "derivation": "/nix/store/sbqalzvff3r805k5jsckzwz7w8kql71l-nixos-system-assbox-worker-26.05pre-git.drv",
-        "output": "/nix/store/dd0fsnksm8vk5xxiw79bhpfyzqrivnxr-nixos-system-assbox-worker-26.05pre-git",
-        "aliases": [
-          "aarch64-linux-uefi-chatgpt-x11.worker"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "offlineWorker": {
-        "expression": "let f = builtins.getFlake (toString ./.); s = f.inputs.nixpkgs.lib.nixosSystem { system = builtins.currentSystem; modules = [ f.nixosModules.default ./tests/nix/fixture.nix { assbox.updates.enable = false; assbox.worker = { enable = true; components = [ \"codex\" ]; egress = \"offline\"; nameservers = [ ]; }; } ]; }; in s.config.system.build.assboxWorkerAudit",
-        "derivation": "/nix/store/jaj6p9nlshqp4lr32q81xpdkhvgvqakx-nixos-system-assbox-worker-26.05pre-git.drv",
-        "output": "/nix/store/7wbkd39pcbp38wx5783d0yvn9y7hmnw9-nixos-system-assbox-worker-26.05pre-git",
-        "aliases": [
-          "offlineWorker"
-        ],
-        "usesVerifiedKernel": true
-      }
-    },
-    "cli-components": {
-      "aarch64-linux-component-antigravity-cli.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-antigravity-cli.config.system.build.toplevel",
-        "derivation": "/nix/store/ga3k0s3jhykhbacyz9y4qzvvnbsn3jlz-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/2fhh5ysidqf2fkb5sg045vv3q94skffk-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-antigravity-cli.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-antigravity-remote.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-antigravity-remote.config.system.build.toplevel",
-        "derivation": "/nix/store/smz2mwh8vkwx20lw0aaw0c3xz6ngrplc-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/m4kfzavskp01x77fkzyy1bh53jzak0sk-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-antigravity-remote.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-claude-code-remote.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-claude-code-remote.config.system.build.toplevel",
-        "derivation": "/nix/store/6z8rc3y8zg4wzm14cn6fj4sxsl662kha-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/3sm0nnbplpgk53ar1hwb8vcyyqghnj8j-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-claude-code-remote.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-claude-code.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-claude-code.config.system.build.toplevel",
-        "derivation": "/nix/store/qgzrhz1qb7xcilhpqsri2dll7712lrqj-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/2j536vixfa3nl0ckwyv4dahqcjxwnnbi-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-claude-code.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-codex-relay.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-codex-relay.config.system.build.toplevel",
-        "derivation": "/nix/store/yasy7kc8j5aamayi68r213a776grf0f7-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/qjwy7di4s6ayvjxa2i6iqq5vghjhjqqw-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-codex-relay.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-codex.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-codex.config.system.build.toplevel",
-        "derivation": "/nix/store/4x0m8m87w41nmafrn4z0hrgxawmvd327-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/dxzv173hbh71fffzbxp6xbh2n5ng88jw-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-codex.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-cursor-agent.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-cursor-agent.config.system.build.toplevel",
-        "derivation": "/nix/store/vm87xzcdcgrn148d2kfjj0zbc4yrq26g-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/0xwyb2psplg42zbb1x31hgiwpa6j348z-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-cursor-agent.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-cursor-worker.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-cursor-worker.config.system.build.toplevel",
-        "derivation": "/nix/store/8wi4h5k2zh52k4d7c3kz49qp599apsxk-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/c97n7sdzwwwsav2hkrrcwg1ipa8jxkb8-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-cursor-worker.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-grok.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-grok.config.system.build.toplevel",
-        "derivation": "/nix/store/32mr4mxjlmwqd3hn0mzvwy2mmmfrgz8w-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/3769bd5ffjdqxcrz7z65fcjglh7rcrva-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-grok.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-pi.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-pi.config.system.build.toplevel",
-        "derivation": "/nix/store/018wbkxjblds0n32kr0wkqiypm247bjh-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/j660wkiib3j8hdwwsxgkc5khh46fdzw8-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-pi.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      }
-    },
-    "editor-components": {
-      "aarch64-linux-component-emacs.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-emacs.config.system.build.toplevel",
-        "derivation": "/nix/store/s3ljsafnb6hs03vwcyk910k8sqilynyb-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/hgdf8d60yy7yrwd4gshc2pi9vr1mpw4a-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-emacs.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
+    "editor-light": {
       "aarch64-linux-component-vim.toplevel": {
         "attribute": "nixosConfigurations.aarch64-linux-component-vim.config.system.build.toplevel",
         "derivation": "/nix/store/cky9z943q1xgss9yja2bs9hms39kx5rn-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
@@ -219,27 +44,9 @@
           "aarch64-linux-component-vscode-tunnel.toplevel"
         ],
         "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-zed-remote-host.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-zed-remote-host.config.system.build.toplevel",
-        "derivation": "/nix/store/nzj3m7n9hqxf2jl903knx4xsaskjbk7y-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/0z83n40lnxma6p47lspl90kf67sxp5vz-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-zed-remote-host.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-editor-hosts.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-editor-hosts.config.system.build.toplevel",
-        "derivation": "/nix/store/nc8c8f6ppx65qdhw8b9f408blph1vjk4-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/zc63fbh8581pp44h0y16xfhk61g3hvgi-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-editor-hosts.toplevel"
-        ],
-        "usesVerifiedKernel": true
       }
     },
-    "service-components": {
+    "service-light": {
       "aarch64-linux-component-happier-daemon.toplevel": {
         "attribute": "nixosConfigurations.aarch64-linux-component-happier-daemon.config.system.build.toplevel",
         "derivation": "/nix/store/swvs29a5yhgmwa0xm5ssl84q2w28lrkk-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
@@ -255,34 +62,6 @@
         "output": "/nix/store/12qswjlxbdljpmjqg8pr34480jgp006d-nixos-system-assbox-ci-26.05.20261007.2efa67f",
         "aliases": [
           "aarch64-linux-component-happier.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-openclaw-gateway.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-openclaw-gateway.config.system.build.toplevel",
-        "derivation": "/nix/store/4yyq87nrmdbr8gvqiiq8n65knwmigxvr-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/yy4g66jydl8fdsx57rjm5dzzp24m5f26-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-openclaw-gateway.toplevel",
-          "aarch64-linux-uefi-openclaw-headless.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-openclaw-node.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-openclaw-node.config.system.build.toplevel",
-        "derivation": "/nix/store/44harqlmm7ak1yvi8f5af8yvpnpjfcd1-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/k3pwgwbpp0ah0dna02iigqmlf8s7jwpl-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-openclaw-node.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-component-openclaw.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-component-openclaw.config.system.build.toplevel",
-        "derivation": "/nix/store/q3sblsslndmpzyg4zi9i7cy3zim1sb4k-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/idn2rjxcr15a1wcs8fgffclafnd6a51a-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-component-openclaw.toplevel"
         ],
         "usesVerifiedKernel": true
       },
@@ -305,53 +84,292 @@
         ],
         "usesVerifiedKernel": true
       }
-    },
-    "desktop-profiles": {
-      "aarch64-linux-uefi-none-headless.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-uefi-none-headless.config.system.build.toplevel",
-        "derivation": "/nix/store/3y3vjfl9hn5cyly4jpk24lgagcfch43i-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/06b6kkgcx9bp7pa65z852ipc9il4hyz8-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-uefi-none-headless.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-uefi-none-wayland.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-uefi-none-wayland.config.system.build.toplevel",
-        "derivation": "/nix/store/8zp17knyx9lnppagsasdgr62q81vqc61-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/sscf1i8z6ksxks1kkfjn4h0nzjz9545b-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-uefi-none-wayland.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-uefi-none-x11.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-uefi-none-x11.config.system.build.toplevel",
-        "derivation": "/nix/store/glsa59pv2irp38kjzhk1kqmr3rf75n3r-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/rqmw3vgs9ca6ksc0ln0mx6afd0na905i-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-uefi-none-x11.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-uefi-opencode-wayland.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-uefi-opencode-wayland.config.system.build.toplevel",
-        "derivation": "/nix/store/cvcdy879scrqdngpzj2bjhcqw8rkbqr5-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/8b19mz060jlpla0g8baa5kgs5dxksjgm-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-uefi-opencode-wayland.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      },
-      "aarch64-linux-uefi-opencode-x11.toplevel": {
-        "attribute": "nixosConfigurations.aarch64-linux-uefi-opencode-x11.config.system.build.toplevel",
-        "derivation": "/nix/store/y963imwlmblfrvgb4iyxd4nczra8dz41-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
-        "output": "/nix/store/2rk9sswclc6arskzpl2dn44kbbrh3xds-nixos-system-assbox-ci-26.05.20261007.2efa67f",
-        "aliases": [
-          "aarch64-linux-uefi-opencode-x11.toplevel"
-        ],
-        "usesVerifiedKernel": true
-      }
     }
-  }
+  },
+  "seedInputs": {
+    "editor-light": [
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "runtime-core",
+        "artifact": 14923465085,
+        "artifactSha256": "sha256:sha256:093746c69589e90fb67c847b76c30f31ae0f09ed79018ecb121e0f1a373b7286",
+        "zipBytes": 482658518,
+        "rawIndexSha256": "5cb338767b33f579e79b2b8ac7b4dd4d17de5416a977f8a7ddc8acb9e8b3f093",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45360839334",
+          "GITHUB_SHA": "35e3ac80aad78dee1331f3daa90c48d03114df2d"
+        },
+        "publicKey": "assbox-arm-chromium-runtime-core-45360839334:D10UJp/Ta7wjWOqb10uUQJXM6H5hRaY4H3qzA9M7z10=",
+        "producerRun": 45360839334,
+        "selected": {
+          "/nix/store/4ca61l9g3lkc7kxbkal4l0309q965n17-glib-2.88.4.drv": {
+            "dev": "/nix/store/nf81yawx4kkslgi7lqc62vrb7spgbkss-glib-2.88.4-dev"
+          },
+          "/nix/store/kyfv45djhh0pxzx58zkjivzkbcc957j9-dbus-glib-0.114.drv": {
+            "dev": "/nix/store/sd4hvqfb7q0v2q7lgl5v636igfv3af31-dbus-glib-0.114-dev"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "platform-libraries",
+        "artifact": 14916138050,
+        "artifactSha256": "sha256:sha256:374615951c5e12929b2884362ae8c9451b5d88b76d4944f1975b0fe3e937fe23",
+        "zipBytes": 60518405,
+        "rawIndexSha256": "1a0c5931a0445818ff19569f538661d3f08ae88a110c9c8c1465ae575582f040",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-platform-libraries-45373207069:DNcnY5PIuMyQhGWZXhelxh8W2jAd0e3AsaGMKELlczA=",
+        "producerRun": 45373207069,
+        "selected": {
+          "/nix/store/1ab79hw2l6jpv81d9sa83izk0j9k6d83-libgcrypt-1.12.4.drv": {
+            "dev": "/nix/store/kin572n4fcsq6grvi750g2i68m39zriz-libgcrypt-1.12.4-dev"
+          },
+          "/nix/store/2lzs33ssbisrsbd9vyw7n7h1f9jvmawd-gperf-3.3.drv": {
+            "out": "/nix/store/y80rblf83z0vspc8gv91ddpzxvv4ivx0-gperf-3.3"
+          },
+          "/nix/store/3v8kcyiw8898r0caipvrz22if55rw3fr-util-linux-minimal-2.42.3.drv": {
+            "dev": "/nix/store/kx2ffxa74p38s4vn5qd9mxcxf09ai7qv-util-linux-minimal-2.42.3-dev"
+          },
+          "/nix/store/3vkhkraki85inq56zpx25rn2g9mkxs46-curl-8.22.0.drv": {
+            "dev": "/nix/store/9hzcdsy61a2pxjscks4d9diq89ifqb8d-curl-8.22.0-dev"
+          },
+          "/nix/store/3zyycqi1bgv1nw6v58289rdvb0zrn300-libffi-3.8.0.drv": {
+            "dev": "/nix/store/sc4rs9sx3g727r2l57wwibgv89shc1q7-libffi-3.8.0-dev"
+          },
+          "/nix/store/5g1kpwaq835a09kq5g5n9g77yzsmpyx8-pkg-config-wrapper-0.29.2.drv": {
+            "out": "/nix/store/bvdrgl8lmc4b649r5qhgpp2i0s1s89ww-pkg-config-wrapper-0.29.2"
+          },
+          "/nix/store/69qzial9zj0b11wiav5ws8g64p3b8fjv-libxml2-2.15.4.drv": {
+            "dev": "/nix/store/fbas2swa30q2bq0i1fgm0xy2m5xnhywk-libxml2-2.15.4-dev"
+          },
+          "/nix/store/837gjms8kqkng5ryhj7vsy30xyr02jwh-systemd-minimal-libs-260.5.drv": {
+            "dev": "/nix/store/iw37k2bqklhgl9lw881fh1sg1p6fdin0-systemd-minimal-libs-260.5-dev"
+          },
+          "/nix/store/969r54zqpg2sxi878rcz4qbb0a8qamcw-expat-2.8.5.drv": {
+            "dev": "/nix/store/0fz7k3rdsfd4rmrqfvpjh0miawlnx39f-expat-2.8.5-dev"
+          },
+          "/nix/store/bk5wh1nxz064czggf63838z7n35y4j87-krb5-1.22.2.drv": {
+            "dev": "/nix/store/x2jadg7w45xraxjdn2f0qyhlil9qmmm5-krb5-1.22.2-dev"
+          },
+          "/nix/store/cb1zfrn95ybks5xnsw5r2p4b2npqvab3-bzip2-1.0.8.drv": {
+            "dev": "/nix/store/193h42ykr5slq86c1rryx2r4ni50nnjz-bzip2-1.0.8-dev"
+          },
+          "/nix/store/d5y15g3lilz7g0fwd18d1j5j76rxwicq-bash-interactive-5.3p9.drv": {
+            "dev": "/nix/store/lqss6yfrdhm3fhbb3gjzm0vchphydhmv-bash-interactive-5.3p9-dev"
+          },
+          "/nix/store/f9capd5sdrhggr4ipa0q27d040g6lxlz-re2-2025-11-05.drv": {
+            "dev": "/nix/store/9653vq68wmwbr1gwgccnjq4g36558703-re2-2025-11-05-dev"
+          },
+          "/nix/store/gsr8hr0j81p1728fnzbyrnfqy7mrxd55-which-2.23.drv": {
+            "out": "/nix/store/qafgrrmc4l0cawxggbgd40byjpjbml78-which-2.23"
+          },
+          "/nix/store/pqx6pl28xi7nnpif5mkl9nama9sc3p4n-bash-5.3p9.drv": {
+            "out": "/nix/store/k56s4lq6d6rljdxg26a34iij3xdvwzz7-bash-5.3p9"
+          },
+          "/nix/store/s1nxcnmy81qa52bq1cjpmjnq408g9aja-util-linux-2.42.3.drv": {
+            "dev": "/nix/store/khc49b59dffb9dniicidin0cgyfd16mp-util-linux-2.42.3-dev"
+          },
+          "/nix/store/sgbkb373mh8zyhy9swc7a78rvshabjab-libcap-2.77.drv": {
+            "dev": "/nix/store/7xisrsjfpvf0kvbqwr38x5c2wisxai12-libcap-2.77-dev"
+          },
+          "/nix/store/vrx9kp5745qm3nkmpa1fbxqfpkkr509j-libevent-2.1.13.drv": {
+            "dev": "/nix/store/p9xkh8iagj3034ys6cb3znbx2i64y3lg-libevent-2.1.13-dev"
+          },
+          "/nix/store/yfyc17bbxg04wb8c11zg1lgcdvhzww2w-glibc-2.42-100.drv": {
+            "out": "/nix/store/y8g2m8zha8fdwd6klf3jngqndf9nv9j2-glibc-2.42-100"
+          },
+          "/nix/store/zxzcmw0pnx0qvqinvvh6cpd1zh2w22g9-libxslt-1.1.45.drv": {
+            "dev": "/nix/store/nmb6v2hj5f7cn87claqqdw8lk25vhq98-libxslt-1.1.45-dev"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "display-libraries",
+        "artifact": 14919506082,
+        "artifactSha256": "sha256:sha256:1048e8faf426c507d3c71545283c55f29b372c5319112c0af6063714a0a77814",
+        "zipBytes": 30538271,
+        "rawIndexSha256": "2a4cd988f285f1d9d17ffb099f4207fc57c17925ddc79616ed3215b39eca8ee3",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-display-libraries-45373207069:59ts49Js4hxkfe0rpzIKJ664sqALb6xMugJ1IyqTj0c=",
+        "producerRun": 45373207069,
+        "selected": {
+          "/nix/store/2naawlhhb3rjj239i4vmm16n210yqd63-pciutils-3.15.0.drv": {
+            "out": "/nix/store/y919s0j7s3ci4jc5xqcnsh3vl4nbwa5p-pciutils-3.15.0"
+          },
+          "/nix/store/9mymjy53nl5j2riz72d1qyjdg2fqzd8g-libjpeg-turbo-3.1.4.drv": {
+            "dev": "/nix/store/jmkqcxsaf67jfqriwqkhhb0ysy3s9pss-libjpeg-turbo-3.1.4-dev"
+          },
+          "/nix/store/sza5bnnr46fgjan2hh0qnk71gir8farc-libusb-1.0.30.drv": {
+            "dev": "/nix/store/hrcsabi9mx006q8ihsz84mdk3z55zsfh-libusb-1.0.30-dev"
+          },
+          "/nix/store/yvclmfqc028wjmj2hsac5wznagvwxmjl-alsa-lib-1.2.15.3.drv": {
+            "dev": "/nix/store/y14dymqddrji4kjgcfri4999h59d2jg2-alsa-lib-1.2.15.3-dev"
+          }
+        },
+        "closureSelected": {}
+      }
+    ],
+    "service-light": [
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "runtime-core",
+        "artifact": 14923465085,
+        "artifactSha256": "sha256:sha256:093746c69589e90fb67c847b76c30f31ae0f09ed79018ecb121e0f1a373b7286",
+        "zipBytes": 482658518,
+        "rawIndexSha256": "5cb338767b33f579e79b2b8ac7b4dd4d17de5416a977f8a7ddc8acb9e8b3f093",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45360839334",
+          "GITHUB_SHA": "35e3ac80aad78dee1331f3daa90c48d03114df2d"
+        },
+        "publicKey": "assbox-arm-chromium-runtime-core-45360839334:D10UJp/Ta7wjWOqb10uUQJXM6H5hRaY4H3qzA9M7z10=",
+        "producerRun": 45360839334,
+        "selected": {
+          "/nix/store/4ca61l9g3lkc7kxbkal4l0309q965n17-glib-2.88.4.drv": {
+            "dev": "/nix/store/nf81yawx4kkslgi7lqc62vrb7spgbkss-glib-2.88.4-dev"
+          },
+          "/nix/store/isiimyns6gx2qypqnky0jsvnkp7n5n28-nodejs-24.22.3.drv": {
+            "out": "/nix/store/452664sh0qmzj9ck4py0v4q10lqg2iy4-nodejs-24.22.3"
+          },
+          "/nix/store/kyfv45djhh0pxzx58zkjivzkbcc957j9-dbus-glib-0.114.drv": {
+            "dev": "/nix/store/sd4hvqfb7q0v2q7lgl5v636igfv3af31-dbus-glib-0.114-dev"
+          }
+        },
+        "closureSelected": {
+          "/nix/store/34krnpyyfipqgabaivxizn5ws6x0193v-nodejs-slim-24.22.3.drv": {
+            "corepack": "/nix/store/dra3mpq662ajgzqf8044fia00pwv3dsa-nodejs-slim-24.22.3-corepack",
+            "npm": "/nix/store/3s19q346dpw4hbclbfaszsmbjqmnvw31-nodejs-slim-24.22.3-npm",
+            "out": "/nix/store/6iljwa6yrc0q0f8c5hyvfdbs1zkd4rvh-nodejs-slim-24.22.3"
+          }
+        }
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "platform-libraries",
+        "artifact": 14916138050,
+        "artifactSha256": "sha256:sha256:374615951c5e12929b2884362ae8c9451b5d88b76d4944f1975b0fe3e937fe23",
+        "zipBytes": 60518405,
+        "rawIndexSha256": "1a0c5931a0445818ff19569f538661d3f08ae88a110c9c8c1465ae575582f040",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-platform-libraries-45373207069:DNcnY5PIuMyQhGWZXhelxh8W2jAd0e3AsaGMKELlczA=",
+        "producerRun": 45373207069,
+        "selected": {
+          "/nix/store/1ab79hw2l6jpv81d9sa83izk0j9k6d83-libgcrypt-1.12.4.drv": {
+            "dev": "/nix/store/kin572n4fcsq6grvi750g2i68m39zriz-libgcrypt-1.12.4-dev"
+          },
+          "/nix/store/2lzs33ssbisrsbd9vyw7n7h1f9jvmawd-gperf-3.3.drv": {
+            "out": "/nix/store/y80rblf83z0vspc8gv91ddpzxvv4ivx0-gperf-3.3"
+          },
+          "/nix/store/3v8kcyiw8898r0caipvrz22if55rw3fr-util-linux-minimal-2.42.3.drv": {
+            "dev": "/nix/store/kx2ffxa74p38s4vn5qd9mxcxf09ai7qv-util-linux-minimal-2.42.3-dev"
+          },
+          "/nix/store/3vkhkraki85inq56zpx25rn2g9mkxs46-curl-8.22.0.drv": {
+            "dev": "/nix/store/9hzcdsy61a2pxjscks4d9diq89ifqb8d-curl-8.22.0-dev"
+          },
+          "/nix/store/3zyycqi1bgv1nw6v58289rdvb0zrn300-libffi-3.8.0.drv": {
+            "dev": "/nix/store/sc4rs9sx3g727r2l57wwibgv89shc1q7-libffi-3.8.0-dev"
+          },
+          "/nix/store/5g1kpwaq835a09kq5g5n9g77yzsmpyx8-pkg-config-wrapper-0.29.2.drv": {
+            "out": "/nix/store/bvdrgl8lmc4b649r5qhgpp2i0s1s89ww-pkg-config-wrapper-0.29.2"
+          },
+          "/nix/store/69qzial9zj0b11wiav5ws8g64p3b8fjv-libxml2-2.15.4.drv": {
+            "dev": "/nix/store/fbas2swa30q2bq0i1fgm0xy2m5xnhywk-libxml2-2.15.4-dev"
+          },
+          "/nix/store/837gjms8kqkng5ryhj7vsy30xyr02jwh-systemd-minimal-libs-260.5.drv": {
+            "dev": "/nix/store/iw37k2bqklhgl9lw881fh1sg1p6fdin0-systemd-minimal-libs-260.5-dev"
+          },
+          "/nix/store/969r54zqpg2sxi878rcz4qbb0a8qamcw-expat-2.8.5.drv": {
+            "dev": "/nix/store/0fz7k3rdsfd4rmrqfvpjh0miawlnx39f-expat-2.8.5-dev"
+          },
+          "/nix/store/bk5wh1nxz064czggf63838z7n35y4j87-krb5-1.22.2.drv": {
+            "dev": "/nix/store/x2jadg7w45xraxjdn2f0qyhlil9qmmm5-krb5-1.22.2-dev"
+          },
+          "/nix/store/cb1zfrn95ybks5xnsw5r2p4b2npqvab3-bzip2-1.0.8.drv": {
+            "dev": "/nix/store/193h42ykr5slq86c1rryx2r4ni50nnjz-bzip2-1.0.8-dev"
+          },
+          "/nix/store/d5y15g3lilz7g0fwd18d1j5j76rxwicq-bash-interactive-5.3p9.drv": {
+            "dev": "/nix/store/lqss6yfrdhm3fhbb3gjzm0vchphydhmv-bash-interactive-5.3p9-dev"
+          },
+          "/nix/store/f9capd5sdrhggr4ipa0q27d040g6lxlz-re2-2025-11-05.drv": {
+            "dev": "/nix/store/9653vq68wmwbr1gwgccnjq4g36558703-re2-2025-11-05-dev"
+          },
+          "/nix/store/gsr8hr0j81p1728fnzbyrnfqy7mrxd55-which-2.23.drv": {
+            "out": "/nix/store/qafgrrmc4l0cawxggbgd40byjpjbml78-which-2.23"
+          },
+          "/nix/store/pqx6pl28xi7nnpif5mkl9nama9sc3p4n-bash-5.3p9.drv": {
+            "out": "/nix/store/k56s4lq6d6rljdxg26a34iij3xdvwzz7-bash-5.3p9"
+          },
+          "/nix/store/s1nxcnmy81qa52bq1cjpmjnq408g9aja-util-linux-2.42.3.drv": {
+            "dev": "/nix/store/khc49b59dffb9dniicidin0cgyfd16mp-util-linux-2.42.3-dev"
+          },
+          "/nix/store/sgbkb373mh8zyhy9swc7a78rvshabjab-libcap-2.77.drv": {
+            "dev": "/nix/store/7xisrsjfpvf0kvbqwr38x5c2wisxai12-libcap-2.77-dev"
+          },
+          "/nix/store/vrx9kp5745qm3nkmpa1fbxqfpkkr509j-libevent-2.1.13.drv": {
+            "dev": "/nix/store/p9xkh8iagj3034ys6cb3znbx2i64y3lg-libevent-2.1.13-dev"
+          },
+          "/nix/store/yfyc17bbxg04wb8c11zg1lgcdvhzww2w-glibc-2.42-100.drv": {
+            "out": "/nix/store/y8g2m8zha8fdwd6klf3jngqndf9nv9j2-glibc-2.42-100"
+          },
+          "/nix/store/zxzcmw0pnx0qvqinvvh6cpd1zh2w22g9-libxslt-1.1.45.drv": {
+            "dev": "/nix/store/nmb6v2hj5f7cn87claqqdw8lk25vhq98-libxslt-1.1.45-dev"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "display-libraries",
+        "artifact": 14919506082,
+        "artifactSha256": "sha256:sha256:1048e8faf426c507d3c71545283c55f29b372c5319112c0af6063714a0a77814",
+        "zipBytes": 30538271,
+        "rawIndexSha256": "2a4cd988f285f1d9d17ffb099f4207fc57c17925ddc79616ed3215b39eca8ee3",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45373207069",
+          "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+        },
+        "publicKey": "assbox-arm-chromium-display-libraries-45373207069:59ts49Js4hxkfe0rpzIKJ664sqALb6xMugJ1IyqTj0c=",
+        "producerRun": 45373207069,
+        "selected": {
+          "/nix/store/2naawlhhb3rjj239i4vmm16n210yqd63-pciutils-3.15.0.drv": {
+            "out": "/nix/store/y919s0j7s3ci4jc5xqcnsh3vl4nbwa5p-pciutils-3.15.0"
+          },
+          "/nix/store/9mymjy53nl5j2riz72d1qyjdg2fqzd8g-libjpeg-turbo-3.1.4.drv": {
+            "dev": "/nix/store/jmkqcxsaf67jfqriwqkhhb0ysy3s9pss-libjpeg-turbo-3.1.4-dev"
+          },
+          "/nix/store/sza5bnnr46fgjan2hh0qnk71gir8farc-libusb-1.0.30.drv": {
+            "dev": "/nix/store/hrcsabi9mx006q8ihsz84mdk3z55zsfh-libusb-1.0.30-dev"
+          },
+          "/nix/store/yvclmfqc028wjmj2hsac5wznagvwxmjl-alsa-lib-1.2.15.3.drv": {
+            "dev": "/nix/store/y14dymqddrji4kjgcfri4999h59d2jg2-alsa-lib-1.2.15.3-dev"
+          }
+        },
+        "closureSelected": {}
+      }
+    ]
+  },
+  "recoveryParentPlanSha256": "82fdc4dc4541718a2108c6fa60ea09f8078d7418773e67c7859b1b30687f4ee7"
 }

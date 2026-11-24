@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 
-BRANCH = 'refs/heads/test/arm-current-independent-profile-inventories'
+BRANCH = 'refs/heads/test/arm-current-profile-signed-recovery'
 HOSTED = {
     'RUNNER_ENVIRONMENT':'github-hosted', 'GITHUB_REPOSITORY':'assboxai/assbox',
     'GITHUB_REPOSITORY_ID':'1402455771', 'GITHUB_REPOSITORY_OWNER_ID':'327835666',
@@ -39,7 +39,7 @@ def require(condition, detail):
 
 
 def main():
-    require(platform.system() == 'Linux' and platform.machine() == 'aarch64', 'Native x86 is required')
+    require(platform.system() == 'Linux' and platform.machine() == 'aarch64', 'Native ARM Linux is required')
     require(all(os.environ.get(key) == value for key,value in HOSTED.items()), 'Unexpected native profile workflow authority')
     require(not set(os.environ) & {'GH_TOKEN','GITHUB_TOKEN','ACTIONS_RUNTIME_TOKEN',
                 'ACTIONS_ID_TOKEN_REQUEST_TOKEN','ACTIONS_ID_TOKEN_REQUEST_URL'}, 'Unexpected credentials')
@@ -88,6 +88,12 @@ def main():
         seed = json.loads((evidence/'kernel-import.json').read_bytes())
         require(seed['source'] == source and seed['tree'] == tree and seed['kernelBuildInvoked'] is False
                 and seed['derivation'] == plan['kernel']['derivation'], 'Verified kernel import receipt changed')
+        inputs = json.loads((evidence/'signed-input-imports.json').read_bytes())
+        pins = plan["seedInputs"][group]
+        require((inputs["source"],inputs["tree"],inputs["architecture"],inputs["group"])
+                == (source,tree,"aarch64-linux",group) and
+                {item["artifact"] for item in inputs["groups"]} == {pin["artifact"] for pin in pins},
+                "Missing native signed dependency receipts")
         wanted = [row['derivation']+'^out' for row in expected.values()]
         command = ['nix','build','--no-link','--print-out-paths','--keep-going','-L',*settings,*wanted]
         build_log = Path(scratch)/'native-build.log'

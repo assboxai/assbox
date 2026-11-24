@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox exact current native ARM independent profiles
+name: Assbox native ARM profiles with signed inputs
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-current-independent-profile-inventories
+  group: assbox-arm-current-profile-signed-recovery
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,16 +12,17 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-current-independent-profile-inventories' &&
+      github.ref == 'refs/heads/test/arm-current-profile-signed-recovery' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [cli-components, service-components, editor-components, workers-and-gateways, desktop-profiles]
+        group: [editor-light, service-light]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
       contents: read
+      actions: read
     env:
       INPUT_GROUP: ${{ matrix.group }}
       PRODUCT_COMMIT: d3d36054d98d1ccf3ab37853fd4c23b5621e72d5
@@ -54,6 +55,72 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
+      - name: Read verified runtime-core for editor-light
+        if: matrix.group == 'editor-light'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14923465085'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45360839334'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/runtime-core
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified platform-libraries for editor-light
+        if: matrix.group == 'editor-light'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14916138050'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45373207069'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/platform-libraries
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified display-libraries for editor-light
+        if: matrix.group == 'editor-light'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14919506082'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45373207069'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/display-libraries
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified runtime-core for service-light
+        if: matrix.group == 'service-light'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14923465085'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45360839334'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/runtime-core
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified platform-libraries for service-light
+        if: matrix.group == 'service-light'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14916138050'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45373207069'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/platform-libraries
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified display-libraries for service-light
+        if: matrix.group == 'service-light'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14919506082'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45373207069'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/display-libraries
+          skip-decompress: true
+          digest-mismatch: error
       - name: Realize exact native profile roots and retain raw advisory evidence
         shell: bash
         run: |
@@ -67,6 +134,7 @@ jobs:
           free -b >> "$evidence/resource.txt"
           /usr/bin/python3 -I -B authority/.github/experiments/current-arm-independent-profiles.py evaluate "$PWD/product" "$evidence"
           /usr/bin/python3 -I -B authority/.github/experiments/import-verified-arm-profile-kernel.py "$PWD/product" "$evidence"
+          /usr/bin/python3 -I -B authority/.github/experiments/import-native-arm-profile-seeds.py "$PWD/product" "$RUNNER_TEMP/assbox-arm-profile-seeds" "$evidence" "$INPUT_GROUP"
           /usr/bin/python3 -I -B authority/.github/experiments/current-arm-independent-profiles.py realize "$PWD/product" "$evidence"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
