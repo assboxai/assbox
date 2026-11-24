@@ -19,8 +19,8 @@ jobs:
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: 5077cb7cae5b9289b3e97d12689235ac0ab13283
-      PRODUCT_TREE: b11ac271635a971eb454ef1bab91ecc5b59a60c0
+      PRODUCT_COMMIT: d3d36054d98d1ccf3ab37853fd4c23b5621e72d5
+      PRODUCT_TREE: ac7bc49124a59ad59bca1afde3d755dd88ec7370
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -90,10 +90,10 @@ jobs:
           ' > "$evidence/bindings.json" 2> "$evidence/bindings.log"
           wrapper=$(jq -er '.package|if length == 1 then .[0].drvPath else error("OpenClaw wrapper selection") end' "$evidence/bindings.json")
           package=$(jq -er '.package[0].output' "$evidence/bindings.json")
-          test "$wrapper" = /nix/store/phbk5fcd9qb200m65bbr8gpdazrl9hr6-openclaw-2026.11.7-assbox-entrypoint.drv
-          test "$package" = /nix/store/sjk6s654qp2ddqcw11r4j8irj7rhmgnk-openclaw-2026.11.7-assbox-entrypoint
+          test "$wrapper" = /nix/store/p5r62dw24v5y2bm1l6ph9bpkrgpkn1jw-openclaw-2026.11.7-assbox-entrypoint.drv
+          test "$package" = /nix/store/2qk3igx68n6fglqqdr5svlsd2xfcnpzl-openclaw-2026.11.7-assbox-entrypoint
           raw=$(nix-store --query --references "$wrapper" | grep -E -- '-openclaw-2026[.]11[.]7[.]drv$')
-          test "$raw" = /nix/store/8p34pgdkixhc9iccywlh66abbr457kwa-openclaw-2026.11.7.drv
+          test "$raw" = /nix/store/f663by7rvq8g8xppn3ys5ywmily2d7v9-openclaw-2026.11.7.drv
           deps=$(nix-store --query --references "$raw" | grep -E -- '-openclaw-pnpm-deps[.]drv$')
           pnpm=$(nix-store --query --references "$raw" | grep -E -- '-pnpm-12[.]23[.]0[.]drv$')
           deps_output=$(nix-store --query --outputs "$deps")
