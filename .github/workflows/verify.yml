@@ -4,7 +4,7 @@ name: Assbox native ARM installed headless CLI with verified inputs
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-installed-headless-cli-seeded-e99bbcb
+  group: assbox-arm-installed-headless-cli-seeded-d3d3605
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,16 +12,16 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-installed-headless-cli-seeded-e99bbcb' &&
+      github.ref == 'refs/heads/test/arm-installed-headless-cli-seeded-d3d3605' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 260
+    timeout-minutes: 360
     permissions:
       actions: read
       contents: read
     env:
-      PRODUCT_COMMIT: e99bbcbcb335c218a762dfbf7710d64aa89fbe4d
-      PRODUCT_TREE: 3420b79c9a8deea662ef7bdfcc6375843544282b
+      PRODUCT_COMMIT: d3d36054d98d1ccf3ab37853fd4c23b5621e72d5
+      PRODUCT_TREE: ac7bc49124a59ad59bca1afde3d755dd88ec7370
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -100,7 +100,18 @@ jobs:
           path: ${{ runner.temp }}/assbox-installed-cli-seeds/nix-module
           skip-decompress: true
           digest-mismatch: error
+      - name: Download the verified native ARM Codex seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14932607181'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45401874682'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/codex
+          skip-decompress: true
+          digest-mismatch: error
       - name: Install and boot the exact native ARM headless profile
+        timeout-minutes: 320
         shell: bash
         run: |
           set -euo pipefail
@@ -139,6 +150,7 @@ jobs:
           nix eval --json --impure --no-update-lock-file --no-write-lock-file --option eval-cores 2 --expr "$expression" > "$evidence/evaluation.json"
           sha256sum "$fixture" "$(dirname "$fixture")/run-current-installed-cli.py" > "$evidence/fixture-sha256.txt"
           drv=$(jq -r '.test' "$evidence/evaluation.json")
+          test "$drv" = "/nix/store/02c6cw7z7kzafvlnls1axlqbj3g5j93s-vm-test-run-assbox-current-installed-curated-headless.drv"
           test -r "$drv"
           /usr/bin/python3 -I -B ../authority/.github/experiments/import-arm-installed-cli-seeds.py \
             "$PWD" "$RUNNER_TEMP/assbox-installed-cli-seeds" "$evidence"
@@ -155,6 +167,11 @@ jobs:
             echo "The installed fixture rebuilt its verified kernel" >&2
             exit 1
           fi
+          codex_drv=$(jq -er '.seeds[] | select(.artifact==14932607181) | .derivation' "$evidence/seed-import.json")
+          if grep -Fq "building '$codex_drv'" "$evidence/native-install.log"; then
+            echo "The installed fixture rebuilt its verified native Codex package" >&2
+            exit 1
+          fi
           test "$(wc -l < "$evidence/output-paths.txt")" -eq 1
           output=$(cat "$evidence/output-paths.txt")
           cp "$output/current-installed-offline-cli.json" "$evidence/installed-cli.json"
@@ -163,7 +180,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: e99bbcb-native-arm-installed-headless-cli-seeded
+          name: d3d3605-native-arm-installed-headless-cli-seeded
           path: ${{ runner.temp }}/assbox-arm-installed-headless-cli/
           if-no-files-found: warn
           retention-days: 14

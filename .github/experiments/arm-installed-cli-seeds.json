@@ -129,5 +129,35 @@
       "publicKey": "assbox-arm-nix-seed-45127478115:HnZBuqkmTSRXOOXKacqEav/XHryz87D47xC6K+g4tj4=",
       "testedColdCorrectAndWrongKeys": true
     }
+  },
+  {
+    "name": "codex",
+    "artifact": 14932607181,
+    "bytes": 148671784,
+    "transportDigest": "sha256:0c0ed0192248f9d6196b024da1c49149a53583031f3917d6f3a7d5539d68442c",
+    "indexSha256": "0f192302ac622433416270c547242c9035b3a19eae6065f24ca8b393d9eaba7b",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45401874682",
+        "GITHUB_SHA": "e7ba24679ea68cdf93adf2614060c8b37439e4f9"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "group": "codex",
+      "architecture": "aarch64-linux",
+      "parentProfile": "/nix/store/4x0m8m87w41nmafrn4z0hrgxawmvd327-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/zkllgjc1vn4f825gw01mdy1y5mci7mig-codex-0.160.1.drv",
+          "outputs": {
+            "out": "/nix/store/cy2jcm8v0nf52kg87yjw7vz21pl7z241-codex-0.160.1"
+          }
+        }
+      ],
+      "planSha256": "4f3321094b234ea95a5474aa17b4ae8f88b00d7ccb8dd14e9a5a589b444560f8",
+      "publicKey": "assbox-arm-codex-codex-45401874682:7RFCsjW8ZKGo6IRo8bdr7ayoAL6GRljAp7hPjfPpQok="
+    },
+    "verifiedCorrectAndWrongKeys": true
   }
 ]

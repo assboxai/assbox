@@ -16,10 +16,10 @@ import sys
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
-SOURCE = 'e99bbcbcb335c218a762dfbf7710d64aa89fbe4d'
-TREE = '3420b79c9a8deea662ef7bdfcc6375843544282b'
+SOURCE = 'd3d36054d98d1ccf3ab37853fd4c23b5621e72d5'
+TREE = 'ac7bc49124a59ad59bca1afde3d755dd88ec7370'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
-TEST = '/nix/store/1m3mn3ph7c4lmvzvb5rsxvzl1d7h0i3i-vm-test-run-assbox-current-installed-curated-headless.drv'
+TEST = '/nix/store/02c6cw7z7kzafvlnls1axlqbj3g5j93s-vm-test-run-assbox-current-installed-curated-headless.drv'
 SIZE_LIMIT = 2 * 1024**3
 HOSTED = {
     'RUNNER_ENVIRONMENT': 'github-hosted',
@@ -28,7 +28,7 @@ HOSTED = {
     'GITHUB_REPOSITORY_OWNER_ID': '327835666',
     'GITHUB_EVENT_NAME': 'workflow_dispatch',
     'GITHUB_RUN_ATTEMPT': '1',
-    'GITHUB_REF': 'refs/heads/test/arm-installed-headless-cli-seeded-e99bbcb',
+    'GITHUB_REF': 'refs/heads/test/arm-installed-headless-cli-seeded-d3d3605',
 }
 TOKEN_ENV = {
     'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN',
@@ -79,9 +79,15 @@ def validate(archive, work, pinned, cache_tools):
     index = cache_tools.decoded(raw)
     require(cache_tools.encoded(index) == raw and all(index[key] == value for key, value in pinned['index'].items()),
             'ARM seed index does not match the independently verified identity')
-    require(index['architecture'] == 'aarch64-linux' and index['testedColdCorrectAndWrongKeys'] is True,
-            'ARM cold-store qualification is required')
+    require(index['architecture'] == 'aarch64-linux', 'Native ARM cache is required')
     cache_tools.validate_cache(cache, index)
+    if pinned['name'] == 'codex':
+        require(pinned['verifiedCorrectAndWrongKeys'] is True and index['group'] == 'codex'
+                and index['source'] == SOURCE and index['tree'] == TREE,
+                'Independently verified native Codex cache is required')
+        package, = index['exactRoots']
+        return {**index, **package, 'runId': int(index['identity']['GITHUB_RUN_ID'])}, cache
+    require(index['testedColdCorrectAndWrongKeys'] is True, 'ARM cold-store qualification is required')
     return index, cache
 
 
@@ -135,6 +141,8 @@ def main():
     require(evaluated['test'] == TEST and evaluated['expectedProfile']['system'] == 'aarch64-linux',
             'Unexpected exact installed CLI driver')
     expected = json.loads((authority / 'arm-installed-cli-seeds.json').read_bytes())
+    require([row['name'] for row in expected] == ['llvm', 'nix-core', 'rustc', 'clang', 'nix-module', 'codex'],
+            'Expected all independently verified installed CLI inputs')
     require({row.name for row in downloads.iterdir()} == {row['name'] for row in expected}, 'Unexpected input seed directories')
     accepted = []
     with TemporaryDirectory(prefix='assbox-installed-arm-seeds-', dir=downloads.parent) as temp:
@@ -142,7 +150,13 @@ def main():
         env = cache_tools.environment(root)
         graph = set(cache_tools.run(env, 'nix-store', '--query', '--requisites', TEST, timeout=300).decode().splitlines())
         for pinned in expected:
-            drv = pinned['index']['derivation']
+            if pinned['name'] == 'codex':
+                package, = pinned['index']['exactRoots']
+                require(package['outputs'] == {'out': evaluated['expectedProfile']['expected']['codex']['output']},
+                        'Native Codex does not match the installed profile')
+            else:
+                package = pinned['index']
+            drv = package['derivation']
             require(drv in graph, 'ARM seed derivation is absent from the exact test dependency graph')
             files = list((downloads / pinned['name']).iterdir())
             require(len(files) == 1 and files[0].is_file() and not files[0].is_symlink(), 'Expected one archived ARM seed')
