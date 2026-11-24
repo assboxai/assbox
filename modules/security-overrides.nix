@@ -234,6 +234,18 @@ in
               })
             else
               previous.jbig2dec;
+          glib =
+            if previous.glib.version == "2.88.3" then
+              previous.glib.overrideAttrs (old: {
+                version = "2.88.4";
+                src = previous.fetchurl {
+                  url = "https://download.gnome.org/sources/glib/2.88/glib-2.88.4.tar.xz";
+                  hash = "sha256-Jf0Wnzsvkf4jka0peIPOD88wxp/Hif/RyWctEzKxxag=";
+                };
+                patches = (old.patches or [ ]) ++ [ ../nix/patches/glib-CVE-2026-58016-upstream-source-fix.patch ];
+              })
+            else
+              previous.glib;
           libsndfile =
             if previous.libsndfile.version == "1.2.2" then
               previous.libsndfile.overrideAttrs (old: {
