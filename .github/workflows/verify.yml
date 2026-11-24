@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox native ARM installed headless CLI
+name: Assbox native ARM installed headless CLI with verified inputs
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-installed-headless-cli-e99bbcb
+  group: assbox-arm-installed-headless-cli-seeded-e99bbcb
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,11 +12,12 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-installed-headless-cli-e99bbcb' &&
+      github.ref == 'refs/heads/test/arm-installed-headless-cli-seeded-e99bbcb' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 260
     permissions:
+      actions: read
       contents: read
     env:
       PRODUCT_COMMIT: e99bbcbcb335c218a762dfbf7710d64aa89fbe4d
@@ -49,6 +50,56 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
+      - name: Download the verified ARM llvm seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14790289191'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45085837980'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/llvm
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM nix-core seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14793257571'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45105620947'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/nix-core
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM rustc seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14796242324'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45113607681'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/rustc
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM clang seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14873761954'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45254317055'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/clang
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM nix-module seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14813051401'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45127478115'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/nix-module
+          skip-decompress: true
+          digest-mismatch: error
       - name: Install and boot the exact native ARM headless profile
         shell: bash
         run: |
@@ -89,6 +140,8 @@ jobs:
           sha256sum "$fixture" "$(dirname "$fixture")/run-current-installed-cli.py" > "$evidence/fixture-sha256.txt"
           drv=$(jq -r '.test' "$evidence/evaluation.json")
           test -r "$drv"
+          /usr/bin/python3 -I -B ../authority/.github/experiments/import-arm-installed-cli-seeds.py \
+            "$PWD" "$RUNNER_TEMP/assbox-installed-cli-seeds" "$evidence"
           status=0
           nix build --no-link --print-out-paths --max-jobs 2 --cores 2 --keep-failed -L "$drv^*" > "$evidence/output-paths.txt" 2> "$evidence/native-install.log" || status=$?
           printf '%s\n' "$status" > "$evidence/status.exit"
@@ -104,7 +157,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: e99bbcb-native-arm-installed-headless-cli
+          name: e99bbcb-native-arm-installed-headless-cli-seeded
           path: ${{ runner.temp }}/assbox-arm-installed-headless-cli/
           if-no-files-found: warn
           retention-days: 14

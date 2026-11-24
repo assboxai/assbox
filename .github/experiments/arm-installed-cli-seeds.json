@@ -1,0 +1,133 @@
+[
+  {
+    "name": "llvm",
+    "artifact": 14790289191,
+    "bytes": 162978162,
+    "transportDigest": "sha256:4fa093d127d24170ae061216fa5b108e36a164e31e1ad0501f6ad70f045b905d",
+    "indexSha256": "3cdc04edf11e5e2ed2cf7fb6bb7e3b6edde084ce5fa3fc7cbf1ff1ce2a3dfa6d",
+    "index": {
+      "schema": 1,
+      "kind": "assbox-native-arm-llvm-store-seed",
+      "architecture": "aarch64-linux",
+      "source": "c2d872c72ee0478f19e2ca28312deeaf77b446f6",
+      "tree": "91c656ad4debdb00c907c8d9147e058f5d3939ea",
+      "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+      "runId": 45085837980,
+      "workflow": "b8f812f0ab52b9a6c287ca6633394ead0b949d3f",
+      "attempt": 1,
+      "derivation": "/nix/store/sf1m5zznbj4ca5bgiamhdz4gzw8h0636-llvm-21.1.8.drv",
+      "outputs": {
+        "dev": "/nix/store/x969mp2nyzv87dgv4nrd4724nrn4xrxv-llvm-21.1.8-dev",
+        "lib": "/nix/store/qi2sj07fh7i7qh9vpy4r5qs1pba0q4g2-llvm-21.1.8-lib",
+        "out": "/nix/store/2mqi9z52w7ssdd0p7a68n7kp51izi5j8-llvm-21.1.8",
+        "python": "/nix/store/bva4yrsm3bl39blz8rc2yx0x62rj6dc9-llvm-21.1.8-python"
+      },
+      "publicKey": "assbox-arm-llvm-seed-45085837980:Dzj2t97dIR5e0atZAry6l0UcXeuC+0guq8cqCfqSPMw=",
+      "testedColdCorrectAndWrongKeys": true
+    }
+  },
+  {
+    "name": "nix-core",
+    "artifact": 14793257571,
+    "bytes": 79546360,
+    "transportDigest": "sha256:84e332c8dd6877bf5a82699f6e15f06683dcccbc417d31e8b60590d81d87ab13",
+    "indexSha256": "c8b252083d4eb574d95905252060fe148c31ed2f739266eb254053cc6f2f1ee0",
+    "index": {
+      "schema": 1,
+      "kind": "assbox-native-arm-nix-core-store-seed",
+      "architecture": "aarch64-linux",
+      "source": "c2d872c72ee0478f19e2ca28312deeaf77b446f6",
+      "tree": "91c656ad4debdb00c907c8d9147e058f5d3939ea",
+      "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+      "runId": 45105620947,
+      "workflow": "e8f799521e6e82fe1b529407d01f4646b0b0ea07",
+      "attempt": 1,
+      "derivation": "/nix/store/yhmhsy4024ifc8ia2426lb1caxbargsd-nix-2.34.8.drv",
+      "outputs": {
+        "debug": "/nix/store/z0yz2rh3s3kwa6vf2x7qmhh23hrc60p1-nix-2.34.8-debug",
+        "out": "/nix/store/dmm67d25x2ly94a3g9jmzfplfsp4sszj-nix-2.34.8"
+      },
+      "publicKey": "assbox-arm-nix-core-seed-45105620947:SypdZAX564WjvCDXqGqSLHqZ43m12RLyomTBpaCD968=",
+      "testedColdCorrectAndWrongKeys": true
+    }
+  },
+  {
+    "name": "rustc",
+    "artifact": 14796242324,
+    "bytes": 427627780,
+    "transportDigest": "sha256:781c3364c4a0ea25aabffd7937fcb777b0bf43016791cd2dee2c63ae9ed0fca4",
+    "indexSha256": "28c01a328ea0c7ce7bcd313a0e1ac8890ceb1bcee0115d77c44168b9e6a7940d",
+    "index": {
+      "schema": 1,
+      "kind": "assbox-native-arm-rustc-store-seed",
+      "architecture": "aarch64-linux",
+      "source": "c2d872c72ee0478f19e2ca28312deeaf77b446f6",
+      "tree": "91c656ad4debdb00c907c8d9147e058f5d3939ea",
+      "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+      "runId": 45113607681,
+      "workflow": "42f113302e8756d1c751905811ee1c524b2fc48a",
+      "attempt": 1,
+      "derivation": "/nix/store/mn1242q63sn822n5mj78a7zi9v10b93a-rustc-1.95.0.drv",
+      "outputs": {
+        "doc": "/nix/store/4qhz9gvrrqb6cgc3hzgcdg9fvrnxfvkj-rustc-1.95.0-doc",
+        "man": "/nix/store/n9cj2zppji0nlilc6fnzrm9z2ivw8r97-rustc-1.95.0-man",
+        "out": "/nix/store/2pzywc9bpkrayfw7a6ppymwal9hzbylm-rustc-1.95.0"
+      },
+      "publicKey": "assbox-arm-rustc-seed-45113607681:OiSg9lHBOxC7KERagkloDZLY5F2R9dHE8HrNpzgq87g=",
+      "testedColdCorrectAndWrongKeys": true
+    }
+  },
+  {
+    "name": "clang",
+    "artifact": 14873761954,
+    "bytes": 296621975,
+    "transportDigest": "sha256:988446ddfc9864ebbeff552a1581cd9415b7643a7a7c6812f04a24026ab7c1c7",
+    "indexSha256": "58814652ff4535aad1a614a8d1b23f55f511dc6f02ac8abe73ad601ec336e190",
+    "index": {
+      "schema": 1,
+      "kind": "assbox-native-arm-chromium-clang-store-seed",
+      "architecture": "aarch64-linux",
+      "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+      "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+      "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+      "runId": 45254317055,
+      "workflow": "dbb8ea82e53c417353d2fcefc3c4e375c747530c",
+      "attempt": 1,
+      "derivation": "/nix/store/xl9xyi4sr0mlw8qpp02zc2kp0cs7h7wx-clang-21.1.8.drv",
+      "outputs": {
+        "lib": "/nix/store/jamycm4hb42m8mwnridnazp656r233qh-clang-21.1.8-lib",
+        "out": "/nix/store/c219gs6966jd09z36cc44nwi4v9mj0qr-clang-21.1.8",
+        "python": "/nix/store/7p5by0iz3iwa8mjxkgxhrs8kiqy3zmwk-clang-21.1.8-python"
+      },
+      "publicKey": "assbox-arm-chromium-clang-seed-45254317055:Q3UKvFOVXuQfQtB+0RwnFk0lkDSrSJLnb5+HyEcLGYM=",
+      "testedColdCorrectAndWrongKeys": true
+    }
+  },
+  {
+    "name": "nix-module",
+    "artifact": 14813051401,
+    "bytes": 74852088,
+    "transportDigest": "sha256:5fc1359c16ec20df5f54c72d8b522a9ccf6d5197725ea0f146b8a7cf31a07d9a",
+    "indexSha256": "6edb70247067fec3a9f3c6e4f2c166ee4c91852a27faf39ab8c539baa040fdeb",
+    "index": {
+      "schema": 1,
+      "kind": "assbox-native-arm-nix-store-seed",
+      "architecture": "aarch64-linux",
+      "source": "c2d872c72ee0478f19e2ca28312deeaf77b446f6",
+      "tree": "91c656ad4debdb00c907c8d9147e058f5d3939ea",
+      "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+      "runId": 45127478115,
+      "workflow": "92727475b76995583df6876d8cfb9a1ed5ee034f",
+      "attempt": 1,
+      "derivation": "/nix/store/adp5igphnvrrqyks4h3hz85f3c4f2c1b-nix-2.34.8.drv",
+      "outputs": {
+        "dev": "/nix/store/bblyp48fnxf3rmk2swqqpw5xi6iyl3v4-nix-2.34.8-dev",
+        "doc": "/nix/store/71lnm74xdc4csg37sb5b7z24298w9rb1-nix-2.34.8-doc",
+        "man": "/nix/store/rd05kb42xlmswkvpp3ih63dl99k45ngl-nix-2.34.8-man",
+        "out": "/nix/store/dbh436dkjc1c3zajqf5ng25md0kkgwbz-nix-2.34.8"
+      },
+      "publicKey": "assbox-arm-nix-seed-45127478115:HnZBuqkmTSRXOOXKacqEav/XHryz87D47xC6K+g4tj4=",
+      "testedColdCorrectAndWrongKeys": true
+    }
+  }
+]
