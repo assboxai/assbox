@@ -3,6 +3,7 @@
 """Import only signed inputs that the exact native headless dependency graph selects."""
 from datetime import datetime, timezone
 from hashlib import sha256
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -154,7 +155,19 @@ def main():
             require(len(archives) == 1, 'Unexpected group download inventory')
             directory = area / group
             directory.mkdir(mode=0o700)
-            index, cache = extract(archives[0], directory, pin, tools)
+            if group == 'llvm-seed':
+                llvm_lock = json.loads((controller / 'native-arm-llvm-seed.json').read_text())
+                require(llvm_lock['artifact'] == pin['artifact']
+                        and str(llvm_lock['run']) == pin['identity']['GITHUB_RUN_ID'],
+                        'Unexpected LLVM artifact')
+                spec = importlib.util.spec_from_file_location(
+                    'llvm_seed_validator', controller / 'validate-immutable-llvm-seed.py')
+                validator = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(validator)
+                index, cache = validator.validate_seed(download, directory, llvm_lock, tools)
+                index['exactRoots'] = [{'derivation': index['derivation'], 'outputs': index['outputs']}]
+            else:
+                index, cache = extract(archives[0], directory, pin, tools)
             recipes = tools.decoded(tools.run(env,'nix','derivation','show',*sorted(pin['selected'].keys() | pin.get('closureSelected', {}).keys())))['derivations']
             paths = sorted(exact_selected_outputs(pin,index,live,recipes))
             require(not set(paths) & found, 'Duplicate exact direct input across archives')

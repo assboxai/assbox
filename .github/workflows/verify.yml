@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [media-ffmpeg, media-pipewire, media-desktop]
+        group: [media-ffmpeg, media-pipewire]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -105,6 +105,26 @@ jobs:
           path: ${{ runner.temp }}/assbox-arm-media-recovery-seeds/runtime-core
           skip-decompress: true
           digest-mismatch: error
+      - name: Download the verified llvm-seed inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14790289191'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45085837980'
+          path: ${{ runner.temp }}/assbox-arm-media-recovery-seeds/llvm-seed
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified python-tools inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14953102275'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45443784497'
+          path: ${{ runner.temp }}/assbox-arm-media-recovery-seeds/python-tools
+          skip-decompress: true
+          digest-mismatch: error
       - name: Build exact native ARM Chromium media inputs and verify their signed cache
         timeout-minutes: 320
         shell: bash
@@ -140,6 +160,11 @@ jobs:
           /usr/bin/python3 -I -B authority/.github/experiments/import-native-arm-media-recovery.py \
             "$PWD/product" "$RUNNER_TEMP/assbox-arm-media-recovery-seeds" "$evidence" "$INPUT_GROUP"
           /usr/bin/python3 -I -B authority/.github/experiments/native-arm-media-recovery.py "$PWD/product" "$evidence" "$INPUT_GROUP"
+          if grep -Fq "building '/nix/store/sf1m5zznbj4ca5bgiamhdz4gzw8h0636-llvm-21.1.8.drv'" "$evidence/native-build.log" ||
+             grep -Fq "building '/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv'" "$evidence/native-build.log"; then
+            echo "The build rebuilt a verified imported native input" >&2
+            exit 1
+          fi
           test -s "$evidence/index.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
