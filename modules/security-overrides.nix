@@ -162,6 +162,12 @@ in
           livekit-libwebrtc = previous.livekit-libwebrtc.override {
             ffmpeg_8 = reviewedFfmpeg final.ffmpeg_8;
           };
+          pipewire = previous.pipewire.override {
+            ffmpeg-headless = reviewedFfmpeg final.ffmpeg-headless;
+          };
+          chromaprint = previous.chromaprint.override {
+            ffmpeg-headless = reviewedFfmpeg final.ffmpeg-headless;
+          };
           busybox =
             if previous.busybox.version == "1.37.0" then
               previous.busybox.overrideAttrs (old: {
