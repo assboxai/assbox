@@ -4,7 +4,7 @@ name: Assbox reviewed OpenClaw native ARM runtime
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-openclaw-runtime-reviewed-20261107
+  group: assbox-arm-openclaw-runtime-offline-assets
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-openclaw-runtime-reviewed-20261107' &&
+      github.ref == 'refs/heads/test/arm-openclaw-runtime-offline-assets' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 260
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: 4d1df0e6034a80ca5e4cd0277467cf37d2457e13
-      PRODUCT_TREE: 57e5b44021dacffd39f3c9b42d172c2892457e2a
+      PRODUCT_COMMIT: 5077cb7cae5b9289b3e97d12689235ac0ab13283
+      PRODUCT_TREE: b11ac271635a971eb454ef1bab91ecc5b59a60c0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -90,10 +90,10 @@ jobs:
           ' > "$evidence/bindings.json" 2> "$evidence/bindings.log"
           wrapper=$(jq -er '.package|if length == 1 then .[0].drvPath else error("OpenClaw wrapper selection") end' "$evidence/bindings.json")
           package=$(jq -er '.package[0].output' "$evidence/bindings.json")
-          test "$wrapper" = /nix/store/8sf2vxs3prbl90dmxim6qkjij5i8pigq-openclaw-2026.11.7-assbox-entrypoint.drv
-          test "$package" = /nix/store/mnxwpzck80dlq5hafljssgdkb68rs8l6-openclaw-2026.11.7-assbox-entrypoint
+          test "$wrapper" = /nix/store/phbk5fcd9qb200m65bbr8gpdazrl9hr6-openclaw-2026.11.7-assbox-entrypoint.drv
+          test "$package" = /nix/store/sjk6s654qp2ddqcw11r4j8irj7rhmgnk-openclaw-2026.11.7-assbox-entrypoint
           raw=$(nix-store --query --references "$wrapper" | grep -E -- '-openclaw-2026[.]11[.]7[.]drv$')
-          test "$raw" = /nix/store/c7ag4rxs2bmscqag6j52i3i334fl6h4c-openclaw-2026.11.7.drv
+          test "$raw" = /nix/store/8p34pgdkixhc9iccywlh66abbr457kwa-openclaw-2026.11.7.drv
           deps=$(nix-store --query --references "$raw" | grep -E -- '-openclaw-pnpm-deps[.]drv$')
           pnpm=$(nix-store --query --references "$raw" | grep -E -- '-pnpm-12[.]23[.]0[.]drv$')
           deps_output=$(nix-store --query --outputs "$deps")
@@ -101,11 +101,18 @@ jobs:
           test "$deps_output" = /nix/store/2i5hfwwz0nhzikpbn2sg235jp1lzsxk4-openclaw-pnpm-deps
           nix build --no-link --print-out-paths --max-jobs 1 --cores "$(nproc)" -L "$deps^out" > "$evidence/dependencies.txt" 2> "$evidence/dependencies.log"
           test "$(cat "$evidence/dependencies.txt")" = "$deps_output"
+          mapfile -t asset_drvs < <(nix-store --query --references "$raw" | grep -E -- '-fs-safe-darwin-(arm64|x64)-0[.]27[.]1[.]tgz[.]drv$')
+          test "${#asset_drvs[@]}" -eq 2
+          for asset in "${asset_drvs[@]}"; do
+            nix build --no-link --print-out-paths "$asset^out"
+          done > "$evidence/worker-assets.txt" 2> "$evidence/worker-assets.log"
+          mapfile -t asset_outputs < "$evidence/worker-assets.txt"
+          test "${#asset_outputs[@]}" -eq 2
           nix build --no-link --print-out-paths --max-jobs 1 --cores "$(nproc)" -L "$wrapper^out" > "$evidence/package.txt" 2> "$evidence/package.log"
           test "$(cat "$evidence/package.txt")" = "$package"
           nix path-info --offline --recursive --json --json-format 1 "$package" > "$evidence/runtime-closure.json"
-          jq -e --arg deps "$deps_output" --arg pnpm "$pnpm_output" \
-            '(has($deps)|not) and (has($pnpm)|not) and any(keys[]; endswith("-nodejs-24.22.3"))'             "$evidence/runtime-closure.json" > "$evidence/runtime-policy.txt"
+          jq -e --arg deps "$deps_output" --arg pnpm "$pnpm_output" --arg first "${asset_outputs[0]}" --arg second "${asset_outputs[1]}" \
+            '(has($deps)|not) and (has($pnpm)|not) and (has($first)|not) and (has($second)|not) and any(keys[]; endswith("-nodejs-24.22.3"))'             "$evidence/runtime-closure.json" > "$evidence/runtime-policy.txt"
           mapfile -t tool_drvs < <(jq -r '.tools[].drvPath + "^out"' "$evidence/bindings.json")
           nix build --no-link -L "${tool_drvs[@]}" > "$evidence/smoke-tools.txt" 2> "$evidence/smoke-tools.log"
           bubblewrap=$(jq -er '.tools[0].output' "$evidence/bindings.json")
@@ -143,14 +150,14 @@ jobs:
           cat /tmp/health.log
           exit 1
           SMOKE
-          grep -Fx 'OpenClaw 2026.11.7' "$evidence/native-smoke.log"
+          grep -E '^OpenClaw 2026[.]11[.]7([[:space:]]|$)' "$evidence/native-smoke.log"
           grep -Fx 'Authenticated loopback health passed.' "$evidence/native-smoke.log"
           grep -E '^Incorrect disposable token rejected with exit [1-9][0-9]*[.]$' "$evidence/native-smoke.log"
           test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: reviewed-openclaw-20261107-arm-native
+          name: reviewed-openclaw-offline-assets-arm-native
           path: ${{ runner.temp }}/assbox-arm-reviewed-openclaw
           if-no-files-found: warn
           retention-days: 14
