@@ -15,6 +15,8 @@ let
     "numpy"
     "elevenlabs"
     "modal"
+    # The maintained Matrix client can run without its deprecated crypto extra.
+    "python-olm"
   ];
   ffmpeg = appPkgs.ffmpeg;
   # Keep the SDL stack's GUI and audio features while updating the libraries
@@ -74,6 +76,7 @@ assert lib.all (
 ) dependencies;
 raw.overridePythonAttrs (old: {
   inherit dependencies;
+  patches = (old.patches or [ ]) ++ [ ./patches/hermes-matrix-encryption-unavailable.patch ];
   makeWrapperArgs =
     map (
       arg: if lib.hasSuffix "/bin/python3" arg then "${python}/bin/python3" else arg
@@ -114,6 +117,10 @@ raw.overridePythonAttrs (old: {
     import hermes_cli.dashboard_auth, tui_gateway.slash_worker, yaml
     from agent.i18n import SUPPORTED_LANGUAGES, _load_catalog, t
 
+    from importlib.util import find_spec
+
+    assert find_spec("mautrix") is not None
+    assert find_spec("olm") is None
     assert all(_load_catalog(language) for language in SUPPORTED_LANGUAGES)
     assert "fixture-session" in t("gateway.status.session_id", lang="en", session_id="fixture-session")
     '

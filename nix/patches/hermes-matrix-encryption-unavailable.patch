@@ -1,0 +1,48 @@
+--- a/plugins/platforms/matrix/adapter.py
++++ b/plugins/platforms/matrix/adapter.py
+@@ -756,14 +756,9 @@
+                 ", ".join(missing) if missing else "platform.matrix")
+             return False
+     e2ee_mode = _resolve_e2ee_mode()
+-    if e2ee_mode == "required" and not _check_e2ee_deps():
+-        logger.error(
+-            "Matrix: E2EE is required but dependencies are missing. %s. Without this, encrypted "
+-            "rooms will not work. Set MATRIX_E2EE_MODE=off to disable E2EE.",
+-            _E2EE_INSTALL_HINT)
++    if e2ee_mode != "off" and not _check_e2ee_deps():
++        logger.error("Matrix: encrypted-room support is unavailable in this runtime. Refusing to connect.")
+         return False
+-    if e2ee_mode == "optional" and not _check_e2ee_deps():
+-        logger.warning("Matrix: E2EE optional but dependencies are missing. %s", _E2EE_INSTALL_HINT)
+     return True
+ 
+ 
+@@ -1186,16 +1181,8 @@
+     async def _connect_setup_e2ee(self, client: Any, api: Any, state_store: Any) -> bool:
+         """Set up the Olm machine + crypto store. Returns False when connect must abort."""
+         if not _check_e2ee_deps():
+-            if self._e2ee_mode == "optional":
+-                logger.warning(
+-                    "Matrix: E2EE optional but dependencies are missing. Continuing without "
+-                    "encrypted-room support. %s", _E2EE_INSTALL_HINT)
+-                self._encryption = False
+-            else:
+-                logger.error(
+-                    "Matrix: E2EE is required but dependencies are missing. %s. Refusing to connect — "
+-                    "encrypted rooms would silently fail.", _E2EE_INSTALL_HINT)
+-                return await self._abort_connect(api)
++            logger.error("Matrix: encrypted-room support is unavailable in this runtime. Refusing to connect.")
++            return await self._abort_connect(api)
+         if not self._encryption:
+             return True
+         phase = "import"
+@@ -1316,6 +1303,9 @@
+             logger.warning("Matrix: initial sync error: %s", exc)
+ 
+     async def connect(self, *, is_reconnect: bool = False) -> bool:
++        if self._e2ee_mode != "off" and not _check_e2ee_deps():
++            logger.error("Matrix: encrypted-room support is unavailable in this runtime. Refusing to connect.")
++            return False
+         self._device_id_unverified = False
+         if self._client is not None:
+             try:
