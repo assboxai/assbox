@@ -129,5 +129,43 @@
       "publicKey": "assbox-arm-nix-seed-45127478115:HnZBuqkmTSRXOOXKacqEav/XHryz87D47xC6K+g4tj4=",
       "testedColdCorrectAndWrongKeys": true
     }
+  },
+  {
+    "name": "current-headless-packages",
+    "artifact": 14934033034,
+    "bytes": 50005305,
+    "transportDigest": "sha256:2a1dcf931233b6b02210bc24484438733b88f231c7975b899a1d6ef85652742f",
+    "indexSha256": "bdf00e7e2a15e4776f5a0011557eadef085e99e5fd8944c0b99b0a795cbf7594",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45410257402",
+        "GITHUB_SHA": "8122bfb28051ef4ab095530397be2e5ff38df912"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "group": "headless-prerequisites",
+      "architecture": "aarch64-linux",
+      "parentProfile": "/nix/store/3y3vjfl9hn5cyly4jpk24lgagcfch43i-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/lbjnpjmvhpm423is7cy8g09kmyx6y03f-git-minimal-2.54.0.drv",
+          "outputs": {
+            "out": "/nix/store/9j75q2s9zb67ix282kb4ycpk0zcysa8a-git-minimal-2.54.0"
+          }
+        },
+        {
+          "derivation": "/nix/store/zjzkm96fwr23v5aqw3r1ngrcinmafnc5-protobuf-c-1.5.2.drv",
+          "outputs": {
+            "dev": "/nix/store/b9yydw0mssmssszxw61bz83n0845v2la-protobuf-c-1.5.2-dev",
+            "lib": "/nix/store/8d1d2hb80641a4vma4yn6c213kad86j0-protobuf-c-1.5.2-lib",
+            "out": "/nix/store/bsdkzkcmzbwqq52y478n636qwl53j3dv-protobuf-c-1.5.2"
+          }
+        }
+      ],
+      "planSha256": "4b33ccf20e888eac21fe2950da9312371728b2c408fb79874619354a63e5f279",
+      "publicKey": "assbox-arm-headless-prerequisites-headless-prerequisites-45410257402:u72rJIebmAaOS3YK3wnm2G25K1SfUZvJyXxy8aK3Ax0="
+    },
+    "verifiedCorrectAndWrongKeys": true
   }
 ]

@@ -28,7 +28,7 @@ HOSTED = {
     'GITHUB_REPOSITORY_OWNER_ID': '327835666',
     'GITHUB_EVENT_NAME': 'workflow_dispatch',
     'GITHUB_RUN_ATTEMPT': '1',
-    'GITHUB_REF': 'refs/heads/test/arm-current-headless-inventory',
+    'GITHUB_REF': 'refs/heads/test/arm-current-headless-verified-packages',
 }
 TOKEN_ENV = {
     'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN',
@@ -79,21 +79,31 @@ def validate(archive, work, pinned, cache_tools):
     index = cache_tools.decoded(raw)
     require(cache_tools.encoded(index) == raw and all(index[key] == value for key, value in pinned['index'].items()),
             'ARM seed index does not match the independently verified identity')
-    require(index['architecture'] == 'aarch64-linux' and index['testedColdCorrectAndWrongKeys'] is True,
-            'ARM cold-store qualification is required')
+    require(index['architecture'] == 'aarch64-linux', 'Native ARM dependency required')
+    if pinned['name'] == 'current-headless-packages':
+        require(pinned['verifiedCorrectAndWrongKeys'] is True and
+                index['group'] == 'headless-prerequisites' and index['parentProfile'] == TEST and
+                index['source'] == SOURCE and index['tree'] == TREE,
+                'Expected the independently qualified exact headless package archive')
+    else:
+        require(index['testedColdCorrectAndWrongKeys'] is True, 'ARM cold-store qualification is required')
     cache_tools.validate_cache(cache, index)
     return index, cache
 
 
-def apply(cache, index, drv, cache_tools, env):
-    metadata = cache_tools.decoded(cache_tools.run(env, 'nix', 'derivation', 'show', drv))
-    described, = metadata['derivations'].values()
-    outputs = {name: '/nix/store/' + row['path'] for name, row in described['outputs'].items()}
-    selected = index['outputs']
-    require(described['system'] == 'aarch64-linux' and selected and
-            all(outputs.get(name) == path for name, path in selected.items()),
-            'The seed output identity differs from the exact evaluated ARM package')
-    roots = list(selected.values())
+def apply(cache, index, packages, cache_tools, env):
+    roots = []
+    for package in packages:
+        drv = package['derivation']
+        metadata = cache_tools.decoded(cache_tools.run(env, 'nix', 'derivation', 'show', drv))
+        described, = metadata['derivations'].values()
+        outputs = {name: '/nix/store/' + row['path'] for name, row in described['outputs'].items()}
+        selected = package['outputs']
+        require(described['system'] == 'aarch64-linux' and selected and
+                all(outputs.get(name) == path for name, path in selected.items()),
+                'The seed output identity differs from the exact evaluated ARM package')
+        roots.extend(selected.values())
+    require(len(roots) == len(set(roots)), 'Native seed outputs overlap')
     nix = shutil.which('nix', path=env['PATH'])
     require(nix and Path(nix).resolve(strict=True).is_relative_to('/nix/store'), 'Expected the provisioned Nix CLI')
     subprocess.run(
@@ -109,7 +119,7 @@ def apply(cache, index, drv, cache_tools, env):
         {key: value[key] for key in ('narHash', 'narSize', 'references')} == index['closure'][path]
         for path, value in observed.items()
     ), 'Imported native ARM registration differs from the verified seed closure')
-    return roots, len(observed)
+    return len(observed)
 
 
 def main():
@@ -142,15 +152,21 @@ def main():
         env = cache_tools.environment(root)
         graph = set(cache_tools.run(env, 'nix-store', '--query', '--requisites', TEST, timeout=300).decode().splitlines())
         for pinned in expected:
-            drv = pinned['index']['derivation']
-            require(drv in graph, 'ARM seed derivation is absent from the exact test dependency graph')
+            metadata = pinned['index']
+            grouped = pinned['name'] == 'current-headless-packages'
+            packages = metadata['exactRoots'] if grouped else [metadata]
+            require(packages and all(package['derivation'] in graph for package in packages),
+                    'ARM seed derivation is absent from the exact headless graph')
             files = list((downloads / pinned['name']).iterdir())
             require(len(files) == 1 and files[0].is_file() and not files[0].is_symlink(), 'Expected one archived ARM seed')
             with TemporaryDirectory(prefix=pinned['name'] + '-', dir=root) as unpacking:
                 index, cache = validate(files[0], Path(unpacking), pinned, cache_tools)
-                roots, size = apply(cache, index, drv, cache_tools, env)
-            accepted.append({'artifact': pinned['artifact'], 'run': index['runId'], 'derivation': drv,
-                             'outputs': roots, 'closurePaths': size, 'transportDigest': pinned['transportDigest']})
+                size = apply(cache, index, packages, cache_tools, env)
+            run = int(index['identity']['GITHUB_RUN_ID']) if grouped else index['runId']
+            for package in packages:
+                accepted.append({'artifact': pinned['artifact'], 'run': run, 'derivation': package['derivation'],
+                                 'outputs': list(package['outputs'].values()), 'closurePaths': size,
+                                 'transportDigest': pinned['transportDigest']})
             print('Imported independently verified native ARM seed', pinned['name'], size, flush=True)
     require(not git(product, 'status', '--porcelain'), 'The ARM seed changed the product checkout')
     with (evidence / 'seed-import.json').open('x') as receipt:
