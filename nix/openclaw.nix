@@ -88,6 +88,25 @@ let
               asset: "install -m 0600 ${asset.archive} .artifacts/worker-native-assets/${asset.cachedName}"
             ) workerAssets}
           '';
+          # The current Control UI publishes its build identity in the
+          # HTML bootstrap so it is available before the first JS chunk loads.
+          postInstallCheck = ''
+            node --input-type=module - "$out/lib/openclaw/dist" <<'NODE'
+            import assert from "node:assert/strict";
+            import { readFileSync } from "node:fs";
+            import { join } from "node:path";
+
+            const dist = process.argv[2];
+            const runtime = JSON.parse(readFileSync(join(dist, "build-info.json"), "utf8"));
+            const html = readFileSync(join(dist, "control-ui", "index.html"), "utf8");
+            const bootstrap = /<script\b[^>]*\bid="openclaw-control-ui-build-info"[^>]*>globalThis\.OPENCLAW_CONTROL_UI_BUILD_INFO=(\{[^<]*\});<\/script>/u.exec(html);
+            assert.ok(bootstrap, "Control UI build info bootstrap missing");
+            const controlUi = JSON.parse(bootstrap[1]);
+            assert.ok(typeof runtime.buildId === "string" && runtime.buildId.length > 0, "Runtime build ID missing");
+            assert.equal(controlUi.version, runtime.version);
+            assert.equal(controlUi.buildId, runtime.buildId);
+            NODE
+          '';
           disallowedRequisites =
             (previous.disallowedRequisites or [ ])
             ++ [
