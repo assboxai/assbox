@@ -273,18 +273,40 @@ in
           brotli = import ../nix/reviewed-brotli.nix { pkgs = previous; };
           nodejs-slim_24 =
             if previous.nodejs-slim_24.version == "24.21.0" then
+              let
+                inherit (final) sqlite;
+                sqliteDev = lib.getDev sqlite;
+                sqliteHeaders = previous.runCommand "sqlite-${sqlite.version}-node-headers" { } ''
+                  mkdir -p "$out"
+                  cp -r "${sqliteDev}/include" "$out/include"
+                  install -Dm644 "${sqliteDev}/lib/pkgconfig/sqlite3.pc" "$out/lib/pkgconfig/sqlite3.pc"
+                  substituteInPlace "$out/lib/pkgconfig/sqlite3.pc" \
+                    --replace-fail "${sqliteDev}" "$out"
+                '';
+              in
               previous.nodejs-slim_24.override {
                 # Change the source arguments before the version-dependent
                 # builder selects its flags, patches and upstream tests.
                 callPackage =
                   recipe: dependencies: source:
-                  final.callPackage recipe dependencies (
-                    source
-                    // {
-                      version = node24Version;
-                      sha256 = "48ca3aa8a9b02133356922ef4fc80200e00598c80a4ef446f7c39a459222593d";
-                    }
-                  );
+                  final.callPackage recipe
+                    (
+                      dependencies
+                      // {
+                        # Node records the include path in its binary and SDK.
+                        # Keep those headers without propagating the standalone CLI.
+                        sqlite = sqlite // {
+                          dev = sqliteHeaders;
+                        };
+                      }
+                    )
+                    (
+                      source
+                      // {
+                        version = node24Version;
+                        sha256 = "48ca3aa8a9b02133356922ef4fc80200e00598c80a4ef446f7c39a459222593d";
+                      }
+                    );
               }
             else
               previous.nodejs-slim_24;
