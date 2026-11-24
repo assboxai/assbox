@@ -9,7 +9,6 @@ let
   cfg = config.assbox;
   ffmpegVersion = "8.1.3";
   ffmpegSourceHash = "sha256-cTjSjJbZ0+OvTuPYytcnQfj/tA2pDBESI13qPs0xeKM=";
-  brotliVersion = "1.2.1";
   capstoneVersion = "5.0.9";
   libusbVersion = "1.0.30";
   nghttp2Version = "1.70.0";
@@ -271,19 +270,7 @@ in
               })
             else
               previous.nghttp2;
-          brotli =
-            if previous.brotli.version == "1.2.0" then
-              previous.brotli.overrideAttrs (_old: {
-                version = brotliVersion;
-                src = previous.fetchFromGitHub {
-                  owner = "google";
-                  repo = "brotli";
-                  tag = "v${brotliVersion}";
-                  hash = "sha256-llY72cYffDv0ugsH0p89xIPEbElV4L8u7U/Fe8hT3gI=";
-                };
-              })
-            else
-              previous.brotli;
+          brotli = import ../nix/reviewed-brotli.nix { pkgs = previous; };
           nodejs-slim_24 =
             if previous.nodejs-slim_24.version == "24.21.0" then
               previous.nodejs-slim_24.override {

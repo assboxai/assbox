@@ -91,9 +91,12 @@ class SecurityOverrideTests(unittest.TestCase):
 
     def test_reviewed_library_point_releases_are_exact_and_version_gated(self):
         module = (ROOT / 'modules/security-overrides.nix').read_text()
+        self.assertIn('import ../nix/reviewed-brotli.nix { pkgs = previous; }', module)
+        shared_brotli = (ROOT / 'nix/reviewed-brotli.nix').read_text()
+        self.assertIn('brotliVersion = "1.2.1";', shared_brotli)
+        self.assertIn('sha256-llY72cYffDv0ugsH0p89xIPEbElV4L8u7U/Fe8hT3gI=', shared_brotli)
+        self.assertIn('pkgs.brotli.version == "1.2.0"', shared_brotli)
         expected = {
-            'brotliVersion = "1.2.1";':
-                'sha256-llY72cYffDv0ugsH0p89xIPEbElV4L8u7U/Fe8hT3gI=',
             'capstoneVersion = "5.0.9";':
                 'sha256-uAiiKWKGjEATPE0Xc3g+aOLCz5ffIlDmf+7jaGwaZ4I=',
             'libusbVersion = "1.0.30";':
@@ -106,7 +109,7 @@ class SecurityOverrideTests(unittest.TestCase):
         for version, source_hash in expected.items():
             self.assertIn(version, module)
             self.assertIn(source_hash, module)
-        for vulnerable in ('1.2.0', '5.0.7', '1.0.29', '1.69.0', '3.51.2'):
+        for vulnerable in ('5.0.7', '1.0.29', '1.69.0', '3.51.2'):
             self.assertIn(f'package.version == "{vulnerable}"' if vulnerable == '3.51.2'
                           else f'version == "{vulnerable}"', module)
         self.assertIn('sqlite-doc-3540100.zip', module)

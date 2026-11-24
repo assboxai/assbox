@@ -73,6 +73,7 @@
             overlays = [
               (_final: previous: {
                 inherit sqlite;
+                brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                 libsndfile = reviewedApplicationSndfile previous.libsndfile;
               })
             ];
@@ -148,6 +149,7 @@
             overlays = [
               (_final: previous: {
                 inherit sqlite;
+                brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                 libsndfile = reviewedApplicationSndfile previous.libsndfile;
               })
             ];
@@ -258,6 +260,7 @@
                 _final: previous: {
                   inherit (pkgs) sqlite;
                   inherit (lockedAppPkgs) rdma-core;
+                  brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                   libsndfile = reviewedApplicationSndfile previous.libsndfile;
                 }
               );
@@ -292,6 +295,7 @@
                 inherit system;
                 overlays = [
                   (_final: previous: {
+                    brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                     libsndfile = reviewedApplicationSndfile previous.libsndfile;
                   })
                 ];
