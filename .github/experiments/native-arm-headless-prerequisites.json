@@ -1,0 +1,90 @@
+{
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "architecture": "aarch64-linux",
+  "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+  "parentProfile": "/nix/store/3y3vjfl9hn5cyly4jpk24lgagcfch43i-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+  "parentOutput": "/nix/store/06b6kkgcx9bp7pa65z852ipc9il4hyz8-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+  "recipeGraphSha256": "65f77a0620c252480eaa57d3148a4aec711fe44ecb3ca339e6a17e7735d15056",
+  "groups": {
+    "headless-prerequisites": [
+      {
+        "derivation": "/nix/store/lbjnpjmvhpm423is7cy8g09kmyx6y03f-git-minimal-2.54.0.drv",
+        "outputs": {
+          "out": "/nix/store/9j75q2s9zb67ix282kb4ycpk0zcysa8a-git-minimal-2.54.0"
+        }
+      },
+      {
+        "derivation": "/nix/store/zjzkm96fwr23v5aqw3r1ngrcinmafnc5-protobuf-c-1.5.2.drv",
+        "outputs": {
+          "dev": "/nix/store/b9yydw0mssmssszxw61bz83n0845v2la-protobuf-c-1.5.2-dev",
+          "lib": "/nix/store/8d1d2hb80641a4vma4yn6c213kad86j0-protobuf-c-1.5.2-lib",
+          "out": "/nix/store/bsdkzkcmzbwqq52y478n636qwl53j3dv-protobuf-c-1.5.2"
+        }
+      }
+    ]
+  },
+  "archives": [
+    {
+      "group": "language",
+      "artifact": 14903986546,
+      "zipBytes": 198276793,
+      "rawIndexSha256": "73046950046b7b0b232c0a559591a3101a8733525ea4b4edc9212f947c5760d9",
+      "artifactSha256": "sha256:e830bac41dc693ca239923918da190b8877dcc3640a3973cb223f11f5950c139",
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45336837496",
+        "GITHUB_SHA": "22bf7a77a348700e7a6ddffcf0d49978355b4de9"
+      },
+      "publicKey": "assbox-arm-chromium-language-45336837496:F9FYBuk9FLA6WC0H/rHhJ6FExAYXUr6Fs6Mx24MlDEI=",
+      "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
+      "tree": "304515456bbb2d19c47226caf38a5a2c1083544a",
+      "selected": {
+        "/nix/store/4m3a90jmax2xlzkswvnd8n628zhafkjg-python3-3.13.15.drv": {
+          "out": "/nix/store/bc3097l52p0wilc3sffndalyijzc4frz-python3-3.13.15"
+        },
+        "/nix/store/vlgqbc03mmwhh0lpf3yjr48i7bc0ijlw-perl-5.42.3.drv": {
+          "out": "/nix/store/cwzkc29p7vard6xrxy1bf7dfgw650jqd-perl-5.42.3"
+        }
+      }
+    },
+    {
+      "artifact": 14916138050,
+      "artifactSha256": "sha256:374615951c5e12929b2884362ae8c9451b5d88b76d4944f1975b0fe3e937fe23",
+      "group": "platform-libraries",
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45373207069",
+        "GITHUB_SHA": "d03894c1a7a615f1e77fb9febddad68400b9f8af"
+      },
+      "publicKey": "assbox-arm-chromium-platform-libraries-45373207069:DNcnY5PIuMyQhGWZXhelxh8W2jAd0e3AsaGMKELlczA=",
+      "rawIndexSha256": "17a1ab21717390d9e130b661b927c431b01c8213d6a501de3b2435c7cf484d94",
+      "selected": {
+        "/nix/store/3v8kcyiw8898r0caipvrz22if55rw3fr-util-linux-minimal-2.42.3.drv": {
+          "dev": "/nix/store/kx2ffxa74p38s4vn5qd9mxcxf09ai7qv-util-linux-minimal-2.42.3-dev"
+        },
+        "/nix/store/3vkhkraki85inq56zpx25rn2g9mkxs46-curl-8.22.0.drv": {
+          "dev": "/nix/store/9hzcdsy61a2pxjscks4d9diq89ifqb8d-curl-8.22.0-dev"
+        },
+        "/nix/store/3zyycqi1bgv1nw6v58289rdvb0zrn300-libffi-3.8.0.drv": {
+          "dev": "/nix/store/sc4rs9sx3g727r2l57wwibgv89shc1q7-libffi-3.8.0-dev"
+        },
+        "/nix/store/69qzial9zj0b11wiav5ws8g64p3b8fjv-libxml2-2.15.4.drv": {
+          "dev": "/nix/store/fbas2swa30q2bq0i1fgm0xy2m5xnhywk-libxml2-2.15.4-dev"
+        },
+        "/nix/store/bk5wh1nxz064czggf63838z7n35y4j87-krb5-1.22.2.drv": {
+          "dev": "/nix/store/x2jadg7w45xraxjdn2f0qyhlil9qmmm5-krb5-1.22.2-dev"
+        },
+        "/nix/store/d5y15g3lilz7g0fwd18d1j5j76rxwicq-bash-interactive-5.3p9.drv": {
+          "dev": "/nix/store/lqss6yfrdhm3fhbb3gjzm0vchphydhmv-bash-interactive-5.3p9-dev"
+        },
+        "/nix/store/zxzcmw0pnx0qvqinvvh6cpd1zh2w22g9-libxslt-1.1.45.drv": {
+          "dev": "/nix/store/nmb6v2hj5f7cn87claqqdw8lk25vhq98-libxslt-1.1.45-dev"
+        }
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "zipBytes": 60518405
+    }
+  ]
+}

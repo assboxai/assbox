@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox exact native ARM Chromium build inputs
+name: Assbox exact native ARM headless prerequisites
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-installed-current-codex-input
+  group: assbox-arm-current-headless-prerequisites
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,15 +12,16 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-installed-current-codex-input' &&
+      github.ref == 'refs/heads/test/arm-current-headless-prerequisites' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [codex]
+        group: [headless-prerequisites]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
+      actions: read
       contents: read
     env:
       INPUT_GROUP: ${{ matrix.group }}
@@ -54,7 +55,28 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Build the exact native ARM Codex package and verify its signed cache
+      - name: Download the verified language inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14903986546'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45336837496'
+          path: ${{ runner.temp }}/assbox-arm-headless-seeds/language
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified platform-libraries inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14916138050'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45373207069'
+          path: ${{ runner.temp }}/assbox-arm-headless-seeds/platform-libraries
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Build native ARM Git and protobuf-c and verify their signed cache
+        timeout-minutes: 320
         shell: bash
         run: |
           set -euo pipefail
@@ -85,11 +107,13 @@ jobs:
           monitor_resources >> "$evidence/resources.log" &
           monitor=$!
           trap 'kill "$monitor" 2>/dev/null || true; wait "$monitor" 2>/dev/null || true' EXIT
-          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-codex-input.py "$PWD/product" "$evidence" "$INPUT_GROUP"
+          /usr/bin/python3 -I -B authority/.github/experiments/import-native-arm-headless-prerequisites.py \
+            "$PWD/product" "$RUNNER_TEMP/assbox-arm-headless-seeds" "$evidence"
+          /usr/bin/python3 -I -B authority/.github/experiments/native-arm-headless-prerequisites.py "$PWD/product" "$evidence" "$INPUT_GROUP"
           test -s "$evidence/index.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: exact-native-arm-installed-codex-input-${{ matrix.group }}
+          name: exact-native-arm-headless-prerequisites-${{ matrix.group }}
           path: |
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/index.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/signed-cache
@@ -99,12 +123,13 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: exact-native-arm-installed-codex-input-${{ matrix.group }}-diagnostics
+          name: exact-native-arm-headless-prerequisites-${{ matrix.group }}-diagnostics
           path: |
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/expected.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-build.log
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-version.txt
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/resources.log
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/scope.txt
+            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/signed-input-imports.json
           if-no-files-found: warn
           retention-days: 7
