@@ -224,11 +224,13 @@
               inherit (pkgs.stdenv.hostPlatform) system;
               recipes = hermes-packages.packages.${system};
               lockedAppPkgs = import hermes-packages.inputs.nixpkgs { inherit system; };
-              appPkgs = lockedAppPkgs.extend (_final: previous: {
-                inherit (pkgs) sqlite;
-                inherit (lockedAppPkgs) rdma-core;
-                libsndfile = reviewedApplicationSndfile previous.libsndfile;
-              });
+              appPkgs = lockedAppPkgs.extend (
+                _final: previous: {
+                  inherit (pkgs) sqlite;
+                  inherit (lockedAppPkgs) rdma-core;
+                  libsndfile = reviewedApplicationSndfile previous.libsndfile;
+                }
+              );
               raw = recipes.hermes-agent.override {
                 inherit (appPkgs) python3;
                 nodejs = pkgs.nodejs_24;

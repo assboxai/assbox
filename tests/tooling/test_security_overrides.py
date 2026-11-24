@@ -53,12 +53,16 @@ class SecurityOverrideTests(unittest.TestCase):
         self.assertTrue(path.read_text().startswith(f'From {commit} '))
         self.assertIn('previous.jbig2dec.version == "0.20"', module)
         self.assertIn(path.name, module)
+        patch_list = (ROOT / 'nix/libsndfile-security-patches.nix').read_text()
+        self.assertIn('import ../nix/libsndfile-security-patches.nix', module)
+        self.assertIn('import ./nix/libsndfile-security-patches.nix',
+                      (ROOT / 'flake.nix').read_text())
         positions = []
         for commit, digest in LIBSNDFILE_PATCHES:
             path = ROOT / 'nix/patches' / f'libsndfile-{commit}.patch'
             self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest)
             self.assertTrue(path.read_text().startswith(f'From {commit} '))
-            positions.append(module.index(path.name))
+            positions.append(patch_list.index(path.name))
         self.assertEqual(positions, sorted(positions))
         self.assertIn('previous.libsndfile.version == "1.2.2"', module)
         self.assertIn('configureFlags = (old.configureFlags or [ ]) '
