@@ -178,8 +178,9 @@ in
               previous.patch;
           capstone =
             if previous.capstone.version == "5.0.7" then
-              previous.capstone.overrideAttrs (_old: {
+              previous.capstone.overrideAttrs (old: {
                 version = capstoneVersion;
+                patches = (old.patches or [ ]) ++ [ ../nix/patches/capstone-sstream-size-t.patch ];
                 src = previous.fetchFromGitHub {
                   owner = "capstone-engine";
                   repo = "capstone";
