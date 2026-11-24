@@ -4,6 +4,17 @@
 { pkgs, module }:
 let
   arm = pkgs.stdenv.hostPlatform.isAarch64;
+  windowManagerExecutable =
+    node:
+    let
+      packages = pkgs.lib.unique (
+        map toString (
+          builtins.filter (package: pkgs.lib.getName package == "openbox") node.environment.systemPackages
+        )
+      );
+    in
+    assert builtins.length packages == 1;
+    "${builtins.head packages}/bin/.openbox-wrapped";
   # Use a real, locked language server, but remove Nix's interpreter/RPATH fixes
   # so the gate exercises the same loader contract as a downloaded GNU binary.
   interpreter = if arm then "/lib/ld-linux-aarch64.so.1" else "/lib64/ld-linux-x86-64.so.2";
@@ -64,7 +75,7 @@ pkgs.testers.runNixOSTest {
     };
     system.stateVersion = "26.05";
   };
-  testScript = ''
+  testScript = { nodes, ... }: ''
     import shlex, time
     start_all()
     machine.wait_for_unit("multi-user.target")
@@ -126,6 +137,13 @@ pkgs.testers.runNixOSTest {
     assert machine.succeed("systemctl show display-manager -p StartLimitIntervalUSec --value").strip() == "0"
     assert machine.succeed("systemctl show display-manager -p RestartMaxDelayUSec --value").strip() == "1min"
 
+    window_manager = (
+        "for pid in $(pgrep -u agent .); do "
+        "if test \"$(readlink /proc/$pid/exe 2>/dev/null)\" = "
+        "'${windowManagerExecutable nodes.machine}'; "
+        "then echo \"$pid\"; fi; done | grep -E '^[1-9][0-9]*$'"
+    )
+
     def only_pid(command):
         pids = machine.succeed(command).splitlines()
         assert len(pids) == 1 and int(pids[0]) > 0, pids
@@ -137,7 +155,7 @@ pkgs.testers.runNixOSTest {
     for failure in ["openbox-crash", "xserver-crash", "logout"]:
         previous_manager = manager("MainPID")
         previous_restarts = int(manager("NRestarts"))
-        previous_wm = only_pid("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'")
+        previous_wm = only_pid(window_manager)
         previous_apps = [machine.succeed(ctl("show -p MainPID --value " + unit(id))).strip() for id in editors]
         if failure == "openbox-crash":
             machine.succeed("kill -KILL " + previous_wm)
@@ -147,9 +165,9 @@ pkgs.testers.runNixOSTest {
             machine.succeed(user("openbox --exit"))
         machine.wait_until_succeeds("test $(systemctl show display-manager -p NRestarts --value) -gt " + str(previous_restarts), timeout=180)
         machine.wait_until_succeeds("systemctl is-active display-manager", timeout=180)
-        machine.wait_until_succeeds("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'", timeout=180)
+        machine.wait_until_succeeds(window_manager, timeout=180)
         assert manager("MainPID") != previous_manager
-        assert only_pid("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'") != previous_wm
+        assert only_pid(window_manager) != previous_wm
         for id in editors:
             ready(id)
         for pid in [previous_wm, *previous_apps]:
@@ -162,7 +180,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("systemctl stop display-manager")
     assert manager("ActiveState") == "inactive"
     assert manager("MainPID") == "0"
-    machine.fail("pgrep -u agent -f '^${pkgs.openbox}/bin/openbox( |$)'")
+    machine.fail(window_manager)
     machine.fail(ctl("is-active graphical-session.target"))
     for id in editors:
         machine.wait_until_succeeds(ctl("show -p ActiveState --value " + unit(id)) + " | grep -x inactive", timeout=90)
