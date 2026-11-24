@@ -40,6 +40,7 @@ pkgs.testers.runNixOSTest {
       environment.systemPackages = [
         python
         pkgs.libsecret
+        (if presentation == "wayland" then pkgs.wlrctl else pkgs.xdotool)
       ];
       # A session-bound fixture with a child proves cleanup/relaunch without
       # borrowing any application-specific crash or first-run behavior.
@@ -95,12 +96,16 @@ pkgs.testers.runNixOSTest {
                 machine.succeed(user("systemd-run --user --collect --unit=assbox-portal-probe "
                     + "${python}/bin/python3 /etc/assbox-test/portal-probe.py " + mode + " " + output))
                 machine.wait_until_succeeds(user("systemctl --user is-active assbox-portal-probe.service"), timeout=30)
-                # The request remaining active proves that no response raced
-                # ahead of the driver. Give the real chooser time to map, then
-                # retain a screenshot and require its exact portal response.
-                # OCR is deliberately reserved for the text-specific keyring
-                # consent prompts; GTK title recognition is not deterministic.
-                time.sleep(5)
+                # The portal client is active before D-Bus starts the backend
+                # or maps its dialog. Wait for the real focused window so the
+                # accelerator reaches the chooser instead of the terminal.
+                response_deadline = time.monotonic() + 65
+                if machine.name == "wayland":
+                    active_window = "wlrctl toplevel list state:active | sed 's/^[^:]*: //'"
+                else:
+                    active_window = "xdotool getactivewindow getwindowname"
+                query = "timeout 5 systemd-run --user --wait --pipe --quiet --collect bash -o pipefail -c " + shlex.quote(active_window)
+                machine.wait_until_succeeds(user(query + " | grep -Fx -- " + shlex.quote("Assbox " + mode)), timeout=30)
                 machine.screenshot(machine.name + "-portal-" + mode)
                 if mode == "cancel":
                     # Exercise the real _Cancel button. GTK maps a window-close
@@ -119,7 +124,9 @@ pkgs.testers.runNixOSTest {
                     # location popup or a compositor-specific input helper.
                     machine.send_key("alt-s")
                     time.sleep(1)
-                machine.wait_until_succeeds("test -s " + output, timeout=60)
+                response_timeout = min(60, int(response_deadline - time.monotonic()))
+                assert response_timeout > 0
+                machine.wait_until_succeeds("test -s " + output, timeout=response_timeout)
                 result = json.loads(machine.succeed("cat " + output))
                 assert result["code"] == (1 if mode == "cancel" else 0), result
                 if mode != "cancel":
