@@ -150,6 +150,11 @@ jobs:
             tail -60 "$evidence/native-install.log" >&2
             exit "$status"
           fi
+          kernel_drv=$(jq -er '.derivation' "$evidence/kernel-import.json")
+          if grep -Fq "building '$kernel_drv'" "$evidence/native-install.log"; then
+            echo "The installed fixture rebuilt its verified kernel" >&2
+            exit 1
+          fi
           test "$(wc -l < "$evidence/output-paths.txt")" -eq 1
           output=$(cat "$evidence/output-paths.txt")
           cp "$output/current-installed-offline-cli.json" "$evidence/installed-cli.json"
