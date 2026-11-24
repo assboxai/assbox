@@ -32,7 +32,7 @@ def main():
         "RUNNER_ENVIRONMENT": "github-hosted",
         "GITHUB_REPOSITORY_ID": "1402455771",
         "GITHUB_REPOSITORY_OWNER_ID": "327835666",
-        "GITHUB_REF": "refs/heads/test/arm-chromium-direct-inputs",
+        "GITHUB_REF": "refs/heads/test/arm-chromium-compiler-cache",
         "GITHUB_RUN_ATTEMPT": "1",
         "GITHUB_EVENT_NAME": "workflow_dispatch",
     }
