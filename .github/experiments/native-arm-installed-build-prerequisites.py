@@ -72,7 +72,7 @@ def main():
         expression = (
             "configs: builtins.listToAttrs (map (name: { inherit name; "
             "value = configs.${name}.config.system.build.toplevel.drvPath; }) "
-            + json.dumps(sorted(profiles)) + ")"
+            + "[ " + " ".join(json.dumps(name) for name in sorted(profiles)) + " ])"
         )
         observed_profiles = tools.decoded(tools.run(
             env, "nix", "eval", "--json", "--no-update-lock-file", "--no-write-lock-file",
