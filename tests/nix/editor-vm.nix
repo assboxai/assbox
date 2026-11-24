@@ -4,17 +4,6 @@
 { pkgs, module }:
 let
   arm = pkgs.stdenv.hostPlatform.isAarch64;
-  windowManagerExecutable =
-    node:
-    let
-      packages = pkgs.lib.unique (
-        map toString (
-          builtins.filter (package: pkgs.lib.getName package == "openbox") node.environment.systemPackages
-        )
-      );
-    in
-    assert builtins.length packages == 1;
-    "${builtins.head packages}/bin/.openbox-wrapped";
   # Use a real, locked language server, but remove Nix's interpreter/RPATH fixes
   # so the gate exercises the same loader contract as a downloaded GNU binary.
   interpreter = if arm then "/lib/ld-linux-aarch64.so.1" else "/lib64/ld-linux-x86-64.so.2";
@@ -34,7 +23,13 @@ pkgs.testers.runNixOSTest {
   node.pkgsReadOnly = false;
   requiredFeatures.kvm = !arm;
   nodes.machine = { lib, ... }: {
-    imports = [ module ];
+    imports = [
+      module
+      ({ pkgs, ... }: {
+        environment.etc."assbox-test/window-manager-executable".text =
+          "${pkgs.openbox}/bin/.openbox-wrapped\n";
+      })
+    ];
     assbox = {
       enable = true;
       presentation = "x11";
@@ -75,7 +70,7 @@ pkgs.testers.runNixOSTest {
     };
     system.stateVersion = "26.05";
   };
-  testScript = { nodes, ... }: ''
+  testScript = ''
     import shlex, time
     start_all()
     machine.wait_for_unit("multi-user.target")
@@ -137,10 +132,12 @@ pkgs.testers.runNixOSTest {
     assert machine.succeed("systemctl show display-manager -p StartLimitIntervalUSec --value").strip() == "0"
     assert machine.succeed("systemctl show display-manager -p RestartMaxDelayUSec --value").strip() == "1min"
 
+    executable = machine.succeed("cat /etc/assbox-test/window-manager-executable").strip()
+    assert executable.startswith("/nix/store/") and executable.endswith("/bin/.openbox-wrapped"), executable
     window_manager = (
         "for pid in $(pgrep -u agent .); do "
         "if test \"$(readlink /proc/$pid/exe 2>/dev/null)\" = "
-        "'${windowManagerExecutable nodes.machine}'; "
+        + shlex.quote(executable) + "; "
         "then echo \"$pid\"; fi; done | grep -E '^[1-9][0-9]*$'"
     )
 
