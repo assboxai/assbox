@@ -334,12 +334,21 @@ installer.succeed('umount /mnt/backup')
 # Only the activation scenario runs the test harness on the installed system.
 if scenario == 'activation':
     installer.succeed('mount ' + root + ' /mnt/inspect')
-    # Copy only test harness dependencies/evidence, using real Nix closure transfer.
-    # The installed assbox executable remains the normal production package.
-    # Flush the fixture on unmount after the copy completes.
-    installer.succeed('nix copy --option fsync-metadata false --to /mnt/inspect ' + shlex.quote(harness.rsplit('/libexec/', 1)[0]) + ' ' + shlex.quote(dependencies), timeout=900)
-    # Keep the offline build closure and test runner rooted across real GC tests.
-    installer.succeed('mkdir -p /mnt/inspect/nix/var/nix/gcroots; ln -s ' + dependencies + ' /mnt/inspect/nix/var/nix/gcroots/acceptance-inputs; ln -s ' + shlex.quote(harness.rsplit('/libexec/', 1)[0]) + ' /mnt/inspect/nix/var/nix/gcroots/acceptance-harness')
+    # The closure-info manifest expands every available output of its build
+    # derivations. Transfer the signed fixture roots directly so the installed
+    # disk gets their declared references without those unrelated outputs.
+    harness_root = harness.rsplit('/libexec/', 1)[0]
+    roots = shlex.join(activation_roots)
+    installer.succeed(
+        'nix copy --option fsync-metadata false --to /mnt/inspect '
+        + shlex.quote(harness_root) + ' ' + roots, timeout=900
+    )
+    # Root the same offline build inputs and harness across the real GC tests.
+    installer.succeed(
+        'gcroots=/mnt/inspect/nix/var/nix/gcroots; mkdir -p "$gcroots/acceptance-inputs"; '
+        'for path in ' + roots + '; do ln -s "$path" "$gcroots/acceptance-inputs/${path##*/}"; done; '
+        'ln -s ' + shlex.quote(harness_root) + ' "$gcroots/acceptance-harness"'
+    )
     installer.succeed('mkdir -p /mnt/inspect' + CASE + '; cp -a ' + CASE + '/. /mnt/inspect' + CASE)
     installer.succeed('rm -f /mnt/inspect' + CASE + '/cut /mnt/inspect' + CASE + '/reached; sync; umount /mnt/inspect')
 installer.shutdown()  # Releases QEMU's disk lock; target has no live ISO attached.

@@ -137,23 +137,22 @@ let
       pkgs.grub2
       pkgs.grub2_efi
     ];
-  dependencies = pkgs.closureInfo {
-    rootPaths = [
-      seed.config.system.build.toplevel
-      seed.config.system.build.toplevel.drvPath
-      assbox
-      assbox.drvPath
-      assbox.cargoDeps
-      releasedPackage
-      releasedPackage.drvPath
-      # The installed target inherits xwininfo from NixOS test instrumentation.
-      seed.pkgs.xwininfo
-      seed.config.boot.kernelPackages.kernel.out
-      seed.config.boot.kernelPackages.kernel.modules
-      seed.config.boot.kernelPackages.kernel.dev
-    ]
-    ++ buildTools;
-  };
+  dependencyRoots = [
+    seed.config.system.build.toplevel
+    seed.config.system.build.toplevel.drvPath
+    assbox
+    assbox.drvPath
+    assbox.cargoDeps
+    releasedPackage
+    releasedPackage.drvPath
+    # The installed target inherits xwininfo from NixOS test instrumentation.
+    seed.pkgs.xwininfo
+    seed.config.boot.kernelPackages.kernel.out
+    seed.config.boot.kernelPackages.kernel.modules
+    seed.config.boot.kernelPackages.kernel.dev
+  ]
+  ++ buildTools;
+  dependencies = pkgs.closureInfo { rootPaths = dependencyRoots; };
   iso = pkgs.runCommand "assbox-live-observation.iso" { nativeBuildInputs = [ pkgs.xorriso ]; } ''
     mkdir contents
     echo disposable > contents/fixture
@@ -371,7 +370,9 @@ pkgs.testers.runNixOSTest {
     # each progress wait bounded while allowing the same assertions to finish.
     action_timeout = ${if arm then "7200" else "3600"}
     harness = "${harness}/libexec/assbox-acceptance"
-    dependencies = "${dependencies}"
+    activation_roots = ${
+      builtins.toJSON (lib.optionals (scenario == "activation") (map toString dependencyRoots))
+    }
     key = "${keys}/key.pub"
     private_key = "${keys}/key"
     source = "${assbox.src}"
