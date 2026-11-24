@@ -6,10 +6,13 @@ replaced. The guest mounts the output as SquashFS, through its declared virtio
 serial, with the usual separate writable store overlay. This helper is used only
 by disposable installer VMs; it is not a production filesystem tool.
 """
+import json
 import os
 from pathlib import Path
 import stat
+import subprocess
 import sys
+import tempfile
 
 
 PREFIX = (
@@ -48,10 +51,84 @@ def formatter_environment():
     return environment
 
 
+TAR_PREFIX = (
+    '--create', '--absolute-names', '--verbatim-files-from',
+    '--transform', 'flags=rSh;s|/nix/store/||',
+    '--transform', r'flags=rSh;s|~nix~case~hack~[[:digit:]]\+||g',
+    '--files-from',
+)
+
+
+def receipt_path(image):
+    return image.with_suffix('.receipt.json')
+
+
+def image_identity(image, closure):
+    data = image.lstat()
+    if (not stat.S_ISREG(data.st_mode) or data.st_uid != os.getuid()
+            or data.st_nlink != 1 or data.st_mode & 0o222 or not data.st_size):
+        raise ValueError('completed image must be an owned read-only regular file')
+    return {
+        'closure': closure,
+        'device': data.st_dev,
+        'inode': data.st_ino,
+        'size': data.st_size,
+        'ctime_ns': data.st_ctime_ns,
+    }
+
+
+def reusable(image, closure):
+    try:
+        with os.fdopen(os.open(receipt_path(image), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)) as receipt:
+            if not stat.S_ISREG(os.fstat(receipt.fileno()).st_mode):
+                return False
+            return json.loads(receipt.read(2048)) == image_identity(image, closure)
+    except (OSError, ValueError):
+        return False
+
+
+def run_tar(closure, tool, arguments, environment):
+    directory = Path(environment.get('TMPDIR', ''))
+    if (environment.get('USE_TMPDIR') == '1' and directory.is_absolute()
+            and tuple(arguments) == (*TAR_PREFIX, closure)
+            and reusable(directory / 'store.img', closure)):
+        return
+    os.execve(tool, [tool, *arguments], environment)
+
+
+def run_image(closure, tool, arguments):
+    invocation = command(tool, arguments)
+    image = Path(arguments[-1])
+    if reusable(image, closure):
+        if sys.stdin.buffer.read(1):
+            raise ValueError('unexpected input for the reusable image')
+        print('Reusing completed read-only Nix store image.', flush=True)
+        return
+
+    receipt_path(image).unlink(missing_ok=True)
+    if image.exists():
+        image.chmod(0o600)
+    subprocess.run(invocation, env=formatter_environment(), check=True)
+    image.chmod(0o444)
+    with tempfile.NamedTemporaryFile(mode='w', dir=image.parent, delete=False) as receipt:
+        temporary = Path(receipt.name)
+        try:
+            json.dump(image_identity(image, closure), receipt)
+            receipt.flush()
+            temporary.replace(receipt_path(image))
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
 if __name__ == '__main__':
     try:
-        invocation = command(sys.argv[1], sys.argv[2:])
-    except (IndexError, ValueError) as error:
+        operation, closure, tool, *arguments = sys.argv[1:]
+        if operation == 'tar':
+            run_tar(closure, tool, arguments, os.environ)
+        elif operation == 'image':
+            run_image(closure, tool, arguments)
+        else:
+            raise ValueError('unsupported pinned VM image-builder operation')
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f'disposable offline image: {error}', file=sys.stderr)
         raise SystemExit(2)
-    os.execve(invocation[0], invocation, formatter_environment())

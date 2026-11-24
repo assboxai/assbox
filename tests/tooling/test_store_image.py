@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """The fixture image adapter must refuse redirects and unsupported calls."""
 import importlib.util
+import io
 import os
 from pathlib import Path
 import tempfile
@@ -24,6 +25,38 @@ class StoreImageTests(unittest.TestCase):
             self.assertIn('-exit-on-error', result)
             path.touch()
             self.assertEqual(IMAGE.command('/pinned/mksquashfs', [*IMAGE.PREFIX, str(path)]), result)
+
+    def test_restart_reuses_only_the_original_read_only_closure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory) / 'store.img'
+            closure = '/nix/store/fixture-closure/store-paths'
+            arguments = [*IMAGE.PREFIX, str(image)]
+            environment = {'TMPDIR': directory, 'USE_TMPDIR': '1'}
+
+            def make_image(*args, **kwargs):
+                image.write_bytes(b'generated fixture image')
+
+            with mock.patch.object(IMAGE.subprocess, 'run', side_effect=make_image) as formatter:
+                IMAGE.run_image(closure, '/pinned/mksquashfs', arguments)
+                self.assertTrue(IMAGE.reusable(image, closure))
+                self.assertFalse(IMAGE.reusable(image, closure + '.new'))
+                with mock.patch.object(IMAGE.os, 'execve') as tar:
+                    IMAGE.run_tar(closure, '/pinned/tar', [*IMAGE.TAR_PREFIX, closure], environment)
+                    tar.assert_not_called()
+                    IMAGE.run_tar(closure, '/pinned/tar', [*IMAGE.TAR_PREFIX, closure + '.new'], environment)
+                    tar.assert_called_once()
+                with mock.patch.object(IMAGE.sys, 'stdin', buffer=io.BytesIO()) as unused:
+                    IMAGE.run_image(closure, '/pinned/mksquashfs', arguments)
+                    self.assertEqual(unused.buffer.tell(), 0)
+                formatter.assert_called_once()
+
+                image.chmod(0o600)
+                image.write_bytes(b'changed fixture image')
+                image.chmod(0o444)
+                self.assertFalse(IMAGE.reusable(image, closure))
+                IMAGE.run_image(closure, '/pinned/mksquashfs', arguments)
+                self.assertEqual(formatter.call_count, 2)
+                self.assertTrue(IMAGE.reusable(image, closure))
 
     def test_redirects_devices_and_aliases_refused(self):
         with tempfile.TemporaryDirectory() as directory:

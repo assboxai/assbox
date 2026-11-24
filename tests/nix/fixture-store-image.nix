@@ -4,16 +4,34 @@
 # storage. The pinned QEMU module still calls its mkfs.erofs interface, so the
 # explicit fixture adapter accepts only that exact invocation. Guest mounts and
 # the store drive below declare the actual filesystem and device identity.
-{ lib, pkgs, ... }:
+# The pinned tar producer and formatter share the exact closure manifest so
+# guest restarts can attach the same completed read-only image.
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   serial = "assbox-offline-store";
+  registration = pkgs.closureInfo { rootPaths = config.virtualisation.additionalPaths; };
+  closure = pkgs.closureInfo {
+    rootPaths = [
+      config.system.build.toplevel
+      registration
+    ];
+  };
   imageTools = pkgs.runCommand "assbox-fixture-squashfs-image-tools" { } ''
     mkdir -p "$out/bin"
     cat > "$out/bin/mkfs.erofs" <<'EOF'
     #!${pkgs.runtimeShell}
-    exec ${pkgs.python3}/bin/python3 -I -B ${../fixtures/store_image.py} ${pkgs.squashfsTools}/bin/mksquashfs "$@"
+    exec ${pkgs.python3}/bin/python3 -I -B ${../fixtures/store_image.py} image ${closure}/store-paths ${pkgs.squashfsTools}/bin/mksquashfs "$@"
     EOF
-    chmod +x "$out/bin/mkfs.erofs"
+    cat > "$out/bin/tar" <<'EOF'
+    #!${pkgs.runtimeShell}
+    exec ${pkgs.python3}/bin/python3 -I -B ${../fixtures/store_image.py} tar ${closure}/store-paths ${pkgs.gnutar}/bin/tar "$@"
+    EOF
+    chmod +x "$out/bin/mkfs.erofs" "$out/bin/tar"
   '';
 in
 {
@@ -35,7 +53,13 @@ in
     );
   };
   config = {
-    virtualisation.host.pkgs = lib.mkForce (pkgs // { erofs-utils = imageTools; });
+    virtualisation.host.pkgs = lib.mkForce (
+      pkgs
+      // {
+        erofs-utils = imageTools;
+        gnutar = imageTools;
+      }
+    );
     virtualisation.fileSystems."/nix/.ro-store" = {
       device = lib.mkForce "/dev/disk/by-id/virtio-${serial}";
       fsType = lib.mkForce "squashfs";
