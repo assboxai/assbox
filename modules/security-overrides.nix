@@ -170,11 +170,6 @@ in
           };
           livekit-libwebrtc = previous.livekit-libwebrtc.override {
             ffmpeg_8 = reviewedFfmpeg final.ffmpeg_8;
-            mkSystemLibraries = final.callPackage (
-              pkgs.path + "/pkgs/by-name/li/livekit-libwebrtc/mkSystemLibraries.nix"
-            ) {
-              ffmpeg_8 = reviewedFfmpeg final.ffmpeg_8;
-            };
           };
           busybox =
             if previous.busybox.version == "1.37.0" then
