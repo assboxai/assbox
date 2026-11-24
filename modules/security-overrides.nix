@@ -182,6 +182,13 @@ in
               })
             else
               previous.patch;
+          avahi =
+            if previous.avahi.version == "0.8" then
+              previous.avahi.overrideAttrs (old: {
+                patches = (old.patches or [ ]) ++ [ ../nix/patches/avahi-CVE-2025-59529.patch ];
+              })
+            else
+              previous.avahi;
           capstone =
             if previous.capstone.version == "5.0.7" then
               previous.capstone.overrideAttrs (old: {
