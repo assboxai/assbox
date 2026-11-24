@@ -51,6 +51,17 @@
       sourceRevision = if releaseContext != null then releaseContext.coreCommit else self.rev or "";
       buildAssbox =
         pkgs: pkgs.callPackage ./nix/package.nix { inherit pkgs sourceRevision releasePolicy; };
+      reviewedApplicationSndfile =
+        package:
+        if package.version == "1.2.2" then
+          package.overrideAttrs (old: {
+            patches =
+              (old.patches or [ ])
+              ++ (import ./nix/libsndfile-security-patches.nix)
+              ++ [ ./nix/patches/libsndfile-encoder-cleanup.patch ];
+          })
+        else
+          package;
       chatgptPackages =
         system:
         let
@@ -59,7 +70,12 @@
           sqlite = nixpkgs.legacyPackages.${system}.sqlite;
           appPkgs = import chatgpt-packages.inputs.nixpkgs {
             inherit system;
-            overlays = [ (_final: _previous: { inherit sqlite; }) ];
+            overlays = [
+              (_final: previous: {
+                inherit sqlite;
+                libsndfile = reviewedApplicationSndfile previous.libsndfile;
+              })
+            ];
           };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
           gtk3 = appPkgs.gtk3.override { inherit cups; };
@@ -99,7 +115,12 @@
           sqlite = nixpkgs.legacyPackages.${system}.sqlite;
           appPkgs = import claude-desktop-packages.inputs.nixpkgs {
             inherit system;
-            overlays = [ (_final: _previous: { inherit sqlite; }) ];
+            overlays = [
+              (_final: previous: {
+                inherit sqlite;
+                libsndfile = reviewedApplicationSndfile previous.libsndfile;
+              })
+            ];
           };
           cups = import ./nix/reviewed-cups.nix { pkgs = appPkgs; };
           gtk3 = appPkgs.gtk3.override { inherit cups; };
@@ -203,9 +224,10 @@
               inherit (pkgs.stdenv.hostPlatform) system;
               recipes = hermes-packages.packages.${system};
               lockedAppPkgs = import hermes-packages.inputs.nixpkgs { inherit system; };
-              appPkgs = lockedAppPkgs.extend (_final: _previous: {
+              appPkgs = lockedAppPkgs.extend (_final: previous: {
                 inherit (pkgs) sqlite;
                 inherit (lockedAppPkgs) rdma-core;
+                libsndfile = reviewedApplicationSndfile previous.libsndfile;
               });
               raw = recipes.hermes-agent.override {
                 inherit (appPkgs) python3;
@@ -234,7 +256,14 @@
             let
               inherit (pkgs.stdenv.hostPlatform) system;
               recipes = omp-packages.packages.${system};
-              appPkgs = import omp-packages.inputs.nixpkgs { inherit system; };
+              appPkgs = import omp-packages.inputs.nixpkgs {
+                inherit system;
+                overlays = [
+                  (_final: previous: {
+                    libsndfile = reviewedApplicationSndfile previous.libsndfile;
+                  })
+                ];
+              };
               pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
             in
             recipes

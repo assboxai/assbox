@@ -1,0 +1,55 @@
+diff --git a/src/mpeg_l3_encode.c b/src/mpeg_l3_encode.c
+--- a/src/mpeg_l3_encode.c
++++ b/src/mpeg_l3_encode.c
+@@ -293,14 +293,19 @@
+ static int
+ mpeg_l3_encoder_close (SF_PRIVATE *psf)
+ {	MPEG_L3_ENC_PRIVATE* pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
+-	int ret, len ;
++	int ret, len, error = 0 ;
+ 	sf_count_t pos ;
+ 	unsigned char *buffer ;
++
++	if (!pmpeg->initialized)
++		goto cleanup ;
+ 
+ 	/* Magic number 7200 comes from a comment in lame.h */
+ 	len = 7200 ;
+ 	if (! (buffer = malloc (len)))
+-		return SFE_MALLOC_FAILED ;
++	{	error = SFE_MALLOC_FAILED ;
++		goto cleanup ;
++		} ;
+ 	ret = lame_encode_flush (pmpeg->lamef, buffer, len) ;
+ 	if (ret > 0)
+ 		psf_fwrite (buffer, 1, ret, psf) ;
+@@ -329,7 +334,9 @@
+ 		{	len = ret ;
+ 			free (buffer) ;
+ 			if (! (buffer = malloc (len)))
+-				return SFE_MALLOC_FAILED ;
++			{	error = SFE_MALLOC_FAILED ;
++				goto cleanup ;
++				} ;
+ 			} ;
+ 		psf_log_printf (psf, "  Writing LAME info header at offset %d, %d bytes.\n",
+ 			psf->dataoffset, len) ;
+@@ -342,7 +349,9 @@
+ 		} ;
+ 	free (buffer) ;
+ 
++cleanup :
+ 	free (pmpeg->block) ;
++	pmpeg->initialized = SF_FALSE ;
+ 	pmpeg->block = NULL ;
+ 
+ 	if (pmpeg->lamef)
+@@ -350,7 +359,7 @@
+ 		pmpeg->lamef = NULL ;
+ 		} ;
+ 
+-	return 0 ;
++	return error ;
+ } /* mpeg_l3_encoder_close */
+ 
+ static void
