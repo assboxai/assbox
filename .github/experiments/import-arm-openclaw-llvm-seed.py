@@ -91,7 +91,7 @@ def require_hosted():
     expected = {'RUNNER_ENVIRONMENT': 'github-hosted', 'GITHUB_REPOSITORY': 'assboxai/assbox',
                 'GITHUB_REPOSITORY_ID': '1402455771', 'GITHUB_REPOSITORY_OWNER_ID': '327835666',
                 'GITHUB_EVENT_NAME': 'workflow_dispatch', 'GITHUB_RUN_ATTEMPT': '1',
-                'GITHUB_REF': 'refs/heads/test/arm-openclaw-runtime-verified-llvm'}
+                'GITHUB_REF': 'refs/heads/test/arm-openclaw-runtime-verified-inputs'}
     require(all(os.environ.get(key) == value for key, value in expected.items()), 'Unexpected hosted authority')
     require(not any(key in os.environ for key in (
         'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN',

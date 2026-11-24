@@ -4,7 +4,7 @@ name: Assbox reviewed OpenClaw native ARM runtime
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-openclaw-runtime-verified-llvm
+  group: assbox-arm-openclaw-runtime-verified-inputs
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,10 +12,10 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-openclaw-runtime-verified-llvm' &&
+      github.ref == 'refs/heads/test/arm-openclaw-runtime-verified-inputs' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 260
+    timeout-minutes: 355
     permissions:
       contents: read
       actions: read
@@ -58,6 +58,26 @@ jobs:
           repository: assboxai/assbox
           run-id: '45085837980'
           path: ${{ runner.temp }}/assbox-arm-openclaw-llvm-download
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified native python-tools archive
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14953102275'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45443784497'
+          path: ${{ runner.temp }}/assbox-arm-openclaw-package-seeds/python-tools
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified native node-inputs archive
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14957636858'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45443784497'
+          path: ${{ runner.temp }}/assbox-arm-openclaw-package-seeds/node-inputs
           skip-decompress: true
           digest-mismatch: error
       - name: Build and check the exact native ARM OpenClaw runtime
@@ -112,6 +132,8 @@ jobs:
           test "$deps_output" = /nix/store/2i5hfwwz0nhzikpbn2sg235jp1lzsxk4-openclaw-pnpm-deps
           /usr/bin/python3 -I -B "$GITHUB_WORKSPACE/authority/.github/experiments/import-arm-openclaw-llvm-seed.py" "$PWD" "$RUNNER_TEMP/assbox-arm-openclaw-llvm-download" "$evidence/llvm-import.json" "$deps"
           test -s "$evidence/llvm-import.json"
+          /usr/bin/python3 -I -B "$GITHUB_WORKSPACE/authority/.github/experiments/import-arm-openclaw-runtime-seeds.py" "$PWD" "$RUNNER_TEMP/assbox-arm-openclaw-package-seeds" "$evidence"
+          test -s "$evidence/package-inputs-import.json"
           nix build --no-link --print-out-paths --max-jobs 1 --cores "$(nproc)" -L "$deps^out" > "$evidence/dependencies.txt" 2> "$evidence/dependencies.log"
           test "$(cat "$evidence/dependencies.txt")" = "$deps_output"
           mapfile -t asset_drvs < <(nix-store --query --references "$raw" | grep -E -- '-fs-safe-darwin-(arm64|x64)-0[.]27[.]1[.]tgz[.]drv$')
@@ -123,6 +145,11 @@ jobs:
           test "${#asset_outputs[@]}" -eq 2
           nix build --no-link --print-out-paths --max-jobs 1 --cores "$(nproc)" -L "$wrapper^out" > "$evidence/package.txt" 2> "$evidence/package.log"
           test "$(cat "$evidence/package.txt")" = "$package"
+          while IFS= read -r recipe; do
+            if grep -F -- "building '$recipe'..." "$evidence/dependencies.log" "$evidence/package.log"; then
+              exit 1
+            fi
+          done < <(jq -er '.verified[].selected | keys[]' "$evidence/package-inputs-import.json")
           nix path-info --offline --recursive --json --json-format 1 "$package" > "$evidence/runtime-closure.json"
           jq -e --arg deps "$deps_output" --arg pnpm "$pnpm_output" --arg first "${asset_outputs[0]}" --arg second "${asset_outputs[1]}" \
             '(has($deps)|not) and (has($pnpm)|not) and (has($first)|not) and (has($second)|not) and any(keys[]; endswith("-nodejs-24.22.3"))'             "$evidence/runtime-closure.json" > "$evidence/runtime-policy.txt"

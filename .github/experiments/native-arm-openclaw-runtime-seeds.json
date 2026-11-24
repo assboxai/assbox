@@ -1,0 +1,60 @@
+{
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "architecture": "aarch64-linux",
+  "parentProfile": "/nix/store/p5r62dw24v5y2bm1l6ph9bpkrgpkn1jw-openclaw-2026.11.7-assbox-entrypoint.drv",
+  "parentOutput": "/nix/store/2qk3igx68n6fglqqdr5svlsd2xfcnpzl-openclaw-2026.11.7-assbox-entrypoint",
+  "previousProducerPlanSha256": "0184ac29fad1ff26dd65061878a1f3adbe0c4a401d72754f6619a3ebf6ba1f0d",
+  "packageInputs": [
+    {
+      "group": "python-tools",
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45443784497",
+        "GITHUB_SHA": "220ada44f589b3ca8f6bfa1b6116ae931956aef0"
+      },
+      "selected": {
+        "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv": {
+          "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+        }
+      },
+      "closureSelected": {},
+      "publicKey": "assbox-arm-openclaw-runtime-inputs-python-tools-45443784497:dnjcdo/haoPV78mxYMur7emPvwdzgvn9ugTrW/IfKyU=",
+      "artifact": 14953102275,
+      "producerRun": 45443784497,
+      "artifactSha256": "sha256:18c16b4e8e6acef8ea16a66842243bb641f56b9fa56d8256c9cc235c90cf7fc8",
+      "zipBytes": 86175171,
+      "rawIndexSha256": "1f6119bc0a554893913ef179a7b4a635312f58d7f2662f88e50c674c933a0fbf",
+      "independentProofSha256": "06accace61fc0b9508b7652fa16578102ccabe64f3e9fbe95e6b062dd44915f2"
+    },
+    {
+      "group": "node-inputs",
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45443784497",
+        "GITHUB_SHA": "220ada44f589b3ca8f6bfa1b6116ae931956aef0"
+      },
+      "selected": {
+        "/nix/store/34krnpyyfipqgabaivxizn5ws6x0193v-nodejs-slim-24.22.3.drv": {
+          "corepack": "/nix/store/dra3mpq662ajgzqf8044fia00pwv3dsa-nodejs-slim-24.22.3-corepack",
+          "dev": "/nix/store/1l38q9sij2mgyah7z3p424l799n2mbcg-nodejs-slim-24.22.3-dev",
+          "npm": "/nix/store/3s19q346dpw4hbclbfaszsmbjqmnvw31-nodejs-slim-24.22.3-npm",
+          "out": "/nix/store/6iljwa6yrc0q0f8c5hyvfdbs1zkd4rvh-nodejs-slim-24.22.3"
+        }
+      },
+      "closureSelected": {},
+      "publicKey": "assbox-arm-openclaw-runtime-inputs-node-inputs-45443784497:s8TiU0R8nCCxrc2qawBDzW9WxyK+hq986m3SInoTlOs=",
+      "artifact": 14957636858,
+      "producerRun": 45443784497,
+      "artifactSha256": "sha256:00225adc24d146b4068ebe7bab33b5fd228c8a885d788257d5bc15f4f7a8bfd2",
+      "zipBytes": 77716941,
+      "rawIndexSha256": "6db26d7c666f62f0e4800ccb7a27612a832c2123f0834505a3e552b928df1ba3",
+      "independentProofSha256": "1f495f23770b7d9d24684190913e56c046045cc594fe5e706f977c18809d8bd7"
+    }
+  ],
+  "observedAt": "2026-11-24T19:43:05.463787+00:00"
+}
