@@ -1,0 +1,18 @@
+{
+  "architecture": "x86_64-linux",
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "parentGate": "/nix/store/f087xmba97y87kdszmfspyfhvsp205aa-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+  "expectedProfile": "x86_64-linux-component-emacs",
+  "sourceBuildLogSha256": "d75fe746624ae2071c1bdda0592457775c2db82270542fd653ed4fa7a2cd7856",
+  "groups": {
+    "emacs": [
+      {
+        "derivation": "/nix/store/mcwl2i4dnn2i9g3ks03skj82iyirxp8d-emacs-nox-30.2.drv",
+        "outputs": {
+          "out": "/nix/store/3q5z1j3xc0bwqqbdh809rfmmfb2vygzy-emacs-nox-30.2"
+        }
+      }
+    ]
+  }
+}
