@@ -37,6 +37,21 @@ def closure_metadata(cache_tools, environment, paths, *, store=None, max_paths=5
     return result
 
 
+def remove_content_address_hints(cache_tools, cache):
+    # Cold imports of this diagnostic transport must verify the scoped key
+    # for every path. Nix accepts a valid content address as independent proof.
+    # Its signature fingerprint already binds the path, NAR and references.
+    count = 0
+    for metadata in sorted(cache.glob("*.narinfo")):
+        lines = cache_tools.bounded(metadata, 256 * 1024).splitlines(keepends=True)
+        hints = [line for line in lines if line.startswith(b"CA: ")]
+        require(len(hints) <= 1, "Duplicate content address hint")
+        if hints:
+            metadata.write_bytes(b"".join(line for line in lines if line != hints[0]))
+            count += 1
+    return count
+
+
 def signed_cache(cache_tools, env, workspace, cache, paths, name, *, max_paths=512):
     closure = closure_metadata(cache_tools, env, paths, max_paths=max_paths)
     cache.mkdir(mode=0o700)
@@ -53,6 +68,8 @@ def signed_cache(cache_tools, env, workspace, cache, paths, name, *, max_paths=5
         secret.unlink(missing_ok=True)
     key = public.read_text().strip()
     cache_tools.normalize_export(cache)
+    hints_removed = remove_content_address_hints(cache_tools, cache)
+    print(f'Prepared strict signed transport for {hints_removed} content-addressed paths.', flush=True)
     inventory = {path.name: {'size': path.stat().st_size, 'sha256': cache_tools.file_digest(path)}
                  for path in sorted(cache.iterdir())}
     require(sum(asset['size'] for asset in inventory.values()) <= MAX_BYTES, 'Seed transport exceeds its size bound')
