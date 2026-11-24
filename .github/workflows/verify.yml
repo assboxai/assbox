@@ -4,7 +4,7 @@ name: Assbox exact native ARM Chromium build inputs
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-chromium-compiler-cache
+  group: assbox-arm-chromium-current-inputs
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,12 +12,12 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-chromium-compiler-cache' &&
+      github.ref == 'refs/heads/test/arm-chromium-current-inputs' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [compiler]
+        group: [runtime-core, runtime-media]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -25,8 +25,8 @@ jobs:
       actions: read
     env:
       INPUT_GROUP: ${{ matrix.group }}
-      PRODUCT_COMMIT: 28bf6a68aad8860e412e5cd3d4f3788caef7edc1
-      PRODUCT_TREE: 304515456bbb2d19c47226caf38a5a2c1083544a
+      PRODUCT_COMMIT: d3d36054d98d1ccf3ab37853fd4c23b5621e72d5
+      PRODUCT_TREE: ac7bc49124a59ad59bca1afde3d755dd88ec7370
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

@@ -11,12 +11,10 @@ import sys
 import tempfile
 from urllib.parse import urlencode
 
-SOURCE = '28bf6a68aad8860e412e5cd3d4f3788caef7edc1'
-TREE = '304515456bbb2d19c47226caf38a5a2c1083544a'
+SOURCE = 'd3d36054d98d1ccf3ab37853fd4c23b5621e72d5'
+TREE = 'ac7bc49124a59ad59bca1afde3d755dd88ec7370'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
-EXPECTED = {'derivation': '/nix/store/zp1ixjw70x1laqjkdm8x3z095pl9qr6a-chromium-154.0.8037.97.drv',
- 'outputs': {'out': '/nix/store/vapzkaxsi9yaf9vf7xbi8hp7l4xzchgs-chromium-154.0.8037.97',
-             'sandbox': '/nix/store/bdj1jl1dpm8abcl43i2pk54yp89flm1w-chromium-154.0.8037.97-sandbox'}}
+EXPECTED = {'derivation': '/nix/store/z8ya6xslkr6vwqj1512bz7q53681dll4-chromium-154.0.8037.97.drv', 'outputs': {'out': '/nix/store/0bmzlfrh5wx5xw92ywg1c8xasg01f9kc-chromium-154.0.8037.97', 'sandbox': '/nix/store/2lj3l1pb0g98lv5kb60pk122z1k4zh97-chromium-154.0.8037.97-sandbox'}}
 FIELDS = ('narHash', 'narSize', 'references')
 MAX_BYTES = 4 * 1024**3
 

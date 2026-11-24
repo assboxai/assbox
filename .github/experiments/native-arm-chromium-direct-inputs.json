@@ -2,463 +2,122 @@
   "architecture": "aarch64-linux",
   "frontierSha256": "d71898f9bc766174741be9eb786244b02c6c1239a5f499e73a70f65d7493c464",
   "groups": {
-    "compiler": [
+    "runtime-core": [
       {
-        "derivation": "/nix/store/14z59c60ia2gw4x1npr2xyq8p3ryijbh-crubit-0-unstable-2026-09-11.drv",
+        "derivation": "/nix/store/4ca61l9g3lkc7kxbkal4l0309q965n17-glib-2.88.4.drv",
         "outputs": {
-          "out": "/nix/store/8hggk3ad6rdcal1vhjjg07zv6y6pm6ky-crubit-0-unstable-2026-09-11"
+          "dev": "/nix/store/nf81yawx4kkslgi7lqc62vrb7spgbkss-glib-2.88.4-dev"
         }
       },
       {
-        "derivation": "/nix/store/2l88m0jr6lvym6x36fv8mrfgb9n4zkyp-llvm-binutils-wrapper-21.1.8.drv",
+        "derivation": "/nix/store/bcmwahizb0vr6hbwai7s84vh6dwqkibv-openjdk-headless-17.0.20.1+1.drv",
         "outputs": {
-          "out": "/nix/store/n5yzwmix3a7ay37m52712172pzm1fjki-llvm-binutils-wrapper-21.1.8"
+          "out": "/nix/store/k25g14mh5mwvh285v46d3fa6wfaf8ims-openjdk-headless-17.0.20.1+1"
         }
       },
       {
-        "derivation": "/nix/store/59d6sf8bfg9pgv7khixxbbccg4ydclhz-ninja-1.13.2.drv",
+        "derivation": "/nix/store/bhnnqbdqll9j8csa3ziqjq5zbhm109ih-cups-2.4.19.drv",
         "outputs": {
-          "out": "/nix/store/rwvxhwlnixph6914ll34mkz8pdcpljzd-ninja-1.13.2"
+          "dev": "/nix/store/c2bprpbrfl4nmzzmcwh19ik67piw13p6-cups-2.4.19-dev"
         }
       },
       {
-        "derivation": "/nix/store/5bpp5sa26i0nipwz2hc6bz15y8672zm9-stdenv-linux.drv",
+        "derivation": "/nix/store/isiimyns6gx2qypqnky0jsvnkp7n5n28-nodejs-24.22.3.drv",
         "outputs": {
-          "out": "/nix/store/qdmldw94hq8x0q975ykyl3k3ddsm2xb3-stdenv-linux"
+          "out": "/nix/store/452664sh0qmzj9ck4py0v4q10lqg2iy4-nodejs-24.22.3"
         }
       },
       {
-        "derivation": "/nix/store/839d6ql6bpa2zyiwpx63yxj4r16yaaqp-rustc-wrapper-1.98.1.drv",
+        "derivation": "/nix/store/kyfv45djhh0pxzx58zkjivzkbcc957j9-dbus-glib-0.114.drv",
         "outputs": {
-          "out": "/nix/store/qbqwb23jkssabfxxfi7yhmgfdc5jd8fm-rustc-wrapper-1.98.1"
+          "dev": "/nix/store/sd4hvqfb7q0v2q7lgl5v636igfv3af31-dbus-glib-0.114-dev"
         }
       },
       {
-        "derivation": "/nix/store/dp40f91k6k860rn8080zi47lrd4f6q95-clang-wrapper-21.1.8.drv",
+        "derivation": "/nix/store/lwcqd0pg37xislwbvszwrs7nn8m0f538-npm-config-hook.drv",
         "outputs": {
-          "out": "/nix/store/0bzvq3zibxa7x5gvfi19lymm7krwbzzc-clang-wrapper-21.1.8"
+          "out": "/nix/store/b39xp72jaqcm4pdsig0ygnzq0i570h4j-npm-config-hook"
         }
       },
       {
-        "derivation": "/nix/store/lf47lddhbpzk3qyqmvkvjddpsvssqdzp-llvmCcAndBintools.drv",
+        "derivation": "/nix/store/vfm1f0bzm43w87rglvhff8qfflhra189-at-spi2-core-2.60.7.drv",
         "outputs": {
-          "out": "/nix/store/6jqigpr1vhmwz9yk929zbqs9yqxj38rs-llvmCcAndBintools"
-        }
-      },
-      {
-        "derivation": "/nix/store/mcf3wkz2z9r45g2pkdjap9b8isks8cfi-bison-3.8.2.drv",
-        "outputs": {
-          "out": "/nix/store/rz2r1axddqazy8a1v1144hw7mn6lhbpy-bison-3.8.2"
-        }
-      },
-      {
-        "derivation": "/nix/store/mclbb6ph7vxcgiqfyi439gr3gzi916pk-gnrt-0-unstable.drv",
-        "outputs": {
-          "out": "/nix/store/4axqk7n87har8phjh8r22qfw7h59hfkc-gnrt-0-unstable"
-        }
-      },
-      {
-        "derivation": "/nix/store/mhcc38bb0vra04f16ljx70s1qpm67yl4-stdenv-linux.drv",
-        "outputs": {
-          "out": "/nix/store/p4sjcj457mzvck6bagbskyz3xpl99rrl-stdenv-linux"
-        }
-      },
-      {
-        "derivation": "/nix/store/n03awgn1cxlpcj42nzqh4p3ivxyid597-rustTools.drv",
-        "outputs": {
-          "out": "/nix/store/q976qdn8nz7g1hb3qq935z4qb1ivav4q-rustTools"
-        }
-      },
-      {
-        "derivation": "/nix/store/qrwwmw766vvwgahgxbjz1m0wlkw3k6l6-rustfmt-1.98.1.drv",
-        "outputs": {
-          "out": "/nix/store/r8w3m6zfbidi9r7rnjapc1adxjzmnrp9-rustfmt-1.98.1"
-        }
-      },
-      {
-        "derivation": "/nix/store/qxq39yigcgirldcizybax0ygb76f9piz-nasm-3.02.drv",
-        "outputs": {
-          "out": "/nix/store/yfa4vsgljgcv7f5wx9i025n151b1p4i2-nasm-3.02"
-        }
-      },
-      {
-        "derivation": "/nix/store/r05zb669nndvazvj6b9hlczd409kf9cx-cargo-1.98.1.drv",
-        "outputs": {
-          "out": "/nix/store/rj9xyzk24g6p9ww2asifgi7si64z7c6z-cargo-1.98.1"
-        }
-      },
-      {
-        "derivation": "/nix/store/r1zmrlrmh3l9a49c99q5yinqkbrkgyja-gn-0-unstable-2026-08-31.drv",
-        "outputs": {
-          "out": "/nix/store/9xxb34ardlsgg5ix5cxk5rpqcp0wgjg0-gn-0-unstable-2026-08-31"
-        }
-      },
-      {
-        "derivation": "/nix/store/wnhr2yk8kdz60hx4hacx0r72j4a2gvz2-clang-tools-21.1.8.drv",
-        "outputs": {
-          "out": "/nix/store/lfi2bhhkm7qcm4j1lv4ym84z3rf6f2lj-clang-tools-21.1.8"
-        }
-      },
-      {
-        "derivation": "/nix/store/42257kpfwrvxa8rc0v4fqjxsdyg8s7lm-llvm-tblgen-21.1.8.drv",
-        "outputs": {
-          "out": "/nix/store/9lj7a9pgv3am8mfpsc0yr2d3bq49qzym-llvm-tblgen-21.1.8"
+          "dev": "/nix/store/dzqa0cjs0v1292waqbnyd3rb9qmbsrpb-at-spi2-core-2.60.7-dev"
         }
       }
     ],
-    "language": [
+    "runtime-media": [
       {
-        "derivation": "/nix/store/0qzpz4kwpfmii3jifmra9lcdjxwmw9g2-go-1.26.8.drv",
+        "derivation": "/nix/store/8rdlmbrxvs2bnv1jxx827kk2yvq1sscq-libpulseaudio-17.0.drv",
         "outputs": {
-          "out": "/nix/store/x1qs8rk2sry6ph7jfgwwiaw1lcrq3346-go-1.26.8"
+          "dev": "/nix/store/ysfyx36rspgg97zrdka76s53bvl95wl0-libpulseaudio-17.0-dev"
         }
       },
       {
-        "derivation": "/nix/store/3xm0flpqr1wh56nwk8qinp0djr1pbahy-protobuf-34.1.drv",
+        "derivation": "/nix/store/9cw61220bby8lkmpw3d7y94rlkrghl79-gtk+3-3.24.52.drv",
         "outputs": {
-          "out": "/nix/store/gfjcg5hn6yn8hi5b3j0qlva9gm0vgk6l-protobuf-34.1"
+          "dev": "/nix/store/w1z55iqbl3s7snwlrkdx8jh7pl8scsps-gtk+3-3.24.52-dev"
         }
       },
       {
-        "derivation": "/nix/store/4m3a90jmax2xlzkswvnd8n628zhafkjg-python3-3.13.15.drv",
+        "derivation": "/nix/store/9lz1hnidkqx5hc0fma577099d95w15b6-vulkan-loader-1.4.341.0.drv",
         "outputs": {
-          "out": "/nix/store/bc3097l52p0wilc3sffndalyijzc4frz-python3-3.13.15"
+          "out": "/nix/store/x4kjjmbdyj9xwfcl70z0672fk8nnx9kj-vulkan-loader-1.4.341.0"
         }
       },
       {
-        "derivation": "/nix/store/cddy121ww0p995ia7wfpw068rnw1ddmi-esbuild-0.25.1.drv",
+        "derivation": "/nix/store/gkv926q4jm438ak4d72vh81z1v7w1wca-flac-1.5.0.drv",
         "outputs": {
-          "out": "/nix/store/7xky0riav6cvy9caisfbj3mipy8zrn0j-esbuild-0.25.1"
+          "dev": "/nix/store/iv07klyf0hnm3zz040kqdb2ij8qw9bms-flac-1.5.0-dev"
         }
       },
       {
-        "derivation": "/nix/store/cns2p5bsqmz8ggyvs6dd9mmp6ywkar2v-nodejs-24.22.3.drv",
+        "derivation": "/nix/store/i7xipa2pmji7djnrq65lgl3pj6ig0azr-wayland-1.25.0.drv",
         "outputs": {
-          "out": "/nix/store/zmpx1xyrqkyx0kf9qc335c84b0jwpiv5-nodejs-24.22.3"
+          "dev": "/nix/store/6da6pd27rvh6dlvf9bklsgws2n1a3fra-wayland-1.25.0-dev"
         }
       },
       {
-        "derivation": "/nix/store/idb0l7cxc5f08jl1r4x4ijxclrsks018-typescript-go-7.0.2.drv",
+        "derivation": "/nix/store/rvyza5l7m0b71fdc75py87riz2fm3az6-ffmpeg-8.1.3.drv",
         "outputs": {
-          "out": "/nix/store/c8q7x80z1hq4hc381a9w3yp4nwa0vqxk-typescript-go-7.0.2"
+          "dev": "/nix/store/439gg07jm7h8hvkdvc9sy50s8hlin5hv-ffmpeg-8.1.3-dev"
         }
       },
       {
-        "derivation": "/nix/store/k4y31d40lvry35fhjz7z2nxcfns62hki-python3-3.13.15-env.drv",
+        "derivation": "/nix/store/rzbyqg9yif4kl3sbk9snij93y0wmrg48-pipewire-1.6.6.drv",
         "outputs": {
-          "out": "/nix/store/43cmi2wr59dp77iia6j380slbk855pgw-python3-3.13.15-env"
+          "dev": "/nix/store/6q8h1x1f2lmci2xf2j0kd1hqnq7p0hp5-pipewire-1.6.6-dev"
         }
       },
       {
-        "derivation": "/nix/store/vlgqbc03mmwhh0lpf3yjr48i7bc0ijlw-perl-5.42.3.drv",
+        "derivation": "/nix/store/w59kqrp309snxyfaci9nz5p26smm5gxd-libva-2.23.0.drv",
         "outputs": {
-          "out": "/nix/store/cwzkc29p7vard6xrxy1bf7dfgw650jqd-perl-5.42.3"
-        }
-      }
-    ],
-    "libraries": [
-      {
-        "derivation": "/nix/store/0im48mm81g1d5pw5hky7ssqdck6y9q9g-coreutils-9.11.drv",
-        "outputs": {
-          "out": "/nix/store/3l7ygqcc6v0rbi9d4j1m6phi6sz86j98-coreutils-9.11"
+          "dev": "/nix/store/c59ak9vqj6iw91lhd5sw9sjwdq1alf19-libva-2.23.0-dev"
         }
       },
       {
-        "derivation": "/nix/store/1a837zyv8ack8f6998bkybba8f7f2v1v-libxcursor-1.2.3.drv",
+        "derivation": "/nix/store/wqviripbnyj4bcxiaazly32jnhddidxp-libxkbcommon-1.13.1.drv",
         "outputs": {
-          "dev": "/nix/store/3x5xxvxkywzcffzmkq2921s5j8wnl7ak-libxcursor-1.2.3-dev"
+          "dev": "/nix/store/gppfpqmagzi9cmkawsn6jl78krpqcikd-libxkbcommon-1.13.1-dev"
         }
       },
       {
-        "derivation": "/nix/store/1ab79hw2l6jpv81d9sa83izk0j9k6d83-libgcrypt-1.12.4.drv",
+        "derivation": "/nix/store/z9v2gsphcvwsgrk5c7inrn102q5zyb16-speech-dispatcher-0.12.1.drv",
         "outputs": {
-          "dev": "/nix/store/kin572n4fcsq6grvi750g2i68m39zriz-libgcrypt-1.12.4-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/2lzs33ssbisrsbd9vyw7n7h1f9jvmawd-gperf-3.3.drv",
-        "outputs": {
-          "out": "/nix/store/y80rblf83z0vspc8gv91ddpzxvv4ivx0-gperf-3.3"
-        }
-      },
-      {
-        "derivation": "/nix/store/2naawlhhb3rjj239i4vmm16n210yqd63-pciutils-3.15.0.drv",
-        "outputs": {
-          "out": "/nix/store/y919s0j7s3ci4jc5xqcnsh3vl4nbwa5p-pciutils-3.15.0"
-        }
-      },
-      {
-        "derivation": "/nix/store/2rv9a4n62rr9gz740lhqwzhs102b4d6c-ed-1.22.5.drv",
-        "outputs": {
-          "out": "/nix/store/pgg2519qj0gv6as1ibc4ljympxmccxzi-ed-1.22.5"
-        }
-      },
-      {
-        "derivation": "/nix/store/3v8kcyiw8898r0caipvrz22if55rw3fr-util-linux-minimal-2.42.3.drv",
-        "outputs": {
-          "dev": "/nix/store/kx2ffxa74p38s4vn5qd9mxcxf09ai7qv-util-linux-minimal-2.42.3-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/3vkhkraki85inq56zpx25rn2g9mkxs46-curl-8.22.0.drv",
-        "outputs": {
-          "dev": "/nix/store/9hzcdsy61a2pxjscks4d9diq89ifqb8d-curl-8.22.0-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/3zyycqi1bgv1nw6v58289rdvb0zrn300-libffi-3.8.0.drv",
-        "outputs": {
-          "dev": "/nix/store/sc4rs9sx3g727r2l57wwibgv89shc1q7-libffi-3.8.0-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/52qdqdmrxr0x6yyr2ccfcwq6mkgyarrs-libevdev-1.13.6.drv",
-        "outputs": {
-          "out": "/nix/store/lzr2wliymll6n25snlrrq911sh47mmv6-libevdev-1.13.6"
-        }
-      },
-      {
-        "derivation": "/nix/store/5g1kpwaq835a09kq5g5n9g77yzsmpyx8-pkg-config-wrapper-0.29.2.drv",
-        "outputs": {
-          "out": "/nix/store/bvdrgl8lmc4b649r5qhgpp2i0s1s89ww-pkg-config-wrapper-0.29.2"
-        }
-      },
-      {
-        "derivation": "/nix/store/69qzial9zj0b11wiav5ws8g64p3b8fjv-libxml2-2.15.4.drv",
-        "outputs": {
-          "dev": "/nix/store/fbas2swa30q2bq0i1fgm0xy2m5xnhywk-libxml2-2.15.4-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/837gjms8kqkng5ryhj7vsy30xyr02jwh-systemd-minimal-libs-260.5.drv",
-        "outputs": {
-          "dev": "/nix/store/iw37k2bqklhgl9lw881fh1sg1p6fdin0-systemd-minimal-libs-260.5-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/969r54zqpg2sxi878rcz4qbb0a8qamcw-expat-2.8.5.drv",
-        "outputs": {
-          "dev": "/nix/store/0fz7k3rdsfd4rmrqfvpjh0miawlnx39f-expat-2.8.5-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/9mymjy53nl5j2riz72d1qyjdg2fqzd8g-libjpeg-turbo-3.1.4.drv",
-        "outputs": {
-          "dev": "/nix/store/jmkqcxsaf67jfqriwqkhhb0ysy3s9pss-libjpeg-turbo-3.1.4-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/9za5rh2hg8rnydsw4afk1dy2j86slgb6-libwebp-1.6.0.drv",
-        "outputs": {
-          "out": "/nix/store/9jz3viks36ig8bv51dkzdq76bx5jmp3n-libwebp-1.6.0"
-        }
-      },
-      {
-        "derivation": "/nix/store/agmlymf54zzamwynda8hzqkx20yzz8aa-glu-9.0.3.drv",
-        "outputs": {
-          "dev": "/nix/store/r8zgq6jl0gxfsiw53z4zy3lq3bpc1zp6-glu-9.0.3-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/bk5wh1nxz064czggf63838z7n35y4j87-krb5-1.22.2.drv",
-        "outputs": {
-          "dev": "/nix/store/x2jadg7w45xraxjdn2f0qyhlil9qmmm5-krb5-1.22.2-dev",
-          "lib": "/nix/store/c54hcsby7gjiwbr5wxicdbg7kl9h5h2f-krb5-1.22.2-lib"
-        }
-      },
-      {
-        "derivation": "/nix/store/bkpz0nd9qrysdd3jivyaqsdmj708c5ls-mesa-libgbm-26.0.3.drv",
-        "outputs": {
-          "out": "/nix/store/2anjj5c1gvwyf5vzdf6bdjmivwq2qp3x-mesa-libgbm-26.0.3"
-        }
-      },
-      {
-        "derivation": "/nix/store/cb1zfrn95ybks5xnsw5r2p4b2npqvab3-bzip2-1.0.8.drv",
-        "outputs": {
-          "dev": "/nix/store/193h42ykr5slq86c1rryx2r4ni50nnjz-bzip2-1.0.8-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/csw71gsni5h8bzz42drrp3h641qsa48h-snappy-1.2.2.drv",
-        "outputs": {
-          "dev": "/nix/store/lj0ww8r5phrdlc9l09sx1jc2cvpqa0z1-snappy-1.2.2-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/d5y15g3lilz7g0fwd18d1j5j76rxwicq-bash-interactive-5.3p9.drv",
-        "outputs": {
-          "dev": "/nix/store/lqss6yfrdhm3fhbb3gjzm0vchphydhmv-bash-interactive-5.3p9-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/dmzxfzfpf1kkwiicdyvdxdz9zg6awmmr-libxdamage-1.1.7.drv",
-        "outputs": {
-          "dev": "/nix/store/2fqhi9i4gvfvj1cwps1agr6qb0vfjgga-libxdamage-1.1.7-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/f9capd5sdrhggr4ipa0q27d040g6lxlz-re2-2025-11-05.drv",
-        "outputs": {
-          "dev": "/nix/store/9653vq68wmwbr1gwgccnjq4g36558703-re2-2025-11-05-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/gsr8hr0j81p1728fnzbyrnfqy7mrxd55-which-2.23.drv",
-        "outputs": {
-          "out": "/nix/store/qafgrrmc4l0cawxggbgd40byjpjbml78-which-2.23"
-        }
-      },
-      {
-        "derivation": "/nix/store/h0kpbwn90dkd2ak3pxgqyrj2m5k5sbmz-libopus-1.6.1.drv",
-        "outputs": {
-          "dev": "/nix/store/zy0lmz7f3gnl05sbngnxj7nb9rz3x1x4-libopus-1.6.1-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/h4a53915w55r49s6jniz6ih8hklg4kdz-make-shell-wrapper-hook.drv",
-        "outputs": {
-          "out": "/nix/store/8bv1rh7l1lq9iv1n9g9h26gma9hsjcd5-make-shell-wrapper-hook"
-        }
-      },
-      {
-        "derivation": "/nix/store/h6zx7s8zmn86damqzhwwzzm1jgllm3jq-minizip-1.4.drv",
-        "outputs": {
-          "out": "/nix/store/viqwsj97nvvbjdjf1hckf6597l9icikd-minizip-1.4"
-        }
-      },
-      {
-        "derivation": "/nix/store/hm59s7y77vvas75yr8gbbkp09vqgci10-libepoxy-1.5.10.drv",
-        "outputs": {
-          "dev": "/nix/store/cjnmvjqdmyh63j8qvb9f1sj8wgcwzlxc-libepoxy-1.5.10-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/ihp6jr394lw1jpma33yms2fmncn03zr8-nss-3.112.5.drv",
-        "outputs": {
-          "dev": "/nix/store/7p8idwgw9r626dymx0lfva2y9snh39sc-nss-3.112.5-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/llwwjkv639r5bz42bmg5a3jya04980y9-libxtst-1.2.5.drv",
-        "outputs": {
-          "out": "/nix/store/znwgy7yda7f2jw4bnmd5i32h9avxds4v-libxtst-1.2.5"
-        }
-      },
-      {
-        "derivation": "/nix/store/mjgh72rbi5l67kchy3sw2xh5syb3vbn6-gnugrep-3.12.drv",
-        "outputs": {
-          "out": "/nix/store/4p048fld0hrm516ylm1nyc0sjdlz09zn-gnugrep-3.12"
-        }
-      },
-      {
-        "derivation": "/nix/store/n2klkjnscc6p5lp957wndsj3grh02fjb-speex-1.2.1.drv",
-        "outputs": {
-          "dev": "/nix/store/g9i0jj99si8mkkigdxq2y2y8jvk7c8p7-speex-1.2.1-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/n4fga6rr1kklxgdkid76wf31bfrphzjb-libxshmfence-1.3.3.drv",
-        "outputs": {
-          "dev": "/nix/store/p74p4npx6a6s01632w6z9yyj03hydh0a-libxshmfence-1.3.3-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/nbshf8n471cxibxsn41ffz47ijj5wh2c-libxscrnsaver-1.2.5.drv",
-        "outputs": {
-          "out": "/nix/store/l02bp0b511rrc2j2cc1gc7ml311xs2sz-libxscrnsaver-1.2.5"
-        }
-      },
-      {
-        "derivation": "/nix/store/pqx6pl28xi7nnpif5mkl9nama9sc3p4n-bash-5.3p9.drv",
-        "outputs": {
-          "out": "/nix/store/k56s4lq6d6rljdxg26a34iij3xdvwzz7-bash-5.3p9"
-        }
-      },
-      {
-        "derivation": "/nix/store/qlcjpkqh3d7b63d8np5h9yjm12r49zyj-libdrm-2.4.133.drv",
-        "outputs": {
-          "dev": "/nix/store/6hr03kr3921az38jqjpgsavyasfk671p-libdrm-2.4.133-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/r9pn9d3dx6crna24fq6xcqr89fmym0s7-nspr-4.40.drv",
-        "outputs": {
-          "dev": "/nix/store/xbzllrlf9q6092b191g1cgv1v8vxyhr7-nspr-4.40-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/s1nxcnmy81qa52bq1cjpmjnq408g9aja-util-linux-2.42.3.drv",
-        "outputs": {
-          "dev": "/nix/store/khc49b59dffb9dniicidin0cgyfd16mp-util-linux-2.42.3-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/sgbkb373mh8zyhy9swc7a78rvshabjab-libcap-2.77.drv",
-        "outputs": {
-          "dev": "/nix/store/7xisrsjfpvf0kvbqwr38x5c2wisxai12-libcap-2.77-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/sza5bnnr46fgjan2hh0qnk71gir8farc-libusb-1.0.30.drv",
-        "outputs": {
-          "dev": "/nix/store/hrcsabi9mx006q8ihsz84mdk3z55zsfh-libusb-1.0.30-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/vrx9kp5745qm3nkmpa1fbxqfpkkr509j-libevent-2.1.13.drv",
-        "outputs": {
-          "dev": "/nix/store/p9xkh8iagj3034ys6cb3znbx2i64y3lg-libevent-2.1.13-dev"
-        }
-      },
-      {
-        "derivation": "/nix/store/x6848k1qi5jisv78ygdmlqxc6cdsdjc3-dri-pkgconfig-stub.drv",
-        "outputs": {
-          "out": "/nix/store/4mcfwx9hjk0vqf808wwwk4gqasq4vm1v-dri-pkgconfig-stub"
-        }
-      },
-      {
-        "derivation": "/nix/store/y172lpxkc5rajs03ms81pnd0nkvpaxrn-libglvnd-1.7.0.drv",
-        "outputs": {
-          "dev": "/nix/store/k7m7blcv6wlv5f1j0kmwa3jwmyp548a9-libglvnd-1.7.0-dev",
-          "out": "/nix/store/7d0dd4scbz5rb4gl8hgbsy9wn72cxffk-libglvnd-1.7.0"
-        }
-      },
-      {
-        "derivation": "/nix/store/yfyc17bbxg04wb8c11zg1lgcdvhzww2w-glibc-2.42-100.drv",
-        "outputs": {
-          "out": "/nix/store/y8g2m8zha8fdwd6klf3jngqndf9nv9j2-glibc-2.42-100"
-        }
-      },
-      {
-        "derivation": "/nix/store/yvclmfqc028wjmj2hsac5wznagvwxmjl-alsa-lib-1.2.15.3.drv",
-        "outputs": {
-          "dev": "/nix/store/y14dymqddrji4kjgcfri4999h59d2jg2-alsa-lib-1.2.15.3-dev",
-          "out": "/nix/store/a2rkpzdgv5cgnfnrb3y7lgglixgz8khz-alsa-lib-1.2.15.3"
-        }
-      },
-      {
-        "derivation": "/nix/store/zhlj61kkfm31xk0g9wldphinx3dc7rww-npm-config-hook.drv",
-        "outputs": {
-          "out": "/nix/store/mkafyi18v7i4wrmmk1kdjw09kjwzr23p-npm-config-hook"
-        }
-      },
-      {
-        "derivation": "/nix/store/zxzcmw0pnx0qvqinvvh6cpd1zh2w22g9-libxslt-1.1.45.drv",
-        "outputs": {
-          "dev": "/nix/store/nmb6v2hj5f7cn87claqqdw8lk25vhq98-libxslt-1.1.45-dev"
+          "out": "/nix/store/6ggzfm39jbqm5cpxx2bqir4r17alqsqj-speech-dispatcher-0.12.1"
         }
       }
     ]
   },
   "previousChromium": {
-    "chromiumDrv": "/nix/store/zp1ixjw70x1laqjkdm8x3z095pl9qr6a-chromium-154.0.8037.97.drv",
-    "unwrappedDrv": "/nix/store/z3vk4lcyldp9y1cccf4d1h17gw0yzxv9-chromium-unwrapped-154.0.8037.97.drv"
+    "chromiumDrv": "/nix/store/z8ya6xslkr6vwqj1512bz7q53681dll4-chromium-154.0.8037.97.drv",
+    "unwrappedDrv": "/nix/store/prlcql8f9n7zjvz14cam17fcy3imc0ka-chromium-unwrapped-154.0.8037.97.drv"
   },
   "reviewedChromium": {
     "chromiumDrv": "/nix/store/s18ywqkfpwd5l021b1rqm4jhj0b1fg6z-chromium-154.0.8037.97.drv",
     "source": "b7fb99d3bc8fd7f4932f2f5b9371a7365e241148",
     "unwrappedDrv": "/nix/store/kr7bqcy098nnn36l2w94l94lba6qasyx-chromium-unwrapped-154.0.8037.97.drv"
   },
-  "source": "28bf6a68aad8860e412e5cd3d4f3788caef7edc1",
-  "tree": "304515456bbb2d19c47226caf38a5a2c1083544a"
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370"
 }
