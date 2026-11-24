@@ -51,6 +51,12 @@
       sourceRevision = if releaseContext != null then releaseContext.coreCommit else self.rev or "";
       buildAssbox =
         pkgs: pkgs.callPackage ./nix/package.nix { inherit pkgs sourceRevision releasePolicy; };
+      reviewedApplicationOpenSsl =
+        pkgs:
+        if pkgs.openssl.version == "3.6.4" && pkgs.openssl_3_5.version == "3.5.8" then
+          import ./nix/reviewed-openssl-lts.nix { inherit pkgs; }
+        else
+          pkgs.openssl;
       reviewedApplicationSndfile =
         package:
         if package.version == "1.2.2" then
@@ -75,6 +81,7 @@
                 inherit sqlite;
                 brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                 libsndfile = reviewedApplicationSndfile previous.libsndfile;
+                openssl = reviewedApplicationOpenSsl previous;
               })
             ];
           };
@@ -115,13 +122,7 @@
           recipes = claude-code-packages.packages.${system};
           original = recipes.claude-code;
           appPkgs = import claude-code-packages.inputs.nixpkgs { inherit system; };
-          openssl = pkgs.openssl_3_5.overrideAttrs (old: {
-            patches = (old.patches or [ ]) ++ [
-              ./nix/patches/openssl/CVE-2026-107493.patch
-              ./nix/patches/openssl/CVE-2026-35190.patch
-              ./nix/patches/openssl/CVE-2026-124709.patch
-            ];
-          });
+          openssl = import ./nix/reviewed-openssl-lts.nix { inherit pkgs; };
           codesignCheckHook = appPkgs.callPackage (
             claude-code-packages + "/packages/codesignCheckHook/package.nix"
           ) { inherit openssl; };
@@ -151,6 +152,7 @@
                 inherit sqlite;
                 brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                 libsndfile = reviewedApplicationSndfile previous.libsndfile;
+                openssl = reviewedApplicationOpenSsl previous;
               })
             ];
           };
@@ -262,6 +264,7 @@
                   inherit (lockedAppPkgs) rdma-core;
                   brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                   libsndfile = reviewedApplicationSndfile previous.libsndfile;
+                  openssl = reviewedApplicationOpenSsl previous;
                 }
               );
               raw = recipes.hermes-agent.override {
@@ -297,6 +300,7 @@
                   (_final: previous: {
                     brotli = import ./nix/reviewed-brotli.nix { pkgs = previous; };
                     libsndfile = reviewedApplicationSndfile previous.libsndfile;
+                    openssl = reviewedApplicationOpenSsl previous;
                   })
                 ];
               };
