@@ -1,0 +1,100 @@
+{
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "architecture": "x86_64-linux",
+  "lockSha256": "ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7",
+  "groups": {
+    "desktop-shells": {
+      "x86_64-linux-apple-12-1-none.toplevel": {
+        "derivation": "/nix/store/ywilvx95q25dsq132lap29s1w95zv0dm-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/fvga2sjyaz38qif1nfdv0s2c4vzwg8ds-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-apple-12-1-none.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-uefi-none-wayland.toplevel": {
+        "derivation": "/nix/store/h9l1s2nmv0aq94ln7sybjcrpxyas3gbg-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/7aqc6j3wccpyf0r19ksgjnfrbjya9riq-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-uefi-none-wayland.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-uefi-none-x11.toplevel": {
+        "derivation": "/nix/store/jrp5379dm5wg777xpyswlzbv1xffwbi6-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/4kbgw18pqslyv28pgqf4dx1icsgl2wss-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-uefi-none-x11.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-uefi-opencode-wayland.toplevel": {
+        "derivation": "/nix/store/8g7kxgkl15ifh2an7lisn0m6jsak1y6h-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/s5clvrrzmadnl3lxawrvz2d0g2ygq75c-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-uefi-opencode-wayland.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-uefi-opencode-x11.toplevel": {
+        "derivation": "/nix/store/55xvvr2ja755d8cipr6cqhfqc64rbziq-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/1wsp279askmv27xf221i4b5rqs8axs74-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-uefi-opencode-x11.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      }
+    },
+    "application-profiles": {
+      "x86_64-linux-chatgpt-multiagent.worker": {
+        "derivation": "/nix/store/zgy4ac7jdxjygw9lpqbf11l80w78x5xg-nixos-system-assbox-worker-26.05pre-git.drv",
+        "output": "/nix/store/fz59ixh37k8xa3j47lhcl466kl0ii3sr-nixos-system-assbox-worker-26.05pre-git",
+        "attribute": "nixosConfigurations.x86_64-linux-chatgpt-multiagent.config.system.build.assboxWorkerAudit",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-component-hermes.toplevel": {
+        "derivation": "/nix/store/c8mmlpa4wpc87k1svgdnj7h8w5zzaqn5-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/r33l5abvxd3w6yps7i2akq6d7jpxyj66-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-component-hermes.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-component-hermes-dashboard.toplevel": {
+        "derivation": "/nix/store/8dv734k0rrgs8nh7270r5fcr05mm0xsy-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/87ca7lnwmic9n522m4bkfbjwjr0f8vi0-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-component-hermes-dashboard.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-component-hermes-gateway.toplevel": {
+        "derivation": "/nix/store/498i8n8hnxx2jgpx4y6z6c2rin9nc12m-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/yqxm66sjng49701wkd2yxvhjw553q5yx-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-component-hermes-gateway.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-component-omp.toplevel": {
+        "derivation": "/nix/store/lbzw0jcyfr5ch4l1p60lyzhmxygck2hp-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/1gqcrbkwj2k14lsjl3xzvqbkzw8afiav-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-component-omp.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      },
+      "x86_64-linux-mixed-cli.toplevel": {
+        "derivation": "/nix/store/byqj6hwin423qahaj35anlhd9zwb19g5-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+        "output": "/nix/store/xx9fpwrw67m5l02mmrl1q4jyzfrqa16f-nixos-system-assbox-ci-26.05.20261007.2efa67f",
+        "attribute": "nixosConfigurations.x86_64-linux-mixed-cli.config.system.build.toplevel",
+        "usesVerifiedKernel": true
+      }
+    }
+  },
+  "remainingGraphSha256": "2f30e54f97300770940ba812671ddb79b22905d3d0f82ffc331051a381cf4694",
+  "kernel": {
+    "indexSha256": "856a3e89556e93327908f09d4670d9af9bc539b48c9dd3e5b46e00889f5ee0ec",
+    "indexBytes": 59966,
+    "derivation": "/nix/store/z4qgzgxv7bjmp0x2317zivyaiaqjxkxa-linux-6.18.55.drv",
+    "nativeKernelOutputs": {
+      "dev": "/nix/store/bk4hlyq561d5m111qzga1da80h2lq751-linux-6.18.55-dev",
+      "modules": "/nix/store/jq0mk9d8z5rc8r4ppfq5nh7p7xbfg2iq-linux-6.18.55-modules",
+      "out": "/nix/store/5rxbys2bzwfayykqnbg0j5b5xx6kix89-linux-6.18.55"
+    },
+    "formatter": {
+      "derivation": "/nix/store/d8yq40w5p3x5vpw92p3g2piw7vyhc1rs-nixfmt-1.5.0.drv",
+      "output": "/nix/store/j0kxj3ycscqgxw3nww72xl3as1bkkqk8-nixfmt-1.5.0",
+      "version": "1.5.0"
+    },
+    "releaseId": 454755949,
+    "releaseTag": "kernel-formatter-45038354435-1-dev",
+    "manifestSha256": "88bd98a9babebf5c9f38dd3b6541349782103b956c954a81e82779651b6844e9",
+    "core": "e8a5b87432b76dc85c4fc20a988c13a726bf762a",
+    "closurePaths": 89,
+    "assets": 177
+  }
+}
