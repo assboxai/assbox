@@ -16,10 +16,10 @@ import sys
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
-SOURCE = 'e99bbcbcb335c218a762dfbf7710d64aa89fbe4d'
-TREE = '3420b79c9a8deea662ef7bdfcc6375843544282b'
+SOURCE = 'd3d36054d98d1ccf3ab37853fd4c23b5621e72d5'
+TREE = 'ac7bc49124a59ad59bca1afde3d755dd88ec7370'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
-TEST = '/nix/store/1m3mn3ph7c4lmvzvb5rsxvzl1d7h0i3i-vm-test-run-assbox-current-installed-curated-headless.drv'
+TEST = '/nix/store/3y3vjfl9hn5cyly4jpk24lgagcfch43i-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv'
 SIZE_LIMIT = 2 * 1024**3
 HOSTED = {
     'RUNNER_ENVIRONMENT': 'github-hosted',
@@ -28,7 +28,7 @@ HOSTED = {
     'GITHUB_REPOSITORY_OWNER_ID': '327835666',
     'GITHUB_EVENT_NAME': 'workflow_dispatch',
     'GITHUB_RUN_ATTEMPT': '1',
-    'GITHUB_REF': 'refs/heads/test/arm-installed-headless-cli-seeded-e99bbcb',
+    'GITHUB_REF': 'refs/heads/test/arm-current-headless-inventory',
 }
 TOKEN_ENV = {
     'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN',

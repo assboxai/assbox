@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox native ARM installed headless CLI with verified inputs
+name: Assbox current native ARM headless closure inventory
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-installed-headless-cli-seeded-e99bbcb
+  group: assbox-arm-current-headless-inventory
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-installed-headless-cli-seeded-e99bbcb' &&
+      github.ref == 'refs/heads/test/arm-current-headless-inventory' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 260
@@ -20,8 +20,8 @@ jobs:
       actions: read
       contents: read
     env:
-      PRODUCT_COMMIT: e99bbcbcb335c218a762dfbf7710d64aa89fbe4d
-      PRODUCT_TREE: 3420b79c9a8deea662ef7bdfcc6375843544282b
+      PRODUCT_COMMIT: d3d36054d98d1ccf3ab37853fd4c23b5621e72d5
+      PRODUCT_TREE: ac7bc49124a59ad59bca1afde3d755dd88ec7370
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -100,7 +100,7 @@ jobs:
           path: ${{ runner.temp }}/assbox-installed-cli-seeds/nix-module
           skip-decompress: true
           digest-mismatch: error
-      - name: Install and boot the exact native ARM headless profile
+      - name: Build and inventory the exact native ARM headless closure
         shell: bash
         run: |
           set -euo pipefail
@@ -110,7 +110,6 @@ jobs:
           test "$(uname -m)" = aarch64
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git -C authority status --porcelain)"
-          fixture="$PWD/authority/tests/acceptance/installed-headless-cli/fixture-current.nix"
           cd product
           test "$(git rev-parse HEAD)" = "$PRODUCT_COMMIT"
           test "$(git rev-parse 'HEAD^{tree}')" = "$PRODUCT_TREE"
@@ -119,7 +118,7 @@ jobs:
             'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7  flake.lock' \
             '10e9eb6ad0cc12447dbea4fd76160c1b8a14ba1bdaa3e5ff0eadc1ae218b4997  scripts/release-check' \
             | sha256sum --check
-          evidence="$RUNNER_TEMP/assbox-arm-installed-headless-cli"
+          evidence="$RUNNER_TEMP/assbox-arm-headless-inventory"
           mkdir -m 0700 "$evidence"
           {
             date -u +%FT%TZ
@@ -130,40 +129,34 @@ jobs:
             df -h /nix/store "$RUNNER_TEMP"
             nix --version
           } > "$evidence/scope.txt"
-          if test -c /dev/kvm; then
-            printf 'kvmDevice\tavailable-unrequired\n' >> "$evidence/scope.txt"
-          else
-            printf 'kvmDevice\tunavailable\n' >> "$evidence/scope.txt"
-          fi
-          expression="let f = import $fixture { source = \"$PWD\"; revision = \"$PRODUCT_COMMIT\"; system = \"aarch64-linux\"; }; in { installed = toString f.actual; actual = f.actual.drvPath; test = f.test.drvPath; inherit (f) expectedProfile; }"
-          nix eval --json --impure --no-update-lock-file --no-write-lock-file --option eval-cores 2 --expr "$expression" > "$evidence/evaluation.json"
-          sha256sum "$fixture" "$(dirname "$fixture")/run-current-installed-cli.py" > "$evidence/fixture-sha256.txt"
-          drv=$(jq -r '.test' "$evidence/evaluation.json")
-          test -r "$drv"
+          nix eval --json --no-update-lock-file --no-write-lock-file \
+            '.#nixosConfigurations.aarch64-linux-uefi-none-headless.config.system.build.toplevel' \
+            --apply 'toplevel: { test = toplevel.drvPath; installed = toplevel.outPath; expectedProfile = { system = toplevel.system; }; }' > "$evidence/evaluation.json"
+          drv=$(jq -er '.test' "$evidence/evaluation.json")
+          test "$drv" = '/nix/store/3y3vjfl9hn5cyly4jpk24lgagcfch43i-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv'
+          test "$(jq -er '.installed' "$evidence/evaluation.json")" = '/nix/store/06b6kkgcx9bp7pa65z852ipc9il4hyz8-nixos-system-assbox-ci-26.05.20261007.2efa67f'
           /usr/bin/python3 -I -B ../authority/.github/experiments/import-arm-installed-cli-seeds.py \
             "$PWD" "$RUNNER_TEMP/assbox-installed-cli-seeds" "$evidence"
           /usr/bin/python3 -I -B ../authority/.github/experiments/import-arm-installed-kernel.py "$PWD" "$evidence"
           status=0
-          nix build --no-link --print-out-paths --max-jobs 2 --cores 2 --keep-failed -L "$drv^*" > "$evidence/output-paths.txt" 2> "$evidence/native-install.log" || status=$?
+          nix build --no-link --print-out-paths --max-jobs 2 --cores 2 -L "$drv^out" > "$evidence/output-paths.txt" 2> "$evidence/native-build.log" || status=$?
           printf '%s\n' "$status" > "$evidence/status.exit"
           if test "$status" -ne 0; then
-            tail -60 "$evidence/native-install.log" >&2
+            tail -40 "$evidence/native-build.log" >&2
             exit "$status"
           fi
+          test "$(cat "$evidence/output-paths.txt")" = "$(jq -er '.installed' "$evidence/evaluation.json")"
           kernel_drv=$(jq -er '.derivation' "$evidence/kernel-import.json")
-          if grep -Fq "building '$kernel_drv'" "$evidence/native-install.log"; then
-            echo "The installed fixture rebuilt its verified kernel" >&2
+          if grep -Fq "building '$kernel_drv'" "$evidence/native-build.log"; then
+            echo "The native headless closure rebuilt the verified prerequisite kernel" >&2
             exit 1
           fi
-          test "$(wc -l < "$evidence/output-paths.txt")" -eq 1
-          output=$(cat "$evidence/output-paths.txt")
-          cp "$output/current-installed-offline-cli.json" "$evidence/installed-cli.json"
-          jq -e --slurpfile plan "$evidence/evaluation.json" '.configuration==$plan[0].expectedProfile and .installed==$plan[0].installed and (.commands|length)==8 and all(.commands[]; .helpExit==0 and .helpCharacters>=20) and .networkInterfaces==["lo"] and (.networkRoutes|length)==0 and .controllingTerminal==false and .bootedFromInstalledExt4Disk and .installedFromOfflineSquashfs' "$evidence/installed-cli.json" > "$evidence/outcome-check.txt"
+          nix path-info --recursive --json --json-format 1 "$(cat "$evidence/output-paths.txt")" > "$evidence/closure.json"
           test -z "$(git status --porcelain)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: e99bbcb-native-arm-installed-headless-cli-seeded
-          path: ${{ runner.temp }}/assbox-arm-installed-headless-cli/
+          name: current-native-arm-headless-inventory
+          path: ${{ runner.temp }}/assbox-arm-headless-inventory/
           if-no-files-found: warn
           retention-days: 14
