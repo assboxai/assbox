@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Build and sign a scoped set of dependencies from the exact native installed CLI test graph."""
+"""Build and sign a scoped set of dependencies from the exact native profile build graph."""
 
 from datetime import datetime, timezone
 import importlib.util
@@ -32,7 +32,7 @@ def main():
         "RUNNER_ENVIRONMENT": "github-hosted",
         "GITHUB_REPOSITORY_ID": "1402455771",
         "GITHUB_REPOSITORY_OWNER_ID": "327835666",
-        "GITHUB_REF": "refs/heads/test/arm-installed-build-prerequisites",
+        "GITHUB_REF": "refs/heads/test/arm-native-profile-build-inputs",
         "GITHUB_RUN_ATTEMPT": "1",
         "GITHUB_EVENT_NAME": "workflow_dispatch",
     }
@@ -67,22 +67,22 @@ def main():
         work = Path(tmp)
         env = tools.environment(work)
         env["NIX_CONFIG"] += "max-jobs = 1\ncores = 4\neval-cores = 2\n"
-        fixture_root = HERE.parent.parent / "tests" / "acceptance" / "installed-headless-cli"
-        for name, expected_hash in plan["fixtureFilesSha256"].items():
-            seed.require(tools.file_digest(fixture_root / name) == expected_hash, "Installed fixture file changed")
-        fixture = fixture_root / "fixture-current.nix"
+        profiles = plan["parentProfile"][group]
+        selector = source.as_uri().replace("file:", "git+file:", 1) + "?rev=" + plan["source"]
         expression = (
-            f"let fixture = import (builtins.toPath {json.dumps(str(fixture))}) "
-            f"{{ source = {json.dumps(str(source))}; revision = {json.dumps(plan['source'])}; "
-            'system = "aarch64-linux"; }; in fixture.test.drvPath'
+            "configs: builtins.listToAttrs (map (name: { inherit name; "
+            "value = configs.${name}.config.system.build.toplevel.drvPath; }) "
+            + json.dumps(sorted(profiles)) + ")"
         )
-        wrapper = tools.run(
-            env, "nix", "eval", "--raw", "--impure", "--no-update-lock-file", "--no-write-lock-file",
-            "--expr", expression, timeout=210,
-        ).decode().strip()
-        seed.require(wrapper == plan["parentProfile"], "Exact native installed CLI test derivation changed")
-        references = set(tools.run(env, "nix-store", "--query", "--requisites", wrapper).decode().splitlines())
-        seed.require(set(derivations) <= references, "A selected package is outside the exact native installed CLI test graph")
+        observed_profiles = tools.decoded(tools.run(
+            env, "nix", "eval", "--json", "--no-update-lock-file", "--no-write-lock-file",
+            "--option", "eval-cores", "2", selector + "#nixosConfigurations", "--apply", expression, timeout=230,
+        ))
+        seed.require(observed_profiles == profiles, "Exact native profile derivations changed")
+        references = set(tools.run(
+            env, "nix-store", "--query", "--requisites", *sorted(profiles.values()), timeout=150,
+        ).decode().splitlines())
+        seed.require(set(derivations) <= references, "A package is outside the exact native profile build graph")
         declarations = tools.decoded(tools.run(env, "nix", "derivation", "show", *derivations))["derivations"]
         for row in rows:
             detail = declarations[Path(row["derivation"]).name]
@@ -94,24 +94,13 @@ def main():
         with (evidence / "native-build.log").open("xb") as log:
             subprocess.run(["nix", "build", "--no-link", "--max-jobs", "1", "--cores", "4", "-L", *installables],
                            env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, check=True)
-        package, = rows
-        output = Path(package["outputs"]["out"])
-        if group == "lapack":
-            library = output / "lib" / "liblapack.so"
-            tools.run(env, sys.executable, "-I", "-B", "-c",
-                      "import ctypes,sys; assert ctypes.CDLL(sys.argv[1]).dgesv_", str(library), timeout=60)
-            observed = "liblapack 3.12.1 loaded with dgesv_ on native ARM"
-        else:
-            observed = tools.run(env, str(output / "bin" / "ghc"), "--numeric-version", timeout=60).decode().strip()
-            seed.require(observed == "9.10.3", "Unexpected native ARM GHC version")
-        (evidence / "native-version.txt").write_text(observed + "\n")
         cache = evidence / "signed-cache"
         key_name = "assbox-arm-installed-build-prerequisites-" + group + "-" + identity["GITHUB_RUN_ID"]
         index = seed.signed_cache(tools, env, work, cache, paths, key_name, max_paths=4096)
         seed.verify_cold(tools, env, cache, work, paths, index, max_paths=4096)
         index.update({
             "identity": identity, "source": plan["source"], "tree": plan["tree"], "group": group,
-            "architecture": "aarch64-linux", "parentProfile": wrapper, "exactRoots": rows,
+            "architecture": "aarch64-linux", "parentProfile": profiles, "exactRoots": rows,
             "planSha256": tools.file_digest(plan_path),
             "observedAt": datetime.now(timezone.utc).isoformat(),
         })

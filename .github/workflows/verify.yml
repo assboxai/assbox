@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Assbox exact native ARM installer build prerequisites
+name: Assbox exact native ARM profile build prerequisites
 'on':
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-installed-build-prerequisites
+  group: assbox-arm-native-profile-build-inputs
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,12 +12,12 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-installed-build-prerequisites' &&
+      github.ref == 'refs/heads/test/arm-native-profile-build-inputs' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [ghc-bootstrap, ghc-other, lapack]
+        group: [libressl-tools, nix-store-tests, xml-python]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -54,7 +54,7 @@ jobs:
           sudo /usr/bin/python3 -I -B authority/scripts/clear_nix_credentials.py
           sudo systemctl restart nix-daemon.service
           nix config show --json | /usr/bin/python3 -I -B -c 'import json,sys; assert json.load(sys.stdin)["access-tokens"]["value"] == {}, "Nix API credentials remain configured"'
-      - name: Build and cold-verify the selected native ARM installer build prerequisite
+      - name: Build and cold-verify the selected native ARM profile build prerequisite
         timeout-minutes: 340
         shell: bash
         run: |
@@ -104,7 +104,6 @@ jobs:
           path: |
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/expected.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-build.log
-            ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/native-version.txt
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/resources.log
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/scope.txt
           if-no-files-found: warn

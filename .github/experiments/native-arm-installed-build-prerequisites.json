@@ -2,36 +2,52 @@
   "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
   "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
   "architecture": "aarch64-linux",
-  "parentProfile": "/nix/store/02c6cw7z7kzafvlnls1axlqbj3g5j93s-vm-test-run-assbox-current-installed-curated-headless.drv",
-  "fixtureFilesSha256": {
-    "fixture-current.nix": "119996e3a0f426beff9320deaee866234a26564bc4971a3e25eadf8957dc2272",
-    "run-current-installed-cli.py": "d93ffd307aca2622def9cc7a5c780162ded8f2e2fe85c001d19221bc29a769d4"
+  "parentProfile": {
+    "libressl-tools": {
+      "aarch64-linux-component-vim": "/nix/store/cky9z943q1xgss9yja2bs9hms39kx5rn-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-vscode-cli": "/nix/store/28bzdy8y37fj4dqfqzzdzl6jbkg495ah-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-vscode-remote-host": "/nix/store/kk4cdnwm6yvidkqyclm4156bmv1l5imx-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-vscode-tunnel": "/nix/store/jqxbsd771xfkpjmjci9n39dd03jr47zj-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv"
+    },
+    "nix-store-tests": {
+      "aarch64-linux-component-happier-daemon": "/nix/store/swvs29a5yhgmwa0xm5ssl84q2w28lrkk-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-happier": "/nix/store/zk9v3lwqdfdm6q1z1pcdwimsyi623hlb-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-opencode-server": "/nix/store/z0afz35ppp31a5phghi8955jf2w4vfcp-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-opencode": "/nix/store/5ncw6v4yc5i219d6hcb1rfr88nc0r2xh-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv"
+    },
+    "xml-python": {
+      "aarch64-linux-component-happier-daemon": "/nix/store/swvs29a5yhgmwa0xm5ssl84q2w28lrkk-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-happier": "/nix/store/zk9v3lwqdfdm6q1z1pcdwimsyi623hlb-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-opencode-server": "/nix/store/z0afz35ppp31a5phghi8955jf2w4vfcp-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv",
+      "aarch64-linux-component-opencode": "/nix/store/5ncw6v4yc5i219d6hcb1rfr88nc0r2xh-nixos-system-assbox-ci-26.05.20261007.2efa67f.drv"
+    }
   },
   "groups": {
-    "ghc-bootstrap": [
+    "libressl-tools": [
       {
-        "derivation": "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv",
+        "derivation": "/nix/store/w8giw78xp21agg37ll7n6favbs6l9chv-libressl-4.2.1.drv",
         "outputs": {
-          "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+          "man": "/nix/store/ks806p7z71fx8jqhbdd5kdwp6rxw3vrg-libressl-4.2.1-man",
+          "nc": "/nix/store/cq3f0b70xfdbp7q3pmgvnyl55asqvpxg-libressl-4.2.1-nc"
         }
       }
     ],
-    "ghc-other": [
+    "nix-store-tests": [
       {
-        "derivation": "/nix/store/iw0canvmhrpzn58csr6w7lq24qgny8kb-ghc-9.10.3.drv",
+        "derivation": "/nix/store/sns6ks2rasi7bcnp47g6r4cgbvpix7p8-nix-store-tests-2.34.8.drv",
         "outputs": {
-          "out": "/nix/store/2nb2jcd3pl3ydc8njdw9r53m1vayjh2b-ghc-9.10.3"
+          "out": "/nix/store/k0r2r00rr2ap0hxa7wfa5qp515525bfy-nix-store-tests-2.34.8"
         }
       }
     ],
-    "lapack": [
+    "xml-python": [
       {
-        "derivation": "/nix/store/wjfz7sj4i49kc6gd06xsx5qlwjmqgb50-liblapack-3.12.1.drv",
+        "derivation": "/nix/store/avj0qjc11kg7z42cdhyfgw3ban4xhaj0-python3.13-lxml-6.0.2.drv",
         "outputs": {
-          "out": "/nix/store/1ar3zz68ljfy5z0362nkn6lg0lzyz1xv-liblapack-3.12.1"
+          "out": "/nix/store/mgd4hpagcrln7w6mrvs830d38zr6y80x-python3.13-lxml-6.0.2"
         }
       }
     ]
   },
-  "previousTerminalSha256": "0a5d53228052bcc5aca20bcb12c2d32c911f9af7271890ca836518d4f1fa47af"
+  "previousTerminalSha256": "151fc8ee9423c064cb6a71b96154c6af1c6c5c43b8ab12388d9b879f7eebfd45"
 }
