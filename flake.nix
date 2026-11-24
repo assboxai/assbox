@@ -107,6 +107,36 @@
             };
           };
         };
+      claudeCodePackages =
+        pkgs:
+        let
+          inherit (pkgs.stdenv.hostPlatform) system;
+          recipes = claude-code-packages.packages.${system};
+          original = recipes.claude-code;
+          appPkgs = import claude-code-packages.inputs.nixpkgs { inherit system; };
+          openssl = pkgs.openssl_3_5.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [
+              ./nix/patches/openssl/CVE-2026-107493.patch
+              ./nix/patches/openssl/CVE-2026-35190.patch
+              ./nix/patches/openssl/CVE-2026-124709.patch
+            ];
+          });
+          codesignCheckHook = appPkgs.callPackage (
+            claude-code-packages + "/packages/codesignCheckHook/package.nix"
+          ) { inherit openssl; };
+          socat = appPkgs.socat.override { inherit openssl; };
+          useReviewedTls =
+            original.version == "2.1.293"
+            && appPkgs.openssl.version == "3.6.4"
+            && pkgs.openssl_3_5.version == "3.5.9";
+        in
+        recipes
+        // {
+          # WrapBuddy scans the signing hook's propagated libraries as well as
+          # the CLI's runtime helper. Both select the same reviewed OpenSSL.
+          claude-code =
+            if useReviewedTls then original.override { inherit codesignCheckHook socat; } else original;
+        };
       claudeDesktopPackages =
         system:
         let
@@ -212,7 +242,7 @@
         _module.args.assboxApplications = {
           antigravity = antigravity-packages.packages.${pkgs.stdenv.hostPlatform.system};
           chatgpt = chatgptPackages pkgs.stdenv.hostPlatform.system;
-          claude-code = claude-code-packages.packages.${pkgs.stdenv.hostPlatform.system};
+          claude-code = claudeCodePackages pkgs;
           claude-desktop = claudeDesktopPackages pkgs.stdenv.hostPlatform.system;
           codex = codexPackages pkgs.stdenv.hostPlatform.system;
           cursor = cursor-packages.packages.${pkgs.stdenv.hostPlatform.system};
