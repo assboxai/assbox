@@ -4,7 +4,7 @@ name: Assbox runtime dependencies ARM finite verification
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-finite-runtime-reviewed-applications
+  group: assbox-arm-finite-runtime-reviewed-entrypoint
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,15 +12,15 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-finite-runtime-reviewed-applications' &&
+      github.ref == 'refs/heads/test/arm-finite-runtime-reviewed-entrypoint' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 110
     permissions:
       contents: read
     env:
-      PRODUCT_COMMIT: f2e263f628810c3d9febd501fa77b1f9cdd66e69
-      PRODUCT_TREE: 12d940fb3e7d95527c41536bed9c61fbad88ad1f
+      PRODUCT_COMMIT: 4aede7c7c8d9a196a5299deae1924288336a51d8
+      PRODUCT_TREE: 9079b160615c7362fbafb34e6661ebba2861c876
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -99,7 +99,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: runtime-reviewed-applications-native-arm-finite
+          name: runtime-reviewed-entrypoint-native-arm-finite
           path: |
             ${{ runner.temp }}/assbox-arm-release-runtime/scope.txt
             ${{ runner.temp }}/assbox-arm-release-runtime/finite.tsv
