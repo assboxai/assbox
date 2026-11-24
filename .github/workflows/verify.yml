@@ -4,7 +4,7 @@ name: Assbox exact native ARM installer build prerequisites
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-installed-build-prerequisites
+  group: assbox-arm-installed-lapack-runtime
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,12 +12,12 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-installed-build-prerequisites' &&
+      github.ref == 'refs/heads/test/arm-installed-lapack-runtime' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [ghc-bootstrap, ghc-other, lapack]
+        group: [lapack]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -89,12 +89,13 @@ jobs:
           /usr/bin/python3 -I -B authority/.github/experiments/native-arm-installed-build-prerequisites.py "$PWD/product" "$evidence" "$INPUT_GROUP"
           test -s "$evidence/index.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
         with:
           name: exact-native-arm-installed-build-prerequisites-${{ matrix.group }}
           path: |
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/index.json
             ${{ runner.temp }}/assbox-arm-chromium-seed-evidence/signed-cache
-          if-no-files-found: error
+          if-no-files-found: warn
           compression-level: 0
           retention-days: 7
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

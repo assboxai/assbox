@@ -8,22 +8,6 @@
     "run-current-installed-cli.py": "d93ffd307aca2622def9cc7a5c780162ded8f2e2fe85c001d19221bc29a769d4"
   },
   "groups": {
-    "ghc-bootstrap": [
-      {
-        "derivation": "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv",
-        "outputs": {
-          "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
-        }
-      }
-    ],
-    "ghc-other": [
-      {
-        "derivation": "/nix/store/iw0canvmhrpzn58csr6w7lq24qgny8kb-ghc-9.10.3.drv",
-        "outputs": {
-          "out": "/nix/store/2nb2jcd3pl3ydc8njdw9r53m1vayjh2b-ghc-9.10.3"
-        }
-      }
-    ],
     "lapack": [
       {
         "derivation": "/nix/store/wjfz7sj4i49kc6gd06xsx5qlwjmqgb50-liblapack-3.12.1.drv",
@@ -33,5 +17,6 @@
       }
     ]
   },
-  "previousTerminalSha256": "0a5d53228052bcc5aca20bcb12c2d32c911f9af7271890ca836518d4f1fa47af"
+  "previousTerminalSha256": "0a5d53228052bcc5aca20bcb12c2d32c911f9af7271890ca836518d4f1fa47af",
+  "previousLoaderFailureSha256": "6723baa8acfbd0cb2ec8d14ce2cf6aedc57251c4aa239e10eff74941fd725453"
 }

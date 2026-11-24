@@ -32,7 +32,7 @@ def main():
         "RUNNER_ENVIRONMENT": "github-hosted",
         "GITHUB_REPOSITORY_ID": "1402455771",
         "GITHUB_REPOSITORY_OWNER_ID": "327835666",
-        "GITHUB_REF": "refs/heads/test/arm-installed-build-prerequisites",
+        "GITHUB_REF": "refs/heads/test/arm-installed-lapack-runtime",
         "GITHUB_RUN_ATTEMPT": "1",
         "GITHUB_EVENT_NAME": "workflow_dispatch",
     }
@@ -94,17 +94,6 @@ def main():
         with (evidence / "native-build.log").open("xb") as log:
             subprocess.run(["nix", "build", "--no-link", "--max-jobs", "1", "--cores", "4", "-L", *installables],
                            env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, check=True)
-        package, = rows
-        output = Path(package["outputs"]["out"])
-        if group == "lapack":
-            library = output / "lib" / "liblapack.so"
-            tools.run(env, sys.executable, "-I", "-B", "-c",
-                      "import ctypes,sys; assert ctypes.CDLL(sys.argv[1]).dgesv_", str(library), timeout=60)
-            observed = "liblapack 3.12.1 loaded with dgesv_ on native ARM"
-        else:
-            observed = tools.run(env, str(output / "bin" / "ghc"), "--numeric-version", timeout=60).decode().strip()
-            seed.require(observed == "9.10.3", "Unexpected native ARM GHC version")
-        (evidence / "native-version.txt").write_text(observed + "\n")
         cache = evidence / "signed-cache"
         key_name = "assbox-arm-installed-build-prerequisites-" + group + "-" + identity["GITHUB_RUN_ID"]
         index = seed.signed_cache(tools, env, work, cache, paths, key_name, max_paths=4096)
@@ -116,6 +105,31 @@ def main():
             "observedAt": datetime.now(timezone.utc).isoformat(),
         })
         (evidence / "index.json").write_bytes(tools.encoded(index))
+
+        package, = rows
+        output = Path(package["outputs"]["out"])
+        declaration = declarations[Path(package["derivation"]).name]
+        compiler, = [Path(path) / "bin" / "gfortran"
+                     for path in declaration["env"]["nativeBuildInputs"].split()
+                     if "-gfortran-wrapper-" in Path(path).name]
+        seed.require(compiler.is_file(), "LAPACK's exact Nix Fortran compiler is unavailable")
+        program = work / "solve.f90"
+        program.write_text("""program assbox_lapack_smoke
+  implicit none
+  integer :: ipiv(1), info
+  double precision :: a(1,1), b(1)
+  a(1,1) = 2.0d0
+  b(1) = 8.0d0
+  call dgesv(1, 1, a, 1, ipiv, b, 1, info)
+  if (info /= 0 .or. b(1) /= 4.0d0) stop 1
+end program assbox_lapack_smoke
+""")
+        executable = work / "solve"
+        library = output / "lib"
+        tools.run(env, str(compiler), str(program), "-L" + str(library),
+                  "-Wl,-rpath," + str(library), "-llapack", "-o", str(executable), timeout=60)
+        tools.run(env, str(executable), timeout=60)
+        (evidence / "native-version.txt").write_text("Native ARM LAPACK 3.12.1 dgesv solved 2x = 8.\n")
 
 
 if __name__ == "__main__":
