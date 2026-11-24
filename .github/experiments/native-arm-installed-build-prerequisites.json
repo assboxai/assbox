@@ -1,0 +1,37 @@
+{
+  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "architecture": "aarch64-linux",
+  "parentProfile": "/nix/store/02c6cw7z7kzafvlnls1axlqbj3g5j93s-vm-test-run-assbox-current-installed-curated-headless.drv",
+  "fixtureFilesSha256": {
+    "fixture-current.nix": "119996e3a0f426beff9320deaee866234a26564bc4971a3e25eadf8957dc2272",
+    "run-current-installed-cli.py": "d93ffd307aca2622def9cc7a5c780162ded8f2e2fe85c001d19221bc29a769d4"
+  },
+  "groups": {
+    "ghc-bootstrap": [
+      {
+        "derivation": "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv",
+        "outputs": {
+          "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+        }
+      }
+    ],
+    "ghc-other": [
+      {
+        "derivation": "/nix/store/iw0canvmhrpzn58csr6w7lq24qgny8kb-ghc-9.10.3.drv",
+        "outputs": {
+          "out": "/nix/store/2nb2jcd3pl3ydc8njdw9r53m1vayjh2b-ghc-9.10.3"
+        }
+      }
+    ],
+    "lapack": [
+      {
+        "derivation": "/nix/store/wjfz7sj4i49kc6gd06xsx5qlwjmqgb50-liblapack-3.12.1.drv",
+        "outputs": {
+          "out": "/nix/store/1ar3zz68ljfy5z0362nkn6lg0lzyz1xv-liblapack-3.12.1"
+        }
+      }
+    ]
+  },
+  "previousTerminalSha256": "0a5d53228052bcc5aca20bcb12c2d32c911f9af7271890ca836518d4f1fa47af"
+}
