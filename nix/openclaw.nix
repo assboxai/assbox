@@ -4,7 +4,7 @@ let
   oldNode = builtins.any (
     package: (package.pname or "") == "nodejs" && package.version == "24.20.0"
   ) raw.nativeBuildInputs;
-  application =
+  applicationBase =
     if oldNode then
       # The locked application recipe selects Node before the October
       # security release. Use Assbox's reviewed Node 24 build for the
@@ -13,6 +13,61 @@ let
       raw.override { nodejs = pkgs.nodejs_24; }
     else
       raw;
+  # The signed release includes the gateway lease fix and the approval fix
+  # from GHSA-pw3x-g8v8-fvj2.
+  application =
+    if applicationBase.version == "2026.9.5" then
+      applicationBase.overrideAttrs (
+        final: previous:
+        let
+          pnpm = import ./openclaw-pnpm-build-tool.nix pkgs;
+          pnpmDeps = pkgs.fetchPnpmDeps {
+            inherit (final) pname version src;
+            inherit pnpm;
+            hash = "sha256-vh+JmLJn9fT/jQRjBWFyT2GlT4GfKq2DcXDI07DYnZA=";
+            fetcherVersion = 4;
+            prePnpmInstall = ''
+              cat >> pnpm-workspace.yaml <<'EOF'
+
+              supportedArchitectures:
+                - linux-x64
+                - linux-arm64
+              EOF
+            '';
+          };
+        in
+        {
+          version = "2026.11.7";
+          src = pkgs.fetchFromGitHub {
+            owner = "openclaw";
+            repo = "openclaw";
+            rev = "e31bbf056de321127988ec5c1a36ff1b59297de0";
+            hash = "sha256-mNApehyzd0o5SELkvOyFPsaPD85Bvu4JPin3mAWgvnI=";
+          };
+          # Keep all upstream patches and verify the published lockfile with
+          # the same pnpm release during dependency fetching and offline build.
+          postPatch = "";
+          nativeBuildInputs =
+            builtins.filter (
+              input:
+              !(builtins.elem (pkgs.lib.getName input) [
+                "pnpm"
+                "pnpm-config-hook"
+              ])
+            ) previous.nativeBuildInputs
+            ++ [
+              pnpm
+              pkgs.pnpmConfigHook
+            ];
+          inherit pnpmDeps;
+          disallowedRequisites = (previous.disallowedRequisites or [ ]) ++ [
+            pnpm
+            pnpmDeps
+          ];
+        }
+      )
+    else
+      applicationBase;
   healthClient = pkgs.writeText "assbox-openclaw-health.mjs" (
     builtins.readFile ./openclaw-health.mjs
   );
