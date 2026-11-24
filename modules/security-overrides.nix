@@ -85,25 +85,24 @@ in
           upgradeRuntimeZlib = finalLinuxStage && previous.zlib.version == "1.3.2";
           upgradeFfmpeg =
             package:
-            let
-              pointRelease =
-                if package.version == "8.1.2" then
-                  package.overrideAttrs (_old: {
-                    version = ffmpegVersion;
-                    src = previous.fetchurl {
-                      url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
-                      hash = ffmpegSourceHash;
-                    };
-                  })
-                else
-                  package;
-            in
-            if pointRelease.version == ffmpegVersion then
-              pointRelease.overrideAttrs (old: {
+            if package.version == "8.1.2" then
+              package.overrideAttrs (_old: {
+                version = ffmpegVersion;
+                src = previous.fetchurl {
+                  url = "https://ffmpeg.org/releases/ffmpeg-${ffmpegVersion}.tar.xz";
+                  hash = ffmpegSourceHash;
+                };
+              })
+            else
+              package;
+          reviewedFfmpeg =
+            package:
+            if package.version == ffmpegVersion then
+              package.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ ffmpegSecurityPatches;
               })
             else
-              pointRelease;
+              package;
           upgradeSqlite =
             package:
             if package.version == "3.51.2" then
@@ -153,19 +152,30 @@ in
                   inherited;
             };
           # The stable channel still carries 8.1.2 after upstream's 8.1.3
-          # point release. Apply reviewed upstream backports to that version
-          # while preserving the existing feature variants and library ABI.
+          # security/bug-fix point release. Preserve each feature variant and
+          # the major ABI, and stop overriding as soon as Nixpkgs advances.
           ffmpeg_8 = upgradeFfmpeg previous.ffmpeg_8;
           ffmpeg_8-headless = upgradeFfmpeg previous.ffmpeg_8-headless;
           ffmpeg_8-full = upgradeFfmpeg previous.ffmpeg_8-full;
-          ffmpeg = if previous.ffmpeg.version == "8.1.2" then final.ffmpeg_8 else upgradeFfmpeg previous.ffmpeg;
+          ffmpeg = if previous.ffmpeg.version == "8.1.2" then final.ffmpeg_8 else previous.ffmpeg;
           ffmpeg-headless =
             if previous.ffmpeg-headless.version == "8.1.2" then
               final.ffmpeg_8-headless
             else
-              upgradeFfmpeg previous.ffmpeg-headless;
+              previous.ffmpeg-headless;
           ffmpeg-full =
-            if previous.ffmpeg-full.version == "8.1.2" then final.ffmpeg_8-full else upgradeFfmpeg previous.ffmpeg-full;
+            if previous.ffmpeg-full.version == "8.1.2" then final.ffmpeg_8-full else previous.ffmpeg-full;
+          alsa-plugins = previous.alsa-plugins.override {
+            ffmpeg = reviewedFfmpeg final.ffmpeg;
+          };
+          livekit-libwebrtc = previous.livekit-libwebrtc.override {
+            ffmpeg_8 = reviewedFfmpeg final.ffmpeg_8;
+            mkSystemLibraries = final.callPackage (
+              pkgs.path + "/pkgs/by-name/li/livekit-libwebrtc/mkSystemLibraries.nix"
+            ) {
+              ffmpeg_8 = reviewedFfmpeg final.ffmpeg_8;
+            };
+          };
           busybox =
             if previous.busybox.version == "1.37.0" then
               previous.busybox.overrideAttrs (old: {
