@@ -4,64 +4,25 @@
   "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
   "parentGate": "/nix/store/kwnyxlqxbzkhjnscsv1faa8l2z7b9n78-vm-test-run-assbox-desktop-services.drv",
   "parentDriver": "/nix/store/xk3py5khbn05d53xvx37rkmj2xakyy8f-nixos-test-driver-assbox-desktop-services.drv",
-  "frontierSha256": "cbef6d29a7802c3c549d55fcc974e2e771a99599b9c584749fae66bf5a89638f",
+  "frontierSha256": "012cf44eb2ca9b3fa001d6a1df243149b13ebc8a995a8b66f54ef1f4b5c9c687",
   "groups": {
-    "desktop-services": [
+    "desktop-additional": [
       {
-        "derivation": "/nix/store/3pp6rb1dalw6s81krqzbzws8npnsylmf-gnome-keyring-50.0.drv",
+        "derivation": "/nix/store/12n6z6f7kcfw6jn99jxpwacaanzdwy69-zed-editor-1.3.6.drv",
         "outputs": {
-          "out": "/nix/store/263sxrd0kcyrkpqbi14z9nvrmlwsyhkp-gnome-keyring-50.0"
+          "out": "/nix/store/sk4c65vmdr9vv1cimgjs6bf7yldr1k3v-zed-editor-1.3.6"
         }
       },
       {
-        "derivation": "/nix/store/kvwj7b3rki0cjxndf7dmmk628280ampd-gnome-settings-daemon-50.1.drv",
+        "derivation": "/nix/store/1cmnyfyrwmg0cjnlllznr559q4rfmqyk-qemu-host-cpu-only-for-vm-tests-10.2.4.drv",
         "outputs": {
-          "out": "/nix/store/s4vxm9jddpd84g9m2y3rq6i9rp5fqnxw-gnome-settings-daemon-50.1"
+          "ga": "/nix/store/mg0gbwadyz6qnbazzlgrkwwb39f91fc8-qemu-host-cpu-only-for-vm-tests-10.2.4-ga"
         }
       },
       {
-        "derivation": "/nix/store/f5zrwx5y1hnlz04k72rj81crzk0c1di1-xdg-desktop-portal-gtk-1.15.3.drv",
+        "derivation": "/nix/store/1rl17xva21qg8xxh2wg56smflk0bvz61-ffmpeg-8.1.3.drv",
         "outputs": {
-          "out": "/nix/store/kyhfnljf9nhrhsz92qi234307krn1n9y-xdg-desktop-portal-gtk-1.15.3"
-        }
-      },
-      {
-        "derivation": "/nix/store/xnqxpaqw9hd5sw57sa0g0hl33v5l6knj-labwc-0.9.7.drv",
-        "outputs": {
-          "out": "/nix/store/374dakflbxfm99mralf3b3piv4whzkcr-labwc-0.9.7"
-        }
-      },
-      {
-        "derivation": "/nix/store/ynz08cmk6la09vkgl3gh9h1wblym54xj-labwc-0.9.7.drv",
-        "outputs": {
-          "out": "/nix/store/afkywbwdkpfkb2lf3wr1iihxj5mr62mr-labwc-0.9.7"
-        }
-      }
-    ],
-    "desktop-graphics": [
-      {
-        "derivation": "/nix/store/466fydd3vh597a4hbnl6nm0z1xrcizhz-mesa-26.1.8.drv",
-        "outputs": {
-          "out": "/nix/store/n8kzgg9zavkqsnc4ipf0v2024igidc2f-mesa-26.1.8"
-        }
-      },
-      {
-        "derivation": "/nix/store/4whddk9n6vpmn9268nvr5qxghdf9fd6z-gtk+-2.24.33.drv",
-        "outputs": {
-          "out": "/nix/store/2lbw7l462q13p2q82avz9ffr2yad6jis-gtk+-2.24.33"
-        }
-      },
-      {
-        "derivation": "/nix/store/nvsg7ddkj5l75d74jjymnjdlfg1y5gf7-ffmpeg-headless-8.1.3.drv",
-        "outputs": {
-          "lib": "/nix/store/2mqavycs5avzg7kgwmcrcr8xrb1mjq32-ffmpeg-headless-8.1.3-lib",
-          "out": "/nix/store/4a90ai0cxi8g3gy7ns1nan545ijbmh2d-ffmpeg-headless-8.1.3"
-        }
-      },
-      {
-        "derivation": "/nix/store/ifbmxv698rcrv0n9ihlyfkb8vn7137i0-python3.13-pillow-12.3.0.drv",
-        "outputs": {
-          "out": "/nix/store/flh06k4nxhnwyafj08ziz29fqg41k4lj-python3.13-pillow-12.3.0"
+          "dev": "/nix/store/1gmg509qma76aqwjdmcgsgsf60bbw0fs-ffmpeg-8.1.3-dev"
         }
       }
     ]

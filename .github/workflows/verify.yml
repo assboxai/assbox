@@ -4,7 +4,7 @@ name: Assbox exact native x86 desktop prerequisites
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-x86-desktop-current-inputs
+  group: assbox-x86-desktop-current-additional-inputs
   cancel-in-progress: false
 jobs:
   seed:
@@ -12,12 +12,12 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/x86-desktop-current-inputs' &&
+      github.ref == 'refs/heads/test/x86-desktop-current-additional-inputs' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     strategy:
       fail-fast: false
       matrix:
-        group: [desktop-services, desktop-graphics]
+        group: [desktop-additional]
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     permissions:
