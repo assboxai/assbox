@@ -198,14 +198,24 @@
           happier = happierRecipes pkgs // {
             happier = buildHappier pkgs;
           };
-          hermes = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
-            hermes-agent = pkgs.callPackage ./nix/hermes.nix {
-              raw = hermes-packages.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent;
+          hermes =
+            let
+              inherit (pkgs.stdenv.hostPlatform) system;
+              recipes = hermes-packages.packages.${system};
               appPkgs = import hermes-packages.inputs.nixpkgs {
-                inherit (pkgs.stdenv.hostPlatform) system;
+                inherit system;
+                overlays = [ (_final: _previous: { inherit (pkgs) sqlite; }) ];
               };
+              raw = recipes.hermes-agent.override {
+                inherit (appPkgs) python3;
+                nodejs = pkgs.nodejs_24;
+                buildNpmPackage = appPkgs.buildNpmPackage.override { nodejs = pkgs.nodejs_24; };
+              };
+            in
+            recipes
+            // {
+              hermes-agent = pkgs.callPackage ./nix/hermes.nix { inherit appPkgs raw; };
             };
-          };
           pi =
             let
               inherit (pkgs.stdenv.hostPlatform) system;
