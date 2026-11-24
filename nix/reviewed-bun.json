@@ -1,0 +1,11 @@
+{
+  "version": "1.4.5",
+  "x86_64-linux": {
+    "name": "bun-linux-x64-baseline.zip",
+    "hash": "sha256-3LI6GKHC//EtV7zvaW27tC62f94p9DgW7LWVRZokxGM="
+  },
+  "aarch64-linux": {
+    "name": "bun-linux-aarch64.zip",
+    "hash": "sha256-GGVqO/DqVkH1eWrkITt1JVV5pwoP3tLzN5M3hVaM34Q="
+  }
+}

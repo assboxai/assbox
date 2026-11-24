@@ -267,10 +267,22 @@
                 ];
               };
               pipewire = import ./nix/reviewed-pipewire.nix { pkgs = appPkgs; };
+              bunRelease = builtins.fromJSON (builtins.readFile ./nix/reviewed-bun.json);
+              bunAsset = bunRelease.${system};
+              bun = appPkgs.bun.overrideAttrs (_old: {
+                inherit (bunRelease) version;
+                src = appPkgs.fetchurl {
+                  url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunRelease.version}/${bunAsset.name}";
+                  inherit (bunAsset) hash;
+                };
+              });
             in
             recipes
             // {
-              omp = recipes.omp.override { inherit pipewire; };
+              # The standalone executable embeds the build's Bun runtime.
+              omp = recipes.omp.override (
+                { inherit pipewire; } // nixpkgs.lib.optionalAttrs (appPkgs.bun.version == "1.4.2") { inherit bun; }
+              );
             };
           grok = grok-packages.packages.${pkgs.stdenv.hostPlatform.system};
           openclaw = openclaw-packages.packages.${pkgs.stdenv.hostPlatform.system} // {
