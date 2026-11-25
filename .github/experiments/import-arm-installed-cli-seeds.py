@@ -28,7 +28,7 @@ HOSTED = {
     'GITHUB_REPOSITORY_OWNER_ID': '327835666',
     'GITHUB_EVENT_NAME': 'workflow_dispatch',
     'GITHUB_RUN_ATTEMPT': '1',
-    'GITHUB_REF': 'refs/heads/test/arm-installed-headless-cli-seeded-d3d3605',
+    'GITHUB_REF': 'refs/heads/test/arm-installed-cli-verified-ghc',
 }
 TOKEN_ENV = {
     'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN',
@@ -81,10 +81,10 @@ def validate(archive, work, pinned, cache_tools):
             'ARM seed index does not match the independently verified identity')
     require(index['architecture'] == 'aarch64-linux', 'Native ARM cache is required')
     cache_tools.validate_cache(cache, index)
-    if pinned['name'] == 'codex':
-        require(pinned['verifiedCorrectAndWrongKeys'] is True and index['group'] == 'codex'
+    if 'exactRoots' in index:
+        require(pinned['verifiedCorrectAndWrongKeys'] is True and index['group'] == pinned['name']
                 and index['source'] == SOURCE and index['tree'] == TREE,
-                'Independently verified native Codex cache is required')
+                'Independently verified native package cache is required')
         package, = index['exactRoots']
         return {**index, **package, 'runId': int(index['identity']['GITHUB_RUN_ID'])}, cache
     require(index['testedColdCorrectAndWrongKeys'] is True, 'ARM cold-store qualification is required')
@@ -141,7 +141,7 @@ def main():
     require(evaluated['test'] == TEST and evaluated['expectedProfile']['system'] == 'aarch64-linux',
             'Unexpected exact installed CLI driver')
     expected = json.loads((authority / 'arm-installed-cli-seeds.json').read_bytes())
-    require([row['name'] for row in expected] == ['llvm', 'nix-core', 'rustc', 'clang', 'nix-module', 'codex'],
+    require([row['name'] for row in expected] == ['llvm', 'nix-core', 'rustc', 'clang', 'nix-module', 'codex', 'ghc-bootstrap', 'ghc-other', 'lapack', 'python-tools'],
             'Expected all independently verified installed CLI inputs')
     require({row.name for row in downloads.iterdir()} == {row['name'] for row in expected}, 'Unexpected input seed directories')
     accepted = []
@@ -154,6 +154,8 @@ def main():
                 package, = pinned['index']['exactRoots']
                 require(package['outputs'] == {'out': evaluated['expectedProfile']['expected']['codex']['output']},
                         'Native Codex does not match the installed profile')
+            elif 'exactRoots' in pinned['index']:
+                package, = pinned['index']['exactRoots']
             else:
                 package = pinned['index']
             drv = package['derivation']

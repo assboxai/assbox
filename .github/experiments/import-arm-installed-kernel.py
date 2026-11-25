@@ -89,7 +89,7 @@ def recording(program, evidence):
         "GITHUB_REPOSITORY_OWNER_ID": "327835666",
         "GITHUB_EVENT_NAME": "workflow_dispatch",
         "GITHUB_RUN_ATTEMPT": "1",
-        "GITHUB_REF": "refs/heads/test/arm-installed-headless-cli-seeded-d3d3605",
+        "GITHUB_REF": "refs/heads/test/arm-installed-cli-verified-ghc",
     }
     if (platform.system() != "Linux" or platform.machine() != "aarch64"
             or any(os.environ.get(name) != value for name, value in specification.items())):

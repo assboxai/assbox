@@ -4,7 +4,7 @@ name: Assbox native ARM installed headless CLI with verified inputs
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-installed-headless-cli-seeded-d3d3605
+  group: assbox-arm-installed-cli-verified-ghc
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-installed-headless-cli-seeded-d3d3605' &&
+      github.ref == 'refs/heads/test/arm-installed-cli-verified-ghc' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
@@ -110,6 +110,46 @@ jobs:
           path: ${{ runner.temp }}/assbox-installed-cli-seeds/codex
           skip-decompress: true
           digest-mismatch: error
+      - name: Download the verified ARM ghc-bootstrap seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14975520901'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45479605780'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/ghc-bootstrap
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM ghc-other seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14980129944'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45479605780'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/ghc-other
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM lapack seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14967233110'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45487757149'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/lapack
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM python-tools seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14953102275'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45443784497'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/python-tools
+          skip-decompress: true
+          digest-mismatch: error
       - name: Install and boot the exact native ARM headless profile
         timeout-minutes: 320
         shell: bash
@@ -172,6 +212,12 @@ jobs:
             echo "The installed fixture rebuilt its verified native Codex package" >&2
             exit 1
           fi
+          for verified_seed in /nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv /nix/store/iw0canvmhrpzn58csr6w7lq24qgny8kb-ghc-9.10.3.drv /nix/store/wjfz7sj4i49kc6gd06xsx5qlwjmqgb50-liblapack-3.12.1.drv /nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv; do
+            if grep -Fq "building '$verified_seed'" "$evidence/native-install.log"; then
+              echo "An independently verified native seed was rebuilt" >&2
+              exit 1
+            fi
+          done
           test "$(wc -l < "$evidence/output-paths.txt")" -eq 1
           output=$(cat "$evidence/output-paths.txt")
           cp "$output/current-installed-offline-cli.json" "$evidence/installed-cli.json"

@@ -159,5 +159,117 @@
       "publicKey": "assbox-arm-codex-codex-45401874682:7RFCsjW8ZKGo6IRo8bdr7ayoAL6GRljAp7hPjfPpQok="
     },
     "verifiedCorrectAndWrongKeys": true
+  },
+  {
+    "name": "ghc-bootstrap",
+    "artifact": 14975520901,
+    "bytes": 386500313,
+    "transportDigest": "sha256:0b19c0c27f04657e36f39eff7add5b91d7a49b994d7d7a386ce1f403fc18451f",
+    "indexSha256": "94bf62f9ea8cce2a33e5c69f824b2e09a04ee490d50bd1d02c139e61379893d8",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45479605780",
+        "GITHUB_SHA": "1499fc607a8374061f1f89a14ea34ee6335d9987"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "architecture": "aarch64-linux",
+      "group": "ghc-bootstrap",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv",
+          "outputs": {
+            "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+          }
+        }
+      ],
+      "publicKey": "assbox-arm-installed-build-prerequisites-ghc-bootstrap-45479605780:yD7NfsqsfRdyAUijYa1y5G5lUcO5/d3lqoYQ6MF5hoU="
+    },
+    "verifiedCorrectAndWrongKeys": true
+  },
+  {
+    "name": "ghc-other",
+    "artifact": 14980129944,
+    "bytes": 386391729,
+    "transportDigest": "sha256:bb700f0461b907e46a726d29a72c7dc0d9d4d438ab414f8be3f705c0073a17f5",
+    "indexSha256": "3347700c06bb18075a1c3869da99343b09486fa19246692ea1137fc6e9789883",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45479605780",
+        "GITHUB_SHA": "1499fc607a8374061f1f89a14ea34ee6335d9987"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "architecture": "aarch64-linux",
+      "group": "ghc-other",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/iw0canvmhrpzn58csr6w7lq24qgny8kb-ghc-9.10.3.drv",
+          "outputs": {
+            "out": "/nix/store/2nb2jcd3pl3ydc8njdw9r53m1vayjh2b-ghc-9.10.3"
+          }
+        }
+      ],
+      "publicKey": "assbox-arm-installed-build-prerequisites-ghc-other-45479605780://L078yS6LhqKW0dMWcvDfbQf5hbYXNiiwLdOnjiua0="
+    },
+    "verifiedCorrectAndWrongKeys": true
+  },
+  {
+    "name": "lapack",
+    "artifact": 14967233110,
+    "bytes": 20581657,
+    "transportDigest": "sha256:194a9e22f72b0c2b686f82a267776f0d193d175906fe38e0cc8e9d6ff9f718d2",
+    "indexSha256": "6529b342f0dc9d0fdaf79515d863a75a98ca36e002ce2606fb406736de95a2dc",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45487757149",
+        "GITHUB_SHA": "69758df0aa46509bb5300f17568d4fe309965341"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "architecture": "aarch64-linux",
+      "group": "lapack",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/wjfz7sj4i49kc6gd06xsx5qlwjmqgb50-liblapack-3.12.1.drv",
+          "outputs": {
+            "out": "/nix/store/1ar3zz68ljfy5z0362nkn6lg0lzyz1xv-liblapack-3.12.1"
+          }
+        }
+      ],
+      "publicKey": "assbox-arm-installed-build-prerequisites-lapack-45487757149:RrlIYBxk2jloUf1RoTzg+as3q2jJULKCg294DVOLpdA="
+    },
+    "verifiedCorrectAndWrongKeys": true
+  },
+  {
+    "name": "python-tools",
+    "artifact": 14953102275,
+    "bytes": 86175171,
+    "transportDigest": "sha256:18c16b4e8e6acef8ea16a66842243bb641f56b9fa56d8256c9cc235c90cf7fc8",
+    "indexSha256": "1f6119bc0a554893913ef179a7b4a635312f58d7f2662f88e50c674c933a0fbf",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45443784497",
+        "GITHUB_SHA": "220ada44f589b3ca8f6bfa1b6116ae931956aef0"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "architecture": "aarch64-linux",
+      "group": "python-tools",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv",
+          "outputs": {
+            "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+          }
+        }
+      ],
+      "publicKey": "assbox-arm-openclaw-runtime-inputs-python-tools-45443784497:dnjcdo/haoPV78mxYMur7emPvwdzgvn9ugTrW/IfKyU="
+    },
+    "verifiedCorrectAndWrongKeys": true
   }
 ]
