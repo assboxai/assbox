@@ -290,6 +290,19 @@
         "zipBytes": 86175171,
         "rawIndexSha256": "1f6119bc0a554893913ef179a7b4a635312f58d7f2662f88e50c674c933a0fbf",
         "independentProofSha256": "06accace61fc0b9508b7652fa16578102ccabe64f3e9fbe95e6b062dd44915f2"
+      },
+      {
+        "group": "clang-seed",
+        "artifact": 14873761954,
+        "identity": {
+          "GITHUB_RUN_ID": "45254317055"
+        },
+        "selected": {
+          "/nix/store/xl9xyi4sr0mlw8qpp02zc2kp0cs7h7wx-clang-21.1.8.drv": {
+            "lib": "/nix/store/jamycm4hb42m8mwnridnazp656r233qh-clang-21.1.8-lib",
+            "out": "/nix/store/c219gs6966jd09z36cc44nwi4v9mj0qr-clang-21.1.8"
+          }
+        }
       }
     ],
     "media-pipewire": [
@@ -506,8 +519,22 @@
         "zipBytes": 86175171,
         "rawIndexSha256": "1f6119bc0a554893913ef179a7b4a635312f58d7f2662f88e50c674c933a0fbf",
         "independentProofSha256": "06accace61fc0b9508b7652fa16578102ccabe64f3e9fbe95e6b062dd44915f2"
+      },
+      {
+        "group": "clang-seed",
+        "artifact": 14873761954,
+        "identity": {
+          "GITHUB_RUN_ID": "45254317055"
+        },
+        "selected": {
+          "/nix/store/xl9xyi4sr0mlw8qpp02zc2kp0cs7h7wx-clang-21.1.8.drv": {
+            "lib": "/nix/store/jamycm4hb42m8mwnridnazp656r233qh-clang-21.1.8-lib",
+            "out": "/nix/store/c219gs6966jd09z36cc44nwi4v9mj0qr-clang-21.1.8"
+          }
+        }
       }
     ]
   },
-  "previousTerminalReceiptSha256": "7208d7dbbd7e2e28b33c561f561103d04af177f0b525ec66f35588c0d1b162f8"
+  "previousTerminalReceiptSha256": "7208d7dbbd7e2e28b33c561f561103d04af177f0b525ec66f35588c0d1b162f8",
+  "clangTerminalBindingSha256": "c83bba01120e8226c6f37bab0c90f8fa54ab20dd51c670d281b87781ef8092ed"
 }

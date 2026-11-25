@@ -155,16 +155,20 @@ def main():
             require(len(archives) == 1, 'Unexpected group download inventory')
             directory = area / group
             directory.mkdir(mode=0o700)
-            if group == 'llvm-seed':
-                llvm_lock = json.loads((controller / 'native-arm-llvm-seed.json').read_text())
-                require(llvm_lock['artifact'] == pin['artifact']
-                        and str(llvm_lock['run']) == pin['identity']['GITHUB_RUN_ID'],
-                        'Unexpected LLVM artifact')
-                spec = importlib.util.spec_from_file_location(
-                    'llvm_seed_validator', controller / 'validate-immutable-llvm-seed.py')
+            if group in ('llvm-seed', 'clang-seed'):
+                seed_files = {
+                    'llvm-seed': ('native-arm-llvm-seed.json', 'validate-immutable-llvm-seed.py'),
+                    'clang-seed': ('native-arm-chromium-clang-seed.json', 'import-arm-chromium-clang-seed.py'),
+                }
+                lock_name, validator_name = seed_files[group]
+                verified = json.loads((controller / lock_name).read_text())
+                require(verified['artifact'] == pin['artifact']
+                        and str(verified['run']) == pin['identity']['GITHUB_RUN_ID'],
+                        'Unexpected compiler artifact')
+                spec = importlib.util.spec_from_file_location('compiler_seed_validator', controller / validator_name)
                 validator = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(validator)
-                index, cache = validator.validate_seed(download, directory, llvm_lock, tools)
+                index, cache = validator.validate_seed(download, directory, verified, tools)
                 index['exactRoots'] = [{'derivation': index['derivation'], 'outputs': index['outputs']}]
             else:
                 index, cache = extract(archives[0], directory, pin, tools)

@@ -115,6 +115,16 @@ jobs:
           path: ${{ runner.temp }}/assbox-arm-media-recovery-seeds/llvm-seed
           skip-decompress: true
           digest-mismatch: error
+      - name: Download the verified clang-seed inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14873761954'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45254317055'
+          path: ${{ runner.temp }}/assbox-arm-media-recovery-seeds/clang-seed
+          skip-decompress: true
+          digest-mismatch: error
       - name: Download the verified python-tools inputs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
@@ -161,7 +171,8 @@ jobs:
             "$PWD/product" "$RUNNER_TEMP/assbox-arm-media-recovery-seeds" "$evidence" "$INPUT_GROUP"
           /usr/bin/python3 -I -B authority/.github/experiments/native-arm-media-recovery.py "$PWD/product" "$evidence" "$INPUT_GROUP"
           if grep -Fq "building '/nix/store/sf1m5zznbj4ca5bgiamhdz4gzw8h0636-llvm-21.1.8.drv'" "$evidence/native-build.log" ||
-             grep -Fq "building '/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv'" "$evidence/native-build.log"; then
+             grep -Fq "building '/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv'" "$evidence/native-build.log" ||
+             grep -Fq "building '/nix/store/xl9xyi4sr0mlw8qpp02zc2kp0cs7h7wx-clang-21.1.8.drv'" "$evidence/native-build.log"; then
             echo "The build rebuilt a verified imported native input" >&2
             exit 1
           fi
