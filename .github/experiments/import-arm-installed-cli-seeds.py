@@ -28,7 +28,7 @@ HOSTED = {
     'GITHUB_REPOSITORY_OWNER_ID': '327835666',
     'GITHUB_EVENT_NAME': 'workflow_dispatch',
     'GITHUB_RUN_ATTEMPT': '1',
-    'GITHUB_REF': 'refs/heads/test/arm-current-headless-verified-packages',
+    'GITHUB_REF': 'refs/heads/test/arm-headless-inventory-verified-ghc',
 }
 TOKEN_ENV = {
     'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN',
@@ -85,6 +85,10 @@ def validate(archive, work, pinned, cache_tools):
                 index['group'] == 'headless-prerequisites' and index['parentProfile'] == TEST and
                 index['source'] == SOURCE and index['tree'] == TREE,
                 'Expected the independently qualified exact headless package archive')
+    elif 'exactRoots' in index:
+        require(pinned['verifiedCorrectAndWrongKeys'] is True and index['group'] == pinned['name']
+                and index['source'] == SOURCE and index['tree'] == TREE,
+                'Independently qualified exact native build input required')
     else:
         require(index['testedColdCorrectAndWrongKeys'] is True, 'ARM cold-store qualification is required')
     cache_tools.validate_cache(cache, index)
@@ -153,7 +157,7 @@ def main():
         graph = set(cache_tools.run(env, 'nix-store', '--query', '--requisites', TEST, timeout=300).decode().splitlines())
         for pinned in expected:
             metadata = pinned['index']
-            grouped = pinned['name'] == 'current-headless-packages'
+            grouped = 'exactRoots' in metadata
             packages = metadata['exactRoots'] if grouped else [metadata]
             require(packages and all(package['derivation'] in graph for package in packages),
                     'ARM seed derivation is absent from the exact headless graph')

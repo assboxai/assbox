@@ -167,5 +167,61 @@
       "publicKey": "assbox-arm-headless-prerequisites-headless-prerequisites-45410257402:u72rJIebmAaOS3YK3wnm2G25K1SfUZvJyXxy8aK3Ax0="
     },
     "verifiedCorrectAndWrongKeys": true
+  },
+  {
+    "name": "ghc-bootstrap",
+    "artifact": 14975520901,
+    "bytes": 386500313,
+    "transportDigest": "sha256:0b19c0c27f04657e36f39eff7add5b91d7a49b994d7d7a386ce1f403fc18451f",
+    "indexSha256": "94bf62f9ea8cce2a33e5c69f824b2e09a04ee490d50bd1d02c139e61379893d8",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45479605780",
+        "GITHUB_SHA": "1499fc607a8374061f1f89a14ea34ee6335d9987"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "architecture": "aarch64-linux",
+      "group": "ghc-bootstrap",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv",
+          "outputs": {
+            "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+          }
+        }
+      ],
+      "publicKey": "assbox-arm-installed-build-prerequisites-ghc-bootstrap-45479605780:yD7NfsqsfRdyAUijYa1y5G5lUcO5/d3lqoYQ6MF5hoU="
+    },
+    "verifiedCorrectAndWrongKeys": true
+  },
+  {
+    "name": "python-tools",
+    "artifact": 14953102275,
+    "bytes": 86175171,
+    "transportDigest": "sha256:18c16b4e8e6acef8ea16a66842243bb641f56b9fa56d8256c9cc235c90cf7fc8",
+    "indexSha256": "1f6119bc0a554893913ef179a7b4a635312f58d7f2662f88e50c674c933a0fbf",
+    "index": {
+      "identity": {
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_RUN_ID": "45443784497",
+        "GITHUB_SHA": "220ada44f589b3ca8f6bfa1b6116ae931956aef0"
+      },
+      "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+      "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+      "architecture": "aarch64-linux",
+      "group": "python-tools",
+      "exactRoots": [
+        {
+          "derivation": "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv",
+          "outputs": {
+            "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+          }
+        }
+      ],
+      "publicKey": "assbox-arm-openclaw-runtime-inputs-python-tools-45443784497:dnjcdo/haoPV78mxYMur7emPvwdzgvn9ugTrW/IfKyU="
+    },
+    "verifiedCorrectAndWrongKeys": true
   }
 ]

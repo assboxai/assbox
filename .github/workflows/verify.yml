@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-current-headless-verified-packages' &&
+      github.ref == 'refs/heads/test/arm-headless-inventory-verified-ghc' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
@@ -110,6 +110,26 @@ jobs:
           path: ${{ runner.temp }}/assbox-installed-cli-seeds/current-headless-packages
           skip-decompress: true
           digest-mismatch: error
+      - name: Download the verified ARM ghc-bootstrap seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14975520901'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45479605780'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/ghc-bootstrap
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the verified ARM python-tools seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14953102275'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45443784497'
+          path: ${{ runner.temp }}/assbox-installed-cli-seeds/python-tools
+          skip-decompress: true
+          digest-mismatch: error
       - name: Build and inventory the exact native ARM headless closure
         timeout-minutes: 320
         shell: bash
@@ -156,6 +176,9 @@ jobs:
             tail -40 "$evidence/native-build.log" >&2
             exit "$status"
           fi
+          for verified_seed in /nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv /nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv; do
+            if grep -Fq "building '$verified_seed'" "$evidence/native-build.log"; then exit 1; fi
+          done
           test "$(cat "$evidence/output-paths.txt")" = "$(jq -er '.installed' "$evidence/evaluation.json")"
           kernel_drv=$(jq -er '.derivation' "$evidence/kernel-import.json")
           if grep -Fq "building '$kernel_drv'" "$evidence/native-build.log"; then
