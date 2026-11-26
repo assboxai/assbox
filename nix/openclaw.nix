@@ -46,7 +46,11 @@ let
           pnpmDeps = pkgs.fetchPnpmDeps {
             inherit (final) pname version src;
             inherit pnpm;
-            hash = "sha256-vh+JmLJn9fT/jQRjBWFyT2GlT4GfKq2DcXDI07DYnZA=";
+            hash =
+              if pkgs.stdenv.hostPlatform.system == "aarch64-linux" then
+                "sha256-hQduFeb9zkeRBxUuXCuqIdAlYeUdOZqwWNHvbv8CeO4="
+              else
+                "sha256-vh+JmLJn9fT/jQRjBWFyT2GlT4GfKq2DcXDI07DYnZA=";
             fetcherVersion = 4;
             prePnpmInstall = ''
               cat >> pnpm-workspace.yaml <<'EOF'
