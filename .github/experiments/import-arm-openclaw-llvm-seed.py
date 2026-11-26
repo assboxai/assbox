@@ -15,8 +15,8 @@ import sys
 import tempfile
 from zipfile import ZipFile
 
-SOURCE = 'd3d36054d98d1ccf3ab37853fd4c23b5621e72d5'
-TREE = 'ac7bc49124a59ad59bca1afde3d755dd88ec7370'
+SOURCE = 'bab2d8a9e0c3271282fa0e563a4b26836087396e'
+TREE = '998d0a04fffe213cf5a8fcba97bb3111d16d6e5d'
 LOCK = 'ea86256a5c0755b5dc022ef446202ea28b404144a7a2eb2202199a58c3ec57b7'
 SEED_RUN = 45085837980
 SEED_CONTROLLER = 'b8f812f0ab52b9a6c287ca6633394ead0b949d3f'
@@ -91,7 +91,7 @@ def require_hosted():
     expected = {'RUNNER_ENVIRONMENT': 'github-hosted', 'GITHUB_REPOSITORY': 'assboxai/assbox',
                 'GITHUB_REPOSITORY_ID': '1402455771', 'GITHUB_REPOSITORY_OWNER_ID': '327835666',
                 'GITHUB_EVENT_NAME': 'workflow_dispatch', 'GITHUB_RUN_ATTEMPT': '1',
-                'GITHUB_REF': 'refs/heads/test/arm-openclaw-runtime-verified-inputs'}
+                'GITHUB_REF': 'refs/heads/test/arm-openclaw-runtime-cache-pin'}
     require(all(os.environ.get(key) == value for key, value in expected.items()), 'Unexpected hosted authority')
     require(not any(key in os.environ for key in (
         'GH_TOKEN', 'GITHUB_TOKEN', 'ACTIONS_RUNTIME_TOKEN', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN',
@@ -103,7 +103,7 @@ def main():
     require_hosted()
     product, download, receipt = (Path(path).resolve(strict=index < 2) for index, path in enumerate(sys.argv[1:4]))
     dependency = sys.argv[4]
-    require(dependency == '/nix/store/d35yipxm2v9y3fn9s2sv5ck8psccjkkw-openclaw-pnpm-deps.drv', 'Unexpected exact OpenClaw dependency scope')
+    require(dependency == '/nix/store/rgz7hgi10hphyn52apjzcpr90n4h149h-openclaw-pnpm-deps.drv', 'Unexpected exact OpenClaw dependency scope')
     authority = Path(__file__).resolve().parent
 
     def git(checkout, *arguments):

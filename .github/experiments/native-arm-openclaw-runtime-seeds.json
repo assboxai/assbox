@@ -1,9 +1,9 @@
 {
-  "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
-  "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+  "source": "bab2d8a9e0c3271282fa0e563a4b26836087396e",
+  "tree": "998d0a04fffe213cf5a8fcba97bb3111d16d6e5d",
   "architecture": "aarch64-linux",
-  "parentProfile": "/nix/store/p5r62dw24v5y2bm1l6ph9bpkrgpkn1jw-openclaw-2026.11.7-assbox-entrypoint.drv",
-  "parentOutput": "/nix/store/2qk3igx68n6fglqqdr5svlsd2xfcnpzl-openclaw-2026.11.7-assbox-entrypoint",
+  "parentProfile": "/nix/store/kimsd6jj1l6dh6r4wzg17lwkym8p9s94-openclaw-2026.11.7-assbox-entrypoint.drv",
+  "parentOutput": "/nix/store/hwy53jnfny8pfhjjn1csg023q684f695-openclaw-2026.11.7-assbox-entrypoint",
   "previousProducerPlanSha256": "0184ac29fad1ff26dd65061878a1f3adbe0c4a401d72754f6619a3ebf6ba1f0d",
   "packageInputs": [
     {

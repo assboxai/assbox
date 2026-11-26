@@ -4,7 +4,7 @@ name: Assbox reviewed OpenClaw native ARM runtime
   workflow_dispatch: null
 permissions: {}
 concurrency:
-  group: assbox-arm-openclaw-runtime-verified-inputs
+  group: assbox-arm-openclaw-runtime-cache-pin
   cancel-in-progress: false
 jobs:
   collect:
@@ -12,7 +12,7 @@ jobs:
       github.repository == 'assboxai/assbox' &&
       github.repository_id == '1402455771' &&
       github.repository_owner_id == '327835666' &&
-      github.ref == 'refs/heads/test/arm-openclaw-runtime-verified-inputs' &&
+      github.ref == 'refs/heads/test/arm-openclaw-runtime-cache-pin' &&
       github.event_name == 'workflow_dispatch' && github.run_attempt == 1
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 355
@@ -20,8 +20,8 @@ jobs:
       contents: read
       actions: read
     env:
-      PRODUCT_COMMIT: d3d36054d98d1ccf3ab37853fd4c23b5621e72d5
-      PRODUCT_TREE: ac7bc49124a59ad59bca1afde3d755dd88ec7370
+      PRODUCT_COMMIT: bab2d8a9e0c3271282fa0e563a4b26836087396e
+      PRODUCT_TREE: 998d0a04fffe213cf5a8fcba97bb3111d16d6e5d
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -121,15 +121,15 @@ jobs:
           ' > "$evidence/bindings.json" 2> "$evidence/bindings.log"
           wrapper=$(jq -er '.package|if length == 1 then .[0].drvPath else error("OpenClaw wrapper selection") end' "$evidence/bindings.json")
           package=$(jq -er '.package[0].output' "$evidence/bindings.json")
-          test "$wrapper" = /nix/store/p5r62dw24v5y2bm1l6ph9bpkrgpkn1jw-openclaw-2026.11.7-assbox-entrypoint.drv
-          test "$package" = /nix/store/2qk3igx68n6fglqqdr5svlsd2xfcnpzl-openclaw-2026.11.7-assbox-entrypoint
+          test "$wrapper" = /nix/store/kimsd6jj1l6dh6r4wzg17lwkym8p9s94-openclaw-2026.11.7-assbox-entrypoint.drv
+          test "$package" = /nix/store/hwy53jnfny8pfhjjn1csg023q684f695-openclaw-2026.11.7-assbox-entrypoint
           raw=$(nix-store --query --references "$wrapper" | grep -E -- '-openclaw-2026[.]11[.]7[.]drv$')
-          test "$raw" = /nix/store/f663by7rvq8g8xppn3ys5ywmily2d7v9-openclaw-2026.11.7.drv
+          test "$raw" = /nix/store/5qz1cas68aw8dxcvd7x1g3aw7gqiyyql-openclaw-2026.11.7.drv
           deps=$(nix-store --query --references "$raw" | grep -E -- '-openclaw-pnpm-deps[.]drv$')
           pnpm=$(nix-store --query --references "$raw" | grep -E -- '-pnpm-12[.]23[.]0[.]drv$')
           deps_output=$(nix-store --query --outputs "$deps")
           pnpm_output=$(nix-store --query --outputs "$pnpm")
-          test "$deps_output" = /nix/store/2i5hfwwz0nhzikpbn2sg235jp1lzsxk4-openclaw-pnpm-deps
+          test "$deps_output" = /nix/store/gz5x16z3pjfkp90skynl7mis515zhkr0-openclaw-pnpm-deps
           /usr/bin/python3 -I -B "$GITHUB_WORKSPACE/authority/.github/experiments/import-arm-openclaw-llvm-seed.py" "$PWD" "$RUNNER_TEMP/assbox-arm-openclaw-llvm-download" "$evidence/llvm-import.json" "$deps"
           test -s "$evidence/llvm-import.json"
           /usr/bin/python3 -I -B "$GITHUB_WORKSPACE/authority/.github/experiments/import-arm-openclaw-runtime-seeds.py" "$PWD" "$RUNNER_TEMP/assbox-arm-openclaw-package-seeds" "$evidence"
