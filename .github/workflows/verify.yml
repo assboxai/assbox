@@ -121,6 +121,56 @@ jobs:
           path: ${{ runner.temp }}/assbox-arm-profile-seeds/display-libraries
           skip-decompress: true
           digest-mismatch: error
+      - name: Read verified ghc-bootstrap
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14975520901'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45479605780'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/ghc-bootstrap
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified libressl-tools
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14972578527'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45493347680'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/libressl-tools
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified nix-store-tests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14975387908'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45493347680'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/nix-store-tests
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified python-tools
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14953102275'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45443784497'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/python-tools
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Read verified xml-python
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: '14969629634'
+          github-token: ${{ github.token }}
+          repository: assboxai/assbox
+          run-id: '45493347680'
+          path: ${{ runner.temp }}/assbox-arm-profile-seeds/xml-python
+          skip-decompress: true
+          digest-mismatch: error
       - name: Realize exact native profile roots and retain raw advisory evidence
         shell: bash
         run: |

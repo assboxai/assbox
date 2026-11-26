@@ -222,6 +222,117 @@
           }
         },
         "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "libressl-tools",
+        "artifact": 14972578527,
+        "artifactSha256": "sha256:ea9220c85e2349f9ead3b0dc8a2837aa689f6f35babbadc2cc8a8d74087d693f",
+        "zipBytes": 11446465,
+        "rawIndexSha256": "07759b89af81361ff05662aa4b628ba4f6a8eb0255368d28c9dc759b3ef9fe4e",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45493347680",
+          "GITHUB_SHA": "a35507aac419f14c2867413ac4565acc34e9f051"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-libressl-tools-45493347680:AEDPed5OZ2xXLkVbCuk/DAk1PYV9YvmuvyKAdeH5dx0=",
+        "producerRun": 45493347680,
+        "selected": {
+          "/nix/store/w8giw78xp21agg37ll7n6favbs6l9chv-libressl-4.2.1.drv": {
+            "man": "/nix/store/ks806p7z71fx8jqhbdd5kdwp6rxw3vrg-libressl-4.2.1-man",
+            "nc": "/nix/store/cq3f0b70xfdbp7q3pmgvnyl55asqvpxg-libressl-4.2.1-nc"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "nix-store-tests",
+        "artifact": 14975387908,
+        "artifactSha256": "sha256:334b07af9ccc142548ee0941e4da2a818f1e6276e3159758641da8a72d7b753e",
+        "zipBytes": 42045995,
+        "rawIndexSha256": "feb5769143117b19224dd2e53507d195e0ecacd97cee1bed8616ec317cd977f4",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45493347680",
+          "GITHUB_SHA": "a35507aac419f14c2867413ac4565acc34e9f051"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-nix-store-tests-45493347680:/lhrqj8gJEy7bL8F7XBeaXgnFbE7yZ1on0OiExY6ZzU=",
+        "producerRun": 45493347680,
+        "selected": {
+          "/nix/store/sns6ks2rasi7bcnp47g6r4cgbvpix7p8-nix-store-tests-2.34.8.drv": {
+            "out": "/nix/store/k0r2r00rr2ap0hxa7wfa5qp515525bfy-nix-store-tests-2.34.8"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "xml-python",
+        "artifact": 14969629634,
+        "artifactSha256": "sha256:6e3e1a2fd3cad0e927ae44272d7d0ff2303c2926a955e477c8df1e1668d7c0a0",
+        "zipBytes": 75460307,
+        "rawIndexSha256": "06189231817bd3bfd18b86dea1b9f471cc8a568279a3188fe5bc0913ca13996a",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45493347680",
+          "GITHUB_SHA": "a35507aac419f14c2867413ac4565acc34e9f051"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-xml-python-45493347680:0k483nrJJUC2V3OXFXz59F5dLNlY2HeQnNP+v7ioAtI=",
+        "producerRun": 45493347680,
+        "selected": {
+          "/nix/store/avj0qjc11kg7z42cdhyfgw3ban4xhaj0-python3.13-lxml-6.0.2.drv": {
+            "out": "/nix/store/mgd4hpagcrln7w6mrvs830d38zr6y80x-python3.13-lxml-6.0.2"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "ghc-bootstrap",
+        "artifact": 14975520901,
+        "artifactSha256": "sha256:0b19c0c27f04657e36f39eff7add5b91d7a49b994d7d7a386ce1f403fc18451f",
+        "zipBytes": 386500313,
+        "rawIndexSha256": "94bf62f9ea8cce2a33e5c69f824b2e09a04ee490d50bd1d02c139e61379893d8",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45479605780",
+          "GITHUB_SHA": "1499fc607a8374061f1f89a14ea34ee6335d9987"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-ghc-bootstrap-45479605780:yD7NfsqsfRdyAUijYa1y5G5lUcO5/d3lqoYQ6MF5hoU=",
+        "producerRun": 45479605780,
+        "selected": {
+          "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv": {
+            "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "python-tools",
+        "artifact": 14953102275,
+        "artifactSha256": "sha256:18c16b4e8e6acef8ea16a66842243bb641f56b9fa56d8256c9cc235c90cf7fc8",
+        "zipBytes": 86175171,
+        "rawIndexSha256": "1f6119bc0a554893913ef179a7b4a635312f58d7f2662f88e50c674c933a0fbf",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45443784497",
+          "GITHUB_SHA": "220ada44f589b3ca8f6bfa1b6116ae931956aef0"
+        },
+        "publicKey": "assbox-arm-openclaw-runtime-inputs-python-tools-45443784497:dnjcdo/haoPV78mxYMur7emPvwdzgvn9ugTrW/IfKyU=",
+        "producerRun": 45443784497,
+        "selected": {
+          "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv": {
+            "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+          }
+        },
+        "closureSelected": {}
       }
     ],
     "service-light": [
@@ -368,9 +479,178 @@
           }
         },
         "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "libressl-tools",
+        "artifact": 14972578527,
+        "artifactSha256": "sha256:ea9220c85e2349f9ead3b0dc8a2837aa689f6f35babbadc2cc8a8d74087d693f",
+        "zipBytes": 11446465,
+        "rawIndexSha256": "07759b89af81361ff05662aa4b628ba4f6a8eb0255368d28c9dc759b3ef9fe4e",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45493347680",
+          "GITHUB_SHA": "a35507aac419f14c2867413ac4565acc34e9f051"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-libressl-tools-45493347680:AEDPed5OZ2xXLkVbCuk/DAk1PYV9YvmuvyKAdeH5dx0=",
+        "producerRun": 45493347680,
+        "selected": {
+          "/nix/store/w8giw78xp21agg37ll7n6favbs6l9chv-libressl-4.2.1.drv": {
+            "man": "/nix/store/ks806p7z71fx8jqhbdd5kdwp6rxw3vrg-libressl-4.2.1-man",
+            "nc": "/nix/store/cq3f0b70xfdbp7q3pmgvnyl55asqvpxg-libressl-4.2.1-nc"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "nix-store-tests",
+        "artifact": 14975387908,
+        "artifactSha256": "sha256:334b07af9ccc142548ee0941e4da2a818f1e6276e3159758641da8a72d7b753e",
+        "zipBytes": 42045995,
+        "rawIndexSha256": "feb5769143117b19224dd2e53507d195e0ecacd97cee1bed8616ec317cd977f4",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45493347680",
+          "GITHUB_SHA": "a35507aac419f14c2867413ac4565acc34e9f051"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-nix-store-tests-45493347680:/lhrqj8gJEy7bL8F7XBeaXgnFbE7yZ1on0OiExY6ZzU=",
+        "producerRun": 45493347680,
+        "selected": {
+          "/nix/store/sns6ks2rasi7bcnp47g6r4cgbvpix7p8-nix-store-tests-2.34.8.drv": {
+            "out": "/nix/store/k0r2r00rr2ap0hxa7wfa5qp515525bfy-nix-store-tests-2.34.8"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "xml-python",
+        "artifact": 14969629634,
+        "artifactSha256": "sha256:6e3e1a2fd3cad0e927ae44272d7d0ff2303c2926a955e477c8df1e1668d7c0a0",
+        "zipBytes": 75460307,
+        "rawIndexSha256": "06189231817bd3bfd18b86dea1b9f471cc8a568279a3188fe5bc0913ca13996a",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45493347680",
+          "GITHUB_SHA": "a35507aac419f14c2867413ac4565acc34e9f051"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-xml-python-45493347680:0k483nrJJUC2V3OXFXz59F5dLNlY2HeQnNP+v7ioAtI=",
+        "producerRun": 45493347680,
+        "selected": {
+          "/nix/store/avj0qjc11kg7z42cdhyfgw3ban4xhaj0-python3.13-lxml-6.0.2.drv": {
+            "out": "/nix/store/mgd4hpagcrln7w6mrvs830d38zr6y80x-python3.13-lxml-6.0.2"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "ghc-bootstrap",
+        "artifact": 14975520901,
+        "artifactSha256": "sha256:0b19c0c27f04657e36f39eff7add5b91d7a49b994d7d7a386ce1f403fc18451f",
+        "zipBytes": 386500313,
+        "rawIndexSha256": "94bf62f9ea8cce2a33e5c69f824b2e09a04ee490d50bd1d02c139e61379893d8",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45479605780",
+          "GITHUB_SHA": "1499fc607a8374061f1f89a14ea34ee6335d9987"
+        },
+        "publicKey": "assbox-arm-installed-build-prerequisites-ghc-bootstrap-45479605780:yD7NfsqsfRdyAUijYa1y5G5lUcO5/d3lqoYQ6MF5hoU=",
+        "producerRun": 45479605780,
+        "selected": {
+          "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv": {
+            "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+          }
+        },
+        "closureSelected": {}
+      },
+      {
+        "source": "d3d36054d98d1ccf3ab37853fd4c23b5621e72d5",
+        "tree": "ac7bc49124a59ad59bca1afde3d755dd88ec7370",
+        "group": "python-tools",
+        "artifact": 14953102275,
+        "artifactSha256": "sha256:18c16b4e8e6acef8ea16a66842243bb641f56b9fa56d8256c9cc235c90cf7fc8",
+        "zipBytes": 86175171,
+        "rawIndexSha256": "1f6119bc0a554893913ef179a7b4a635312f58d7f2662f88e50c674c933a0fbf",
+        "identity": {
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_RUN_ID": "45443784497",
+          "GITHUB_SHA": "220ada44f589b3ca8f6bfa1b6116ae931956aef0"
+        },
+        "publicKey": "assbox-arm-openclaw-runtime-inputs-python-tools-45443784497:dnjcdo/haoPV78mxYMur7emPvwdzgvn9ugTrW/IfKyU=",
+        "producerRun": 45443784497,
+        "selected": {
+          "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv": {
+            "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+          }
+        },
+        "closureSelected": {}
       }
     ]
   },
   "recoveryParentPlanSha256": "82fdc4dc4541718a2108c6fa60ea09f8078d7418773e67c7859b1b30687f4ee7",
-  "priorControllerPlanSha256": "e7dd647a8ce4253edef262248052e150f29701bc8635aa48675f88f202c0abc6"
+  "priorControllerPlanSha256": "e7dd647a8ce4253edef262248052e150f29701bc8635aa48675f88f202c0abc6",
+  "qualifiedNativePrerequisiteBindings": {
+    "editor-light": {
+      "libressl-tools": {
+        "/nix/store/w8giw78xp21agg37ll7n6favbs6l9chv-libressl-4.2.1.drv": {
+          "man": "/nix/store/ks806p7z71fx8jqhbdd5kdwp6rxw3vrg-libressl-4.2.1-man",
+          "nc": "/nix/store/cq3f0b70xfdbp7q3pmgvnyl55asqvpxg-libressl-4.2.1-nc"
+        }
+      },
+      "nix-store-tests": {
+        "/nix/store/sns6ks2rasi7bcnp47g6r4cgbvpix7p8-nix-store-tests-2.34.8.drv": {
+          "out": "/nix/store/k0r2r00rr2ap0hxa7wfa5qp515525bfy-nix-store-tests-2.34.8"
+        }
+      },
+      "xml-python": {
+        "/nix/store/avj0qjc11kg7z42cdhyfgw3ban4xhaj0-python3.13-lxml-6.0.2.drv": {
+          "out": "/nix/store/mgd4hpagcrln7w6mrvs830d38zr6y80x-python3.13-lxml-6.0.2"
+        }
+      },
+      "ghc-bootstrap": {
+        "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv": {
+          "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+        }
+      },
+      "python-tools": {
+        "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv": {
+          "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+        }
+      }
+    },
+    "service-light": {
+      "libressl-tools": {
+        "/nix/store/w8giw78xp21agg37ll7n6favbs6l9chv-libressl-4.2.1.drv": {
+          "man": "/nix/store/ks806p7z71fx8jqhbdd5kdwp6rxw3vrg-libressl-4.2.1-man",
+          "nc": "/nix/store/cq3f0b70xfdbp7q3pmgvnyl55asqvpxg-libressl-4.2.1-nc"
+        }
+      },
+      "nix-store-tests": {
+        "/nix/store/sns6ks2rasi7bcnp47g6r4cgbvpix7p8-nix-store-tests-2.34.8.drv": {
+          "out": "/nix/store/k0r2r00rr2ap0hxa7wfa5qp515525bfy-nix-store-tests-2.34.8"
+        }
+      },
+      "xml-python": {
+        "/nix/store/avj0qjc11kg7z42cdhyfgw3ban4xhaj0-python3.13-lxml-6.0.2.drv": {
+          "out": "/nix/store/mgd4hpagcrln7w6mrvs830d38zr6y80x-python3.13-lxml-6.0.2"
+        }
+      },
+      "ghc-bootstrap": {
+        "/nix/store/16gmg32v42wqdrchasslsbm5k2f1q5d4-ghc-9.10.3.drv": {
+          "out": "/nix/store/1cm1033jj2fdg9yczdbv7hds7kdbjim2-ghc-9.10.3"
+        }
+      },
+      "python-tools": {
+        "/nix/store/l4qdc74lr2xgb7hdg1al47ahgdnvchqy-python3.13-mypy-1.20.1.drv": {
+          "out": "/nix/store/c9vwnfhr09vyi13h0fp8jx1y9wb49fgx-python3.13-mypy-1.20.1"
+        }
+      }
+    }
+  }
 }
